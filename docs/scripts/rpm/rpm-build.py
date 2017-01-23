@@ -358,7 +358,6 @@ distutils.dir_util.copy_tree(str(assemblyDir) + "/docs/scripts/ddl", rpmReleaseD
 distutils.dir_util.copy_tree(str(assemblyDir) + "/docs/scripts/service", rpmReleaseDir + "/docs/service")
 distutils.dir_util.copy_tree(str(assemblyDir) + "/docs/upgrade", rpmReleaseDir + "/docs/upgrade")
 distutils.dir_util.mkpath(rpmReleaseDir + "/etc")
-distutils.file_util.copy_file(str(assemblyDir) + "/etc/gosh_profile", rpmReleaseDir + "/etc/gosh_profile")
 distutils.dir_util.copy_tree(str(assemblyDir) + "/lib", rpmReleaseDir + "/lib")
 distutils.dir_util.copy_tree(str(assemblyDir) + "/system", rpmReleaseDir + "/system")
 
