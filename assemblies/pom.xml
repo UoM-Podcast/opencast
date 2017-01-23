@@ -20,16 +20,34 @@
   <packaging>pom</packaging>
   <name>Assemblies</name>
 
-  <modules>
-    <module>karaf-features</module>
-    <module>dist-admin</module>
-    <module>dist-adminpresentation</module>
-    <module>dist-adminworker</module>
-    <module>dist-allinone</module>
-    <module>dist-ingest</module>
-    <module>dist-presentation</module>
-    <module>dist-worker</module>
-  </modules>
+  <profiles>
+    <profile>
+      <id>default</id>
+      <activation>
+        <property>
+          <name>ci-build</name>
+          <value>!true</value>
+        </property>
+      </activation>
+      <modules>
+        <module>karaf-features</module>
+        <module>dist-allinone</module>
+      </modules>
+    </profile>
+       <profile>
+      <id>ci-build</id>
+      <activation>
+        <property>
+          <name>ci-build</name>
+          <value>true</value>
+        </property>
+      </activation>
+      <modules>
+        <module>karaf-features</module>
+        <module>dist-complete</module>
+      </modules>
+    </profile>
+  </profiles>
 
   <build>
     <plugins>

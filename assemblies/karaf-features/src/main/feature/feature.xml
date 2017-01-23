@@ -230,6 +230,25 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-workflow-workflowoperation/${project.version}</bundle>
   </feature>
 
+  <feature name="opencast-complete">
+    <feature start-level="80">opencast-core</feature>
+
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-composer-service-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-cover-image-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-download-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-streaming-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-inspection-service-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-youtube-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-search-service-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-silencedetection-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-sox-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-textanalyzer-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-videoeditor-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-videosegmenter-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-waveform-remote/${project.version}</bundle>
+
+  </feature>
+
   <feature name="opencast-admin">
     <feature start-level="80">opencast-core</feature>
 
