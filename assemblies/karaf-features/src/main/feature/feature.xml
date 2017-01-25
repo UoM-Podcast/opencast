@@ -231,7 +231,7 @@
   </feature>
 
   <feature name="opencast-complete">
-    <feature start-level="80">opencast-core</feature>
+    <feature start-level="80">opencast-allinone</feature>
 
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-composer-service-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-cover-image-remote/${project.version}</bundle>
