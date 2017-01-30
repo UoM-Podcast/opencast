@@ -238,6 +238,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-download-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-streaming-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-inspection-service-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-scheduler-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-youtube-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-search-service-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-series-service-remote/${project.version}</bundle>
