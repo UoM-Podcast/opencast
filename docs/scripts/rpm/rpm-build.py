@@ -265,7 +265,6 @@ specFileName = packageName + ".spec"
 
 # Locate the main pom
 mainPom = workspace + "/pom.xml"
-logger.info("Determining list of relevant Maven modules from " + mainPom)
 if not os.path.exists(mainPom):
     logger.error("Main pom can't be found at " + str(mainPom))
     cleanBuildEnvironment()

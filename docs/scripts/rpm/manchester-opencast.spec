@@ -1,5 +1,5 @@
 # manchester-opencast.spec
-# Package Manchester's Opencast 2.x sans configuration files that are provided by Ansible
+# Package Manchester's Opencast 2.x sans configuration files that are installed by Ansible
 
 %define     _product_name manchester-opencast
 %define     _prefix /opt/opencast
@@ -18,8 +18,7 @@ BuildRoot:  %{_tmppath}/%{_product_name}-%{version}-%{release}
 Source:     %{_product_name}-%{version}-%{release}.tar.gz
 
 # Baseline requirements
-Requires:   java-1.8.0-openjdk    
-Requires:   redhat-lsb    
+Requires:   java-1.8.0-openjdk
 
 %description
 Manchester Opencast video management and processing system
@@ -31,7 +30,7 @@ Manchester Opencast video management and processing system
 
 %pre
 #first install
-if [ "$1" = "1" ];then
+if [ "$1" = "1" ]; then
   getent group opencast >/dev/null || groupadd opencast
   getent passwd opencast >/dev/null || useradd -d /opt/opencast -m -g opencast opencast -r -s /sbin/nologin -c "Opencast media processing"
   install -d -m 755 $RPM_BUILD_ROOT/var/log/opencast
@@ -43,7 +42,6 @@ elif [ "$1" = "2" ]; then
   #clear caches
   rm -rf /var/cache/opencast/* /var/tmp/opencast/* >/dev/null 2>&1
 fi
-  
 
 %install
 # Work directories
@@ -84,11 +82,10 @@ cp -rf docs/upgrade/* $RPM_BUILD_ROOT%{_prefix}/docs/upgrade/
 
 %post
 # First install only
-
 if [ "$1" =  "1" ]; then
   ln -s %{_prefix}/etc ${RPM_BUILD_ROOT}/etc/opencast
   systemctl enable opencast
-elif [ "$1" =  "2" ];then
+elif [ "$1" =  "2" ]; then
   # restart opencast on updates
   systemctl restart opencast >/dev/null 2>&1
 fi
@@ -109,14 +106,15 @@ rm -rf %{buildroot}
 %attr(0644,root,root) %{_unitdir}/opencast.service
 
 %config(noreplace) %{_prefix}/etc/
+%config(noreplace) %{_unitdir}/opencast.service
 
 %preun
-if [ "$1" = "0" ];then
+if [ "$1" = "0" ]; then
   systemctl stop opencast
 fi
 
 %postun
-if [ "$1" = "0" ];then
+if [ "$1" = "0" ]; then
   systemctl disable opencast
   rm -rf /var/cache/opencast
   rm -rf /var/tmp/opencast
@@ -125,7 +123,7 @@ fi
 
 %changelog
 * Wed Jan 18 2017 James Perrin <james.perrin@manchester.ac.uk> - 2.0
--Version 2
+- Version 2 for Opencast 2.x
 * Thu Sep 20 2012 Jaime Gago <jaime@entwinemedia.com> - 1.0
--Version 1
+- Version 1
 
