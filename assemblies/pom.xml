@@ -22,26 +22,26 @@
 
   <profiles>
     <profile>
-      <id>default</id>
+      <id>dist</id>
       <activation>
-        <property>
-          <name>ci-build</name>
-          <value>!true</value>
-        </property>
+        <activeByDefault>true</activeByDefault>
       </activation>
+
       <modules>
         <module>karaf-features</module>
+        <module>dist-admin</module>
+        <module>dist-adminpresentation</module>
+        <module>dist-adminworker</module>
         <module>dist-allinone</module>
+        <module>dist-ingest</module>
+        <module>dist-presentation</module>
+        <module>dist-worker</module>
       </modules>
     </profile>
-       <profile>
-      <id>ci-build</id>
-      <activation>
-        <property>
-          <name>ci-build</name>
-          <value>true</value>
-        </property>
-      </activation>
+
+    <profile>
+      <id>complete</id>
+
       <modules>
         <module>karaf-features</module>
         <module>dist-complete</module>
