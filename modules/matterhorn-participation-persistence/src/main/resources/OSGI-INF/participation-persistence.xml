@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.impl.persistence.ParticipationManagementDatabaseImpl"
+               immediate="true"
+               activate="activate"
+               deactivate="deactivate">
+  <implementation class="org.opencastproject.pm.impl.persistence.ParticipationManagementDatabaseImpl" />
+  <property name="service.description" value="Participation Management Persistence" />
+  <property name="service.pid" value="org.opencastproject.pm.impl.persistence" />
+  <service>
+    <provide interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase" />
+  </service>
+  <reference name="entityManagerFactory"
+             interface="javax.persistence.EntityManagerFactory"
+             target="(osgi.unit.name=org.opencastproject.pm.impl.persistence)"
+             cardinality="1..1"
+             policy="static"
+             bind="setEntityManagerFactory" />
+  <reference name="user-directory"
+             interface="org.opencastproject.security.api.UserDirectoryService"
+             cardinality="1..1"
+             policy="static"
+             bind="setUserDirectoryService" />
+  <reference name="securityService"
+             interface="org.opencastproject.security.api.SecurityService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService" />
+</scr:component>

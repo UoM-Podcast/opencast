@@ -58,6 +58,7 @@
     <module>modules/matterhorn-capture-admin-service-api</module>
     <module>modules/matterhorn-capture-admin-service-impl</module>
     <module>modules/matterhorn-capture-workflowoperation</module>
+    <module>modules/matterhorn-comments</module>
     <module>modules/matterhorn-comments-workflowoperation</module>
     <module>modules/matterhorn-common</module>
     <module>modules/matterhorn-common-jpa-impl</module>
@@ -137,12 +138,25 @@
     <module>modules/matterhorn-oaipmh-api</module>
     <module>modules/matterhorn-oaipmh-persistence</module>
     <module>modules/matterhorn-oaipmh-remote</module>
+    <module>modules/matterhorn-participation-api</module>
+    <module>modules/matterhorn-participation-impl</module>
+    <module>modules/matterhorn-participation-persistence</module>
+    <module>modules/matterhorn-participation-management-conductor</module>
+    <module>modules/matterhorn-participation-management-syllabus-api</module>
+    <module>modules/matterhorn-participation-management-syllabus-impl</module>
+    <module>modules/matterhorn-participation-management-ui</module>
+    <module>modules/matterhorn-participation-management-ui-common</module>
+    <module>modules/matterhorn-participation-management-ui-teacher</module>
+    <module>modules/matterhorn-participation-management-ui-teacher-vaadin</module>
+    <module>modules/matterhorn-participation-management-ui-vaadin</module>
     <module>modules/matterhorn-presets</module>
     <module>modules/matterhorn-publication-service-api</module>
     <module>modules/matterhorn-publication-service-oaipmh</module>
     <module>modules/matterhorn-publication-service-oaipmh-remote</module>
     <module>modules/matterhorn-publication-service-youtube-remote</module>
     <module>modules/matterhorn-publication-service-youtube-v3</module>
+    <module>modules/matterhorn-requirement-api</module>
+    <module>modules/matterhorn-requirement-dass</module>
     <module>modules/matterhorn-runtime-info</module>
     <module>modules/matterhorn-runtime-info-ui</module>
     <module>modules/matterhorn-runtime-info-ui-ng</module>
@@ -200,6 +214,7 @@
     <module>modules/matterhorn-userdirectory-sakai</module>
     <module>modules/matterhorn-usertracking-api</module>
     <module>modules/matterhorn-usertracking-impl</module>
+    <module>modules/matterhorn-vaadin</module>
     <module>modules/matterhorn-videoeditor-api</module>
     <module>modules/matterhorn-videoeditor-ffmpeg-impl</module>
     <module>modules/matterhorn-videoeditor-remote</module>
@@ -1034,6 +1049,43 @@
         <version>1.7.21</version>
       </dependency>
 
+      <dependency>
+        <groupId>com.vaadin</groupId>
+        <artifactId>vaadin-shared</artifactId>
+        <version>7.0.3</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.vaadin</groupId>
+        <artifactId>vaadin-shared-deps</artifactId>
+        <version>1.0.2</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.vaadin</groupId>
+        <artifactId>vaadin-client-compiled</artifactId>
+        <version>7.0.3</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.vaadin</groupId>
+        <artifactId>vaadin-client</artifactId>
+        <version>7.0.3</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.vaadin</groupId>
+        <artifactId>vaadin-server</artifactId>
+        <version>7.0.3</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.vaadin</groupId>
+        <artifactId>vaadin-themes</artifactId>
+        <version>7.0.3</version>
+      </dependency>
+
+      <!-- logging -->
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-log4j12</artifactId>

@@ -19,6 +19,12 @@
   <sec:http pattern="/admin-ng/fonts/**" security="none" />
   <sec:http pattern="/admin-ng/scripts/**" security="none" />
   <sec:http pattern="/admin-ng/styles/**" security="none" />
+ 
+  <!-- Allow anonymous access to Vaadin resources -->
+  <sec:http pattern="/opencast-vaadin/**" security="none" />
+  <sec:http pattern="/VAADIN/**" security="none" />
+  <sec:http pattern="/VAADIN-ui/**" security="none" />
+  <sec:http pattern="/VAADIN-ui-teacher/**" security="none" />
 
   <sec:http create-session="ifRequired" servlet-api-provision="true" realm="Opencast"
     entry-point-ref="matterhornEntryPoint">
@@ -220,6 +226,10 @@
     <sec:intercept-url pattern="/info/me.json" method="GET" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/i18n/languages.json" method="GET" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/info/components.json" method="GET" access="ROLE_ANONYMOUS" />
+
+    <!-- Allow anonymous access to the teacher ui of the participation management module -->
+    <sec:intercept-url pattern="/pm-teacher/**" method="GET" access="ROLE_ANONYMOUS" />
+    <sec:intercept-url pattern="/pm-admin/**" method="GET" access="ROLE_ADMIN" />
 
     <!-- Enable anonymous access to the engage player and the GET endpoints it requires -->
     <sec:intercept-url pattern="/engage/ui/**" access="ROLE_ANONYMOUS" />

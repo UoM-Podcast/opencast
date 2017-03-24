@@ -78,7 +78,7 @@ public class UserSettingsServiceTest {
     for (int i = 0; i < signatureCount; i++) {
 //      MessageSignatureDto messageSignatureDto = new MessageSignatureDto(NAME_PREFIX + i, ORG, USER_NAME, SENDER_PREFIX
 //              + i, SENDER_NAME_PREFIX + i, REPLY_TO_PREFIX + i, REPLY_TO_PREFIX + 1, SIGNATURE_PREFIX + i,
-//              creationDate, new LinkedList<CommentDto>());
+//              creationDate);
 //      signatures.add(messageSignatureDto);
     }
     return signatures;

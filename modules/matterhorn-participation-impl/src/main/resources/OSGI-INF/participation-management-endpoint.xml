@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.impl.endpoint.ParticipationManagementRestService"
+               immediate="true">
+  <implementation class="org.opencastproject.pm.impl.endpoint.ParticipationManagementRestService" />
+  <property name="service.description" value="Participation Management REST Endpoint" />
+  <property name="opencast.service.type" value="org.opencastproject.pm" />
+  <property name="opencast.service.path" value="/pm" />
+  <property name="opencast.service.jobproducer" value="false" />
+  <service>
+    <provide interface="org.opencastproject.pm.impl.endpoint.ParticipationManagementRestService" />
+  </service>
+  <reference name="feederService"
+             interface="org.opencastproject.pm.api.scheduling.ParticipationFeederService"
+             cardinality="0..1"
+             policy="dynamic"
+             bind="setFeederService"
+             unbind="unsetFeederService" />
+  <reference name="schedulefeederService"
+             interface="org.opencastproject.pm.api.scheduling.ScheduleFeederService"
+             cardinality="1..1"
+             policy="static"
+             bind="setScheduleFeederService" />
+  <reference name="securityService"
+             interface="org.opencastproject.security.api.SecurityService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService" />
+  <reference name="seriesService"
+             interface="org.opencastproject.series.api.SeriesService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSeriesService" />
+  <reference name="persistence"
+             interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
+             cardinality="1..1"
+             policy="static"
+             bind="setPersistence" />
+  <reference name="snapCountService"
+             interface="org.opencastproject.pm.api.scheduling.SnapCountService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSnapCountService" />
+</scr:component>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.1" xmlns="http://xmlns.jcp.org/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd">
+  <persistence-unit name="org.opencastproject.pm.impl.persistence" transaction-type="RESOURCE_LOCAL">
+    <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+    <non-jta-data-source>osgi:service/javax.sql.DataSource/(osgi.jndi.service.name=jdbc/matterhorn)</non-jta-data-source>
+    <class>org.opencastproject.messages.persistence.MessageSignatureDto</class>
+    <class>org.opencastproject.messages.persistence.MessageTemplateDto</class>
+    <class>org.opencastproject.comments.persistence.CommentDto</class>
+    <class>org.opencastproject.comments.persistence.CommentReplyDto</class>
+    <class>org.opencastproject.pm.impl.persistence.ActionDto</class>
+    <class>org.opencastproject.pm.impl.persistence.BlacklistDto</class>
+    <class>org.opencastproject.pm.impl.persistence.BuildingDto</class>
+    <class>org.opencastproject.pm.impl.persistence.CaptureAgentDto</class>
+    <class>org.opencastproject.pm.impl.persistence.CourseDto</class>
+    <class>org.opencastproject.pm.impl.persistence.ErrorDto</class>
+    <class>org.opencastproject.pm.impl.persistence.MessageDto</class>
+    <class>org.opencastproject.pm.impl.persistence.PeriodDto</class>
+    <class>org.opencastproject.pm.impl.persistence.PersonDto</class>
+    <class>org.opencastproject.pm.impl.persistence.PersonTypeDto</class>
+    <class>org.opencastproject.pm.impl.persistence.RecordingDto</class>
+    <class>org.opencastproject.pm.impl.persistence.RecordingToMessagesDto</class>
+    <class>org.opencastproject.pm.impl.persistence.RoomDto</class>
+    <class>org.opencastproject.pm.impl.persistence.SchedulingSourceDto</class>
+    <class>org.opencastproject.pm.impl.persistence.SynchronizationDto</class>
+    <class>org.opencastproject.pm.impl.persistence.SynchronizedRecordingDto</class>
+    <shared-cache-mode>NONE</shared-cache-mode>
+    <properties>
+      <property name="eclipselink.ddl-generation" value="create-tables"/>
+      <property name="eclipselink.logging.logger" value="JavaLogger"/>
+      <property name="eclipselink.create-ddl-jdbc-file-name" value="create-participation.jdbc"/>
+      <property name="eclipselink.drop-ddl-jdbc-file-name" value="drop-participation.jdbc"/>
+    </properties>
+  </persistence-unit>
+</persistence>

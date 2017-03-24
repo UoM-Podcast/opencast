@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" name="org.opencastproject.pm.workflow.handler.StaffNotificationWorkflowOperationHandler" immediate="true" activate="activate">
+	
+  <implementation class="org.opencastproject.pm.workflow.handler.StaffNotificationWorkflowOperationHandler" />
+  
+  <property name="service.description" value="Staff Notify Workflow Operation Handler" />
+  <property name="workflow.operation" value="notify-staff" />
+    
+  <service>
+    <provide interface="org.opencastproject.workflow.api.WorkflowOperationHandler" />
+  </service>
+    
+  <reference cardinality="1..1" interface="org.opencastproject.serviceregistry.api.ServiceRegistry" name="ServiceRegistry" policy="static" bind="setServiceRegistry" />
+  <reference cardinality="1..1" interface="org.opencastproject.kernel.mail.SmtpService" name="SmtpService" policy="static" bind="setSmtpService" />
+  <reference cardinality="1..1" interface="org.opencastproject.security.api.SecurityService" name="SecurityService" policy="static" bind="setSecurityService" />
+  
+</scr:component>

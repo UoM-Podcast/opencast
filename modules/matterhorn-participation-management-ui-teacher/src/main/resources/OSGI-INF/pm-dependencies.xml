@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.ui.teacher.PmDependencies"
+               immediate="true">
+  <implementation class="org.opencastproject.pm.ui.teacher.PmDependencies" />
+  <service>
+    <provide interface="org.opencastproject.pm.ui.teacher.PmDependencies" />
+  </service>
+  <property name="service.description" value="PM dependencies" />
+  <reference interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
+             name="participationManagementDatabase"
+             cardinality="0..1"
+             policy="dynamic"
+             bind="setParticipationManagementDatabase"
+             unbind="unsetParticipationManagementDatabase" />
+  <reference interface="org.opencastproject.security.api.SecurityService"
+             name="securityService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService" />
+  <reference interface="org.opencastproject.workflow.api.WorkflowService"
+             name="workflowService"
+             cardinality="1..1"
+             policy="static"
+             bind="setWorkflowService" />
+  <reference interface="org.opencastproject.pm.ui.teacher.ArchiveServices"
+             name="archiveServices"
+             cardinality="1..1"
+             policy="static"
+             bind="setArchiveServices" />
+</scr:component>
