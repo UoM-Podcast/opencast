@@ -39,7 +39,7 @@ public class RecordingSummaryComponent extends AbstractSummaryComponent {
   private final Label blacklistWeek;
 
   public RecordingSummaryComponent(final Cell<Option<ParticipationManagementDatabase>> pm,
-          final Cell<Option<SecurityService>> securityService) {
+          final SecurityService securityService) {
     super("Recordings", pm, securityService);
     this.total = new Label();
     this.today = new Label();

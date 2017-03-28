@@ -38,7 +38,7 @@ public class ResponseSummaryComponent extends AbstractSummaryComponent {
   private final Label unconfirmed;
 
   public ResponseSummaryComponent(final Cell<Option<ParticipationManagementDatabase>> pm,
-          final Cell<Option<SecurityService>> securityService) {
+          final SecurityService securityService) {
     super("Responses", pm, securityService);
     this.total = new Label();
     this.today = new Label();

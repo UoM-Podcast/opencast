@@ -18,7 +18,6 @@
  * the License.
  *
  */
-
 package org.opencastproject.pm.ui.admin.components;
 
 import static org.opencastproject.kernel.mail.EmailAddress.emailAddress;
@@ -43,6 +42,7 @@ import org.opencastproject.pm.api.persistence.RecordingQuery;
 import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.pm.ui.common.util.UiUtil;
 import org.opencastproject.security.api.DefaultOrganization;
+import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.User;
 import org.opencastproject.security.util.SecurityContext;
@@ -99,7 +99,7 @@ public class EmailPane extends CustomComponent {
 //  private final HorizontalLayout mailButtonsContainer;
   private final Cell<Option<ParticipationManagementDatabase>> pm;
   private final Cell<Option<EmailSender>> emailSenderService;
-  private final Cell<Option<SecurityService>> securityService;
+  private final SecurityService securityService;
   private final I18N i18n;
 
   private static final String COL_COURSE = "Course";
@@ -112,12 +112,14 @@ public class EmailPane extends CustomComponent {
 
   private static final String[] COLS = array(COL_COURSE, COL_RECORDINGS_AFFECTED, COL_STAFF, COL_EMAIL_STATUS, COL_ROOM, COL_START);
 
-  /** Thread pool to run the background workers. */
+  /**
+   * Thread pool to run the background workers.
+   */
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   private String systemUserName;
 
-  public EmailPane(final Cell<Option<SecurityService>> securityService,
+  public EmailPane(final SecurityService securityService,
           final Cell<Option<ParticipationManagementDatabase>> pm, final Cell<Option<EmailSender>> emailSenderService,
           final String systemUserName, final I18N i18n) {
     this.securityService = securityService;
@@ -204,8 +206,6 @@ public class EmailPane extends CustomComponent {
         return emailView.getStartDate().toString();
       }
     }));
-
-
     update();
   }
 
@@ -265,81 +265,85 @@ public class EmailPane extends CustomComponent {
     error.setVisible(false);
     error.setCaption("");
 
-    for (final SecurityService secServ : securityService.get()) {
-      final SecurityContext sctx = new SecurityContext(secServ, secServ.getOrganization(), secServ.getUser());
-      executorService.execute(new Runnable() {
-        @Override
-        public void run() {
-          sctx.runInContext(new Effect0() {
-            @Override
-            protected void run() {
-              try {
-                nRecordingsUnsent = pm.get().get().countRecordingsByEmailState(EmailStatus.UNSENT);
-                nRecordingsSent = pm.get().get().countRecordingsByEmailState(EmailStatus.SENT);
-                nRecordingsFailed = pm.get().get().countRecordingsByEmailState(EmailStatus.FAILED);
-              } catch (ParticipationManagementDatabaseException e) {
-                logger.error("Unable to count recordings {}", e.getMessage());
-                invokeUIChange(new Effect0() {
-                  @Override
-                  protected void run() {
-                    error.setVisible(true);
-                    error.setCaption(i18n.s("tab.email.error.recordings.db"));
-                  }
-                });
-                return;
-              }
-
-              try {
-                nCoursesUnsent = pm.get().get().countCoursesByEmailState(EmailStatus.UNSENT);
-                nCoursesSent = pm.get().get().countCoursesByEmailState(EmailStatus.SENT);
-                nCoursesFailed = pm.get().get().countCoursesByEmailState(EmailStatus.FAILED);
-              } catch (ParticipationManagementDatabaseException e) {
-                logger.error("Unable to count courses {}", e.getMessage());
-                invokeUIChange(new Effect0() {
-                  @Override
-                  protected void run() {
-                    error.setVisible(true);
-                    error.setCaption(i18n.s("tab.email.error.courses.db"));
-                  }
-                });
-                return;
-              }
-
+    if (securityService == null) {
+      logger.warn("No security context available");
+      return;
+    }
+    Organization org = securityService.getOrganization();
+    if (org == null) {
+      org = new DefaultOrganization();
+      securityService.setOrganization(org);
+    }
+    final SecurityContext sctx = new SecurityContext(securityService, org, securityService.getUser());
+    executorService.execute(new Runnable() {
+      @Override
+      public void run() {
+        sctx.runInContext(new Effect0() {
+          @Override
+          protected void run() {
+            try {
+              nRecordingsUnsent = pm.get().get().countRecordingsByEmailState(EmailStatus.UNSENT);
+              nRecordingsSent = pm.get().get().countRecordingsByEmailState(EmailStatus.SENT);
+              nRecordingsFailed = pm.get().get().countRecordingsByEmailState(EmailStatus.FAILED);
+            } catch (ParticipationManagementDatabaseException e) {
+              logger.error("Unable to count recordings {}", e.getMessage());
               invokeUIChange(new Effect0() {
                 @Override
                 protected void run() {
-                  recordingsDescriptionUnsent.setCaption(i18n.s("tab.email.recordings.description.unsent") + nRecordingsUnsent);
-                  recordingsDescriptionSent.setCaption(i18n.s("tab.email.recordings.description.sent") + nRecordingsSent);
-                  recordingsDescriptionFailed.setCaption(i18n.s("tab.email.recordings.description.failed") + nRecordingsFailed);
-                  coursesDescriptionUnsent.setCaption(i18n.s("tab.email.courses.description.unsent") + nCoursesUnsent);
-                  coursesDescriptionSent.setCaption(i18n.s("tab.email.courses.description.sent") + nCoursesSent);
-                  coursesDescriptionFailed.setCaption(i18n.s("tab.email.courses.description.failed") + nCoursesFailed);
-
-                  indicator.setEnabled(false);
-                  indicator.setVisible(false);
-                  sendMailButton.setEnabled(true);
-
-                  if (emailContainer.size() > 0) {
-                    table.refreshRowCache();
-                    table.setPageLength(Math.min(emailContainer.size(), 20));
-                    table.setVisible(true);
-                    resendFailedMailButton.setVisible(true);
-                  } else {
-//                    descriptionFailed.setCaption("");
-                    resendFailedMailButton.setVisible(false);
-                    table.setVisible(false);
-                    resendFailedMailButton.setVisible(false);
-                  }
+                  error.setVisible(true);
+                  error.setCaption(i18n.s("tab.email.error.recordings.db"));
                 }
               });
+              return;
             }
-          });
-        }
-      });
-      return;
-    }
-    // no security context available
-    logger.warn("No security context available");
+
+            try {
+              nCoursesUnsent = pm.get().get().countCoursesByEmailState(EmailStatus.UNSENT);
+              nCoursesSent = pm.get().get().countCoursesByEmailState(EmailStatus.SENT);
+              nCoursesFailed = pm.get().get().countCoursesByEmailState(EmailStatus.FAILED);
+            } catch (ParticipationManagementDatabaseException e) {
+              logger.error("Unable to count courses {}", e.getMessage());
+              invokeUIChange(new Effect0() {
+                @Override
+                protected void run() {
+                  error.setVisible(true);
+                  error.setCaption(i18n.s("tab.email.error.courses.db"));
+                }
+              });
+              return;
+            }
+
+            invokeUIChange(new Effect0() {
+              @Override
+              protected void run() {
+                recordingsDescriptionUnsent.setCaption(i18n.s("tab.email.recordings.description.unsent") + nRecordingsUnsent);
+                recordingsDescriptionSent.setCaption(i18n.s("tab.email.recordings.description.sent") + nRecordingsSent);
+                recordingsDescriptionFailed.setCaption(i18n.s("tab.email.recordings.description.failed") + nRecordingsFailed);
+                coursesDescriptionUnsent.setCaption(i18n.s("tab.email.courses.description.unsent") + nCoursesUnsent);
+                coursesDescriptionSent.setCaption(i18n.s("tab.email.courses.description.sent") + nCoursesSent);
+                coursesDescriptionFailed.setCaption(i18n.s("tab.email.courses.description.failed") + nCoursesFailed);
+
+                indicator.setEnabled(false);
+                indicator.setVisible(false);
+                sendMailButton.setEnabled(true);
+
+                if (emailContainer.size() > 0) {
+                  table.refreshRowCache();
+                  table.setPageLength(Math.min(emailContainer.size(), 20));
+                  table.setVisible(true);
+                  resendFailedMailButton.setVisible(true);
+                } else {
+//                    descriptionFailed.setCaption("");
+                  resendFailedMailButton.setVisible(false);
+                  table.setVisible(false);
+                  resendFailedMailButton.setVisible(false);
+                }
+              }
+            });
+          }
+        });
+      }
+    });
   }
 
   /**
@@ -380,86 +384,89 @@ public class EmailPane extends CustomComponent {
     resendFailedMailButton.setEnabled(false);
     error.setVisible(false);
     error.setCaption("");
-    for (final SecurityService secServ : securityService.get()) {
-      final SecurityContext sctx = new SecurityContext(secServ, secServ.getOrganization(), secServ.getUser());
-      executorService.execute(new Runnable() {
-        @Override
-        public void run() {
-          sctx.runInContext(new Effect0() {
-            @Override
-            protected void run() {
-              logger.info("Sending emails. Organization is " + secServ.getOrganization());
-              try {
-                recordings = pm
-                        .get()
-                        .get()
-                        .findRecordings(
-                                RecordingQuery.createWithoutDeleted().withEmailStatus(status));
-              } catch (ParticipationManagementDatabaseException e) {
-                logger.error("Unable to find unsent recordings! {}", e.getMessage());
-                invokeUIChange(new Effect0() {
-                  @Override
-                  protected void run() {
-                    error.setVisible(true);
-                    error.setCaption(i18n.s("tab.email.error.db"));
-                    indicator.setEnabled(false);
-                    indicator.setVisible(false);
-                    sendMailButton.setEnabled(true);
-                    resendFailedMailButton.setEnabled(false);
-                  }
-                });
-                return;
-              }
 
-              try {
-                courses = pm
-                        .get()
-                        .get()
-                        .findCoursesByEmailState(EmailStatus.valueOf(status.toString()));
-              } catch (ParticipationManagementDatabaseException e) {
-                logger.error("Unable to find unsent courses! {}", e.getMessage());
-                invokeUIChange(new Effect0() {
-                  @Override
-                  protected void run() {
-                    error.setVisible(true);
-                    error.setCaption(i18n.s("tab.email.error.db"));
-                    indicator.setEnabled(false);
-                    indicator.setVisible(false);
-                    sendMailButton.setEnabled(true);
-                    resendFailedMailButton.setEnabled(false);
-                  }
-                });
-                return;
-              }
-
-              // Resent email status to unsent
-              if (status != EmailStatus.UNSENT) {
-                for (Recording r : recordings) {
-                  r.setEmailStatus(EmailStatus.UNSENT);
-                }
-
-                for (Course c : courses) {
-                  c.setEmailStatus(EmailStatus.UNSENT);
-                }
-              }
-
-              for (EmailSender es : emailSenderService.get()) {
-                es.sendMessagesForRecordings(recordings, courses, getDefaultMessage(), true);
-              }
-
+    if (securityService == null) {
+      logger.warn("No security context available");
+      return;
+    }
+    Organization org = securityService.getOrganization();
+    if (org == null) {
+      org = new DefaultOrganization();
+      securityService.setOrganization(org);
+    }
+    final SecurityContext sctx = new SecurityContext(securityService, org, securityService.getUser());
+    final Organization contextOrg = org;
+    executorService.execute(new Runnable() {
+      @Override
+      public void run() {
+        sctx.runInContext(new Effect0() {
+          @Override
+          protected void run() {
+            logger.info("Sending emails. Organization is " + contextOrg);
+            try {
+              recordings = pm
+                      .get()
+                      .get()
+                      .findRecordings(
+                              RecordingQuery.createWithoutDeleted().withEmailStatus(status));
+            } catch (ParticipationManagementDatabaseException e) {
+              logger.error("Unable to find unsent recordings! {}", e.getMessage());
               invokeUIChange(new Effect0() {
                 @Override
                 protected void run() {
-                  update();
+                  error.setVisible(true);
+                  error.setCaption(i18n.s("tab.email.error.db"));
+                  indicator.setEnabled(false);
+                  indicator.setVisible(false);
+                  sendMailButton.setEnabled(true);
+                  resendFailedMailButton.setEnabled(false);
                 }
               });
+              return;
             }
-          });
-        }
-      });
-      return;
-    }
-    // no security context available
-    logger.warn("No security context available");
+
+            try {
+              courses = pm.get().get().findCoursesByEmailState(EmailStatus.valueOf(status.toString()));
+            } catch (ParticipationManagementDatabaseException e) {
+              logger.error("Unable to find unsent courses! {}", e.getMessage());
+              invokeUIChange(new Effect0() {
+                @Override
+                protected void run() {
+                  error.setVisible(true);
+                  error.setCaption(i18n.s("tab.email.error.db"));
+                  indicator.setEnabled(false);
+                  indicator.setVisible(false);
+                  sendMailButton.setEnabled(true);
+                  resendFailedMailButton.setEnabled(false);
+                }
+              });
+              return;
+            }
+
+            // Resent email status to unsent
+            if (status != EmailStatus.UNSENT) {
+              for (Recording r : recordings) {
+                r.setEmailStatus(EmailStatus.UNSENT);
+              }
+
+              for (Course c : courses) {
+                c.setEmailStatus(EmailStatus.UNSENT);
+              }
+            }
+
+            for (EmailSender es : emailSenderService.get()) {
+              es.sendMessagesForRecordings(recordings, courses, getDefaultMessage(), true);
+            }
+
+            invokeUIChange(new Effect0() {
+              @Override
+              protected void run() {
+                update();
+              }
+            });
+          }
+        });
+      }
+    });
   }
 }

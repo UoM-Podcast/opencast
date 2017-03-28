@@ -61,7 +61,7 @@ public class SynchronizationSummaryComponent extends AbstractSummaryComponent {
   public SynchronizationSummaryComponent(final Cell<Option<ParticipationManagementDatabase>> pm,
           Cell<Option<ParticipationFeederService>> syllabusSyncService,
           Cell<Option<ScheduleFeederService>> matterhornSyncService, I18N i18n,
-          final Cell<Option<SecurityService>> securityService) {
+          final SecurityService securityService) {
     super(TITLE, pm, securityService);
     this.pm = pm;
 

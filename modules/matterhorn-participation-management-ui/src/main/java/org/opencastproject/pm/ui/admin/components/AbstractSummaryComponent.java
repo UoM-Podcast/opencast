@@ -30,6 +30,8 @@ import static org.opencastproject.util.data.Option.none;
 import static org.opencastproject.util.data.VCell.cell;
 
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
+import org.opencastproject.security.api.DefaultOrganization;
+import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.util.SecurityContext;
 import org.opencastproject.util.data.Cell;
@@ -56,7 +58,7 @@ import java.util.concurrent.Executors;
 
 public abstract class AbstractSummaryComponent extends CustomComponent {
   public static final AbstractSummaryComponent ZERO = new AbstractSummaryComponent("",
-          cell(none(ParticipationManagementDatabase.class)), cell(none(SecurityService.class))) {
+          cell(none(ParticipationManagementDatabase.class)), null) {
     @Override
     protected void updateValues(ParticipationManagementDatabase pm) throws Exception {
     }
@@ -70,13 +72,13 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
   private final ProgressIndicator indicator;
   private final HorizontalLayout buttonsContainer;
   private final Cell<Option<ParticipationManagementDatabase>> pm;
-  private final Cell<Option<SecurityService>> securityService;
+  private final SecurityService securityService;
 
   /** Thread pool to run the background workers. */
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   public AbstractSummaryComponent(String title, final Cell<Option<ParticipationManagementDatabase>> pm,
-          final Cell<Option<SecurityService>> securityService) {
+          final SecurityService securityService) {
     this.pm = pm;
     this.securityService = securityService;
     lastUpdated = new Label();
@@ -162,45 +164,48 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
     indicator.setVisible(true);
     indicator.setEnabled(true);
     refreshButton.setEnabled(false);
-    for (final SecurityService secServ : securityService.get()) {
-      final SecurityContext sctx = new SecurityContext(secServ, secServ.getOrganization(), secServ.getUser());
-      executorService.execute(new Runnable() {
-        @Override
-        public void run() {
-          sctx.runInContext(new Effect0() {
-            @Override
-            protected void run() {
-              try {
-                for (ParticipationManagementDatabase a : pm.get()) {
-                  updateValues(a);
-                  invokeUIChange(new Effect0() {
-                    @Override
-                    protected void run() {
-                      lastUpdated.setValue(dateTimeFormatSecond().format(new Date()));
-                    }
-                  });
-                }
-                // todo database currently unavailable
-              } catch (Exception e) {
-                // todo
-              } finally {
+    if (securityService == null) {
+      logger.warn("No security context available");
+      return;
+    }
+    Organization org = securityService.getOrganization();
+    if (org == null) {
+      org = new DefaultOrganization();
+      securityService.setOrganization(org);
+    }
+    final SecurityContext sctx = new SecurityContext(securityService, org, securityService.getUser());
+    executorService.execute(new Runnable() {
+      @Override
+      public void run() {
+        sctx.runInContext(new Effect0() {
+          @Override
+          protected void run() {
+            try {
+              for (ParticipationManagementDatabase a : pm.get()) {
+                updateValues(a);
                 invokeUIChange(new Effect0() {
                   @Override
                   protected void run() {
-                    indicator.setEnabled(false);
-                    indicator.setVisible(false);
-                    refreshButton.setEnabled(true);
+                    lastUpdated.setValue(dateTimeFormatSecond().format(new Date()));
                   }
                 });
               }
+              // todo database currently unavailable
+            } catch (Exception e) {
+              // todo
+            } finally {
+              invokeUIChange(new Effect0() {
+                @Override
+                protected void run() {
+                  indicator.setEnabled(false);
+                  indicator.setVisible(false);
+                  refreshButton.setEnabled(true);
+                }
+              });
             }
-          });
-        }
-      });
-      return;
-    }
-    // no security context available
-    logger.warn("No security context available");
+          }
+        });
+      }
+    });
   }
-
 }

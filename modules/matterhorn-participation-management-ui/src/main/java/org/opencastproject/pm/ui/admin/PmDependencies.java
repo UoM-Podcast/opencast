@@ -29,6 +29,8 @@ import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.pm.api.scheduling.ParticipationFeederService;
 import org.opencastproject.pm.api.scheduling.ScheduleFeederService;
 import org.opencastproject.pm.api.scheduling.SnapCountService;
+import org.opencastproject.security.api.DefaultOrganization;
+import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.data.Cell;
@@ -44,7 +46,7 @@ public class PmDependencies {
   private final VCell<Option<SnapCountService>> snapCountService = iocell(none(SnapCountService.class));
   private final VCell<Option<ScheduleFeederService>> scheduleFeederService = iocell(none(ScheduleFeederService.class));
   private final VCell<Option<EmailSender>> emailSenderService = iocell(none(EmailSender.class));
-  private final VCell<Option<SecurityService>> securityService = iocell(none(SecurityService.class));
+  protected SecurityService securityService;
   private String systemUserName;
 
   public void activate(ComponentContext cc) {
@@ -127,15 +129,15 @@ public class PmDependencies {
 
   /** OSGi DI */
   public void setSecurityService(SecurityService securityService) {
-    this.securityService.set(Option.some(securityService));
+    this.securityService = securityService;
+    Organization org = securityService.getOrganization();
+    if (org == null) {
+      org = new DefaultOrganization();
+      this.securityService.setOrganization(org);
+    }
   }
 
-  /** OSGi DI */
-  public void unsetSecurityService(SecurityService securityService) {
-    this.securityService.set(Option.<SecurityService>none());
-  }
-
-  public Cell<Option<SecurityService>> getSecurityService() {
+  public SecurityService getSecurityService() {
     return securityService;
   }
 }

@@ -39,9 +39,8 @@
              bind="setEmailSenderService"
              unbind="unsetEmailSenderService" />
   <reference interface="org.opencastproject.security.api.SecurityService"
-             name="securityService"
-             cardinality="0..1"
-             policy="dynamic"
-             bind="setSecurityService"
-             unbind="unsetSecurityService" />
+             name="security"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService"/>
 </scr:component>

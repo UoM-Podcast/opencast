@@ -38,7 +38,7 @@ public class MessageSummaryComponent extends AbstractSummaryComponent {
   private final Label errors;
 
   public MessageSummaryComponent(final Cell<Option<ParticipationManagementDatabase>> pm,
-          final Cell<Option<SecurityService>> securityService) {
+          final SecurityService securityService) {
     super("Messages Sent", pm, securityService);
     this.total = new Label();
     this.today = new Label();
