@@ -11,17 +11,15 @@
 from stat import S_ISREG, ST_CTIME, ST_MODE
 
 import argparse
-import distutils.core
+import distutils.dir_util as dir_util
+import distutils.file_util as file_util
 import glob
 import logging
 import os
-import re
 import shutil
 import subprocess
-import stat
 import sys
 import tarfile
-import time
 import xml.etree.ElementTree as ETree
 
 # -----------------------------------------------------------------------------------
@@ -56,7 +54,7 @@ logLevel = logging.INFO
 # Removes everything that has been created by this build.
 #
 # @param includeUser
-#				whether to also remove the user
+#                    whether to also remove the user
 # -----------------------------------------------------------------------------------
 
 def cleanBuildEnvironment():
@@ -83,13 +81,13 @@ def cleanBuildEnvironment():
 # version and release information.
 #
 # @param specTemplate
-#					 template of spec file containing placeholders
+#                    template of spec file containing placeholders
 # @param specFinal
-#					 final location for the processed spec file
+#                    final location for the processed spec file
 # @param version
-#					 the rpm version
+#                    the rpm version
 # @param release
-#					 the rpm release
+#                    the rpm release
 # -----------------------------------------------------------------------------------
 
 def prepareSpecFile(specTemplate, specFinal, version, release):
@@ -290,8 +288,9 @@ logger.info("The Maven project version is " + projectVersion)
 assemblyDir = workspace + "/build/" + assembly + "-" + projectVersion
 logger.info("The Karaf Assembly is located at " + assemblyDir)
 
-# get major.minor release version
-projectRelease = projectVersion[:3]
+# get major release version
+# NOTE as of 2.4.x => 3.x
+projectRelease = projectVersion[:1]
 
 # The rpm version string must not contain hyphens
 rpmVersion = projectVersion.replace("-", ".")
@@ -349,16 +348,16 @@ rpmSourceTarball = packageName + "-" + rpmVersion + "-" + gitHash + ".tar.gz"
 
 # Copy the static set of files to the rpm release directory
 logger.info("Moving static set of rpm contents to " + rpmReleaseDir)
-distutils.dir_util.copy_tree(str(assemblyDir) + "/bin", rpmReleaseDir + "/bin")
-distutils.file_util.copy_file(str(assemblyDir) + "/README.md", rpmReleaseDir + "/README.md")
-distutils.file_util.copy_file(str(assemblyDir) + "/LICENSE", rpmReleaseDir + "/LICENSE")
-distutils.file_util.copy_file(str(assemblyDir) + "/NOTICES", rpmReleaseDir + "/NOTICES")
-distutils.dir_util.copy_tree(str(assemblyDir) + "/docs/scripts/ddl", rpmReleaseDir + "/docs/ddl")
-distutils.dir_util.copy_tree(str(assemblyDir) + "/docs/scripts/service", rpmReleaseDir + "/docs/service")
-distutils.dir_util.copy_tree(str(assemblyDir) + "/docs/upgrade", rpmReleaseDir + "/docs/upgrade")
-distutils.dir_util.mkpath(rpmReleaseDir + "/etc")
-distutils.dir_util.copy_tree(str(assemblyDir) + "/lib", rpmReleaseDir + "/lib")
-distutils.dir_util.copy_tree(str(assemblyDir) + "/system", rpmReleaseDir + "/system")
+dir_util.copy_tree(str(assemblyDir) + "/bin", rpmReleaseDir + "/bin")
+file_util.copy_file(str(assemblyDir) + "/README.md", rpmReleaseDir + "/README.md")
+file_util.copy_file(str(assemblyDir) + "/LICENSE", rpmReleaseDir + "/LICENSE")
+file_util.copy_file(str(assemblyDir) + "/NOTICES", rpmReleaseDir + "/NOTICES")
+dir_util.copy_tree(str(assemblyDir) + "/docs/scripts/ddl", rpmReleaseDir + "/docs/ddl")
+dir_util.copy_tree(str(assemblyDir) + "/docs/scripts/service", rpmReleaseDir + "/docs/service")
+dir_util.copy_tree(str(assemblyDir) + "/docs/upgrade", rpmReleaseDir + "/docs/upgrade")
+dir_util.mkpath(rpmReleaseDir + "/etc")
+dir_util.copy_tree(str(assemblyDir) + "/lib", rpmReleaseDir + "/lib")
+dir_util.copy_tree(str(assemblyDir) + "/system", rpmReleaseDir + "/system")
 
 
 # Create the RPM source tarball
@@ -397,6 +396,8 @@ except subprocess.CalledProcessError as e:
 # The repository is located at rpmRepositoryDir
 # -----------------------------------------------------------------------------------
 
+rpmRepositoryDir = ""
+
 # Create the path to the RPM directory
 if projectProfilePrefix:
     rpmRepositoryDir = rpmRepositoryRootDir + "/" + projectProfilePrefix
@@ -406,19 +407,23 @@ rpmRepositoryDir += "/" + applicationName + "/" + projectRelease
 if projectEnvironment:
     rpmRepositoryDir += "/" + projectEnvironment
 
+if not os.path.isdir(rpmRepositoryDir):
+    dir_util.mkpath(rpmRepositoryDir)
+    logger.info("Creating Repo dir " + rpmRepositoryDir)
+
 # Move the RPM (source and binary) to the
 logger.info("Moving rpms to rpm repository at " + rpmRepositoryDir)
-distutils.dir_util.copy_tree(rpmBuildDir + "/RPMS/x86_64", rpmRepositoryDir + "/RPMS")
-distutils.dir_util.copy_tree(rpmBuildDir + "/SRPMS", rpmRepositoryDir + "/SRPMS")
+dir_util.copy_tree(rpmBuildDir + "/RPMS/x86_64", rpmRepositoryDir + "/RPMS")
+dir_util.copy_tree(rpmBuildDir + "/SRPMS", rpmRepositoryDir + "/SRPMS")
 
 # Clear debuginfo
 if not rpmDebugInfo:
-    logger.info("Remove debuginfo from " + rpmRepositoryDir);
+    logger.info("Remove debuginfo from " + rpmRepositoryDir)
     removeDebugInfo(rpmRepositoryDir + "/RPMS")
     removeDebugInfo(rpmRepositoryDir + "/SRPMS")
 
 # Remove outdated artifacts
-logger.info("Remove all rpms from " + rpmRepositoryDir + " except for the " + str(rpmHistorySize) + " newest ones");
+logger.info("Remove all rpms from " + rpmRepositoryDir + " except for the " + str(rpmHistorySize) + " newest ones")
 shortenHistory(rpmRepositoryDir + "/RPMS", rpmHistorySize)
 shortenHistory(rpmRepositoryDir + "/SRPMS", rpmHistorySize)
 

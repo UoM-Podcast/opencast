@@ -1,5 +1,5 @@
 # manchester-opencast.spec
-# Package Manchester's Opencast 2.x sans configuration files that are installed by Ansible
+# Package Manchester's Opencast sans configuration files that are installed by Ansible
 
 %define     _product_name manchester-opencast
 %define     _prefix /opt/opencast
