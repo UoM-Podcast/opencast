@@ -25,12 +25,12 @@ import static org.easymock.EasyMock.createNiceMock;
 import static org.easymock.EasyMock.replay;
 import static org.opencastproject.util.data.Collections.list;
 import static org.opencastproject.util.data.Collections.nil;
-import static org.opencastproject.util.data.Option.none;
+//import static org.opencastproject.util.data.Option.none;
 import static org.opencastproject.util.data.Option.some;
 
-import org.opencastproject.kernel.mail.EmailAddress;
+//import org.opencastproject.kernel.mail.EmailAddress;
 import org.opencastproject.messages.MailService;
-import org.opencastproject.messages.MessageSignature;
+//import org.opencastproject.messages.MessageSignature;
 import org.opencastproject.messages.TemplateType;
 import org.opencastproject.pm.api.Action;
 import org.opencastproject.pm.api.CaptureAgent;
@@ -134,8 +134,8 @@ public class AbstractEmailSenderServiceTest {
     final User user = new JaxbUser("ced@gmx.de", null, "Admin", "ced@gmx.de", "test", new DefaultOrganization(),
             new HashSet<JaxbRole>());
     final Person admin = Person.fromUser(user);
-    final MessageSignature messageSignature = new MessageSignature(1L, "admin", user, admin.getEmailAddress(),
-            none(EmailAddress.class), "Send by admin", new Date());
+//    final MessageSignature messageSignature = new MessageSignature(1L, "admin", user, admin.getEmailAddress(),
+//            none(EmailAddress.class), "Send by admin", new Date());
     final String body = IoSupport.loadTxtFromClassPath("mail-template-invitation.ftl", getClass()).get();
     return null;
   //      Message(admin, new MessageTemplate(TemplateType.INVITATION.toString(), user, "Invitation", body, TemplateType.INVITATION,

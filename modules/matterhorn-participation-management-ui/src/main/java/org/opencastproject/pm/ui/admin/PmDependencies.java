@@ -29,8 +29,6 @@ import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.pm.api.scheduling.ParticipationFeederService;
 import org.opencastproject.pm.api.scheduling.ScheduleFeederService;
 import org.opencastproject.pm.api.scheduling.SnapCountService;
-import org.opencastproject.security.api.DefaultOrganization;
-import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.data.Cell;
@@ -130,11 +128,6 @@ public class PmDependencies {
   /** OSGi DI */
   public void setSecurityService(SecurityService securityService) {
     this.securityService = securityService;
-    Organization org = securityService.getOrganization();
-    if (org == null) {
-      org = new DefaultOrganization();
-      this.securityService.setOrganization(org);
-    }
   }
 
   public SecurityService getSecurityService() {

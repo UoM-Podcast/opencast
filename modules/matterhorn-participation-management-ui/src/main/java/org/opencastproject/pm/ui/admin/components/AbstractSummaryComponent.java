@@ -18,7 +18,6 @@
  * the License.
  *
  */
-
 package org.opencastproject.pm.ui.admin.components;
 
 import static org.opencastproject.pm.ui.common.util.UiUtil.dateTimeFormatSecond;
@@ -57,6 +56,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public abstract class AbstractSummaryComponent extends CustomComponent {
+
   public static final AbstractSummaryComponent ZERO = new AbstractSummaryComponent("",
           cell(none(ParticipationManagementDatabase.class)), null) {
     @Override
@@ -74,7 +74,9 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
   private final Cell<Option<ParticipationManagementDatabase>> pm;
   private final SecurityService securityService;
 
-  /** Thread pool to run the background workers. */
+  /**
+   * Thread pool to run the background workers.
+   */
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   public AbstractSummaryComponent(String title, final Cell<Option<ParticipationManagementDatabase>> pm,
@@ -103,13 +105,15 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
 
   protected void invokeUIChange(Effect0 effect) {
     VaadinSession session = getSession();
-    if (session != null)
+    if (session != null) {
       session.lock();
+    }
     try {
       effect.apply();
     } finally {
-      if (session != null)
+      if (session != null) {
         session.unlock();
+      }
     }
   }
 
@@ -155,10 +159,14 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
     });
   }
 
-  /** Update custom sub components. */
+  /**
+   * Update custom sub components.
+   */
   protected abstract void updateValues(ParticipationManagementDatabase pm) throws Exception;
 
-  /** Update the component. Custom code goes into {@link #updateValues}. */
+  /**
+   * Update the component. Custom code goes into {@link #updateValues}.
+   */
   public final void update() {
     // Create an indicator that makes you look busy
     indicator.setVisible(true);

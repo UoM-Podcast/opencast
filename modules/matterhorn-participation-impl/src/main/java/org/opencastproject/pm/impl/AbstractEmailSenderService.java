@@ -202,9 +202,9 @@ public abstract class AbstractEmailSenderService implements EmailSender {
         if (true) {
           cc.add(message.getSignature().getSender());
         }
-//        sendMail(new Mail(message.getSignature().getSender(), message.getSignature().getReplyTo(), to,
-//                Option.option(cc),
-//                message.getTemplate().getSubject(), body));
+        sendMail(new Mail(message.getSignature().getSender(), message.getSignature().getReplyTo(), to,
+                Option.option(cc),
+                message.getTemplate().getSubject(), body));
         emailState = EmailStatus.SENT;
       } catch (Exception e) {
         emailState = EmailStatus.FAILED;
@@ -336,13 +336,12 @@ public abstract class AbstractEmailSenderService implements EmailSender {
       } catch (ParticipationManagementDatabaseException ex) {
        logger.error("Can't get course's unset recordings: {}", ex.getMessage());
       }
-//      return new TemplateType.Invitation.Module(
-//              course.getName(),
-//              course.getDescription(),
-//              lecturesChanged,
-//              course.getRequirements().contains(Course.REQUIREMENT_RECORD),
-//              course.getEmailStatus() == EmailStatus.UNSENT);
-      return null;
+      return new TemplateType.Invitation.Module(
+              course.getName(),
+              course.getDescription(),
+              lecturesChanged,
+              course.getRequirements().contains(Course.REQUIREMENT_RECORD),
+              course.getEmailStatus() == Course.EmailStatus.UNSENT);
     }
   };
 

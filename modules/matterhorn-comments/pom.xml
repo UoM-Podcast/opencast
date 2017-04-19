@@ -175,9 +175,9 @@
               OSGI-INF/comment-persistence.xml, 
               OSGI-INF/comment-service.xml
             </Service-Component>
-            <JPA-PersistenceUnits>
-              org.opencastproject.comments
-            </JPA-PersistenceUnits>
+            <Meta-Persistence>
+              META-INF/persistence.xml
+            </Meta-Persistence>
           </instructions>
         </configuration>
       </plugin>

@@ -14,7 +14,7 @@
              bind="setParticipationManagementDatabase"
              unbind="unsetParticipationManagementDatabase" />
   <reference interface="org.opencastproject.security.api.SecurityService"
-             name="securityService"
+             name="security"
              cardinality="1..1"
              policy="static"
              bind="setSecurityService" />

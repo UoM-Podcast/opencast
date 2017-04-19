@@ -34,7 +34,6 @@ import com.mchange.v2.c3p0.DataSources;
 
 import org.apache.commons.io.FileUtils;
 import org.easymock.EasyMock;
-import org.eclipse.persistence.jpa.PersistenceProvider;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -82,8 +81,8 @@ public class CommentServiceImplTest {
     EasyMock.replay(userDirectoryService);
 
     commentDatabase = new CommentDatabaseImpl();
-    commentDatabase.setPersistenceProperties(props);
-    commentDatabase.setPersistenceProvider(new PersistenceProvider());
+//    commentDatabase.setPersistenceProperties(props);
+//    commentDatabase.setPersistenceProvider(new PersistenceProvider());
     commentDatabase.activate(null);
 
     commentService = new CommentServiceImpl();
@@ -97,7 +96,7 @@ public class CommentServiceImplTest {
    */
   @After
   public void tearDown() throws Exception {
-    commentDatabase.deactivate(null);
+//    commentDatabase.deactivate(null);
     DataSources.destroy(pooledDataSource);
     FileUtils.deleteQuietly(new File(storage));
     commentDatabase = null;
