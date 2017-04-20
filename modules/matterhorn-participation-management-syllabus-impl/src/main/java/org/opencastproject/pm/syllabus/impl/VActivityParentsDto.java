@@ -25,6 +25,7 @@ import static org.opencastproject.pm.syllabus.impl.SyllabusUtil.toDateTime;
 import static org.opencastproject.util.data.Tuple.tuple;
 
 import org.opencastproject.pm.syllabus.api.VActivityParents;
+import org.opencastproject.pm.syllabus.impl.id.VActivityParentsId;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.persistence.Queries;
 
@@ -36,6 +37,7 @@ import java.util.List;
 import javax.persistence.Entity;
 import javax.persistence.EntityManager;
 import javax.persistence.Id;
+import javax.persistence.IdClass;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
@@ -44,6 +46,7 @@ import javax.persistence.TemporalType;
 
 @Entity(name = "VActivityParents")
 @Table(name = "V_ACTIVITY_PARENTS")
+@IdClass(VActivityParentsId.class)
 @NamedQueries({@NamedQuery(name = "VActivityParents.findAllSince",
                            query = "select a from VActivityParents a where a.lastChanged > :since"),
                       @NamedQuery(name = "VActivityParents.findAll",

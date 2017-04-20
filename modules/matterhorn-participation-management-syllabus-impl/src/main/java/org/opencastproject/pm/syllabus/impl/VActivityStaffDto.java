@@ -24,6 +24,7 @@ package org.opencastproject.pm.syllabus.impl;
 import static org.opencastproject.pm.syllabus.impl.SyllabusUtil.toDateTime;
 
 import org.opencastproject.pm.syllabus.api.VActivityStaff;
+import org.opencastproject.pm.syllabus.impl.id.VActivityStaffId;
 import org.opencastproject.util.data.Function;
 
 import org.joda.time.DateTime;
@@ -32,6 +33,7 @@ import java.util.Date;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.IdClass;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
@@ -40,6 +42,7 @@ import javax.persistence.TemporalType;
 
 @Entity(name = "VActivityStaff")
 @Table(name = "V_ACTIVITY_STAFF")
+@IdClass(VActivityStaffId.class)
 @NamedQueries({
         @NamedQuery(name = "VActivityStaff.findAllSince", query = "select a from VActivityStaff a where a.lastChanged > :since"),
         @NamedQuery(name = "VActivityStaff.findAll", query = "select a from VActivityStaff a") })

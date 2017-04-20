@@ -21,9 +21,12 @@
 
 package org.opencastproject.pm.impl.persistence;
 
+import org.opencastproject.pm.impl.persistence.id.RecordingToMessagesId;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.IdClass;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
@@ -34,6 +37,7 @@ import javax.persistence.UniqueConstraint;
  */
 @Entity(name = "RecordingToMessages")
 @Table(name = "mh_pm_recording_messages", uniqueConstraints = { @UniqueConstraint(columnNames = { "recording_id", "message_id"}) })
+@IdClass(RecordingToMessagesId.class)
 @NamedQueries({
   @NamedQuery(name = "RecordingToMessage.findByRecordingId", query = "SELECT r FROM RecordingToMessages r WHERE r.recordingId = :recordingId")})
 public class RecordingToMessagesDto {
