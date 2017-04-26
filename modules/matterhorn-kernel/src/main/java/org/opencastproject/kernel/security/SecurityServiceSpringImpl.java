@@ -21,6 +21,7 @@
 
 package org.opencastproject.kernel.security;
 
+import org.opencastproject.security.api.DefaultOrganization;
 import org.opencastproject.security.api.JaxbOrganization;
 import org.opencastproject.security.api.JaxbRole;
 import org.opencastproject.security.api.JaxbUser;
@@ -68,7 +69,12 @@ public class SecurityServiceSpringImpl implements SecurityService {
    */
   @Override
   public Organization getOrganization() {
-    return SecurityServiceSpringImpl.organization.get();
+    Organization org = SecurityServiceSpringImpl.organization.get();
+    if (org == null) {
+      logger.debug("Replacing unset Organization by DefaultOrganization!");
+      return new DefaultOrganization();
+    }
+    return org;
   }
 
   /**
