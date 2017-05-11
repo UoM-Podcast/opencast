@@ -73,6 +73,16 @@
       <groupId>postgresql</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
+    <dependency>
+      <groupId>net.sourceforge.jtds</groupId>
+      <artifactId>jtds</artifactId>
+      <version>1.3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>jcifs</groupId>
+      <artifactId>jcifs</artifactId>
+      <version>1.3.17</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -99,7 +109,9 @@
               h2;inline=true,
               mchange-commons-java;inline=true,
               mysql-connector-java;inline=true,
-              postgresql;inline=true
+              postgresql;inline=true,
+              jtds;inline=true,
+              jcifs;inline=true
             </Embed-Dependency>
             <Export-Package>
               org.opencastproject.db;version=${project.version}
