@@ -310,7 +310,9 @@ public class ParticipationFeederRunner {
               }
             }
             logger.info("Updating the the Course's DASS requirements");
-            parent.requirementManager.updateRequirements();
+            if (null != parent.requirementManager) {
+              parent.requirementManager.updateRequirements();
+            }
           }
         });
         logger.info("Harvesting participation end");

@@ -47,5 +47,6 @@
              interface="org.opencastproject.requirement.api.RequirementService"
              cardinality="0..1"
              policy="dynamic"
-             bind="setRequirementService"/>
+             bind="setRequirementService"
+             unbind="unsetRequirementService"/>
 </scr:component>

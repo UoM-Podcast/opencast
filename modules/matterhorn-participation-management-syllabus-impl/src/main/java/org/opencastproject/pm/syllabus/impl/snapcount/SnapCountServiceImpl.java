@@ -73,8 +73,8 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   private OrganizationDirectoryService organizationDirectoryService;
   private String systemUser;
   private HashMap<String, String> snapCountStats = new HashMap<String,String>();
-  private RequirementService requirementService;
-  private RequirementManager requirementManager;
+  private RequirementService requirementService = null;
+  private RequirementManager requirementManager = null;
   private ParticipationFeederRunner pmRunner;
   private final VCell<Option<SecurityContext>> secCtx = ocell();
   private EmailSender emailSenderService;
@@ -122,13 +122,26 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   /** OSGi container callback. */
   public void setRequirementService(RequirementService requirementService) {
     this.requirementService = requirementService;
+    if (requirementService != null) {
+      requirementManager = new DassRequirementManager(requirementService, participationDatabase);
+    }
+    pmRunner = new ParticipationFeederRunner(syllabusService, participationDatabase, requirementManager, secCtx);
+  }
+
+  /** OSGi container callback. */
+  public void unsetRequirementService(RequirementService requirementService) {
+    this.requirementService = null;
+    this.requirementManager = null;
+    pmRunner = new ParticipationFeederRunner(syllabusService, participationDatabase, requirementManager, secCtx);
   }
 
   /** OSGi container callback. */
   public synchronized void activate(final ComponentContext cc) {
     logger.info("Start participation management orchestrator");
     systemUser = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
-    requirementManager = new DassRequirementManager(requirementService, participationDatabase);
+    if (requirementService != null) {
+      requirementManager = new DassRequirementManager(requirementService, participationDatabase);
+    }
     pmRunner = new ParticipationFeederRunner(syllabusService, participationDatabase, requirementManager, secCtx);
   }
 
