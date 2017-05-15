@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.opencastproject</groupId>
     <artifactId>base</artifactId>
-    <version>2.4-SNAPSHOT</version>
+    <version>3.0-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <properties>
@@ -105,7 +105,10 @@
     <dependency>
       <groupId>net.sourceforge.jtds</groupId>
       <artifactId>jtds</artifactId>
-      <version>1.2.7</version>
+    </dependency>
+    <dependency>
+      <groupId>jcifs</groupId>
+      <artifactId>jcifs</artifactId>
     </dependency>
     <dependency><!-- for local testing -->
       <groupId>mysql</groupId>
@@ -176,10 +179,11 @@
               org.opencastproject.pm.syllabus.impl.scheduling;version=${project.version}
             </Export-Package>
             <Embed-Dependency>
-              c3p0;inline=true,
+<!--              c3p0;inline=true,-->
               dom;inline=true,
               mysql-connector-java;inline=true,
-              jtds;inline=true
+              jtds;inline=true,
+              jcifs;inline=true
             </Embed-Dependency>
             <Service-Component>
               OSGI-INF/participation-feeder-service.xml,
