@@ -33,8 +33,7 @@
              bind="setOrganizationDirectoryService" />
   <reference name="requirement"
              interface="org.opencastproject.requirement.api.RequirementService"
-             cardinality="0..1"
-             policy="dynamic"
-             bind="setRequirementService"
-             unbind="unsetRequirementService"/>
+             cardinality="1..1"
+             policy="static"
+             bind="setRequirementService"/>
 </scr:component>

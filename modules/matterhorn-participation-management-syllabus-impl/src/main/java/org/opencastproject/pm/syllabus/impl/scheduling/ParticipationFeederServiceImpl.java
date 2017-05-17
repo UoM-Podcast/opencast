@@ -87,7 +87,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
   private SecurityService securityService;
   private OrganizationDirectoryService organizationDirectoryService;
   private RequirementService requirementService = null;
-  private RequirementManager requirementManager = null;
+  private RequirementManager requirementManager;
 
   private String systemUser;
 
@@ -118,26 +118,13 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
   /** OSGi container callback. */
   public void setRequirementService(RequirementService requirementService) {
     this.requirementService = requirementService;
-    if (requirementService != null) {
-      requirementManager = new DassRequirementManager(requirementService, persistence);
-    }
-    runner = new ParticipationFeederRunner(syllabusService, persistence, requirementManager, secCtx);
-  }
-
-  /** OSGi container callback. */
-  public void unsetRequirementService(RequirementService requirementService) {
-    this.requirementService = null;
-    this.requirementManager = null;
-    runner = new ParticipationFeederRunner(syllabusService, persistence, requirementManager, secCtx);
   }
 
   /** OSGi container callback. */
   public synchronized void activate(final ComponentContext cc) {
     logger.info("Start participation management feeder");
+    requirementManager = new DassRequirementManager(requirementService, persistence);
     systemUser = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
-    if (requirementService != null) {
-      requirementManager = new DassRequirementManager(requirementService, persistence);
-    }
     runner = new ParticipationFeederRunner(syllabusService, persistence, requirementManager, secCtx);
   }
 
