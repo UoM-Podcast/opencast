@@ -62,10 +62,10 @@ public class SyllabusServicePublisher extends SimpleServicePublisher {
   @Override
   public ServiceReg registerService(Dictionary p, ComponentContext cc) throws ConfigurationException {
     try {
-      final String identity = getOptCfg(p, "db.identity").getOrElse("Syllabus+");
+      final String identity = getOptCfg(p, "db.identity").getOrElse("Syllabus+:Central_Timetable");
       final String vendor = getOptCfg(p, "db.vendor").getOrElse("SQLServer");
       final String driver = getOptCfg(p, "db.driver").getOrElse("net.sourceforge.jtds.jdbc.Driver");
-      final String url = getOptCfg(p, "db.url").getOrElse("jdbc:jtds:sqlserver://localhost:1433/ScientiaProdRDB");
+      final String url = getOptCfg(p, "db.url").getOrElse("jdbc:jtds:sqlserver://localhost:1433/ScientiaProdB");
       final String user = getCfg(p, "db.user");
       final String pwd = getCfg(p, "db.password");
       final Option<String> schema = getOptCfg(p, "db.schema");
@@ -87,7 +87,7 @@ public class SyllabusServicePublisher extends SimpleServicePublisher {
       }
       if (schema.isSome()) {
         SyllabusSessionCustomizer.setSchemaName(schema.get());
-        logger.info("Settign database schema to {}", schema.get());
+        logger.info("Setting database schema to {}", schema.get());
       }
 
       PersistenceUtil.testConnection(ds).map(new Effect.X<SQLException>() {
