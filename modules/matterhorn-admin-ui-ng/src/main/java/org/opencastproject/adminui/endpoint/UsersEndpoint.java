@@ -46,7 +46,6 @@ import org.opencastproject.index.service.resources.list.query.UsersListQuery;
 import org.opencastproject.index.service.util.RestUtils;
 import org.opencastproject.matterhorn.search.SearchQuery.Order;
 import org.opencastproject.matterhorn.search.SortCriterion;
-import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.Role;
 import org.opencastproject.security.api.SecurityService;
@@ -123,9 +122,6 @@ public class UsersEndpoint {
   /** The internal role and user provider */
   private JpaUserAndRoleProvider jpaUserAndRoleProvider;
 
-  /** The participation persistence */
-  private ParticipationManagementDatabase participationPersistence;
-
   /** The security service */
   private SecurityService securityService;
 
@@ -156,11 +152,6 @@ public class UsersEndpoint {
    */
   public void setJpaUserAndRoleProvider(JpaUserAndRoleProvider jpaUserAndRoleProvider) {
     this.jpaUserAndRoleProvider = jpaUserAndRoleProvider;
-  }
-
-  /** OSGi callback for participation persistence. */
-  public void setParticipationPersistence(ParticipationManagementDatabase participationPersistence) {
-    this.participationPersistence = participationPersistence;
   }
 
   /** OSGi callback. */

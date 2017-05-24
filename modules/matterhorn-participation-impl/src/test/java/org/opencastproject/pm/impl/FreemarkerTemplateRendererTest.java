@@ -29,9 +29,12 @@ import static org.opencastproject.util.data.Tuple.tuple;
 //import org.opencastproject.messages.TemplateType.Invitation;
 import org.opencastproject.util.IoSupport;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class FreemarkerTemplateRendererTest {
+
+  @Ignore
   @Test
   public void testRenderInvitationMap() throws Exception {
     final FreemarkerTemplateRenderer r = new FreemarkerTemplateRenderer();

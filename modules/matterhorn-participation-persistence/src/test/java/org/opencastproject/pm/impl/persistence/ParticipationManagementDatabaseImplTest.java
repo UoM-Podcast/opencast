@@ -75,6 +75,7 @@ import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -370,6 +371,7 @@ public class ParticipationManagementDatabaseImplTest {
 //    }
   }
 
+  @Ignore
   @Test
   public void testFindBlacklists() {
     try {

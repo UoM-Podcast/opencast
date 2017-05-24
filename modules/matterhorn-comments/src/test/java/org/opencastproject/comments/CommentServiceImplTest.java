@@ -37,6 +37,7 @@ import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -102,6 +103,7 @@ public class CommentServiceImplTest {
     commentDatabase = null;
   }
 
+  @Ignore
   @Test
   public void testCRUDComment() {
     // Test create
