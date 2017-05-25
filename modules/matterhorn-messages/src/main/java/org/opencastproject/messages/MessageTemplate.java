@@ -27,13 +27,11 @@ import static com.entwinemedia.fn.data.json.Jsons.vN;
 import static org.opencastproject.util.RequireUtil.notEmpty;
 import static org.opencastproject.util.RequireUtil.notNull;
 
-import org.opencastproject.comments.Comment;
 import org.opencastproject.security.api.User;
 import org.opencastproject.util.DateTimeSupport;
 import org.opencastproject.util.EqualsUtil;
 import org.opencastproject.util.Jsons;
 import org.opencastproject.util.Jsons.Obj;
-import org.opencastproject.util.Jsons.Val;
 
 import com.entwinemedia.fn.data.json.JField;
 import com.entwinemedia.fn.data.json.JObjectWrite;
@@ -80,9 +78,6 @@ public class MessageTemplate {
   /** The message template creation date */
   private Date creationDate;
 
-  /** The message template comments */
-  private List<Comment> comments = new ArrayList<Comment>();
-
   /**
    * Creates a message template
    *
@@ -96,18 +91,14 @@ public class MessageTemplate {
    *          the body
    * @param creationDate
    *          the creation date
-   * @param comments
-   *          the comments
    */
-  public MessageTemplate(String name, User creator, String subject, String body, TemplateType type, Date creationDate,
-          List<Comment> comments) {
+  public MessageTemplate(String name, User creator, String subject, String body, TemplateType type, Date creationDate) {
     this.name = notEmpty(name, "name");
     this.creator = notNull(creator, "creator");
     this.subject = notEmpty(subject, "subject");
     this.body = notEmpty(body, "body");
     this.type = notNull(type, "type");
     this.creationDate = notNull(creationDate, "creationDate");
-    this.comments = notNull(comments, "comments");
   }
 
   /**
@@ -283,50 +274,9 @@ public class MessageTemplate {
     return creationDate;
   }
 
-  /**
-   * Sets the comment list
-   *
-   * @param comments
-   *          the comment list
-   */
-  public void setComments(List<Comment> comments) {
-    this.comments = comments;
-  }
-
-  /**
-   * Returns the comment list
-   *
-   * @return the comment list
-   */
-  public List<Comment> getComments() {
-    return comments;
-  }
-
-  /**
-   * Add a comment to the signature
-   *
-   * @param comment
-   *          the comment to add to this signature
-   * @return true if this collection changed as a result of the call
-   */
-  public boolean addComment(Comment comment) {
-    return comments.add(notNull(comment, "comment"));
-  }
-
-  /**
-   * Remove a comment from the signature
-   *
-   * @param comment
-   *          the comment to remove from this signature
-   * @return true if this collection changed as a result of the call
-   */
-  public boolean removeComment(Comment comment) {
-    return comments.remove(notNull(comment, "comment"));
-  }
-
   public MessageTemplate createAdHocCopy() {
     Date now = new Date();
-    MessageTemplate adhocCopy = new MessageTemplate(name, creator, subject, body, type, now, comments);
+    MessageTemplate adhocCopy = new MessageTemplate(name, creator, subject, body, type, now);
     adhocCopy.setHidden(true);
     adhocCopy.setName(name.concat(" - ").concat(DateTimeSupport.toUTC(now.getTime())));
     return adhocCopy;
@@ -340,31 +290,26 @@ public class MessageTemplate {
       return false;
     MessageTemplate template = (MessageTemplate) o;
     return name.equals(template.getName()) && subject.equals(template.getSubject()) && body.equals(template.getBody())
-            && creationDate.equals(template.getCreationDate()) && comments.equals(template.getComments())
+            && creationDate.equals(template.getCreationDate())
             && creator.equals(template.getCreator()) && type.equals(template.getType());
   }
 
   @Override
   public int hashCode() {
-    return EqualsUtil.hash(id, name, subject, body, type, creationDate, comments, creator);
+    return EqualsUtil.hash(id, name, subject, body, type, creationDate, creator);
   }
 
   @Override
   public String toString() {
-    return "MessageTemplate:" + name + "|" + type;
+    return "MessageSignature:" + name + "|" + type;
   }
 
   private Obj toJson(String subject, String body) {
-    List<Val> commentsArr = new ArrayList<Val>();
-    for (Comment c : comments) {
-      commentsArr.add(c.toJson());
-    }
-
     Obj creatorObj = Jsons.obj(Jsons.p("name", creator.getName()), Jsons.p("username", creator.getUsername()),
             Jsons.p("email", creator.getEmail()));
     return Jsons.obj(Jsons.p("id", id), Jsons.p("name", name), Jsons.p("subject", subject), Jsons.p("body", body),
             Jsons.p("creator", creatorObj), Jsons.p("hidden", hidden), Jsons.p("type", type.getType().toString()),
-            Jsons.p("creationDate", creationDate), Jsons.p("comments", Jsons.arr(commentsArr)));
+            Jsons.p("creationDate", creationDate));
   }
 
   public Obj toJson() {

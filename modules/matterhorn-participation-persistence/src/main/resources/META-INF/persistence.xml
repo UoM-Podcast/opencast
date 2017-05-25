@@ -5,8 +5,6 @@
     <non-jta-data-source>osgi:service/javax.sql.DataSource/(osgi.jndi.service.name=jdbc/matterhorn)</non-jta-data-source>
     <class>org.opencastproject.messages.persistence.MessageSignatureDto</class>
     <class>org.opencastproject.messages.persistence.MessageTemplateDto</class>
-    <class>org.opencastproject.comments.persistence.CommentDto</class>
-    <class>org.opencastproject.comments.persistence.CommentReplyDto</class>
     <class>org.opencastproject.pm.impl.persistence.ActionDto</class>
     <class>org.opencastproject.pm.impl.persistence.BlacklistDto</class>
     <class>org.opencastproject.pm.impl.persistence.BuildingDto</class>

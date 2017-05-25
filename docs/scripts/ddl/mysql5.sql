@@ -615,36 +615,6 @@ CREATE TABLE mh_themes (
 -- Participation Management
 --
 
-CREATE TABLE mh_comment (
-  id BIGINT(20) NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  creation_date DATETIME NOT NULL,
-  modification_date DATETIME NOT NULL,
-  reason VARCHAR(255) DEFAULT NULL,
-  resolved_status TINYINT(1) NOT NULL DEFAULT '0',
-  text VARCHAR(255) NOT NULL,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-CREATE TABLE mh_comment_reply (
-  id BIGINT(20) NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  creation_date DATETIME NOT NULL,
-  modification_date DATETIME NOT NULL,
-  text VARCHAR(255) NOT NULL,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-CREATE TABLE mh_comment_mh_comment_reply (
-  Comment_id BIGINT(20) NOT NULL,
-  replies_id BIGINT(20) NOT NULL,
-  PRIMARY KEY (Comment_id,replies_id),
-  KEY FK_mh_comment_mh_comment_reply_replies_id (replies_id),
-  CONSTRAINT FK_mh_comment_mh_comment_reply_Comment_id FOREIGN KEY (Comment_id) REFERENCES mh_comment (id),
-  CONSTRAINT FK_mh_comment_mh_comment_reply_replies_id FOREIGN KEY (replies_id) REFERENCES mh_comment_reply (id)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-
 CREATE TABLE mh_pm_action (
   id BIGINT(20) NOT NULL,
   name VARCHAR(255) NOT NULL,

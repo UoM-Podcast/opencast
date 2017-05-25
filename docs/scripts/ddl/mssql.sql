@@ -618,34 +618,6 @@ CREATE TABLE mh_themes (
 -- Participation Management
 --
 
-CREATE TABLE mh_comment (
-  id BIGINT NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  creation_date DATETIME NOT NULL,
-  modification_date DATETIME NOT NULL,
-  reason VARCHAR(255) DEFAULT NULL,
-  resolved_status bit NOT NULL DEFAULT '0',
-  text VARCHAR(255) NOT NULL,
-  PRIMARY KEY (id)
-);
-
-CREATE TABLE mh_comment_reply (
-  id BIGINT NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  creation_date DATETIME NOT NULL,
-  modification_date DATETIME NOT NULL,
-  text VARCHAR(255) NOT NULL,
-  PRIMARY KEY (id)
-);
-
-CREATE TABLE mh_comment_mh_comment_reply (
-  Comment_id BIGINT NOT NULL,
-  replies_id BIGINT NOT NULL,
-  PRIMARY KEY (Comment_id,replies_id),
-  CONSTRAINT FK_mh_comment_mh_comment_reply_Comment_id FOREIGN KEY (Comment_id) REFERENCES mh_comment (id),
-  CONSTRAINT FK_mh_comment_mh_comment_reply_replies_id FOREIGN KEY (replies_id) REFERENCES mh_comment_reply (id)
-);
-
 CREATE TABLE mh_pm_action (
   id BIGINT NOT NULL,
   name VARCHAR(255) NOT NULL,

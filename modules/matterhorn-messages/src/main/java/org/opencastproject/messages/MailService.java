@@ -26,9 +26,6 @@ import static org.opencastproject.util.data.Option.none;
 import static org.opencastproject.util.data.Option.option;
 import static org.opencastproject.util.data.Option.some;
 
-import org.opencastproject.comments.Comment;
-import org.opencastproject.comments.persistence.CommentDatabaseUtils;
-import org.opencastproject.comments.persistence.CommentDto;
 import org.opencastproject.kernel.mail.BaseSmtpService;
 import org.opencastproject.kernel.mail.EmailAddress;
 import org.opencastproject.messages.persistence.EmailConfigurationDto;
@@ -568,11 +565,6 @@ public class MailService {
   }
 
   public static MessageTemplateDto mergeMessageTemplate(MessageTemplate template, String organization, EntityManager em) {
-    ArrayList<CommentDto> comments = new ArrayList<CommentDto>();
-    for (Comment c : template.getComments()) {
-      comments.add(CommentDatabaseUtils.mergeComment(c, em));
-    }
-
     Option<MessageTemplateDto> dtoOption = findMessageTemplate(option(template.getId()), template.getName(),
             organization, em);
     MessageTemplateDto dto;
@@ -584,13 +576,11 @@ public class MailService {
       dto.setSubject(template.getSubject());
       dto.setBody(template.getBody());
       dto.setCreationDate(template.getCreationDate());
-      dto.setComments(comments);
       dto.setHidden(template.isHidden());
       em.merge(dto);
     } else {
       dto = new MessageTemplateDto(template.getName(), organization, template.getCreator().getUsername(),
-              template.getSubject(), template.getBody(), template.getType().getType(), template.getCreationDate(),
-              comments);
+              template.getSubject(), template.getBody(), template.getType().getType(), template.getCreationDate());
       dto.setHidden(template.isHidden());
       em.persist(dto);
     }
@@ -629,17 +619,11 @@ public class MailService {
 
   public static MessageSignatureDto mergeMessageSignature(MessageSignature signature, String organization,
           EntityManager em) {
-    ArrayList<CommentDto> comments = new ArrayList<CommentDto>();
-    for (Comment c : signature.getComments()) {
-      comments.add(CommentDatabaseUtils.mergeComment(c, em));
-    }
-
     Option<MessageSignatureDto> signatureOption = findMessageSignature(option(signature.getId()), signature.getName(),
             organization, em);
     MessageSignatureDto dto;
     if (signatureOption.isSome()) {
       dto = signatureOption.get();
-      dto.setComments(comments);
       dto.setCreationDate(signature.getCreationDate());
       dto.setCreator(signature.getCreator().getUsername());
       dto.setSender(signature.getSender().getAddress());
@@ -653,7 +637,7 @@ public class MailService {
       dto = new MessageSignatureDto(signature.getName(), organization, signature.getCreator().getUsername(), signature
               .getSender().getAddress(), signature.getSender().getName(), signature.getReplyTo().map(getAddress)
               .getOrElseNull(), signature.getReplyTo().map(getName).getOrElseNull(), signature.getSignature(),
-              signature.getCreationDate(), comments);
+              signature.getCreationDate());
       em.persist(dto);
     }
     return dto;
@@ -739,14 +723,6 @@ public class MailService {
     for (EmailAddress recipient : mail.getRecipients()) {
       msg.addRecipient(javax.mail.Message.RecipientType.TO,
               new InternetAddress(recipient.getAddress(), recipient.getName(), "UTF-8"));
-    }
-
-    // cc
-    if (mail.getCopiedRecipients().isSome()) {
-      for (EmailAddress copied : mail.getCopiedRecipients().get()) {
-        msg.addRecipient(javax.mail.Message.RecipientType.CC,
-              new InternetAddress(copied.getAddress(),copied.getName(), "UTF-8"));
-      }
     }
 
     // subject

@@ -58,7 +58,6 @@
     <module>modules/matterhorn-capture-admin-service-api</module>
     <module>modules/matterhorn-capture-admin-service-impl</module>
     <module>modules/matterhorn-capture-workflowoperation</module>
-    <module>modules/matterhorn-comments</module>
     <module>modules/matterhorn-comments-workflowoperation</module>
     <module>modules/matterhorn-common</module>
     <module>modules/matterhorn-common-jpa-impl</module>
