@@ -96,8 +96,13 @@
     <bundle>mvn:org.springframework/spring-web/3.1.4.RELEASE</bundle>
   </feature>
 
+  <feature name="manchester-ext-core">
+    <bundle>mvn:org.graylog2/gelfj/1.1.14</bundle>
+  </feature>
+
   <feature name="opencast-core">
     <feature start-level="80">ext-core</feature>
+    <feature>manchester-ext-core</feature>
 
     <!-- Opencast -->
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-api/${project.version}</bundle>

@@ -1,2 +1,5 @@
 # Bundles to be started specifically for Opencast
 mvn\:org.apache.felix/org.apache.felix.metatype/1.1.2 = 5
+
+# Bundles to be started specifically for Manchester
+mvn\:org.graylog2/gelfj/1.1.14 = 7
