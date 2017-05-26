@@ -149,7 +149,7 @@ public class OaiPmhPublicationServiceTest {
 
     Publication publish = service.publishInternal(null, mp, "doi", elementIds, Collections.<String> set(), false);
     Assert.assertNotNull(publish);
-    Assert.assertEquals("http://localhost:8080/oaipmh/doi?verb=ListMetadataFormats&identifier=10.0000-1",
+    Assert.assertEquals("http://localhost:8080/oaipmh/doi?verb=GetRecord&metadataPrefix=matterhorn&identifier=10.0000-1",
             publish.getURI().toString());
     Assert.assertEquals(OaiPmhPublicationServiceImpl.PUBLICATION_CHANNEL_PREFIX.concat("doi"), publish.getChannel());
     Assert.assertEquals("text/xml", "text/xml");

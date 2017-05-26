@@ -280,9 +280,11 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
   /** Create a new publication element. */
   private Publication createPublicationElement(String mpId, String repository) throws PublicationException {
     for (String hostUrl : OaiPmhServerInfoUtil.oaiPmhServerUrlOfCurrentOrganization(securityService)) {
+      // UOM: This is a hack as the metadataPrefix is not known
+      String metadataPrefix = "matterhorn";
       final URI engageUri = URIUtils.resolve(
               URI.create(UrlSupport.concat(hostUrl, oaiPmhServerInfo.getMountPoint(), repository)),
-              "?verb=ListMetadataFormats&identifier=" + mpId);
+              "?verb=GetRecord&metadataPrefix=" + metadataPrefix + "&identifier=" + mpId);
       return PublicationImpl.publication(UUID.randomUUID().toString(), publicationChannelId(repository), engageUri,
               MimeTypes.parseMimeType(MIME_TYPE));
     }
