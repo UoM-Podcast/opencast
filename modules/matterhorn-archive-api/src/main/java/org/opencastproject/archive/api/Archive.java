@@ -72,6 +72,17 @@ public interface Archive<RS extends ResultSet> {
   boolean delete(String mediaPackageId) throws ArchiveException;
 
   /**
+   * Removes the all tracks from the mediaPackage in the archive. It also deletes all previous versions.
+   *
+   * @param mediaPackage
+   *         the media package to remove the tracks from
+   * @return <code>true</code> if the tracks were found and deleted
+   * @throws ArchiveException
+   *          in case of any internal error
+   */
+  boolean deleteTracks(final MediaPackage mediaPackage) throws ArchiveException;
+
+  /**
    * Process all media packages found by query <code>q</code> with workflow <code>workflowDefinition</code>.
    *
    * @param workflow

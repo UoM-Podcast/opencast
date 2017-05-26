@@ -109,10 +109,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -250,6 +252,17 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     storeManifest(pmp, version);
   }
 
+  public URI saveElement(String mediaPackageID, MediaPackageElement mpe)  throws Exception {
+    FileInputStream in = new FileInputStream(workspace.get(mpe.getURI()));
+    String filename = mpe.getURI().toURL().getFile();
+    filename = filename.substring(filename.lastIndexOf('/') + 1);
+    return workspace.put(mediaPackageID, mpe.getIdentifier(), filename, in);
+  }
+
+  public void deleteSavedElement(URI uri) throws Exception {
+    workspace.delete(uri);
+  }
+
   // todo if the user is allowed to delete the whole set of versions is checked against the
   // acl of the latest version. That's probably not the best approach.
   @Override
@@ -274,6 +287,61 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
         }
         // mediapackage not found
         return false;
+      }
+    });
+  }
+
+  @Override
+  public boolean deleteTracks(final MediaPackage mediaPackage) throws ArchiveException {
+    return handleException(new Function0.X<Boolean>() {
+      @Override
+      public Boolean xapply() throws Exception {
+        MediaPackage mp = (MediaPackage) mediaPackage.clone();
+        List<URI> savedElementsURIs = new ArrayList<>();
+
+        for (MediaPackageElement mpe : mp.getElements()) {
+
+          switch (mpe.getElementType()) {
+            case Catalog:
+            case Attachment:
+              try {
+                URI uri = saveElement(mp.getIdentifier().toString(), mpe);
+                savedElementsURIs.add(uri);
+                mpe.setURI(uri);
+              } catch (Exception e) {
+                logger.error("Could not save element {} : {}", mpe.getURI(), e);
+                throw new ArchiveException("Couldn't save element");
+              }
+              break;
+            case Other:
+            case Timeline:
+            case Publication:
+              break;
+            case Track:
+            default:
+              mp.remove(mpe);
+              break;
+          }
+        }
+
+        // delete orginal MP from archive
+        if (!delete(mediaPackage.getIdentifier().toString())) {
+          throw new ArchiveException("Can't delete old archive versions");
+        }
+
+        // re-add stripped MP
+        add(mp);
+
+        // delete any savedElements
+        for (URI u : savedElementsURIs) {
+          try {
+            deleteSavedElement(u);
+          } catch (Exception e) {
+            logger.warn("Couldn't remove saved element {} : {} ", u, e);
+          }
+        }
+
+        return true;
       }
     });
   }
