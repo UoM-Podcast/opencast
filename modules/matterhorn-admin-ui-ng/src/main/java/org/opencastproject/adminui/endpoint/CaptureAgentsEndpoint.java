@@ -39,7 +39,6 @@ import org.opencastproject.index.service.resources.list.query.AgentsListQuery;
 import org.opencastproject.index.service.util.RestUtils;
 import org.opencastproject.matterhorn.search.SearchQuery.Order;
 import org.opencastproject.matterhorn.search.SortCriterion;
-import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.util.DateTimeSupport;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.SmartIterator;
@@ -93,9 +92,6 @@ public class CaptureAgentsEndpoint {
   /** The capture agent service */
   private CaptureAgentStateService service;
 
-  /** The participation persistence */
-  private ParticipationManagementDatabase participationPersistence;
-
   /**
    * Sets the capture agent service
    *
@@ -104,11 +100,6 @@ public class CaptureAgentsEndpoint {
    */
   public void setCaptureAgentService(CaptureAgentStateService service) {
     this.service = service;
-  }
-
-  /** OSGi callback for participation persistence. */
-  public void setParticipationPersistence(ParticipationManagementDatabase participationPersistence) {
-    this.participationPersistence = participationPersistence;
   }
 
   @GET
@@ -145,19 +136,6 @@ public class CaptureAgentsEndpoint {
       if (AgentsListQuery.FILTER_TEXT_NAME.equals(name) && StringUtils.isNotBlank(filters.get(name)))
         filterText = Option.some(filters.get(name));
     }
-
-//    // Get list of agents from the PM
-//    Map<String, CaptureAgent> captureAgents = new HashMap<String, CaptureAgent>();
-//    if (participationPersistence != null) {
-//      try {
-//        for (CaptureAgent agent : participationPersistence.getCaptureAgents()) {
-//          captureAgents.put(agent.getMhAgent(), agent);
-//        }
-//      } catch (ParticipationManagementDatabaseException e) {
-//        logger.warn("Not able to get the capture agents from the participation management persistence service: {}", e);
-//        return Response.status(SC_INTERNAL_SERVER_ERROR).build();
-//      }
-//    }
 
     // Filter agents by filter criteria
     List<Agent> filteredAgents = new ArrayList<Agent>();
