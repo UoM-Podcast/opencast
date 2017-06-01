@@ -171,8 +171,6 @@
               org.opencastproject.pm.ui.teacher;version=${project.version},
               org.opencastproject.pm.ui.teacher.components;version=${project.version},
               org.opencastproject.pm.ui.teacher.vaadin;version=${project.version},
-              VAADIN.themes.PM;version=${project.version},
-              VAADIN.themes.PM.img;version=${project.version}
             </Export-Package>
             <Service-Component>
               OSGI-INF/archive-service-remote.xml,

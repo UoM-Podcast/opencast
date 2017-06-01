@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
                name="org.opencastproject.pm.ui.teacher.PmDependencies"
-               immediate="true">
+               immediate="true"
+               activate="activate">
   <implementation class="org.opencastproject.pm.ui.teacher.PmDependencies" />
   <service>
     <provide interface="org.opencastproject.pm.ui.teacher.PmDependencies" />
   </service>
-  <property name="service.description" value="PM dependencies" />
+  <property name="service.description" value="PM dependencies Teacher" />
   <reference interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
              name="participationManagementDatabase"
              cardinality="0..1"

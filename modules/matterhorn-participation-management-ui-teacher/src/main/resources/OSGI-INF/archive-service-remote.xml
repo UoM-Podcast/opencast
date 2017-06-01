@@ -4,11 +4,11 @@
                immediate="true">
   <implementation class="org.opencastproject.pm.ui.teacher.ArchiveServices" />
   <property name="service.description" value="Archive Remote Read-Only Service Proxy" />
-  
+
   <service>
     <provide interface="org.opencastproject.pm.ui.teacher.ArchiveServices" />
   </service>
-  
+
   <reference name="trustedHttpClient"
              interface="org.opencastproject.security.api.TrustedHttpClient"
              cardinality="1..1"

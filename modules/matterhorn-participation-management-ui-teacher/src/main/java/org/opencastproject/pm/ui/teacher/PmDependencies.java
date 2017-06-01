@@ -26,10 +26,13 @@ import static org.opencastproject.util.data.VCell.iocell;
 
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.security.api.SecurityService;
+import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.data.Cell;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.VCell;
 import org.opencastproject.workflow.api.WorkflowService;
+
+import org.osgi.service.component.ComponentContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +44,11 @@ public class PmDependencies {
   private SecurityService security;
   private WorkflowService workflowService;
   private ArchiveServices archiveServices;
+  private String systemUserName;
+
+  public void activate(ComponentContext cc) {
+    systemUserName = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
+  }
 
   /** OSGi DI */
   public void setParticipationManagementDatabase(ParticipationManagementDatabase pm) {
@@ -72,6 +80,10 @@ public class PmDependencies {
 
   public WorkflowService getWorkflowService() {
     return workflowService;
+  }
+
+  public String getSystemUserName() {
+    return systemUserName;
   }
 
   /** OSGi DI */
