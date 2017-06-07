@@ -235,6 +235,7 @@
     <sec:intercept-url pattern="/usertracking/**" method="GET" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/usertracking/**" method="PUT" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/static/**" method="GET" access="ROLE_ANONYMOUS" />
+    <sec:intercept-url pattern="/alternate-static/**" method="GET" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/export/**" method="GET" access="ROLE_ANONYMOUS" />
 
     <!-- Enable anonymous access to the annotation and the series endpoints -->

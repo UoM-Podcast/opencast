@@ -46,7 +46,7 @@ public class TestOaiPmhPublicationRestService extends OaiPmhPublicationRestServi
     final OaiPmhPublicationService pubSvc = EasyMock.createNiceMock(OaiPmhPublicationService.class);
     // delegate calls to #publish to check the creator
     EasyMock.expect(
-            pubSvc.publish(EasyMock.<MediaPackage>anyObject(), EasyMock.anyString(), EasyMock.<Set<String>>anyObject(), EasyMock.<Set<String>>anyObject(), EasyMock.anyBoolean()))
+            pubSvc.publish(EasyMock.<MediaPackage>anyObject(), EasyMock.anyString(), EasyMock.<Set<String>>anyObject(), EasyMock.<Set<String>>anyObject(), EasyMock.anyBoolean(), EasyMock.anyBoolean()))
             .andDelegateTo(new PubSvcDelegate()).anyTimes();
     EasyMock.replay(pubSvc);
     setService(pubSvc);
@@ -56,7 +56,7 @@ public class TestOaiPmhPublicationRestService extends OaiPmhPublicationRestServi
     @Override
     public Job publish(
             MediaPackage mediaPackage, String repository, Set<String> downloadIds,
-            Set<String> streamingIds, boolean checkAvailability)
+            Set<String> streamingIds, boolean checkAvailability, boolean useAlternateDirectory)
             throws PublicationException, MediaPackageException {
       // assert the creator name is preserved
       assertEquals(OaiPmhPublicationRestServiceTest.CREATOR, mediaPackage.getCreators()[0]);

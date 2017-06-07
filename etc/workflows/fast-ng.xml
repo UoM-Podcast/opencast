@@ -47,6 +47,12 @@
                 <label for=publishToOaiPmh>Default OAI-PMH Repository</label>
               </li>
             </ul>
+            <ul>
+              <li>
+                <input id="distributeToAlternate" name="distributeToAlternate" type="checkbox" class="configField" value="false" />
+                <label for="distributeToAlternate">Distribute to Alternate Directory</label>
+              </li>
+            </ul>
           </fieldset>
         </div>
       ]]>
@@ -61,6 +67,7 @@
         <configuration key="comment">false</configuration>
         <configuration key="publishToMediaModule">true</configuration>
         <configuration key="publishToOaiPmh">true</configuration>
+        <configuration key="distributeToAlternate">false</configuration>
       </configurations>
     </operation>
 
@@ -239,6 +246,7 @@
         <configuration key="download-source-tags">engage-download</configuration>
         <configuration key="streaming-source-tags">engage-streaming</configuration>
         <configuration key="check-availability">true</configuration>
+        <configuration key="use-alternate-directory">${distributeToAlternate}</configuration>
       </configurations>
     </operation>
 
@@ -255,6 +263,7 @@
         <configuration key="streaming-tags">engage-streaming</configuration>
         <configuration key="check-availability">true</configuration>
         <configuration key="repository">default</configuration>
+        <configuration key="use-alternate-directory">${distributeToAlternate}</configuration>
       </configurations>
     </operation>
 

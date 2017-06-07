@@ -86,12 +86,23 @@ public class AwsS3DistributionServiceRemoteImpl extends RemoteBase implements Aw
     return distribute(channelId, mediaPackage, elementId, true);
   }
 
+   @Override
+  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability) throws DistributionException {
+    return distribute(channelId, mediaPackage, elementId, checkAvailability, false);
+  }
+
   @Override
-  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability)
+  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability,
+          boolean ignore)
           throws DistributionException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability);
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, checkAvailability);
+  }
+
+  @Override
+  public Job distribute(String channelId, MediaPackage mediaPackage, Set<String> elementIds, boolean checkAvailability, boolean ignore) throws DistributionException {
+    return distribute(channelId, mediaPackage, elementIds, true);
   }
 
   @Override
