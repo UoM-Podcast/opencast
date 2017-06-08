@@ -1,5 +1,5 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XML-instance"
-         xsi:Location="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  xsi:Location="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -286,8 +286,8 @@
       </plugin>
       <!-- Attach sources for all builds -->
       <!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-source-plugin</artifactId> <executions>
-      <execution> <id>attach-sources</id> <phase>verify</phase> <goals> <goal>jar-no-fork</goal> <goal>test-jar-no-fork</goal>
-      </goals> </execution> </executions> </plugin> -->
+        <execution> <id>attach-sources</id> <phase>verify</phase> <goals> <goal>jar-no-fork</goal> <goal>test-jar-no-fork</goal>
+        </goals> </execution> </executions> </plugin> -->
       <!-- Run tests and display test output in the console -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -338,7 +338,7 @@
       </plugin>
       <plugin>
         <!-- use this to generate a code coverage report:
-        mvn cobertura:cobertura -->
+          mvn cobertura:cobertura -->
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>cobertura-maven-plugin</artifactId>
         <version>2.7</version>
@@ -349,18 +349,18 @@
       </plugin>
     </plugins>
     <!-- This defines the global plugin configurations. Plugins with configuration
-    shared across multiple child poms should be configured here, and then referenced
-    in the child. -->
+      shared across multiple child poms should be configured here, and then referenced
+      in the child. -->
     <pluginManagement>
       <plugins>
         <!-- Fix Eclipse Maven integration -->
         <!-- Since its 1.0 version, the Eclipse Maven integration requires
-        this info to map several workspace actions to specific phases of Maven's
-        lifecycle. Should this section not be included, or should certain plugins
-        not be covered by the list of "pluginExecutions" below, Eclipse users will
-        see errors of the type "plugin execution not covered". -->
+          this info to map several workspace actions to specific phases of Maven's
+          lifecycle. Should this section not be included, or should certain plugins
+          not be covered by the list of "pluginExecutions" below, Eclipse users will
+          see errors of the type "plugin execution not covered". -->
         <!-- See https://www.eclipse.org/m2e/documentation/m2e-execution-not-covered.html
-        for more information -->
+          for more information -->
         <plugin>
           <groupId>org.eclipse.m2e</groupId>
           <artifactId>lifecycle-mapping</artifactId>

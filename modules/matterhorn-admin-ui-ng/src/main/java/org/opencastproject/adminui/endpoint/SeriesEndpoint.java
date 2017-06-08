@@ -81,7 +81,6 @@ import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.MetadataCollection;
 import org.opencastproject.metadata.dublincore.MetadataField;
 import org.opencastproject.metadata.dublincore.SeriesCatalogUIAdapter;
-import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.rest.BulkOperationResult;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AccessControlParser;
@@ -161,7 +160,6 @@ public class SeriesEndpoint {
   public static final String THEME_KEY = "theme";
 
   private SeriesService seriesService;
-  private ParticipationManagementDatabase participationManagementDatabase;
   private SecurityService securityService;
   private AclServiceFactory aclServiceFactory;
   private IndexService indexService;
@@ -186,11 +184,6 @@ public class SeriesEndpoint {
   /** OSGi DI. */
   public void setIndexService(IndexService indexService) {
     this.indexService = indexService;
-  }
-
-  /** OSGi callback for the participation management database. */
-  public void setPersistence(ParticipationManagementDatabase persistence) {
-    this.participationManagementDatabase = persistence;
   }
 
   /** OSGi callback for the security service */
