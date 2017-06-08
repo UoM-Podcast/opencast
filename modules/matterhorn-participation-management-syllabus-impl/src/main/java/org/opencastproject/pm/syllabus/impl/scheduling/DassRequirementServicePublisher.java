@@ -54,7 +54,7 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
     try {
       final String identity = getOptCfg(p, "db.identity").getOrElse("dass");
       final String driver = getOptCfg(p, "db.driver").getOrElse("com.mysql.jdbc.Driver");
-      final String url = getOptCfg(p, "db.url").getOrElse("jdbc:mysql://localhost:3306/dass");
+      final String url = getOptCfg(p, "db.url").orError(new ConfigurationException("db.url", "DASS database URL not specified")).get();
       final String user = getCfg(p, "db.user");
       final String pwd = getCfg(p, "db.password");
 

@@ -65,7 +65,7 @@ public class SyllabusServicePublisher extends SimpleServicePublisher {
       final String identity = getOptCfg(p, "db.identity").getOrElse("Syllabus+:Central_Timetable");
       final String vendor = getOptCfg(p, "db.vendor").getOrElse("SQLServer");
       final String driver = getOptCfg(p, "db.driver").getOrElse("net.sourceforge.jtds.jdbc.Driver");
-      final String url = getOptCfg(p, "db.url").getOrElse("jdbc:jtds:sqlserver://localhost:1433/ScientiaProdB");
+      final String url = getOptCfg(p, "db.url").orError(new ConfigurationException("db.url", "Syllabus+ database URL not specified")).get();
       final String user = getCfg(p, "db.user");
       final String pwd = getCfg(p, "db.password");
       final Option<String> schema = getOptCfg(p, "db.schema");
