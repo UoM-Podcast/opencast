@@ -24,6 +24,7 @@ package org.opencastproject.pm.ui.admin;
 import static org.opencastproject.pm.ui.common.util.UiUtil.i18n;
 import static org.opencastproject.util.data.Tuple.tuple;
 
+import org.opencastproject.pm.ui.admin.components.AbstractSummaryComponent;
 import org.opencastproject.pm.ui.admin.components.EmailPane;
 import org.opencastproject.pm.ui.admin.components.MessageSummaryComponent;
 import org.opencastproject.pm.ui.admin.components.RecordingSummaryComponent;
@@ -68,17 +69,19 @@ public class PmAdmin extends UI {
     final MainLayout mainLayout = new MainLayout("Participation Management - Admin UI", i18n).addTabs(
             tuple(i18n.s("tab.dashboard"),
                     new SummaryComponentsPane(
-                            new SynchronizationSummaryComponent(dep.getParticipationManagementDatabase(),
-                                    dep.getParticipationFeederService(),
-                                    dep.getScheduleFeederService(), i18n, dep.getSecurityService()),
                             new SnapCountSummaryComponent(dep.getParticipationManagementDatabase(),
                                     dep.getParticipationFeederService(),
                                     dep.getScheduleFeederService(), dep.getSnapCountService(), i18n, dep.getSecurityService()),
+                            AbstractSummaryComponent.ZERO,
+                            new SynchronizationSummaryComponent(dep.getParticipationManagementDatabase(),
+                                    dep.getParticipationFeederService(),
+                                    dep.getScheduleFeederService(), i18n, dep.getSecurityService()),
                             new RecordingSummaryComponent(dep.getParticipationManagementDatabase(), dep
-                                    .getSecurityService()), new ResponseSummaryComponent(dep
-                                    .getParticipationManagementDatabase(), dep.getSecurityService()),
+                                    .getSecurityService()),
                             new MessageSummaryComponent(dep.getParticipationManagementDatabase(), dep
-                                    .getSecurityService()))),
+                                    .getSecurityService()),
+                            new ResponseSummaryComponent(dep
+                                    .getParticipationManagementDatabase(), dep.getSecurityService()))),
             tuple(i18n.s("tab.email"), emailPane));
 
     mainLayout.addSelectedTabChangeListener(new TabSheet.SelectedTabChangeListener() {

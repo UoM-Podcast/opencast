@@ -22,42 +22,41 @@
 package org.opencastproject.pm.ui.admin.components;
 
 import static org.opencastproject.pm.ui.common.util.UiUtil.hlayout;
-import static org.opencastproject.pm.ui.common.util.UiUtil.spacing;
 import static org.opencastproject.pm.ui.common.util.UiUtil.vlayout;
-import static org.opencastproject.pm.ui.common.util.UiUtil.vmargins;
+import static org.opencastproject.pm.ui.common.util.UiUtil.vspacer;
 import static org.opencastproject.pm.ui.common.util.UiUtil.withMargin;
-import static org.opencastproject.util.data.Arrays.cons;
 import static org.opencastproject.util.data.Collections.grouped;
 import static org.opencastproject.util.data.Collections.list;
 import static org.opencastproject.util.data.Collections.toArray;
 import static org.opencastproject.util.data.Monadics.mlist;
 import static org.opencastproject.util.data.functions.Booleans.ne;
-import static org.opencastproject.util.data.functions.Functions.all;
 
 import org.opencastproject.util.data.Function;
 
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.CustomComponent;
-import com.vaadin.ui.HorizontalLayout;
+import com.vaadin.ui.VerticalLayout;
 
 import java.util.List;
 
+
 public class SummaryComponentsPane extends CustomComponent {
+
   public SummaryComponentsPane(final AbstractSummaryComponent... cs) {
-    final List<HorizontalLayout> rows =
-            mlist(grouped(list(cs), 2)).map(new Function<List<AbstractSummaryComponent>, HorizontalLayout>() {
-              @Override public HorizontalLayout apply(List<AbstractSummaryComponent> row) {
-                return hlayout(all(withMargin(vmargins), spacing),
-                               toArray(Component.class,
-                                       mlist(row).filter(ne(AbstractSummaryComponent.ZERO)).value()));
-              }
-            }).value();
+    final List<VerticalLayout> cols
+            = mlist(grouped(list(cs), 2)).map(new Function<List<AbstractSummaryComponent>, VerticalLayout>() {
+      @Override
+      public VerticalLayout apply(List<AbstractSummaryComponent> row) {
+        return vlayout(toArray(Component.class,
+                        mlist(row).filter(ne(AbstractSummaryComponent.ZERO)).value()));
+      }
+    }).value();
     setCompositionRoot(
             vlayout(withMargin,
-                    cons(Component.class,
-                         new Button("Refresh All", updater(cs)),
-                         toArray(HorizontalLayout.class, rows))));
+                    new Button("Refresh All", updater(cs)),
+                    vspacer(),
+                    hlayout(toArray(VerticalLayout.class, cols))));
   }
 
   private Button.ClickListener updater(final AbstractSummaryComponent... cs) {
