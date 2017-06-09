@@ -62,7 +62,7 @@ public class SyllabusServicePublisher extends SimpleServicePublisher {
   @Override
   public ServiceReg registerService(Dictionary p, ComponentContext cc) throws ConfigurationException {
     try {
-      final String identity = getOptCfg(p, "db.identity").getOrElse("Syllabus+:Central_Timetable");
+      final String identity = getOptCfg(p, "db.identity").getOrElse("Syllabus+");
       final String vendor = getOptCfg(p, "db.vendor").getOrElse("SQLServer");
       final String driver = getOptCfg(p, "db.driver").getOrElse("net.sourceforge.jtds.jdbc.Driver");
       final String url = getOptCfg(p, "db.url").orError(new ConfigurationException("db.url", "Syllabus+ database URL not specified")).get();
