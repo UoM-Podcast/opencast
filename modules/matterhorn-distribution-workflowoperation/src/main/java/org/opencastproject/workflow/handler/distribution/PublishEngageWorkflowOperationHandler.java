@@ -107,6 +107,7 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
   private static final String STREAMING_TARGET_SUBFLAVOR = "streaming-target-subflavor";
   private static final String CHECK_AVAILABILITY = "check-availability";
   private static final String STRATEGY = "strategy";
+  private static final String USE_ALTERNATE_DIR = "use-alternate-directory";
 
   /** The streaming distribution service */
   private DistributionService streamingDistributionService = null;
@@ -179,6 +180,8 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
             "( true | false ) defaults to true. Check if the distributed download artifact is available at its URL");
     CONFIG_OPTIONS.put(STRATEGY,
             "Strategy if there is an existing Publication");
+    CONFIG_OPTIONS.put(USE_ALTERNATE_DIR,
+            "( true | false ) use alternate distribution directory");
   }
 
   @Override
@@ -228,6 +231,8 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
 
     boolean checkAvailability = option(op.getConfiguration(CHECK_AVAILABILITY)).bind(trimToNone).map(toBool)
             .getOrElse(true);
+    boolean useAlternateDir = option(op.getConfiguration(USE_ALTERNATE_DIR)).bind(trimToNone).map(toBool)
+            .getOrElse(false);
 
     String[] sourceDownloadTags = StringUtils.split(downloadSourceTags, ",");
     String[] targetDownloadTags = StringUtils.split(downloadTargetTags, ",");
@@ -321,7 +326,7 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
       //distribute Elements
       try {
         if (downloadElementIds.size() > 0) {
-          Job job = downloadDistributionService.distribute(CHANNEL_ID, mediaPackage, downloadElementIds, checkAvailability);
+          Job job = downloadDistributionService.distribute(CHANNEL_ID, mediaPackage, downloadElementIds, checkAvailability, useAlternateDir);
           if (job != null) {
             jobs.add(job);
           }

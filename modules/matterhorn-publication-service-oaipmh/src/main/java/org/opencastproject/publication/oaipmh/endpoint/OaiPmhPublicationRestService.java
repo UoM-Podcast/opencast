@@ -76,7 +76,7 @@ public class OaiPmhPublicationRestService extends AbstractJobProducerEndpoint {
 
   /**
    * Callback from the OSGi declarative services to set the service registry.
-   * 
+   *
    * @param serviceRegistry
    *          the service registry
    */
@@ -100,11 +100,14 @@ public class OaiPmhPublicationRestService extends AbstractJobProducerEndpoint {
           @RestParameter(name = "channel", isRequired = true, description = "The channel name", type = Type.STRING),
           @RestParameter(name = "downloadElementIds", isRequired = true, description = "The elements to publish to download seperated by ';;'", type = Type.STRING),
           @RestParameter(name = "streamingElementIds", isRequired = true, description = "The elements to publish to streaming seperated by ';;'", type = Type.STRING),
-          @RestParameter(name = "checkAvailability", isRequired = false, description = "Whether to check for availability", type = Type.BOOLEAN, defaultValue = "true") }, reponses = { @RestResponse(responseCode = SC_OK, description = "An XML representation of the publication job") })
+          @RestParameter(name = "checkAvailability", isRequired = false, description = "Whether to check for availability", type = Type.BOOLEAN, defaultValue = "true"),
+          @RestParameter(name = "useAlternateDirectory", isRequired = false, description = "Whether to use the alternate download directory", type = Type.BOOLEAN, defaultValue = "false")
+  }, reponses = { @RestResponse(responseCode = SC_OK, description = "An XML representation of the publication job") })
   public Response publish(@FormParam("mediapackage") String mediaPackageXml, @FormParam("channel") String channel,
           @FormParam("downloadElementIds") String downloadElementIds,
           @FormParam("streamingElementIds") String streamingElementIds,
-          @FormParam("checkAvailability") @DefaultValue("true") boolean checkAvailability) throws Exception {
+          @FormParam("checkAvailability") @DefaultValue("true") boolean checkAvailability,
+          @FormParam("useAlternateDirectory") @DefaultValue("false") boolean useAlternateDirectory) throws Exception {
     final Job job;
     try {
       Set<String> download = new HashSet<String>();
@@ -117,7 +120,7 @@ public class OaiPmhPublicationRestService extends AbstractJobProducerEndpoint {
         download = set(downloadElements);
       if (streamingElements != null)
         streaming = set(streamingElements);
-      job = service.publish(mediaPackage, channel, download, streaming, checkAvailability);
+      job = service.publish(mediaPackage, channel, download, streaming, checkAvailability, useAlternateDirectory);
     } catch (Exception e) {
       logger.warn("Error publishing element", e);
       return Response.serverError().status(Status.INTERNAL_SERVER_ERROR).build();
@@ -147,7 +150,7 @@ public class OaiPmhPublicationRestService extends AbstractJobProducerEndpoint {
 
   /**
    * {@inheritDoc}
-   * 
+   *
    * @see org.opencastproject.rest.AbstractJobProducerEndpoint#getService()
    */
   @Override
@@ -160,7 +163,7 @@ public class OaiPmhPublicationRestService extends AbstractJobProducerEndpoint {
 
   /**
    * {@inheritDoc}
-   * 
+   *
    * @see org.opencastproject.job.api.AbstractJobProducer#getServiceRegistry()
    */
   @Override

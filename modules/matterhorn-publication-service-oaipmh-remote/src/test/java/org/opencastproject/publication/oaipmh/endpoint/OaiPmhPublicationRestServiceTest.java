@@ -88,7 +88,7 @@ public class OaiPmhPublicationRestServiceTest {
     remote.setTrustedHttpClient(new TestHttpClient());
     remote.setRemoteServiceManager(registry);
     //
-    final Job job = remote.publish(mp, "mmp", new HashSet<String>(), new HashSet<String>(), false);
+    final Job job = remote.publish(mp, "mmp", new HashSet<String>(), new HashSet<String>(), false, false);
     assertEquals(job.getUri(), JOB_URI);
   }
 

@@ -35,7 +35,15 @@ public interface DownloadDistributionService extends DistributionService {
   Job distribute(String channelId, MediaPackage mediapackage, String elementId, boolean checkAvailability)
           throws DistributionException, MediaPackageException;
 
+  Job distribute(String channelId, MediaPackage mediapackage, String elementId, boolean checkAvailability,
+          boolean useAlternateDirectory)
+          throws DistributionException, MediaPackageException;
+
   Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability)
+          throws DistributionException, MediaPackageException;
+
+  Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability,
+          boolean useAlternateDirectory)
           throws DistributionException, MediaPackageException;
 
   Job retract(String channelId, MediaPackage mediaPackage, Set<String> elementIds)

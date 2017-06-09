@@ -207,6 +207,11 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
     logger.info("AwsS3DistributionService deactivated!");
   }
 
+  @Override
+  public Job distribute(String channelId, MediaPackage mediaPackage,  Set<String> elementIds, boolean checkAvailability, boolean ignore)
+          throws DistributionException, MediaPackageException {
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability);
+  }
   /**
    * {@inheritDoc}
    *
@@ -241,15 +246,27 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
           MediaPackageException {
     return distribute(channelId, mediapackage, elementId, true);
   }
+  /**
+   * {@inheritDoc}
+   *
+   * @see org.opencastproject.distribution.api.DistributionService#distribute(String,
+   *      org.opencastproject.mediapackage.MediaPackage, String, boolean)
+   */
+  @Override
+  public Job distribute(String channelId, MediaPackage mediapackage, String elementId, boolean checkAvailability) throws DistributionException,
+          MediaPackageException {
+    return distribute(channelId, mediapackage, elementId, checkAvailability, false);
+  }
 
   /**
    * {@inheritDoc}
    *
    * @see org.opencastproject.distribution.api.DownloadDistributionService#distribute(String,
-   *      org.opencastproject.mediapackage.MediaPackage, String, boolean)
+   *      org.opencastproject.mediapackage.MediaPackage, String, boolean, boolean)
    */
   @Override
-  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability)
+  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability,
+          boolean useAlternateDirectory)
           throws DistributionException, MediaPackageException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);

@@ -43,6 +43,7 @@ import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.UrlSupport;
 import org.opencastproject.util.data.Effect;
+import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.functions.Misc;
 
 import com.google.gson.Gson;
@@ -143,16 +144,45 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
       throw new IllegalStateException("Download url must be set (org.opencastproject.download.url)");
     logger.info("Download url is {}", serviceUrl);
 
+    alternateServiceUrl = cc.getBundleContext().getProperty("org.opencastproject.download.url.alternate");
+    if (alternateServiceUrl == null) {
+      logger.warn("Alternate download url is unset");
+    } else {
+      logger.info("Alternate download url is {}", alternateServiceUrl);
+    }
+
     String ccDistributionDirectory = cc.getBundleContext().getProperty("org.opencastproject.download.directory");
     if (ccDistributionDirectory == null)
       throw new IllegalStateException("Distribution directory must be set (org.opencastproject.download.directory)");
     this.distributionDirectory = new File(ccDistributionDirectory);
     logger.info("Download distribution directory is {}", distributionDirectory);
+
+    String ccAlternateDistributionDirectory = cc.getBundleContext().getProperty("org.opencastproject.download.directory.alternate");
+    if (ccAlternateDistributionDirectory == null) {
+      logger.warn("Alternate download directory is unset");
+    } else {
+      this.alternateDistributionDirectory = new File(ccAlternateDistributionDirectory);
+      logger.info("Alternate download directory is {}", alternateDistributionDirectory);
+    }
     this.distributionChannel = OsgiUtil.getComponentContextProperty(cc, CONFIG_KEY_STORE_TYPE);
   }
 
   public String getDistributionType() {
     return this.distributionChannel;
+  }
+
+  protected String getServiceUrl(boolean useAlternateDirectory) {
+    if (useAlternateDirectory &&  alternateServiceUrl != null) {
+      return alternateServiceUrl;
+    }
+    return serviceUrl;
+  }
+
+  protected File getDistributionDirectory(boolean useAlternateDirectory) {
+    if (useAlternateDirectory && alternateDistributionDirectory != null) {
+      return alternateDistributionDirectory;
+    }
+    return distributionDirectory;
   }
 
   @Override
@@ -164,13 +194,26 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
   @Override
   public Job distribute(String channelId, MediaPackage mediapackage, String elementId, boolean checkAvailability)
           throws DistributionException, MediaPackageException {
+    return distribute(channelId, mediapackage, elementId, true, false);
+  }
+
+  @Override
+  public Job distribute(String channelId, MediaPackage mediapackage, String elementId, boolean checkAvailability, boolean useAlternateDirectory)
+          throws DistributionException, MediaPackageException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);
-    return distribute(channelId, mediapackage, elementIds, checkAvailability);
+    return distribute(channelId, mediapackage, elementIds, checkAvailability, useAlternateDirectory);
   }
 
   @Override
   public Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability)
+          throws DistributionException, MediaPackageException {
+    return distribute(channelId, mediapackage, elementIds, checkAvailability, false);
+  }
+
+  @Override
+  public Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability,
+          boolean useAlternateDirectory)
           throws DistributionException, MediaPackageException {
     notNull(mediapackage, "mediapackage");
     notNull(elementIds, "elementIds");
@@ -180,7 +223,7 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
               JOB_TYPE,
               Operation.Distribute.toString(),
               Arrays.asList(channelId, MediaPackageParser.getAsXml(mediapackage), gson.toJson(elementIds),
-                      Boolean.toString(checkAvailability)), distributeJobLoad);
+                      Boolean.toString(checkAvailability), Boolean.toString(useAlternateDirectory)), distributeJobLoad);
     } catch (ServiceRegistryException e) {
       throw new DistributionException("Unable to create a job", e);
     }
@@ -197,13 +240,15 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    *          The ids of the elements that should be distributed contained within the media package.
    * @param checkAvailability
    *          Check the availability of the distributed element via http.
+   * @param useAlternateDirectory
+   *          Place the files in the configured alternative directory
    * @return A reference to the MediaPackageElements that have been distributed.
    * @throws DistributionException
    *           Thrown if the parent directory of the MediaPackageElement cannot be created, if the MediaPackageElement
    *           cannot be copied or another unexpected exception occurs.
    */
   public MediaPackageElement[] distributeElements(String channelId, MediaPackage mediapackage, Set<String> elementIds,
-          boolean checkAvailability) throws DistributionException {
+          boolean checkAvailability, boolean useAlternateDirectory) throws DistributionException {
     notNull(mediapackage, "mediapackage");
     notNull(elementIds, "elementIds");
     notNull(channelId, "channelId");
@@ -212,7 +257,7 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
     List<MediaPackageElement> distributedElements = new ArrayList<MediaPackageElement>();
 
     for (MediaPackageElement element : elements) {
-      MediaPackageElement distributedElement = distributeElement(channelId, mediapackage, element, checkAvailability);
+      MediaPackageElement distributedElement = distributeElement(channelId, mediapackage, element, checkAvailability, useAlternateDirectory);
       distributedElements.add(distributedElement);
     }
     return distributedElements.toArray(new MediaPackageElement[distributedElements.size()]);
@@ -229,13 +274,15 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    *          The the element that should be distributed contained within the media package.
    * @param checkAvailability
    *          Check the availability of the distributed element via http.
+   * @param useAlternateDirectory
+   *          Place the files in the configured alternative directory
    * @return A reference to the MediaPackageElement that has been distributed.
    * @throws DistributionException
    *           Thrown if the parent directory of the MediaPackageElement cannot be created, if the MediaPackageElement
    *           cannot be copied or another unexpected exception occurs.
    */
   public MediaPackageElement distributeElement(String channelId, MediaPackage mediapackage, MediaPackageElement element,
-          boolean checkAvailability) throws DistributionException {
+          boolean checkAvailability, boolean useAlternateDirectory) throws DistributionException {
 
     final String mediapackageId = mediapackage.getIdentifier().compact();
     final String elementId = element.getIdentifier();
@@ -252,12 +299,12 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
 
       // Try to find a duplicated element source
       try {
-        source = findDuplicatedElementSource(source, mediapackageId);
+        source = findDuplicatedElementSource(source, mediapackageId, useAlternateDirectory);
       } catch (IOException e) {
         logger.warn("Unable to find duplicated source {}: {}", source, ExceptionUtils.getMessage(e));
       }
 
-      File destination = getDistributionFile(channelId, mediapackage, element);
+      File destination = getDistributionFile(channelId, mediapackage, element, Option.some(useAlternateDirectory));
       if (!destination.equals(source)) {
         // Put the file in place if sourcesfile differs destinationfile
         try {
@@ -277,7 +324,7 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
       // Create a media package element representation of the distributed file
       MediaPackageElement distributedElement = (MediaPackageElement) element.clone();
       try {
-        distributedElement.setURI(getDistributionUri(channelId, mediapackageId, element));
+        distributedElement.setURI(getDistributionUri(channelId, mediapackageId, element, useAlternateDirectory));
       } catch (URISyntaxException e) {
         throw new DistributionException("Distributed element produces an invalid URI", e);
       }
@@ -387,8 +434,9 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
     String elementId = element.getIdentifier();
 
     try {
-      final File elementFile = getDistributionFile(channelId, mediapackage, element);
-      final File mediapackageDir = getMediaPackageDirectory(channelId, mediapackage);
+      final File elementFile = getDistributionFile(channelId, mediapackage, element, Option.none(Boolean.class));
+      final boolean useAlternateDirectory = alternateServiceUrl != null ? element.getURI().toString().startsWith(alternateServiceUrl) : false;
+      final File mediapackageDir = getMediaPackageDirectory(channelId, mediapackage, useAlternateDirectory);
       // Does the file exist? If not, the current element has not been distributed to this channel
       // or has been removed otherwise
       if (!elementFile.exists()) {
@@ -437,8 +485,9 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
       switch (op) {
         case Distribute:
           Boolean checkAvailability = Boolean.parseBoolean(arguments.get(3));
+          Boolean useAlternateDirectory = Boolean.parseBoolean(arguments.get(4));
           MediaPackageElement[] distributedElements = distributeElements(channelId, mediapackage, elementIds,
-                  checkAvailability);
+                  checkAvailability, useAlternateDirectory);
           return (distributedElements != null)
                   ? MediaPackageElementParser.getArrayAsXml(Arrays.asList(distributedElements)) : null;
         case Retract:
@@ -483,9 +532,9 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    * @throws IOException
    *           if an I/O error occurs
    */
-  private File findDuplicatedElementSource(final File source, final String mpId) throws IOException {
+  private File findDuplicatedElementSource(final File source, final String mpId, boolean useAlternateDirectory) throws IOException {
     String orgId = securityService.getOrganization().getId();
-    final Path rootPath = Paths.get(distributionDirectory.getAbsolutePath(), orgId);
+    final Path rootPath = Paths.get(getDistributionDirectory(useAlternateDirectory).getAbsolutePath(), orgId);
 
     if (!Files.exists(rootPath))
       return source;
@@ -538,12 +587,14 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    *
    * @return The file to copy the content to
    */
-  protected File getDistributionFile(String channelId, MediaPackage mp, MediaPackageElement element) {
+  protected File getDistributionFile(String channelId, MediaPackage mp, MediaPackageElement element,
+          Option<Boolean> useAltDir) {
     final String uriString = element.getURI().toString().split("\\?")[0];
-    final String directoryName = distributionDirectory.getAbsolutePath();
+    final boolean useAlternateDirectory = alternateServiceUrl != null ? useAltDir.getOrElse(uriString.startsWith(alternateServiceUrl)) : false;
+    final String directoryName = getDistributionDirectory(useAlternateDirectory).getAbsolutePath();
     final String orgId = securityService.getOrganization().getId();
-    if (uriString.startsWith(serviceUrl)) {
-      String[] splitUrl = uriString.substring(serviceUrl.length() + 1).split("/");
+    if (uriString.startsWith(getServiceUrl(useAlternateDirectory))) {
+      String[] splitUrl = uriString.substring(getServiceUrl(useAlternateDirectory).length() + 1).split("/");
       if (splitUrl.length < 5) {
         logger.warn("Malformed URI {}. Format must be .../{orgId}/{channelId}/{mediapackageId}/{elementId}/{fileName}."
                         + " Trying URI without channelId", uriString);
@@ -561,9 +612,9 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    *
    * @return the filesystem directory
    */
-  protected File getMediaPackageDirectory(String channelId, MediaPackage mp) {
+  protected File getMediaPackageDirectory(String channelId, MediaPackage mp, boolean useAlternateDirectory) {
     final String orgId = securityService.getOrganization().getId();
-    return new File(distributionDirectory, path(orgId, channelId, mp.getIdentifier().compact()));
+    return new File(getDistributionDirectory(useAlternateDirectory), path(orgId, channelId, mp.getIdentifier().compact()));
   }
 
   /**
@@ -577,12 +628,13 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    * @throws URISyntaxException
    *           if the concrete implementation tries to create a malformed uri
    */
-  protected URI getDistributionUri(String channelId, String mediaPackageId, MediaPackageElement element)
+  protected URI getDistributionUri(String channelId, String mediaPackageId, MediaPackageElement element,
+          boolean useAlternateDirectory)
           throws URISyntaxException {
     String elementId = element.getIdentifier();
     String fileName = FilenameUtils.getName(element.getURI().toString());
     String orgId = securityService.getOrganization().getId();
-    String destinationURI = UrlSupport.concat(serviceUrl, orgId, channelId, mediaPackageId, elementId, fileName);
+    String destinationURI = UrlSupport.concat(getServiceUrl(useAlternateDirectory), orgId, channelId, mediaPackageId, elementId, fileName);
     return new URI(destinationURI);
   }
 
