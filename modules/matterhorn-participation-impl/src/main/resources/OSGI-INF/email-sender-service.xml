@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.impl.OsgiEmailSenderService"
+               immediate="true">
+  <implementation class="org.opencastproject.pm.impl.OsgiEmailSenderService" />
+  <property name="service.pid" value="org.opencastproject.pm.impl.OsgiEmailSenderService" />
+  <property name="service.description" value="Participation management email sender" />
+  <service>
+    <provide interface="org.opencastproject.pm.api.EmailSender" />
+    <provide interface="org.osgi.service.cm.ManagedService" />
+  </service>
+  <reference name="participationManagementDatabase"
+             interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
+             cardinality="1..1"
+             policy="static"
+             bind="setDb" />
+  <reference name="smtpService"
+             interface="org.opencastproject.messages.MailService"
+             cardinality="1..1"
+             policy="static"
+             bind="setMailService" />
+</scr:component>

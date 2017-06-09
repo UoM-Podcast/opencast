@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.syllabus.impl.scheduling.DassRequirementServicePublisher"
+               immediate="true"
+               activate="activate"
+               deactivate="deactivate">
+  <implementation class="org.opencastproject.pm.syllabus.impl.scheduling.DassRequirementServicePublisher" />
+  <!-- necessary for the ConfigurationManagement to pick up the config properties and call updated(Dictionary) -->
+  <property name="service.pid" 
+            value="org.opencastproject.pm.syllabus.impl.scheduling.DassRequirementServicePublisher" />
+  <property name="service.description"
+            value="Dass database connector service publisher" />
+  <service>
+    <provide interface="org.osgi.service.cm.ManagedService" />
+  </service>
+</scr:component>

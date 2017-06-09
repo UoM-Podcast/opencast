@@ -55,6 +55,11 @@
       <directory>../../docs/guides</directory>
       <outputDirectory>docs/guides</outputDirectory>
     </fileSet>
+    
+    <fileSet>
+      <directory>../../tmp/pmm-test-emails</directory>
+      <outputDirectory>data/tmp/pmm-test-emails</outputDirectory>
+    </fileSet>
 
     <fileSet>
       <directory>../../docs/scripts</directory>

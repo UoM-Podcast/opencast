@@ -36,14 +36,16 @@ public final class Mail {
   private final EmailAddress sender;
   private final Option<EmailAddress> replyTo;
   private final List<EmailAddress> recipients;
+  private final Option<List<EmailAddress>> copiedRecipients;
   private final String subject;
   private final String body;
 
-  public Mail(EmailAddress sender, Option<EmailAddress> replyTo, List<EmailAddress> recipients, String subject,
+  public Mail(EmailAddress sender, Option<EmailAddress> replyTo, List<EmailAddress> recipients, Option<List<EmailAddress>> copiedRecipients, String subject,
           String body) {
     this.sender = sender;
     this.replyTo = replyTo;
     this.recipients = recipients;
+    this.copiedRecipients = copiedRecipients;
     this.subject = subject;
     this.body = body;
   }
@@ -58,6 +60,10 @@ public final class Mail {
 
   public List<EmailAddress> getRecipients() {
     return recipients;
+  }
+
+  public Option<List<EmailAddress>> getCopiedRecipients() {
+    return copiedRecipients;
   }
 
   public String getBody() {

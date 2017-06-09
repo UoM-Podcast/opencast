@@ -1,0 +1,58 @@
+@import "../reindeer/legacy-styles.css";
+
+/* Add theme specific styles here */
+span.v-menubar-menuitem-main-title {
+  font-size: 15pt;
+  color: white;
+}
+
+span.v-menubar-menuitem-main-title {
+  color: #a30303 !important;
+  text-shadow: none;
+}
+
+.v-menubar {
+  width: 100%;
+  height: 90px;
+  background-color: white;
+  background-size: 175px;
+  padding-left: 200px;
+  line-height: 90px;
+  background-position: 20px 20px;
+  background-image: url("img/opencast.svg");
+  background-repeat: no-repeat;
+}
+
+body > div:first-child {
+  background-color: white !important;
+}
+
+div.PM {
+  font-family: verdana, sans-serif;
+  font-size: 1.2em !important;
+  letter-spacing: 0pt !important;
+}
+
+div.pm_opted_out {
+  font-weight: bold;
+  color: red;
+}
+
+div.pm_email_failed {
+  /* font-weight: bold;*/  
+  color: red;
+}
+
+div.page-title {
+  font-family: verdana, sans-serif;
+  font-size: 11pt !important;
+  font-weight: bold;
+  letter-spacing: -0.8pt !important;
+}
+
+div.page-sub-title {
+  font-family: verdana, sans-serif;
+  font-size: 10pt !important;
+  font-weight: bold;
+  letter-spacing: -0.8pt;
+}

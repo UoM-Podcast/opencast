@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.impl.persistence.PersonUserProvider"
+               immediate="true"
+               activate="activate">
+  <implementation class="org.opencastproject.pm.impl.persistence.PersonUserProvider" />
+  <property name="service.description" value="Participation Management Person User Provider" />
+  <service>
+    <provide interface="org.opencastproject.security.api.UserProvider" />
+  </service>
+  <reference name="persistence"
+             interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
+             cardinality="1..1"
+             policy="static"
+             bind="setDatabase" />
+  <reference name="security"
+             interface="org.opencastproject.security.api.SecurityService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService" />
+</scr:component>

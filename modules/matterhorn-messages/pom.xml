@@ -169,7 +169,8 @@
             <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
             <Build-Number>${buildNumber}</Build-Number>
             <Export-Package>
-              org.opencastproject.messages
+              org.opencastproject.messages;version=${project.version},
+              org.opencastproject.messages.persistence;version=${project.version}
             </Export-Package>
             <Service-Component>
               OSGI-INF/mail-service.xml
