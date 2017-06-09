@@ -57,6 +57,11 @@
         <module>dist-complete</module>
       </modules>
     </profile>
+
+    <profile>
+      <id>none</id>
+      <modules />
+    </profile>
   </profiles>
 
   <build>
