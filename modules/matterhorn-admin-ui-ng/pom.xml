@@ -99,6 +99,12 @@
         </dependency>
         <dependency>
             <groupId>org.opencastproject</groupId>
+            <artifactId>matterhorn-participation-api</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.opencastproject</groupId>
             <artifactId>matterhorn-composer-service-api</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>

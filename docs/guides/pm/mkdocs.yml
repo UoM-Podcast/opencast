@@ -1,0 +1,19 @@
+site_name: Opencast - Participation Management Docs
+
+# Default theme used is readthedocs
+theme: readthedocs
+
+
+# The directory to which the site is built using mkdocs
+site_dir: 'site'
+
+pages:
+- Opencast Participation Management: 'index.md'
+- Important Concepts in Syllabus Plus: 'sPlusConcepts.md'
+- Database Model: 'dbmodel.md'
+- Module Documentation: 'modules.md'
+- Module Configuration: 'modules/config.md'
+- API Documentation: 'modules/api.md'
+- REST endpoints: 'modules/rest.md' 
+- Service Documentation: 'services.md'
+- User Interfaces: 'ui.md'

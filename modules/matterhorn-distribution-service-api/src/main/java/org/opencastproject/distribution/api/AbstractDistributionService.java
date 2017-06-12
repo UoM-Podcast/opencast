@@ -39,8 +39,14 @@ public abstract class AbstractDistributionService extends AbstractJobProducer {
   /** Path to the distribution directory */
   protected File distributionDirectory = null;
 
+  /** Path to the alternate distribution directory */
+  protected File alternateDistributionDirectory = null;
+
   /** this media download service's base URL */
   protected String serviceUrl = null;
+
+  /** this media download service's alternate base URL */
+  protected String alternateServiceUrl = null;
 
   /** The remote service registry */
   protected ServiceRegistry serviceRegistry = null;

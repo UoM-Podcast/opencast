@@ -1,0 +1,19 @@
+Dear Colleague,
+
+I am writing to make you aware that the following unit(s) on which you teach have been scheduled to take place in venues which  feature automated lecture capture technology. This email notification is sent to staff at the beginning of the semester or during the semester if we detect changes to the timetabling of your unit.
+
+<#list modules as module>
+${module.name}<#if module.description?? && module.description != "">, ${module.description}</#if>
+</#list>
+
+Note that no video cameras are used in the teaching environment, but instead the podcast system directly records the output of the data projector and an audio track from the lecture theatre microphones. The system has proven to be easy to use and popular with students.
+
+If a teaching event is scheduled the podcasting system will automatically detect it and schedule it for recording. 
+
+Lastly, if you feel automated recording of your lectures is not appropriate for your unit (for example, because chalk/white boards etc. are not recorded), or you wish to opt-out for other reasons please use the link below.
+
+${optOutLink}
+
+If you are the unit coordinator for the above unit(s), please forward this message to all staff teaching on your unit as, in some cases, they may not be always be identified in the timetable system and therefore may not be sent this message directly.
+
+

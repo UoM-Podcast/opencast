@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.syllabus.impl.scheduling.ParticipationFeederServiceImpl"
+               immediate="true"
+               activate="activate"
+               deactivate="deactivate">
+  <implementation class="org.opencastproject.pm.syllabus.impl.scheduling.ParticipationFeederServiceImpl" />
+  <property name="service.pid" value="org.opencastproject.pm.syllabus.impl.scheduling.ParticipationFeederServiceImpl" />
+  <property name="service.description" value="Syllabus+ participation management feeder" />
+  <service>
+    <provide interface="org.opencastproject.pm.api.scheduling.ParticipationFeederService" />
+    <provide interface="org.osgi.service.cm.ManagedService" />
+  </service>
+  <reference name="syllabus"
+             interface="org.opencastproject.pm.syllabus.api.SyllabusService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSyllabusService" />
+  <reference name="participationDatabase"
+             interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
+             cardinality="1..1"
+             policy="static"
+             bind="setPersistence" />
+  <reference name="security"
+             interface="org.opencastproject.security.api.SecurityService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService" />
+  <reference name="orgDirectory"
+             interface="org.opencastproject.security.api.OrganizationDirectoryService"
+             cardinality="1..1"
+             policy="static"
+             bind="setOrganizationDirectoryService" />
+  <reference name="requirement"
+             interface="org.opencastproject.requirement.api.RequirementService"
+             cardinality="1..1"
+             policy="static"
+             bind="setRequirementService"/>
+</scr:component>

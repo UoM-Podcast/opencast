@@ -57,7 +57,7 @@ public class OaiPmhPublicationServiceRemoteImpl extends RemoteBase implements Oa
 
   @Override
   public Job publish(MediaPackage mediaPackage, String channel, Set<String> downloadIds, Set<String> streamingIds,
-          boolean checkAvailability) throws PublicationException, MediaPackageException {
+          boolean checkAvailability, boolean useAlternateDirectory) throws PublicationException, MediaPackageException {
     final String mediapackageXml = MediaPackageParser.getAsXml(mediaPackage);
     final List<BasicNameValuePair> params = new ArrayList<BasicNameValuePair>();
     params.add(new BasicNameValuePair("mediapackage", mediapackageXml));
@@ -65,6 +65,7 @@ public class OaiPmhPublicationServiceRemoteImpl extends RemoteBase implements Oa
     params.add(new BasicNameValuePair("downloadElementIds", StringUtils.join(downloadIds, ";;")));
     params.add(new BasicNameValuePair("streamingElementIds", StringUtils.join(streamingIds, ";;")));
     params.add(new BasicNameValuePair("checkAvailability", Boolean.toString(checkAvailability)));
+    params.add(new BasicNameValuePair("useAlternateDirectory", Boolean.toString(useAlternateDirectory)));
     final HttpPost post = new HttpPost();
     HttpResponse response = null;
     try {

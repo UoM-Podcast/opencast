@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.syllabus.impl.snapcount.SnapCountServiceImpl"
+               immediate="true"
+               activate="activate"
+               deactivate="deactivate">
+  <implementation class="org.opencastproject.pm.syllabus.impl.snapcount.SnapCountServiceImpl" />
+  <property name="service.pid" value="org.opencastproject.pm.syllabus.impl.snapcount.SnapCountServiceImpl" />
+  <property name="service.description" value="Manchester participation management Orchestrator" />
+  <service>
+    <provide interface="org.opencastproject.pm.api.scheduling.SnapCountService" />
+    <provide interface="org.osgi.service.cm.ManagedService" />
+  </service>
+  <reference name="syllabus"
+             interface="org.opencastproject.pm.syllabus.api.SyllabusService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSyllabusService" />
+  <reference name="participationDatabase"
+             interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
+             cardinality="1..1"
+             policy="static"
+             bind="setPersistence" />
+  <reference name="security"
+             interface="org.opencastproject.security.api.SecurityService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService" />
+  <reference name="scheduleFeederService"
+             interface="org.opencastproject.pm.api.scheduling.ScheduleFeederService"
+             cardinality="0..1"
+             policy="dynamic"
+             bind="setScheduleFeederService"
+             unbind="unsetScheduleFeederService" />
+  <reference name="emailSenderService"
+             interface="org.opencastproject.pm.api.EmailSender"
+             cardinality="0..1"
+             policy="dynamic"
+             bind="setEmailSenderService"
+             unbind="unsetEmailSenderService" />
+  <reference name="orgDirectory"
+             interface="org.opencastproject.security.api.OrganizationDirectoryService"
+             cardinality="1..1"
+             policy="static"
+             bind="setOrganizationDirectoryService" />  
+  <reference name="requirement"
+             interface="org.opencastproject.requirement.api.RequirementService"
+             cardinality="0..1"
+             policy="dynamic"
+             bind="setRequirementService"/>
+</scr:component>

@@ -11,20 +11,15 @@
 	<service>
 		<provide interface="org.opencastproject.adminui.endpoint.UsersEndpoint" />
 	</service>
-	
-    <reference name="userDirectoryService" 
+
+    <reference name="userDirectoryService"
     			interface="org.opencastproject.security.api.UserDirectoryService"
-      			cardinality="1..1" 
-      			policy="static" 
+      			cardinality="1..1"
+      			policy="static"
       			bind="setUserDirectoryService" />
-   <reference name="JpaUserAndRoleProvider" 
+   <reference name="JpaUserAndRoleProvider"
    		      interface="org.opencastproject.userdirectory.JpaUserAndRoleProvider"
               cardinality="1..1" policy="static" bind="setJpaUserAndRoleProvider" />
-   <reference bind="setParticipationPersistence"
-             cardinality="0..1"
-             interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
-             name="participationPersistence"
-             policy="dynamic" />
    <reference name="securityService" interface="org.opencastproject.security.api.SecurityService"
     cardinality="1..1" policy="static" bind="setSecurityService" />
 </scr:component>

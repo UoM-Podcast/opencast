@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence
+  version="2.1"
+  xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence
+    http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd">
+  <persistence-unit name="org.opencastproject.pm.syllabus" transaction-type="RESOURCE_LOCAL">
+    <class>org.opencastproject.pm.syllabus.impl.VEquipmentDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VStudentSetDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VActivityDateTimeDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VActivityParentsDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VActivityStaffDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VZonesDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VCourseModuleDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VActivityDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VCourseDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VActivityLocationDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VStaffDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VLocationSuitabilityDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VActivityEquipmentDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VModuleDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VDepartmentDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VLocationDto</class>
+    <class>org.opencastproject.pm.syllabus.impl.VActivityStudentSetDto</class>
+  </persistence-unit>
+</persistence>

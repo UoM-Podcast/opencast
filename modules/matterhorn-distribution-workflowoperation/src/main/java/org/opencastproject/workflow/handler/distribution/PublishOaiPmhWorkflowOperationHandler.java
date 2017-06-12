@@ -80,6 +80,7 @@ public class PublishOaiPmhWorkflowOperationHandler extends AbstractWorkflowOpera
   private static final String STREAMING_TAGS = "streaming-tags";
   private static final String STREAMING_FLAVORS = "streaming-flavors";
   private static final String CHECK_AVAILABILITY = "check-availability";
+  private static final String USE_ALTERNATE_DIR = "use-alternate-directory";
   private static final String REPOSITORY = "repository";
   private static final String EXTERNAL_TEMPLATE = "external-template";
   private static final String EXTERNAL_CHANNEL_NAME = "external-channel";
@@ -115,6 +116,8 @@ public class PublishOaiPmhWorkflowOperationHandler extends AbstractWorkflowOpera
             "Distribute any mediapackage elements with one of these (comma separated) tags to streaming.");
     CONFIG_OPTIONS.put(CHECK_AVAILABILITY,
             "( true | false ) defaults to true. Check if the distributed download artifact is available at its URL");
+    CONFIG_OPTIONS.put(USE_ALTERNATE_DIR,
+            "( true | false ) use alternate distribution directory");
     CONFIG_OPTIONS.put(REPOSITORY, "The OAI-PMH repository");
     CONFIG_OPTIONS.put(EXTERNAL_CHANNEL_NAME, "The external element's channel name");
     CONFIG_OPTIONS.put(EXTERNAL_TEMPLATE,
@@ -163,6 +166,8 @@ public class PublishOaiPmhWorkflowOperationHandler extends AbstractWorkflowOpera
             STREAMING_FLAVORS));
     boolean checkAvailability = option(workflowInstance.getCurrentOperation().getConfiguration(CHECK_AVAILABILITY))
             .bind(trimToNone).map(toBool).getOrElse(true);
+    boolean useAlternateDir = option(workflowInstance.getCurrentOperation().getConfiguration(USE_ALTERNATE_DIR))
+            .bind(trimToNone).map(toBool).getOrElse(false);
     String repository = StringUtils.trimToNull(workflowInstance.getCurrentOperation().getConfiguration(REPOSITORY));
 
     Opt<String> externalChannel = getOptConfig(workflowInstance.getCurrentOperation(), EXTERNAL_CHANNEL_NAME);
@@ -234,7 +239,7 @@ public class PublishOaiPmhWorkflowOperationHandler extends AbstractWorkflowOpera
       Job publishJob = null;
       try {
         publishJob = publicationService.publish(mediaPackage, repository, downloadElementIds, streamingElementIds,
-                checkAvailability);
+                checkAvailability, useAlternateDir);
       } catch (MediaPackageException e) {
         throw new WorkflowOperationException("Error parsing media package", e);
       } catch (PublicationException e) {
