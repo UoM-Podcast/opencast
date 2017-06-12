@@ -141,8 +141,7 @@
 
   </feature>
 
-  <feature name="opencast-participation-management">
-    <!-- vaadin -->
+  <feature name="opencast-participation-management-core" version="0.0.0">
     <bundle start-level="80">mvn:com.vaadin/vaadin-shared/7.0.3</bundle>
     <bundle start-level="80">mvn:com.vaadin/vaadin-shared-deps/1.0.2</bundle>
     <bundle start-level="80">mvn:com.vaadin/vaadin-client-compiled/7.0.3</bundle>
@@ -151,26 +150,32 @@
     <bundle start-level="80">mvn:com.vaadin/vaadin-themes/7.0.3</bundle>
     <bundle start-level="80">mvn:org.jsoup/jsoup/1.7.2</bundle>
     <bundle start-level="80">mvn:org.opencastproject/matterhorn-vaadin/${project.version}</bundle>
-    
-    <!-- PM modules -->
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-persistence/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-conductor/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-common/${project.version}</bundle>
+  </feature>
+
+  <feature name="opencast-participation-management-admin" version="0.0.0">
+    <feature>opencast-participation-management-core</feature>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-common/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher-vaadin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-vaadin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-dass/${project.version}</bundle>
   </feature>
 
+  <feature name="opencast-participation-management-teacher" version="0.0.0">
+    <feature>opencast-participation-management-core</feature>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher-vaadin/${project.version}</bundle>
+  </feature>
+
   <feature name="opencast-allinone">
     <feature start-level="80">opencast-core</feature>
-    <feature start-level="82">opencast-participation-management</feature>
+    <feature start-level="82">opencast-participation-management-admin</feature>
+    <feature start-level="82">opencast-participation-management-teacher</feature>
 
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-admin-ui-ng/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-api/${project.version}</bundle>
@@ -306,6 +311,7 @@
 
   <feature name="opencast-admin">
     <feature start-level="80">opencast-core</feature>
+    <feature start-level="82">opencast-participation-management-admin</feature>
 
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-admin-ui-ng/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
@@ -396,6 +402,8 @@
 
   <feature name="opencast-adminpresentation">
     <feature start-level="80">opencast-core</feature>
+    <feature start-level="82">opencast-participation-management-admin</feature>
+    <feature start-level="82">opencast-participation-management-teacher</feature>
 
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-admin-ui-ng/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-api/${project.version}</bundle>
@@ -559,6 +567,7 @@
 
   <feature name="opencast-adminworker">
     <feature start-level="80">opencast-core</feature>
+    <feature start-level="82">opencast-participation-management-admin</feature>
 
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-admin-ui-ng/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
@@ -652,7 +661,8 @@
 
   <feature name="opencast-presentation">
     <feature start-level="80">opencast-core</feature>
-
+    <feature start-level="82">opencast-participation-management-teacher</feature>
+    
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-acl/${project.version}</bundle>
@@ -676,6 +686,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-video-videojs/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-ui/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-lti/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-messages/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-oaipmh/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-oaipmh-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-oaipmh-persistence/${project.version}</bundle>
