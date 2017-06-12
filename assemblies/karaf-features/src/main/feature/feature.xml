@@ -151,7 +151,6 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-persistence/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-conductor/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui/${project.version}</bundle>

@@ -140,7 +140,6 @@
     <module>modules/matterhorn-participation-api</module>
     <module>modules/matterhorn-participation-impl</module>
     <module>modules/matterhorn-participation-persistence</module>
-    <module>modules/matterhorn-participation-management-conductor</module>
     <module>modules/matterhorn-participation-management-syllabus-api</module>
     <module>modules/matterhorn-participation-management-syllabus-impl</module>
     <module>modules/matterhorn-participation-management-ui</module>
