@@ -389,7 +389,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
 
     logger.debug("Creating Dublin Core catalog for course {}", courseId);
 
-    DublinCoreCatalog dc = DublinCores.mkOpencastEpisode().getCatalog();
+    DublinCoreCatalog dc = DublinCores.mkOpencastSeries().getCatalog();
     dc.set(DublinCore.PROPERTY_IDENTIFIER, seriesId);
 
     if (StringUtils.isNotEmpty(course.getName())) {
