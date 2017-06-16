@@ -50,6 +50,8 @@ import org.opencastproject.search.api.SearchException;
 import org.opencastproject.search.api.SearchQuery;
 import org.opencastproject.search.api.SearchResult;
 import org.opencastproject.search.api.SearchService;
+import org.opencastproject.security.api.Organization;
+import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 import org.opencastproject.util.MimeTypes;
@@ -107,6 +109,10 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
   private static final String STREAMING_TARGET_SUBFLAVOR = "streaming-target-subflavor";
   private static final String CHECK_AVAILABILITY = "check-availability";
   private static final String STRATEGY = "strategy";
+  private static final String USE_ALTERNATE_DIR = "use-alternate-directory";
+
+  /** The default path to the player **/
+  protected static final String DEFAULT_PLAYER_PATH = "/engage/ui/watch.html";
 
   /** The streaming distribution service */
   private DistributionService streamingDistributionService = null;
@@ -119,6 +125,9 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
 
   /** The server url */
   private URL serverUrl;
+
+  /** To get the tenant path to the player URL **/
+  private SecurityService securityService;
 
   /** Whether to distribute to streaming server */
   private boolean distributeStreaming = false;
@@ -179,6 +188,8 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
             "( true | false ) defaults to true. Check if the distributed download artifact is available at its URL");
     CONFIG_OPTIONS.put(STRATEGY,
             "Strategy if there is an existing Publication");
+    CONFIG_OPTIONS.put(USE_ALTERNATE_DIR,
+            "( true | false ) use alternate distribution directory");
   }
 
   @Override
@@ -228,6 +239,8 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
 
     boolean checkAvailability = option(op.getConfiguration(CHECK_AVAILABILITY)).bind(trimToNone).map(toBool)
             .getOrElse(true);
+    boolean useAlternateDir = option(op.getConfiguration(USE_ALTERNATE_DIR)).bind(trimToNone).map(toBool)
+            .getOrElse(false);
 
     String[] sourceDownloadTags = StringUtils.split(downloadSourceTags, ",");
     String[] targetDownloadTags = StringUtils.split(downloadTargetTags, ",");
@@ -321,7 +334,7 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
       //distribute Elements
       try {
         if (downloadElementIds.size() > 0) {
-          Job job = downloadDistributionService.distribute(CHANNEL_ID, mediaPackage, downloadElementIds, checkAvailability);
+          Job job = downloadDistributionService.distribute(CHANNEL_ID, mediaPackage, downloadElementIds, checkAvailability, useAlternateDir);
           if (job != null) {
             jobs.add(job);
           }
@@ -387,9 +400,10 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
                   ENGAGE_URL_PROPERTY);
         }
 
+        // create the publication URI (used by Admin UI for event details link)
+        URI engageUri = this.createEngageUri(engageBaseUrl.toURI(), mediaPackage);
+
         // Create new distribution element
-        URI engageUri = URIUtils.resolve(engageBaseUrl.toURI(), "/engage/ui/watch.html?id="
-                + mediaPackage.getIdentifier().compact());
         Publication publicationElement = PublicationImpl.publication(UUID.randomUUID().toString(), CHANNEL_ID,
                 engageUri, MimeTypes.parseMimeType("text/html"));
         mediaPackage.add(publicationElement);
@@ -426,6 +440,27 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
         throw new WorkflowOperationException(e);
       }
     }
+  }
+
+  /**
+   * Local utility to assemble player path for this class
+   *
+   * @param engageUri
+   * @param mediapackage
+   * @return the assembled player URI for this mediapackage
+   */
+  protected URI createEngageUri(URI engageUri, MediaPackage mp) {
+    String playerPath = null;
+    String configedPlayerPath = null;
+    // Use the current user's organizational information for the player path
+    Organization currentOrg = securityService.getOrganization();
+    if (currentOrg != null) {
+      configedPlayerPath = StringUtils
+              .trimToNull(currentOrg.getProperties().get(ConfigurablePublishWorkflowOperationHandler.PLAYER_PROPERTY));
+    }
+    // If not configuration, use a default path
+    playerPath = configedPlayerPath != null ? configedPlayerPath : DEFAULT_PLAYER_PATH;
+    return URIUtils.resolve(engageUri, playerPath + "?id=" + mp.getIdentifier().compact());
   }
 
   /**
@@ -743,6 +778,11 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
     } catch (UnauthorizedException | NotFoundException ex) {
       logger.error("Retraction failed of Mediapackage: { }", mediaPackage.getIdentifier().toString(), ex);
     }
+  }
+
+  /** OSGi DI */
+  protected void setSecurityService(SecurityService securityService) {
+    this.securityService = securityService;
   }
 
 }

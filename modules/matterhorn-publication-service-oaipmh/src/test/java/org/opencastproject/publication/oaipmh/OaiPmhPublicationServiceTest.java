@@ -63,7 +63,7 @@ public class OaiPmhPublicationServiceTest {
     service = new OaiPmhPublicationServiceImpl() {
       @Override
       protected MediaPackage publishElementsToDownload(Job job, MediaPackage mediaPackage, String channel,
-              Set<String> downloadIds, Set<String> streamingIds, boolean checkAvailability)
+              Set<String> downloadIds, Set<String> streamingIds, boolean checkAvailability, boolean usAlternateDirectory)
               throws PublicationException, MediaPackageException {
         return mp;
       }
@@ -147,9 +147,9 @@ public class OaiPmhPublicationServiceTest {
     Set<String> elementIds = new HashSet<>();
     elementIds.add("track-1");
 
-    Publication publish = service.publishInternal(null, mp, "doi", elementIds, Collections.<String> set(), false);
+    Publication publish = service.publishInternal(null, mp, "doi", elementIds, Collections.<String> set(), false, false);
     Assert.assertNotNull(publish);
-    Assert.assertEquals("http://localhost:8080/oaipmh/doi?verb=ListMetadataFormats&identifier=10.0000-1",
+    Assert.assertEquals("http://localhost:8080/oaipmh/doi?verb=GetRecord&metadataPrefix=matterhorn&identifier=10.0000-1",
             publish.getURI().toString());
     Assert.assertEquals(OaiPmhPublicationServiceImpl.PUBLICATION_CHANNEL_PREFIX.concat("doi"), publish.getChannel());
     Assert.assertEquals("text/xml", "text/xml");

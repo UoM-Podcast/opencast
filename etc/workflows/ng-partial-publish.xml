@@ -386,6 +386,7 @@
         <configuration key="download-source-tags">engage-download,atom,rss,mobile</configuration>
         <configuration key="streaming-source-tags">engage-streaming</configuration>
         <configuration key="check-availability">true</configuration>
+        <configuration key="use-alternate-directory">${distributeToAlternate}</configuration>
       </configurations>
     </operation>
 
@@ -432,6 +433,7 @@
         <configuration key="streaming-tags">engage-streaming</configuration>
         <configuration key="check-availability">true</configuration>
         <configuration key="repository">default</configuration>
+        <configuration key="use-alternate-directory">${distributeToAlternate}</configuration>
       </configurations>
     </operation>
 

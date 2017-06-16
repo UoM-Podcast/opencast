@@ -43,7 +43,9 @@ import org.opencastproject.archive.api.ResultItem;
 import org.opencastproject.archive.api.ResultSet;
 import org.opencastproject.archive.api.UriRewriter;
 import org.opencastproject.archive.api.Version;
+import org.opencastproject.archive.base.ArchiveBase;
 import org.opencastproject.archive.base.QueryBuilder;
+import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageImpl;
 import org.opencastproject.security.api.SecurityService;
@@ -157,6 +159,50 @@ public abstract class ArchiveRestEndpointBase<RS extends ResultSet> implements H
           return noContent();
         else
           return notFound();
+      }
+    });
+  }
+
+  @DELETE
+  @Path("delete/{mediaPackageId}/tracks")
+  @RestQuery(name = "removeTracks",
+          description = "Remove a mediapackage's tracks from the archive. All previous versions are removed.",
+          pathParameters = {
+            @RestParameter(name = "mediaPackageId", isRequired = true,
+                    type = RestParameter.Type.STRING, description = "The media package indentifier.")},
+          reponses = {
+            @RestResponse(description = "The mediapackage's elements were removed, no content to return.", responseCode = HttpServletResponse.SC_NO_CONTENT),
+            @RestResponse(description = "There has been an internal error and the mediapackage's elements could not be deleted", responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR)},
+          returnDescription = "No content is returned.")
+  public Response deleteTracks(@PathParam("mediaPackageId") final String mediaPackageId) {
+    return handleException(new Function0.X<Response>() {
+      @Override
+      public Response xapply() throws NotFoundException {
+        if (mediaPackageId != null) {
+          final Query idQuery = QueryBuilder.query()
+                  .currentOrganization(getSecurityService())
+                  .mediaPackageId(mediaPackageId)
+                  .onlyLastVersion(true);
+          final ResultSet result = getArchive().find(idQuery, uriRewriter);
+          if (result.size() > 1) {
+            return serverError();
+          }
+          if (result.size() == 0) {
+            return notFound();
+          }
+
+          final ResultItem item = result.getItems().get(0);
+          MediaPackage mp = (MediaPackage) item.getMediaPackage().clone();
+
+          if (((ArchiveBase)getArchive()).deleteTracks((MediaPackage) item.getMediaPackage())) {
+            return noContent();
+          } else {
+            return notFound();
+          }
+
+        } else {
+          return notFound();
+        }
       }
     });
   }

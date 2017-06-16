@@ -45,7 +45,7 @@ public interface OaiPmhPublicationService {
 
   /**
    * Publishes some media package elements.
-   * 
+   *
    * @param mediaPackage
    *          the media package
    * @param repository
@@ -63,12 +63,12 @@ public interface OaiPmhPublicationService {
    *           if there was a problem with the mediapackage element
    */
   Job publish(MediaPackage mediaPackage, String repository, Set<String> downloadElementIds,
-      Set<String> streamingElementIds, boolean checkAvailability) throws PublicationException,
+      Set<String> streamingElementIds, boolean checkAvailability, boolean useAlternateDirectory) throws PublicationException,
       MediaPackageException;
 
   /**
    * Retract a media package from the publication channel.
-   * 
+   *
    * @param mediaPackage
    *          the media package
    * @param repository

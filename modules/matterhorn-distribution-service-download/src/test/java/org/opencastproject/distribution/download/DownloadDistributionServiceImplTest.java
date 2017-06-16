@@ -45,6 +45,7 @@ import org.opencastproject.util.PathSupport;
 import org.opencastproject.util.UrlSupport;
 import org.opencastproject.util.data.Either;
 import org.opencastproject.util.data.Function;
+import org.opencastproject.util.data.Option;
 import org.opencastproject.workspace.api.Workspace;
 
 import org.apache.commons.io.FileUtils;
@@ -227,11 +228,11 @@ public class DownloadDistributionServiceImplTest {
     jobBarrier = new JobBarrier(null, serviceRegistry, 500, job6, job7, job8, job9);
     jobBarrier.waitForJobs();
 
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("track-1")).isFile());
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-1")).isFile());
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-2")).isFile());
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("notes")).isFile());
-    Assert.assertTrue(service.getDistributionFile("oai-pmh", mp, mp.getElementById("track-1")).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("track-1"), Option.some(false)).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-1"), Option.some(false)).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-2"), Option.some(false)).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("notes"), Option.some(false)).isFile());
+    Assert.assertTrue(service.getDistributionFile("oai-pmh", mp, mp.getElementById("track-1"), Option.some(false)).isFile());
   }
 
   @Test
@@ -295,11 +296,11 @@ public class DownloadDistributionServiceImplTest {
     Assert.assertNotNull(mp.getElementById("catalog-2"));
     Assert.assertNotNull(mp.getElementById("notes"));
 
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("track-1")).isFile());
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-1")).isFile());
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-2")).isFile());
-    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("notes")).isFile());
-    Assert.assertTrue(service.getDistributionFile("oai-pmh", mp, mp.getElementById("notes")).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("track-1"), Option.some(false)).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-1"), Option.some(false)).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("catalog-2"), Option.some(false)).isFile());
+    Assert.assertFalse(service.getDistributionFile("engage-player", mp, mp.getElementById("notes"), Option.some(false)).isFile());
+    Assert.assertTrue(service.getDistributionFile("oai-pmh", mp, mp.getElementById("notes"), Option.some(false)).isFile());
   }
 
 }

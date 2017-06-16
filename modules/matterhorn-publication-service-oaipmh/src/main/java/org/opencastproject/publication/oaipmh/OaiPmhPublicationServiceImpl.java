@@ -21,7 +21,9 @@
 package org.opencastproject.publication.oaipmh;
 
 import static com.entwinemedia.fn.Stream.$;
+
 import static java.lang.String.format;
+
 import static org.opencastproject.mediapackage.MediaPackageSupport.Filters.ofChannel;
 import static org.opencastproject.util.JobUtil.waitForJobs;
 import static org.opencastproject.util.data.Collections.set;
@@ -77,6 +79,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -207,7 +210,7 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
 
   @Override
   public Job publish(MediaPackage mediaPackage, String repository, Set<String> downloadIds, Set<String> streamingIds,
-          boolean checkAvailability) throws PublicationException, MediaPackageException {
+          boolean checkAvailability, boolean useAlternateDirectory) throws PublicationException, MediaPackageException {
     if (mediaPackage == null)
       throw new MediaPackageException("Media package must be specified");
     if (StringUtils.isEmpty(repository))
@@ -219,14 +222,15 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
                       repository, // 1
                       StringUtils.join(downloadIds, SEPARATOR), // 2
                       StringUtils.join(streamingIds, SEPARATOR), // 3
-                      Boolean.toString(checkAvailability))); // 4
+                      Boolean.toString(checkAvailability), // 4
+                      Boolean.toString(useAlternateDirectory))); // 5
     } catch (ServiceRegistryException e) {
       throw new PublicationException("Unable to create a job", e);
     }
   }
 
   protected Publication publishInternal(Job job, MediaPackage mp, String repository, Set<String> downloadIds,
-          Set<String> streamingIds, boolean checkAvailability) throws PublicationException, MediaPackageException {
+          Set<String> streamingIds, boolean checkAvailability, boolean useAlternateDirectory) throws PublicationException, MediaPackageException {
     if (!oaiPmhServerInfo.hasRepo(repository)) {
       final String msg = format("OAI-PMH repository %s does not exist", repository);
       logger.error(msg);
@@ -243,7 +247,7 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
       }
       final Publication publication = createPublicationElement(mp.getIdentifier().compact(), repository);
       final MediaPackage mpPublication = publishElementsToDownload(job, mp, repository, downloadIds, streamingIds,
-              checkAvailability);
+              checkAvailability, useAlternateDirectory);
       if (mpPublication == null) {
         return null;
       }
@@ -280,9 +284,11 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
   /** Create a new publication element. */
   private Publication createPublicationElement(String mpId, String repository) throws PublicationException {
     for (String hostUrl : OaiPmhServerInfoUtil.oaiPmhServerUrlOfCurrentOrganization(securityService)) {
+      // UOM: This is a hack as the metadataPrefix is not known
+      String metadataPrefix = "matterhorn";
       final URI engageUri = URIUtils.resolve(
               URI.create(UrlSupport.concat(hostUrl, oaiPmhServerInfo.getMountPoint(), repository)),
-              "?verb=ListMetadataFormats&identifier=" + mpId);
+              "?verb=GetRecord&metadataPrefix=" + metadataPrefix + "&identifier=" + mpId);
       return PublicationImpl.publication(UUID.randomUUID().toString(), publicationChannelId(repository), engageUri,
               MimeTypes.parseMimeType(MIME_TYPE));
     }
@@ -307,14 +313,14 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
   }
 
   protected MediaPackage publishElementsToDownload(Job parentJob, MediaPackage mediaPackage, String repository,
-          Set<String> downloadIds, Set<String> streamingIds, boolean checkAvailability)
+          Set<String> downloadIds, Set<String> streamingIds, boolean checkAvailability, boolean useAlternateDirectory)
           throws PublicationException, MediaPackageException {
     // Distribute to download
     final List<P2<Job, String>> jobs = new ArrayList<>();
     final String pubChannelId = publicationChannelId(repository);
     try {
       for (String elementId : downloadIds) {
-        Job job = downloadDistributionService.distribute(pubChannelId, mediaPackage, elementId, checkAvailability);
+        Job job = downloadDistributionService.distribute(pubChannelId, mediaPackage, elementId, checkAvailability, useAlternateDirectory);
         if (job == null)
           continue;
         jobs.add(Products.E.p2(job, elementId));
@@ -421,8 +427,9 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
           final Set<String> downloadIds = set(StringUtils.split(arguments.get(2), SEPARATOR));
           final Set<String> streamingIds = set(StringUtils.split(arguments.get(3), SEPARATOR));
           boolean checkAvailability = BooleanUtils.toBoolean(arguments.get(4));
+          boolean useAlternateDirectory = BooleanUtils.toBoolean(arguments.get(5));
           MediaPackageElement publishedElement = publishInternal(job, mediaPackage, repository, downloadIds,
-                  streamingIds, checkAvailability);
+                  streamingIds, checkAvailability, useAlternateDirectory);
           return (publishedElement != null) ? MediaPackageElementParser.getAsXml(publishedElement) : null;
         case Retract:
           MediaPackageElement retractedElement = retractInternal(job, mediaPackage, repository);
@@ -466,27 +473,35 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
       if (job.getPayload() == null)
         continue;
 
-      final MediaPackageElement distributedElement = MediaPackageElementParser.getFromXml(job.getPayload());
+      List <MediaPackageElement> distributedElements = null;
+      try {
+        distributedElements = (List <MediaPackageElement>) MediaPackageElementParser.getArrayFromXml(job.getPayload());
+      } catch (MediaPackageException e) {
+        distributedElements = new LinkedList<>();
+        distributedElements.add(MediaPackageElementParser.getFromXml(job.getPayload()));
+      }
 
       // If the job finished successfully, but returned no new element, the channel simply doesn't support this
       // kind of element. So we just keep on looping.
-      if (distributedElement == null)
+      if (distributedElements == null || distributedElements.isEmpty())
         continue;
 
-      // Make sure the mediapackage is prompted to create a new identifier for this element
-      distributedElement.setIdentifier(null);
+      for (MediaPackageElement distributedElement : distributedElements) {
+        // Make sure the mediapackage is prompted to create a new identifier for this element
+        distributedElement.setIdentifier(null);
 
-      // Copy references from the source elements to the distributed elements
-      MediaPackageReference ref = sourceElement.getReference();
-      if (ref != null && mp.getElementByReference(ref) != null) {
-        MediaPackageReference newReference = (MediaPackageReference) ref.clone();
-        distributedElement.setReference(newReference);
+        // Copy references from the source elements to the distributed elements
+        MediaPackageReference ref = sourceElement.getReference();
+        if (ref != null && mp.getElementByReference(ref) != null) {
+          MediaPackageReference newReference = (MediaPackageReference) ref.clone();
+          distributedElement.setReference(newReference);
+        }
+
+        // Add the new element to the mediapackage
+        mp.add(distributedElement);
+        elementsToPublish.add(distributedElement.getIdentifier());
+        distributedElementIds.put(sourceElementId, distributedElement.getIdentifier());
       }
-
-      // Add the new element to the mediapackage
-      mp.add(distributedElement);
-      elementsToPublish.add(distributedElement.getIdentifier());
-      distributedElementIds.put(sourceElementId, distributedElement.getIdentifier());
 
     }
 

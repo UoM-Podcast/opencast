@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- - - - - - - - - ANSIBLE INFO - - - - - - - - - - - - - - - -->
+<!-- {{ ansible_managed }} -->
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+<definition xmlns="http://workflow.opencastproject.org">
+
+  <id>archive-strip</id>
+  <title>Archive Strip</title>
+  <tags>
+    <tag>archive</tag>
+  </tags>
+  <description>
+    Strip an archive of tracks and just leave the latest version.
+  </description>
+
+  <operations>
+
+    <!-- Archive the current state of the mediapackage -->
+
+    <operation
+      id="strip-archive"
+      fail-on-error="true"
+      exception-handler-workflow="archive-error"
+      description="Strip the archive of tracks and just leave the latest version">
+    </operation>
+
+    <!-- Cleanup the working file repository -->
+
+    <operation
+      id="cleanup"
+      fail-on-error="false"
+      description="Cleaning up">
+      <configurations>
+        <configuration key="preserve-flavors"></configuration>
+        <configuration key="delete-external">true</configuration>
+      </configurations>
+    </operation>
+
+  </operations>
+
+</definition>
