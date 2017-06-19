@@ -22,6 +22,7 @@
 package org.opencastproject.pm.impl.scheduling;
 
 import static java.lang.String.format;
+import static org.opencastproject.capture.CaptureParameters.INGEST_WORKFLOW_DEFINITION;
 import static org.opencastproject.util.data.Option.option;
 import static org.opencastproject.util.data.Tuple.tuple;
 import static org.opencastproject.util.data.functions.Strings.toLong;
@@ -146,7 +147,7 @@ public class ScheduleFeederRunner {
       caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(entry.getKey()), entry.getValue());
     }
 
-    caConfig.put("org.opencastproject.workflow.definition", workflow.get());
+    caConfig.put(INGEST_WORKFLOW_DEFINITION, workflow.get());
     return caConfig;
   }
 
