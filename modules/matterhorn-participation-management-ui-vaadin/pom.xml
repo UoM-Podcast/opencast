@@ -32,10 +32,11 @@
               org.opencastproject.pm.ui.admin.vaadin;version="${project.version}",
               org.opencastproject.pm.ui.common.components;version="${project.version}",
               org.opencastproject.pm.ui.common.util;version="${project.version}",
+              org.opencastproject.vaadin;version="${project.version}",
               VAADIN.themes.PM;version="${project.version}",
               VAADIN.themes.PM.img;version="${project.version}",
               javax.servlet;version="3.1.0",
-              com.vaadin.server;version="[7.0.3,7.1.0)"
+              com.vaadin.server;version="[7.1.0, 7.2.0)"
             </Import-Package>
             <Fragment-Host>com.vaadin.server</Fragment-Host>
           </instructions>
