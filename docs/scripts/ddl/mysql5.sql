@@ -845,24 +845,6 @@ CREATE TABLE mh_pm_synchronization_mh_pm_synchronized_recording (
   CONSTRAINT mhpmsynchrnztnmhpmsynchronizedrecordingSynchrnztnd FOREIGN KEY (Synchronization_id) REFERENCES mh_pm_synchronization (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-CREATE TABLE mh_message_signature_mh_comment (
-  MessageSignature_id BIGINT(20) NOT NULL,
-  comments_id BIGINT(20) NOT NULL,
-  PRIMARY KEY (MessageSignature_id,comments_id),
-  KEY FK_mh_message_signature_mh_comment_comments_id (comments_id),
-  CONSTRAINT FK_mh_message_signature_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mh_message_signature_mh_commentMessageSignature_id FOREIGN KEY (MessageSignature_id) REFERENCES mh_message_signature (id)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
-CREATE TABLE mh_message_template_mh_comment (
-  MessageTemplate_id BIGINT(20) NOT NULL,
-  comments_id BIGINT(20) NOT NULL,
-  PRIMARY KEY (MessageTemplate_id,comments_id),
-  KEY FK_mh_message_template_mh_comment_comments_id (comments_id),
-  CONSTRAINT FK_mh_message_template_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mh_message_template_mh_comment_MessageTemplate_id FOREIGN KEY (MessageTemplate_id) REFERENCES mh_message_template (id)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
 CREATE TABLE mh_pm_blacklist_mh_pm_period (
   Blacklist_id BIGINT(20) NOT NULL,
   periods_id BIGINT(20) NOT NULL,
@@ -922,15 +904,6 @@ CREATE TABLE mh_pm_message_template (
   CONSTRAINT FK_mh_pm_message_template_signature FOREIGN KEY (signature) REFERENCES mh_pm_message_signature (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-CREATE TABLE mh_pm_message_template_mh_comment (
-  MessageTemplate_id BIGINT(20) NOT NULL,
-  comments_id BIGINT(20) NOT NULL,
-  PRIMARY KEY (MessageTemplate_id,comments_id),
-  KEY FK_mh_pm_message_template_mh_comment_comments_id (comments_id),
-  CONSTRAINT FK_mh_pm_message_template_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mhpm_message_template_mh_commentMessageTemplate_id FOREIGN KEY (MessageTemplate_id) REFERENCES mh_pm_message_template (id)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
 CREATE TABLE mh_pm_message_template_mh_pm_comment (
   MessageTemplate_id BIGINT(20) NOT NULL,
   comments_id BIGINT(20) NOT NULL,
@@ -957,15 +930,6 @@ CREATE TABLE mh_pm_message_mh_pm_error (
   CONSTRAINT FK_mh_pm_message_mh_pm_error_errors_id FOREIGN KEY (errors_id) REFERENCES mh_pm_error (id) ON DELETE CASCADE,
   CONSTRAINT FK_mh_pm_message_mh_pm_error_Message_id FOREIGN KEY (Message_id) REFERENCES mh_pm_message (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE mh_pm_message_signature_mh_comment (
-  MessageSignature_id BIGINT(20) NOT NULL,
-  comments_id BIGINT(20) NOT NULL,
-  PRIMARY KEY (MessageSignature_id,comments_id),
-  KEY FK_mh_pm_message_signature_mh_comment_comments_id (comments_id),
-  CONSTRAINT FK_mh_pm_message_signature_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mhpmmessagesignature_mh_commentMessageSignature_id FOREIGN KEY (MessageSignature_id) REFERENCES mh_pm_message_signature (id)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE mh_pm_synchronization_mh_pm_error (
   Synchronization_id BIGINT(20) NOT NULL,

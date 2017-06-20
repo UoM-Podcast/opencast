@@ -839,22 +839,6 @@ CREATE TABLE mh_pm_synchronization_mh_pm_synchronized_recording (
   CONSTRAINT mhpmsynchrnztnmhpmsynchronizedrecordingSynchrnztnd FOREIGN KEY (Synchronization_id) REFERENCES mh_pm_synchronization (id) ON DELETE CASCADE
 );
 
-CREATE TABLE mh_message_signature_mh_comment (
-  MessageSignature_id BIGINT NOT NULL,
-  comments_id BIGINT NOT NULL,
-  PRIMARY KEY (MessageSignature_id,comments_id),
-  CONSTRAINT FK_mh_message_signature_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mh_message_signature_mh_commentMessageSignature_id FOREIGN KEY (MessageSignature_id) REFERENCES mh_message_signature (id)
-);
-
-CREATE TABLE mh_message_template_mh_comment (
-  MessageTemplate_id BIGINT NOT NULL,
-  comments_id BIGINT NOT NULL,
-  PRIMARY KEY (MessageTemplate_id,comments_id),
-  CONSTRAINT FK_mh_message_template_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mh_message_template_mh_comment_MessageTemplate_id FOREIGN KEY (MessageTemplate_id) REFERENCES mh_message_template (id)
-);
-
 CREATE TABLE mh_pm_blacklist_mh_pm_period (
   Blacklist_id BIGINT NOT NULL,
   periods_id BIGINT NOT NULL,
@@ -911,14 +895,6 @@ CREATE TABLE mh_pm_message_template (
 
 CREATE INDEX IX_mh_pm_message_template_name ON mh_pm_message_template (name);
 
-CREATE TABLE mh_pm_message_template_mh_comment (
-  MessageTemplate_id BIGINT NOT NULL,
-  comments_id BIGINT NOT NULL,
-  PRIMARY KEY (MessageTemplate_id,comments_id),
-  CONSTRAINT FK_mh_pm_message_template_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mhpm_message_template_mh_commentMessageTemplate_id FOREIGN KEY (MessageTemplate_id) REFERENCES mh_pm_message_template (id)
-);
-
 CREATE TABLE mh_pm_message_template_mh_pm_comment (
   MessageTemplate_id BIGINT NOT NULL,
   comments_id BIGINT NOT NULL,
@@ -941,14 +917,6 @@ CREATE TABLE mh_pm_message_mh_pm_error (
   PRIMARY KEY (Message_id,errors_id),
   CONSTRAINT FK_mh_pm_message_mh_pm_error_errors_id FOREIGN KEY (errors_id) REFERENCES mh_pm_error (id) ON DELETE CASCADE,
   CONSTRAINT FK_mh_pm_message_mh_pm_error_Message_id FOREIGN KEY (Message_id) REFERENCES mh_pm_message (id) ON DELETE CASCADE
-);
-
-CREATE TABLE mh_pm_message_signature_mh_comment (
-  MessageSignature_id BIGINT NOT NULL,
-  comments_id BIGINT NOT NULL,
-  PRIMARY KEY (MessageSignature_id,comments_id),
-  CONSTRAINT FK_mh_pm_message_signature_mh_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_comment (id),
-  CONSTRAINT mhpmmessagesignature_mh_commentMessageSignature_id FOREIGN KEY (MessageSignature_id) REFERENCES mh_pm_message_signature (id)
 );
 
 CREATE TABLE mh_pm_synchronization_mh_pm_error (
