@@ -847,12 +847,6 @@ CREATE TABLE mh_pm_blacklist_mh_pm_period (
   CONSTRAINT FK_mh_pm_blacklist_mh_pm_period_periods_id FOREIGN KEY (periods_id) REFERENCES mh_pm_period (id) ON DELETE CASCADE
 );
 
-CREATE TABLE mh_pm_comment (
-  id BIGINT NOT NULL,
-  text VARCHAR(255) NOT NULL,
-  PRIMARY KEY (id)
-);
-
 CREATE TABLE mh_pm_message_signature (
   id BIGINT NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -870,14 +864,6 @@ CREATE TABLE mh_pm_message_signature (
 
 CREATE INDEX IX_mh_pm_message_signature_name ON mh_pm_message_signature (name);
 
-CREATE TABLE mh_pm_message_signature_mh_pm_comment (
-  MessageSignature_id BIGINT NOT NULL,
-  comments_id BIGINT NOT NULL,
-  PRIMARY KEY (MessageSignature_id,comments_id),
-  CONSTRAINT mhpmmessagesignaturemhpmcommentMessageSignature_id FOREIGN KEY (MessageSignature_id) REFERENCES mh_pm_message_signature (id) ON DELETE CASCADE,
-  CONSTRAINT mh_pm_message_signature_mh_pm_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_pm_comment (id) ON DELETE CASCADE
-);
-
 CREATE TABLE mh_pm_message_template (
   id BIGINT NOT NULL,
   body VARCHAR(MAX) NOT NULL,
@@ -894,14 +880,6 @@ CREATE TABLE mh_pm_message_template (
 );
 
 CREATE INDEX IX_mh_pm_message_template_name ON mh_pm_message_template (name);
-
-CREATE TABLE mh_pm_message_template_mh_pm_comment (
-  MessageTemplate_id BIGINT NOT NULL,
-  comments_id BIGINT NOT NULL,
-  PRIMARY KEY (MessageTemplate_id,comments_id),
-  CONSTRAINT mhpmmessagetemplatemh_pm_commentMessageTemplate_id FOREIGN KEY (MessageTemplate_id) REFERENCES mh_pm_message_template (id) ON DELETE CASCADE,
-  CONSTRAINT mh_pm_message_template_mh_pm_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_pm_comment (id) ON DELETE CASCADE
-);
 
 CREATE TABLE mh_pm_person_mh_pm_person_type (
   Person_id BIGINT NOT NULL,

@@ -854,12 +854,6 @@ CREATE TABLE mh_pm_blacklist_mh_pm_period (
   CONSTRAINT FK_mh_pm_blacklist_mh_pm_period_periods_id FOREIGN KEY (periods_id) REFERENCES mh_pm_period (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-CREATE TABLE mh_pm_comment (
-  id BIGINT(20) NOT NULL,
-  text VARCHAR(255) NOT NULL,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
 CREATE TABLE mh_pm_message_signature (
   id BIGINT(20) NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -875,15 +869,6 @@ CREATE TABLE mh_pm_message_signature (
   KEY FK_mh_pm_message_signature_creator (creator),
   KEY IX_mh_pm_message_signature_name (name),
   CONSTRAINT FK_mh_pm_message_signature_creator FOREIGN KEY (creator) REFERENCES mh_pm_person (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE mh_pm_message_signature_mh_pm_comment (
-  MessageSignature_id BIGINT(20) NOT NULL,
-  comments_id BIGINT(20) NOT NULL,
-  PRIMARY KEY (MessageSignature_id,comments_id),
-  KEY mh_pm_message_signature_mh_pm_comment_comments_id (comments_id),
-  CONSTRAINT mhpmmessagesignaturemhpmcommentMessageSignature_id FOREIGN KEY (MessageSignature_id) REFERENCES mh_pm_message_signature (id) ON DELETE CASCADE,
-  CONSTRAINT mh_pm_message_signature_mh_pm_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_pm_comment (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE mh_pm_message_template (
@@ -902,15 +887,6 @@ CREATE TABLE mh_pm_message_template (
   KEY IX_mh_pm_message_template_name (name),
   CONSTRAINT FK_mh_pm_message_template_creator FOREIGN KEY (creator) REFERENCES mh_pm_person (id) ON DELETE CASCADE,
   CONSTRAINT FK_mh_pm_message_template_signature FOREIGN KEY (signature) REFERENCES mh_pm_message_signature (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE mh_pm_message_template_mh_pm_comment (
-  MessageTemplate_id BIGINT(20) NOT NULL,
-  comments_id BIGINT(20) NOT NULL,
-  PRIMARY KEY (MessageTemplate_id,comments_id),
-  KEY mh_pm_message_template_mh_pm_comment_comments_id (comments_id),
-  CONSTRAINT mhpmmessagetemplatemh_pm_commentMessageTemplate_id FOREIGN KEY (MessageTemplate_id) REFERENCES mh_pm_message_template (id) ON DELETE CASCADE,
-  CONSTRAINT mh_pm_message_template_mh_pm_comment_comments_id FOREIGN KEY (comments_id) REFERENCES mh_pm_comment (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE mh_pm_person_mh_pm_person_type (
