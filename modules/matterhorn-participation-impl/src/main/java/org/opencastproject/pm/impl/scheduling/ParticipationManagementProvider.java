@@ -41,6 +41,7 @@ import org.opencastproject.pm.api.scheduling.Schedule;
 import org.opencastproject.pm.api.scheduling.ScheduleProvider;
 import org.opencastproject.security.api.AccessControlEntry;
 import org.opencastproject.security.api.AccessControlList;
+import org.opencastproject.security.api.Permissions.Action;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.series.api.SeriesException;
@@ -209,21 +210,21 @@ public class ParticipationManagementProvider implements ScheduleProvider {
 
               logger.debug("Updating series access control for series {} in Matterhorn", seriesId);
               List<AccessControlEntry> accessControlEntries = new ArrayList<AccessControlEntry>();
-//              for (String key : courseKeys) {
-//                accessControlEntries.add(new AccessControlEntry(STUDENT_ROLE_PREFIX.concat(key),
-//                        SeriesService.READ_CONTENT_PERMISSION, true));
-//                accessControlEntries.add(new AccessControlEntry(ACADEMIC_ROLE_PREFIX.concat(key),
-//                        SeriesService.READ_CONTENT_PERMISSION, true));
-//              }
+              for (String key : courseKeys) {
+                accessControlEntries.add(new AccessControlEntry(STUDENT_ROLE_PREFIX.concat(key),
+                        Action.READ.getValue(), true));
+                accessControlEntries.add(new AccessControlEntry(ACADEMIC_ROLE_PREFIX.concat(key),
+                        Action.READ.getValue(), true));
+              }
 
               // Adds previous entries to updated ACL
               if (seriesAccessControl.isSome()) {
-//                AccessControlEntry publicRole = new AccessControlEntry(securityService.getOrganization()
-//                        .getAnonymousRole(), SeriesService.READ_CONTENT_PERMISSION, true);
+                AccessControlEntry publicRole = new AccessControlEntry(securityService.getOrganization()
+                        .getAnonymousRole(), Action.READ.getValue(), true);
                 for (AccessControlEntry entry : seriesAccessControl.get().getEntries()) {
                   // Make sure public role is not added
-//                  if (publicRole.equals(entry))
-//                    continue;
+                  if (publicRole.equals(entry))
+                    continue;
                   // Make sure outdated STUDENT and ACADEMIC roles are not added
                   if (entry.getRole().startsWith(STUDENT_ROLE_PREFIX)
                           || entry.getRole().startsWith(ACADEMIC_ROLE_PREFIX))
@@ -353,23 +354,23 @@ public class ParticipationManagementProvider implements ScheduleProvider {
   */
   public static AccessControlList createACL(Course course, SeriesService seriesService, SecurityService securityService) {
     List<AccessControlEntry> accessControlEntries = new ArrayList<AccessControlEntry>();
-//    accessControlEntries.add(new AccessControlEntry(securityService.getOrganization().getAdminRole(),
-//            SeriesService.READ_CONTENT_PERMISSION, true));
-//    accessControlEntries.add(new AccessControlEntry(securityService.getOrganization().getAdminRole(),
-//            SeriesService.EDIT_SERIES_PERMISSION, true));
+    accessControlEntries.add(new AccessControlEntry(securityService.getOrganization().getAdminRole(),
+            Action.READ.getValue(), true));
+    accessControlEntries.add(new AccessControlEntry(securityService.getOrganization().getAdminRole(),
+            Action.WRITE.getValue(), true));
 
     if (StringUtils.isNotBlank(course.getExternalCourseKey())) {
       String[] courseKeys = StringUtils.split(course.getExternalCourseKey(), '_');
-//      for (String key : courseKeys) {
-//        accessControlEntries.add(new AccessControlEntry(STUDENT_ROLE_PREFIX.concat(key),
-//                SeriesService.READ_CONTENT_PERMISSION, true));
-//        accessControlEntries.add(new AccessControlEntry(ACADEMIC_ROLE_PREFIX.concat(key),
-//                SeriesService.READ_CONTENT_PERMISSION, true));
-//      }
+      for (String key : courseKeys) {
+        accessControlEntries.add(new AccessControlEntry(STUDENT_ROLE_PREFIX.concat(key),
+                Action.READ.getValue(), true));
+        accessControlEntries.add(new AccessControlEntry(ACADEMIC_ROLE_PREFIX.concat(key),
+                Action.READ.getValue(), true));
+      }
     } else {
       // Make all Ad-hoc series public
-//      accessControlEntries.add(new AccessControlEntry(securityService.getOrganization().getAnonymousRole(),
-//            SeriesService.READ_CONTENT_PERMISSION, true));
+      accessControlEntries.add(new AccessControlEntry(securityService.getOrganization().getAnonymousRole(),
+            Action.READ.getValue(), true));
     }
 
     return new AccessControlList(accessControlEntries);
@@ -389,7 +390,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
 
     logger.debug("Creating Dublin Core catalog for course {}", courseId);
 
-    DublinCoreCatalog dc = DublinCores.mkOpencastEpisode().getCatalog();
+    DublinCoreCatalog dc = DublinCores.mkOpencastSeries().getCatalog();
     dc.set(DublinCore.PROPERTY_IDENTIFIER, seriesId);
 
     if (StringUtils.isNotEmpty(course.getName())) {

@@ -39,6 +39,7 @@
     <pax.web.version>4.3.0</pax.web.version>
     <cxf.version>3.1.7</cxf.version>
     <jackson.version>2.7.0</jackson.version>
+    <vaadin.version>7.1.15</vaadin.version>
   </properties>
 
   <modules>
@@ -142,11 +143,11 @@
     <module>modules/matterhorn-participation-persistence</module>
     <module>modules/matterhorn-participation-management-syllabus-api</module>
     <module>modules/matterhorn-participation-management-syllabus-impl</module>
-    <module>modules/matterhorn-participation-management-ui</module>
+    <module>modules/matterhorn-participation-management-ui-admin</module>
+    <module>modules/matterhorn-participation-management-ui-admin-vaadin</module>
     <module>modules/matterhorn-participation-management-ui-common</module>
     <module>modules/matterhorn-participation-management-ui-teacher</module>
     <module>modules/matterhorn-participation-management-ui-teacher-vaadin</module>
-    <module>modules/matterhorn-participation-management-ui-vaadin</module>
     <module>modules/matterhorn-presets</module>
     <module>modules/matterhorn-publication-service-api</module>
     <module>modules/matterhorn-publication-service-oaipmh</module>
@@ -1050,7 +1051,7 @@
       <dependency>
         <groupId>com.vaadin</groupId>
         <artifactId>vaadin-shared</artifactId>
-        <version>7.0.3</version>
+        <version>${vaadin.version}</version>
       </dependency>
 
       <dependency>
@@ -1062,25 +1063,25 @@
       <dependency>
         <groupId>com.vaadin</groupId>
         <artifactId>vaadin-client-compiled</artifactId>
-        <version>7.0.3</version>
+        <version>${vaadin.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.vaadin</groupId>
         <artifactId>vaadin-client</artifactId>
-        <version>7.0.3</version>
+        <version>${vaadin.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.vaadin</groupId>
         <artifactId>vaadin-server</artifactId>
-        <version>7.0.3</version>
+        <version>${vaadin.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.vaadin</groupId>
         <artifactId>vaadin-themes</artifactId>
-        <version>7.0.3</version>
+        <version>7.1.15</version>
       </dependency>
 
       <!-- logging -->

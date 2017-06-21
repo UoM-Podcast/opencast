@@ -8,6 +8,6 @@
       <entry key="contextId" value="matterhorn-participation-management-ui" />
       <entry key="init.UIProvider" value="org.opencastproject.pm.ui.admin.vaadin.PmAdminUiProvider" />
     </service-properties>
-    <bean class="com.vaadin.server.VaadinServlet" />
+    <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />
   </service>
 </blueprint>

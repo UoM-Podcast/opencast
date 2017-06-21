@@ -7,6 +7,6 @@
       <entry key="alias" value="/VAADIN-ui" />
       <entry key="contextId" value="matterhorn-vaadin" />
     </service-properties>
-    <bean class="com.vaadin.server.VaadinServlet" />
+    <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />
   </service>
 </blueprint>
