@@ -570,6 +570,17 @@ CREATE TABLE mh_event_comment (
   PRIMARY KEY (id)
 );
 
+CREATE TABLE mh_event_comment_reply (
+  id BIGINT NOT NULL,
+  event_comment_id BIGINT NOT NULL,
+  creation_date DATETIME NOT NULL,
+  author VARCHAR(255) NOT NULL,
+  text VARCHAR(MAX) NOT NULL,
+  modification_date DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT FK_mh_event_comment_reply_mh_event_comment FOREIGN KEY (event_comment_id) REFERENCES mh_event_comment (id)
+);
+ 
 CREATE TABLE mh_series_elements (
   series VARCHAR(128) NOT NULL,
   organization VARCHAR(128) NOT NULL,

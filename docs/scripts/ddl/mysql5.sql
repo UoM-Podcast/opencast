@@ -28,7 +28,7 @@ CREATE TABLE mh_organization (
 
 CREATE TABLE mh_organization_node (
   organization VARCHAR(128) NOT NULL,
-  port int(11),
+  port INT(11),
   name VARCHAR(255),
   PRIMARY KEY (organization, port, name),
   CONSTRAINT FK_mh_organization_node_organization FOREIGN KEY (organization) REFERENCES mh_organization (id) ON DELETE CASCADE
@@ -370,7 +370,9 @@ CREATE TABLE mh_archive_version_claim (
 CREATE INDEX IX_mh_archive_version_claim_mediapackage on mh_archive_version_claim (mediapackage);
 CREATE INDEX IX_mh_archive_version_claim_last_claimed on mh_archive_version_claim (last_claimed);
 
- 
+--
+-- ACL manager
+--
 CREATE TABLE mh_acl_managed_acl (
   pk BIGINT(20) NOT NULL,
   acl TEXT NOT NULL,
@@ -565,6 +567,17 @@ CREATE TABLE mh_event_comment (
   modification_date DATETIME NOT NULL,
   resolved_status TINYINT(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE mh_event_comment_reply (
+  id BIGINT(20) NOT NULL,
+  event_comment_id BIGINT(20) NOT NULL,
+  creation_date DATETIME NOT NULL,
+  author VARCHAR(255) NOT NULL,
+  text TEXT(65535) NOT NULL,
+  modification_date DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT FK_mh_event_comment_reply_mh_event_comment FOREIGN KEY (event_comment_id) REFERENCES mh_event_comment (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE mh_series_elements (
