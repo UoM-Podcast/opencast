@@ -131,10 +131,6 @@ public class ParticipationFeederRunner {
       properties.setProperty("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
       scheduler = new StdSchedulerFactory(properties).getScheduler();
       scheduler.start();
-      // create and set the job. To actually run it call schedule(..)
-      final JobDetail job = new JobDetail(JOB_NAME, JOB_GROUP, Feeder.class);
-      job.getJobDataMap().put(JOB_PARAM_PARENT, this);
-      scheduler.addJob(job, true);
     } catch (org.quartz.SchedulerException e) {
       throw new RuntimeException(e);
     }
@@ -162,6 +158,9 @@ public class ParticipationFeederRunner {
     logger.info("Run ScheduleFeederRunner with cron {}", cron);
     try {
       final CronTrigger trigger = new CronTrigger(TRIGGER_NAME, TRIGGER_GROUP, JOB_NAME, JOB_GROUP, cron);
+      if (scheduler.getJobDetail(JOB_NAME, JOB_GROUP) == null) {
+        scheduler.addJob(createJob(), true);
+      }
       if (scheduler.getTriggersOfJob(JOB_NAME, JOB_GROUP).length == 0) {
         scheduler.scheduleJob(trigger);
       } else {
@@ -176,11 +175,7 @@ public class ParticipationFeederRunner {
   public void trigger() {
     try {
       if (scheduler.getJobDetail(JOB_NAME, JOB_GROUP) == null) {
-        // If there is no (more) job in scheduler, we create a new one
-        final JobDetail job = new JobDetail(JOB_NAME, JOB_GROUP, Feeder.class);
-        job.getJobDataMap().put(JOB_PARAM_PARENT, this);
-        job.setDurability(true);
-        scheduler.addJob(job, true);
+        scheduler.addJob(createJob(), true);
       }
       scheduler.triggerJobWithVolatileTrigger(JOB_NAME, JOB_GROUP);
     } catch (Exception e) {
@@ -188,26 +183,12 @@ public class ParticipationFeederRunner {
     }
   }
 
-  // old implementation of hasCaptureAgent()
-  // private static final Set<String> LOCATIONS_WITH_CA = set(
-  // "Chemistry_G.53", "Chemistry_G.54",
-  // "Crawford House_TH 1",
-  // "Ellen Wilk Wing C_C5.1",
-  // "HumBridgeSt_CORDINGLEY THEATRE",
-  // "Kilburn_TH 1.1", "Kilburn_TH 1.3", "Kilburn_TH 1.4", "Kilburn_TH 1.5",
-  // "Mansfield Cooper_G.20",
-  // "Renold_C16", "Renold_C2", "Renold_C9",
-  // "Roscoe_TH A",
-  // "Sackville Street_C53",
-  // "Sam Alex East Wing_LG12%",
-  // "Schuster_BLACKETT TH", "Schuster_MOSELEY TH",
-  // "Stopford_TH 1", "Stopford_TH 2", "Stopford_TH 3", "Stopford_TH 4", "Stopford_TH 5", "Stopford_TH 6",
-  // "Zochonis_TH A", "Zochonis_TH B");
-  //
-  // /** Check if a location features a capture agent. */
-  // public static boolean hasCaptureAgent(VLocation location) {
-  // return LOCATIONS_WITH_CA.contains(location.getName());
-  // }
+  private JobDetail createJob() {
+    final JobDetail job = new JobDetail(JOB_NAME, JOB_GROUP, Feeder.class);
+    job.getJobDataMap().put(JOB_PARAM_PARENT, this);
+    job.setDurability(true);
+    return job;
+  }
 
   @Override
   protected void finalize() throws Throwable {
