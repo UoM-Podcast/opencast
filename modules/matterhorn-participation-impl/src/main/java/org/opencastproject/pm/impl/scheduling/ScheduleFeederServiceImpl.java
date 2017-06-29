@@ -78,12 +78,10 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
 
   public static final boolean DEFAULT_RUN_ON_START = false;
   public static final boolean DEFAULT_SCHEDULE = false;
-  public static final boolean DEFAULT_TRIM_HOLD = false;
-  public static final boolean DEFAULT_ARCHIVE = true;
   public static final Integer DEFAULT_START_MARGIN = 0; // Default margin in minutes for the start of the schedule
   public static final Integer DEFAULT_END_MARGIN = 0; // Default margin in minutes for the end of the schedule
   public static final boolean DEFAULT_CREATE_NEW_SERIES = true;
-  public static final String DEFAULT_WORKFLOW = "full";
+  public static final String DEFAULT_WORKFLOW = "ng-schedule-upload";
 
   /** Log facility */
   private static final Logger logger = LoggerFactory.getLogger(ScheduleFeederRunner.class);
