@@ -44,3 +44,9 @@ Makefile
 
 # Ignore phantomjs logs
 phantomjsdriver.log
+
+# Manchester specific
+
+# Ignore Manchester workflows and encodings
+/etc/workflows/Manchester-*
+/etc/encoding/Manchester-*
