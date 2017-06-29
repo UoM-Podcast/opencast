@@ -51,6 +51,7 @@ import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.series.api.SeriesException;
 import org.opencastproject.series.api.SeriesService;
 import org.opencastproject.util.NotFoundException;
+import org.opencastproject.util.data.Cell;
 import org.opencastproject.util.data.Collections;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.Tuple;
@@ -78,12 +79,10 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
 
   public static final boolean DEFAULT_RUN_ON_START = false;
   public static final boolean DEFAULT_SCHEDULE = false;
-  public static final boolean DEFAULT_TRIM_HOLD = false;
-  public static final boolean DEFAULT_ARCHIVE = true;
   public static final Integer DEFAULT_START_MARGIN = 0; // Default margin in minutes for the start of the schedule
   public static final Integer DEFAULT_END_MARGIN = 0; // Default margin in minutes for the end of the schedule
   public static final boolean DEFAULT_CREATE_NEW_SERIES = true;
-  public static final String DEFAULT_WORKFLOW = "full";
+  public static final String DEFAULT_WORKFLOW = "ng-schedule-upload";
 
   /** Log facility */
   private static final Logger logger = LoggerFactory.getLogger(ScheduleFeederRunner.class);
@@ -144,6 +143,9 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
   private final VCell<Integer> endMargin = cell(DEFAULT_END_MARGIN);
   private final VCell<Boolean> hasToCreateNewSeries = cell(DEFAULT_CREATE_NEW_SERIES);
   private final VCell<Integer> preEditAvailDelay = cell(DEFAULT_PREEDIT_AVAILABILITY_DELAY);
+  private final VCell<String> editProperty = cell("");
+  private final VCell<String> emailProperty = cell("");
+  private Cell<String> testCell;
 
   private ScheduleFeederRunner runner;
 
@@ -178,7 +180,8 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
             hasToCreateNewSeries.get(), startMargin, endMargin);
     logger.info("Start schedule feeder using provider {}", scheduleProvider);
     systemUser = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
-    runner = new ScheduleFeederRunner(this, schedulerService, participationManagementDB, scheduleProvider, secCtx, workflow,  workflowConfigs, preEditAvailDelay);
+    runner = new ScheduleFeederRunner(this, schedulerService, participationManagementDB, scheduleProvider,
+            secCtx, workflow, workflowConfigs, editProperty, emailProperty, preEditAvailDelay);
   }
 
   /** OSGi container callback. */
@@ -205,12 +208,18 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
 
       final HashMap<String, String> wfCfg = new HashMap<String, String>(getWfCfgAsMap(properties, WORKFLOW_CONFIG));
 
+      final String editProp = getCfg(properties, "workflow.property.edit");
+      final String emailProp = getCfg(properties, "workflow.property.email");
+
       // configure
       this.workflow.set(wf);
       this.workflowConfigs.set(wfCfg);
       this.startMargin.set(startMargin);
       this.endMargin.set(endMargin);
       this.hasToCreateNewSeries.set(hasToCreateNewSeries);
+
+      this.editProperty.set(editProp);
+      this.emailProperty.set(emailProp);
 
       // Configure upcoming days
       String optUpcomingDays = (String) properties.get(OPT_UPCOMING_DAYS);
