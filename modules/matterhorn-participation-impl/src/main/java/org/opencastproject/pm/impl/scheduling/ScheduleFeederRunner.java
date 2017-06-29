@@ -93,9 +93,6 @@ public class ScheduleFeederRunner {
   private static final Logger logger = LoggerFactory.getLogger(ScheduleFeederRunner.class);
 
   private static final String WORKFLOW_CONFIG_PREFIX = "org.opencastproject.workflow.config.";
-  private static final String WORKFLOW_CFG_STAFF_MAIL = "emailAddresses";
-  private static final String WORKFLOW_CFG_TRIM_HOLD = "trimHold";
-  private static final String WORKFLOW_CFG_VIDEO_PREVIEW = "videoPreview";
   private static final String JOB_NAME = "feeder";
   private static final String JOB_GROUP = "mh-schedule-feeder";
   private static final String TRIGGER_NAME = "cron";
@@ -110,13 +107,16 @@ public class ScheduleFeederRunner {
   private final Cell<String> workflow;
   private final Cell<HashMap<String, String>> workflowConfigs;
   private final Cell<Integer> preEditAvailDelay;
-
+  private final Cell<String> editProperty;
+  private final Cell<String> emailProperty;
   private final Scheduler scheduler;
 
   public ScheduleFeederRunner(ScheduleFeederServiceImpl scheduleFeeder, SchedulerService schedulerService,
           ParticipationManagementDatabase participationManagementDB, ScheduleProvider scheduleProvider,
           Cell<Option<SecurityContext>> secCtx,
-          Cell<String> workflow, Cell<HashMap<String, String>> workflowConfigs,  Cell<Integer> preEditAvailDelay) {
+          Cell<String> workflow, Cell<HashMap<String, String>> workflowConfigs,
+          Cell<String> editProperty, Cell<String> emailProperty,
+          Cell<Integer> preEditAvailDelay) {
     this.scheduleFeederService = scheduleFeeder;
     this.schedulerService = schedulerService;
     this.participationManagementDB = participationManagementDB;
@@ -124,7 +124,10 @@ public class ScheduleFeederRunner {
     this.secCtx = secCtx;
     this.workflow = workflow;
     this.workflowConfigs = workflowConfigs;
+    this.editProperty = editProperty;
+    this.emailProperty = emailProperty;
     this.preEditAvailDelay = preEditAvailDelay;
+
 
     try {
       scheduler = new StdSchedulerFactory().getScheduler();
@@ -156,10 +159,17 @@ public class ScheduleFeederRunner {
     return map;
   }
 
+  public Cell<String> getEditProperty() {
+    return editProperty;
+  }
+
+  public Cell<String> getEmailProperty() {
+    return emailProperty;
+  }
+
   public Cell<Integer> getPreEditAvailDelay() {
     return preEditAvailDelay;
   }
-
   /** Shutdown the runner. */
   public void shutdown() {
     try {
@@ -286,7 +296,9 @@ public class ScheduleFeederRunner {
                 logger.info("Scheduling {} recordings between {} and {}", new Object[] { newSchedule.getEpisodes().size(), interval.getA(), interval.getB() });
                 try {
                   scheduleRecordings(newSchedule.getEpisodes(), parent.schedulerService,
-                          parent.participationManagementDB, caConfig, wfProperties, parent.getPreEditAvailDelay());
+                          parent.participationManagementDB, caConfig, wfProperties,
+                          parent.getEditProperty(), parent.getEmailProperty(),
+                          parent.getPreEditAvailDelay());
                 } catch (ParticipationManagementSchedulingException e) {
                   logger.error("Scheduling of recordings from participation management failed.");
                 }
@@ -352,7 +364,8 @@ public class ScheduleFeederRunner {
     @SuppressWarnings("unchecked")
     private static void scheduleRecordings(List<Tuple<Recording, DublinCoreCatalog>> list,
             SchedulerService schedulerService, ParticipationManagementDatabase participationManagementDB,
-            Properties parentCAConfig, Map<String, String> parentWFProperties, Cell<Integer> preEditAvailDelay)
+            Properties parentCAConfig, Map<String, String> parentWFProperties,
+            Cell<String>editProperty, Cell<String>emailProperty, Cell<Integer> preEditAvailDelay)
                     throws ParticipationManagementSchedulingException {
 
       int i = 0;
@@ -374,11 +387,8 @@ public class ScheduleFeederRunner {
             trimValue = "true";
           }
 
-          wfProperties.put(WORKFLOW_CFG_TRIM_HOLD, trimValue);
-          wfProperties.put(WORKFLOW_CFG_VIDEO_PREVIEW, trimValue);
-
-          caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(WORKFLOW_CFG_TRIM_HOLD), trimValue);
-          caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(WORKFLOW_CFG_VIDEO_PREVIEW), trimValue);
+          wfProperties.put(editProperty.get(), trimValue);
+          caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(editProperty.get()), trimValue);
 
           String emailAddresses;
           List<String> staffMailList = new ArrayList<String>();
@@ -391,8 +401,8 @@ public class ScheduleFeederRunner {
           if (staffMailList.size() > 0) {
             emailAddresses = StringUtils.join(staffMailList, ",");
 
-            wfProperties.put(WORKFLOW_CFG_STAFF_MAIL, emailAddresses);
-            caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(WORKFLOW_CFG_STAFF_MAIL), emailAddresses);
+            wfProperties.put(emailProperty.get(), emailAddresses);
+            caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(emailProperty.get()), emailAddresses);
           }
 
           // Check if course is required to be recorded and optout should be ignored
@@ -433,7 +443,7 @@ public class ScheduleFeederRunner {
 
           StringBuilder fingerprintData = new StringBuilder(dc.toXmlString());
           fingerprintData.append(caConfig.toString());
-          String md5 = new String(DigestUtils.md5Hex(fingerprintData.toString()));
+          String md5 = DigestUtils.md5Hex(fingerprintData.toString());
 
           if (rec.getEventId().isNone()
                   && rec.getRecordingStatus(requiredRecording) == Recording.RecordingStatus.READY
