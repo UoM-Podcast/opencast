@@ -131,6 +131,10 @@ public class ParticipationFeederRunner {
       properties.setProperty("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
       scheduler = new StdSchedulerFactory(properties).getScheduler();
       scheduler.start();
+      // create and set the job. To actually run it call schedule(..)
+      final JobDetail job = new JobDetail(JOB_NAME, JOB_GROUP, Feeder.class);
+      job.getJobDataMap().put(JOB_PARAM_PARENT, this);
+      scheduler.addJob(job, true);
     } catch (org.quartz.SchedulerException e) {
       throw new RuntimeException(e);
     }
