@@ -114,7 +114,7 @@ public class CleanupWorkflowOperationHandler extends AbstractWorkflowOperationHa
 
   /**
    * Deletes JobArguments for every finished Job of the WorkfloInstance
-   * 
+   *
    * @param workflowInstance
    */
   public void cleanUpJobArgument(WorkflowInstance workflowInstance) {
@@ -153,7 +153,8 @@ public class CleanupWorkflowOperationHandler extends AbstractWorkflowOperationHa
   public WorkflowOperationResult start(WorkflowInstance workflowInstance, JobContext context)
           throws WorkflowOperationException {
 
-    cleanUpJobArgument(workflowInstance);
+    // FIXME: UoM: MAT-206 jTDS causes problems with comparison types
+    //cleanUpJobArgument(workflowInstance);
 
     MediaPackage mediaPackage = workflowInstance.getMediaPackage();
     WorkflowOperationInstance currentOperation = workflowInstance.getCurrentOperation();
