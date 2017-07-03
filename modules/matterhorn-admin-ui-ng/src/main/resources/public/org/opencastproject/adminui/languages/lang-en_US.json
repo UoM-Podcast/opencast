@@ -733,6 +733,7 @@
            "COPYRIGHT":      "Copyright",
            "VISIBILITY":     "Visibility",
            "PUBLIC":         "Public target",
+           "MEDIATOR":       "Mediator",
            "OS":             "Processing operating system",
            "LOCKED": {
              "RUNNING": "Editing metadata is not allowed when operations are running on an event"
