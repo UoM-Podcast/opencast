@@ -241,7 +241,7 @@ public class ParticipationFeederRunner {
     /** Run the harvest verification inside a security context. */
     private void verifyInSecurityCtx(final ParticipationFeederRunner parent) {
       for (final SecurityContext secCtx : parent.secCtx.get()) {
-        logger.info("participation Harvest Verification start");
+        logger.info("START: Verify participation harvest ====================================");
         secCtx.runInContext(new Effect0() {
           @Override
           public void run() {
@@ -263,14 +263,14 @@ public class ParticipationFeederRunner {
             }
           }
         });
-        logger.info("Participation Harvest Verification  end");
+        logger.info("END: Verify participation harvest ====================================");
       }
     }
 
     /** Run the harvest inside a security context. */
     private void executeInSecurityCtx(final ParticipationFeederRunner parent) {
       for (final SecurityContext secCtx : parent.secCtx.get()) {
-        logger.info("Harvesting participation start");
+        logger.info("START: Harvesting participation ####################################");
         secCtx.runInContext(new Effect0() {
           @Override
           public void run() {
@@ -294,9 +294,9 @@ public class ParticipationFeederRunner {
             parent.requirementManager.updateRequirements();
           }
         });
-        logger.info("Harvesting participation end");
+        logger.info("END: Harvesting participation ####################################");
         if (null !=  parent.snapCountService) {
-          logger.info("Start verify participation harvest");
+          logger.info("START: Verify participation harvest ####################################");
           parent.snapCountService.verifyParticipationFeeder();
         }
       }
@@ -330,7 +330,7 @@ public class ParticipationFeederRunner {
       final ModuleFinder moduleFinder = new ModuleFinder(data.getModule(), data.getActivityParent(), data.getActivity());
       final String sourceDescription = data.getSourceDescription();
       Option<SchedulingSource> schedulingSource;
-      logger.info("start harvesting from S+");
+      logger.info("Start harvesting from Syllabus+");
       if (StringUtils.isNotBlank(sourceDescription)) {
         schedulingSource = Option.some(new SchedulingSource(sourceDescription));
       } else {
@@ -357,7 +357,7 @@ public class ParticipationFeederRunner {
         // iterate activity partition
         for (final VActivity activity : activityPartition) {
           final String aId = activity.getId();
-          if (!SyllabusData.isSubjectToSchedule(activity)) {
+          if (!syl.isCaptureActivityType(activity)) {
             continue;
           }
           logger.info(format("********** Handling activity %s", aId));

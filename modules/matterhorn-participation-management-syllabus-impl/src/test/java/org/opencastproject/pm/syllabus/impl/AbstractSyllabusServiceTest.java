@@ -61,7 +61,6 @@ import org.opencastproject.pm.syllabus.api.VModule;
 import org.opencastproject.pm.syllabus.api.VStaff;
 import org.opencastproject.pm.syllabus.api.VStudentSet;
 import org.opencastproject.pm.syllabus.api.VZones;
-import org.opencastproject.pm.syllabus.impl.scheduling.SyllabusData;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.persistence.PersistenceEnv;
@@ -458,7 +457,7 @@ public class AbstractSyllabusServiceTest {
       final Set<String> as = toSet(mlist(al).bind(new Function<VLocationSuitability, Option<String>>() {
         @Override
         public Option<String> apply(VLocationSuitability a) {
-          return hasCaptureAgent(a) ? some(a.getLocationId()) : none(String.class);
+          return syl.getCaptureRoomTypeIDs().contains(a.getSuitabilityId()) ? some(a.getLocationId()) : none(String.class);
         }
       }).value());
 //      System.out.pri ntln("# locations featuring capture agents " + as.size());
@@ -482,7 +481,7 @@ public class AbstractSyllabusServiceTest {
       // iterate activity partition
       for (VActivity activity : activityPartition) {
         final String aId = activity.getId();
-        if (!SyllabusData.isSubjectToSchedule(activity))
+        if (!syl.isCaptureActivityType(activity))
           continue;
         for (VActivityDateTime dateTime : activityDateTimeMap.get(aId)) {
           for (VActivityLocation activityLocation : activityLocationMap.get(aId)) {
@@ -616,10 +615,5 @@ public class AbstractSyllabusServiceTest {
       protected void closePenv() {
       }
     };
-  }
-
-  /** Check if a location features a capture agent. */
-  private static boolean hasCaptureAgent(VLocationSuitability locationSuitability) {
-    return SyllabusData.getAgentLocationID().contains(locationSuitability.getSuitabilityId());
   }
 }

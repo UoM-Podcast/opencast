@@ -59,7 +59,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,12 +66,6 @@ import java.util.Set;
 /** This data type holds data fetched from the S+ database together with some helper functions. */
 public abstract class SyllabusData {
   private static final Logger logger = LoggerFactory.getLogger(SyllabusData.class);
-
-  public static final String ACTIVITY_TYPE_ANY = "**any**";
-
-  private static final Map <String, Map<String,String>> AgentLocation = new HashMap<String, Map <String,String>>();
-
-  private static final Map <String, Map<String,String>> ActivityType = new HashMap<String, Map <String,String>>();
 
   public abstract List<List<VActivity>> getActivityPartitioned();
 
@@ -127,7 +120,7 @@ public abstract class SyllabusData {
     final Set<String> locationHasCaptureAgent;
     {
       List<VLocationSuitability> caLocations = new ArrayList<VLocationSuitability>();
-      for (String roomIdWithCa : getAgentLocationID()) {
+      for (String roomIdWithCa : syl.getCaptureRoomTypeIDs()) {
         caLocations.addAll(syl.findLocationSuitability(roomIdWithCa));
       }
       locationHasCaptureAgent = toSet(mlist(caLocations).map(VLocationSuitabilityF.getLocationId).value());
@@ -194,46 +187,6 @@ public abstract class SyllabusData {
         return locationHasCaptureAgent.contains(location.getId());
       }
     };
-  }
-
-    public static List<String> getAgentLocationID() {
-        List<String> locIds = new ArrayList<String>();
-        for (Map<String,String> location : AgentLocation.values()) {
-            String locId = location.get("id");
-            if (null != locId) {
-                locIds.add(locId);
-            }
-        }
-        return locIds;
-    }
-
-    public static List<String> getActivityTypeID() {
-        List<String> activityIds = new ArrayList<String>();
-        for (Map<String,String> activity : ActivityType.values()) {
-            String acId = activity.get("id");
-            if (null != acId) {
-                activityIds.add(acId);
-            }
-        }
-        return activityIds;
-    }
-
-  public static void addAgentLocationProperty(final String agentLocation, String name, String value) {
-    HashMap<String,String>loc = (HashMap<String,String>) AgentLocation.get(agentLocation);
-    if (null == loc) {
-        loc = new HashMap<String,String>();
-        AgentLocation.put(agentLocation, loc);
-    }
-    loc.put(name, value);
-  }
-
-  public static void addActivityTypeProperty(final String activityType, String name, String value) {
-    HashMap<String,String>type = (HashMap<String,String>) ActivityType.get(activityType);
-    if (null == type) {
-        type = new HashMap<String,String>();
-        ActivityType.put(activityType, type);
-    }
-    type.put(name, value);
   }
 
   // fetch only data relating modules and activities
@@ -314,18 +267,6 @@ public abstract class SyllabusData {
         return false;
       }
     };
-  }
-  /** Check if a location features a capture agent. */
-  public static boolean hasCaptureAgent(VLocationSuitability locationSuitability) {
-    return getAgentLocationID().contains(locationSuitability.getSuitabilityId());
-  }
-
-  /** Check if an activity shall be recorded. */
-  public static boolean isSubjectToSchedule(VActivity activity) {
-    if (getActivityTypeID().contains(ACTIVITY_TYPE_ANY)) {
-        return true;
-    }
-    return getActivityTypeID().contains(activity.getActivityTypeId());
   }
 
   private static <A> Map<String, A> mapById(List<A> as, Function<A, String> id, String name) {
