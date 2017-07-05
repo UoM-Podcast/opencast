@@ -45,6 +45,7 @@ import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.Message;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
+import org.opencastproject.pm.api.Recording.RecordingInput;
 import org.opencastproject.pm.api.Recording.ReviewStatus;
 import org.opencastproject.pm.api.Room;
 import org.opencastproject.pm.syllabus.api.Occurrence;
@@ -249,7 +250,7 @@ public class AbstractSyllabusServiceTest {
                   nil(Message.class), // todo
                   some(0L), // todo
                   null, // todo
-                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false);
+                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false, RecordingInput.SCREEN);
           // todo store in database
 //          System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                  + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ " + rec.getRoom().getName());
@@ -325,7 +326,7 @@ public class AbstractSyllabusServiceTest {
                   nil(Message.class), // todo
                   some(0L), // todo
                   null, // todo
-                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false);
+                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false, RecordingInput.SCREEN);
           // todo store in database
 //          System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                  + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ " + rec.getRoom().getName());
@@ -379,7 +380,7 @@ public class AbstractSyllabusServiceTest {
                   nil(Message.class), // todo
                   some(0L), // todo
                   null, // todo
-                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false);
+                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false, RecordingInput.SCREEN);
           // todo store in database
 //          System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                  + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ " + rec.getRoom().getName());

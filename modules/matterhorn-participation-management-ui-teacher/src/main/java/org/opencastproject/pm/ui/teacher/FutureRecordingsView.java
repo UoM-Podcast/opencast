@@ -147,7 +147,7 @@ public class FutureRecordingsView extends RecordingsView {
         Label optoutLabel;
         switch (recording.getStatus()) {
           case READY:
-            if (recording.isTrim()) {
+            if (recording.isEdit()) {
               optoutLabel = new Label(i18n.s("table.status.trim"));
             } else {
               optoutLabel = new Label(i18n.s("table.status.ready"));
@@ -177,7 +177,7 @@ public class FutureRecordingsView extends RecordingsView {
 
         switch (recording.getStatus()) {
           case READY:
-            if (required && recording.isTrim()) {
+            if (required && recording.isEdit()) {
               optoutLabel = new Label(i18n.s("table.record.override_edit"));
             } else {
               optoutLabel = new Label(i18n.s("table.record.yes"));

@@ -14,6 +14,11 @@
              policy="dynamic"
              bind="setParticipationManagementDatabase"
              unbind="unsetParticipationManagementDatabase" />
+    <reference name="syllabus"
+             interface="org.opencastproject.pm.syllabus.api.SyllabusService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSyllabusService" />
   <reference interface="org.opencastproject.security.api.SecurityService"
              name="security"
              cardinality="1..1"

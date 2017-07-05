@@ -912,7 +912,7 @@ public class ParticipationManagementDatabaseImpl implements ParticipationManagem
         throw new NotFoundException();
 
       RecordingDto dto = recordingOption.get();
-      dto.setTrim(trim);
+      dto.setEdit(trim);
       tx.commit();
       return dto.toRecording(userDirectoryService);
     } catch (NotFoundException e) {

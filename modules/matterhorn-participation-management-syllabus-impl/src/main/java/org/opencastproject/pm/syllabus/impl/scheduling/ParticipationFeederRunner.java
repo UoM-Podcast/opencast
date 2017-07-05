@@ -441,7 +441,7 @@ public class ParticipationFeederRunner {
                   if (oldRecording != null) {
                     newRecording.setReviewStatus(oldRecording.getReviewStatus());
                     newRecording.setReviewDate(oldRecording.getReviewDate());
-                    newRecording.setTrim(oldRecording.isTrim());
+                    newRecording.setEdit(oldRecording.isEdit());
                   }
 
                   updatedRecording = parent.persistence.updateRecording(newRecording);
@@ -466,7 +466,7 @@ public class ParticipationFeederRunner {
                       newRecording.setMessages(existingRecording.getMessages());
                       newRecording.setReviewDate(existingRecording.getReviewDate());
                       newRecording.setReviewStatus(existingRecording.getReviewStatus());
-                      newRecording.setTrim(existingRecording.isTrim());
+                      newRecording.setEdit(existingRecording.isEdit());
                       newRecording.setFingerprint(existingRecording.getFingerprint());
                       newRecording.setSchedulingSource(existingRecording.getSchedulingSource());
                       if (existingRecording.getCourse().isSome()) {

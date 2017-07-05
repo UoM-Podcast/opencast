@@ -383,7 +383,7 @@ public class ScheduleFeederRunner {
           DublinCoreCatalog dc = t.getB();
 
           String trimValue = "false";
-          if (rec.isTrim()) {
+          if (rec.isEdit()) {
             trimValue = "true";
           }
 
@@ -412,7 +412,7 @@ public class ScheduleFeederRunner {
             requiredRecording = rec.getCourse().get().getRequirements().contains(Course.REQUIREMENT_RECORD);
 
             // Only mark add audience restricted if to be trimmed or opted out
-            if (requiredRecording && (rec.isTrim() || rec.getReviewStatus() == Recording.ReviewStatus.OPTED_OUT)) {
+            if (requiredRecording && (rec.isEdit() || rec.getReviewStatus() == Recording.ReviewStatus.OPTED_OUT)) {
               // if DASS student on course add them to audience
               dc.add(DublinCore.PROPERTY_AUDIENCE, "restricted");
             }
@@ -423,7 +423,7 @@ public class ScheduleFeederRunner {
             }
 
             // Set availablility date
-            if (requiredRecording && rec.isTrim())  {
+            if (requiredRecording && rec.isEdit())  {
               Calendar cal = Calendar.getInstance();
               cal.setTime(rec.getStop());
               cal.add(Calendar.HOUR, preEditAvailDelay.get());

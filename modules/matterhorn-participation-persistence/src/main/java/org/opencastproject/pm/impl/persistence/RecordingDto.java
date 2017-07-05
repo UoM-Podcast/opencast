@@ -32,6 +32,7 @@ import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.Message;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
+import org.opencastproject.pm.api.Recording.RecordingInput;
 import org.opencastproject.pm.api.Recording.ReviewStatus;
 import org.opencastproject.pm.api.SchedulingSource;
 import org.opencastproject.pm.api.persistence.EmailView;
@@ -168,8 +169,11 @@ public class RecordingDto {
   @JoinTable(name = "mh_pm_recording_action", joinColumns = {@JoinColumn(name = "recording_id", referencedColumnName = "id")}, inverseJoinColumns = {@JoinColumn(name = "action_id", referencedColumnName = "id")})
   private List<ActionDto> actions = new ArrayList<ActionDto>();
 
-  @Column(name = "trim", nullable = false)
-  private boolean trim;
+  @Column(name = "edit", nullable = false)
+  private boolean edit;
+
+  @Enumerated(EnumType.STRING)
+  private RecordingInput recordingInput;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "source", referencedColumnName = "id")
@@ -226,7 +230,8 @@ public class RecordingDto {
   public RecordingDto(String activityId, String title, boolean blacklisted, List<PersonDto> staff, CourseDto course,
                       RoomDto room, Date modificationDate, Date start, Date stop, List<PersonDto> participation,
                       List<MessageDto> messages, Long eventId, CaptureAgentDto captureAgent, List<ActionDto> action,
-                      EmailStatus emailStatus, ReviewStatus reviewStatus, Date reviewDate, boolean deleted, String fingerprint, boolean trim) {
+                      EmailStatus emailStatus, ReviewStatus reviewStatus, Date reviewDate, boolean deleted, String fingerprint,
+                      boolean edit, RecordingInput recordingInput) {
     if (staff != null)
       this.staff = staff;
     if (participation != null)
@@ -251,7 +256,8 @@ public class RecordingDto {
     this.reviewDate = reviewDate;
     this.deleted = deleted;
     this.fingerprint = fingerprint;
-    this.trim = trim;
+    this.edit = edit;
+    this.recordingInput = recordingInput;
   }
 
   /**
@@ -728,7 +734,7 @@ public class RecordingDto {
   }
 
   /**
-   * Sets a fingprint for this recording, which is supposed to be a 32 bit hash.
+   * Sets a fingerprint for this recording, which is supposed to be a 32 bit hash.
    *
    * @param fingerprint
    *         the fingerprint
@@ -741,12 +747,20 @@ public class RecordingDto {
     this.fingerprint = fingerprint;
   }
 
-  public boolean isTrim() {
-    return trim;
+  public boolean isEdit() {
+    return edit;
   }
 
-  public void setTrim(boolean trim) {
-    this.trim = trim;
+  public void setEdit(boolean edit) {
+    this.edit = edit;
+  }
+
+  public RecordingInput getRecordingInput() {
+    return recordingInput;
+  }
+
+  public void setRecordingInput(RecordingInput recordingInput) {
+    this.recordingInput = recordingInput;
   }
 
   /**
@@ -789,8 +803,7 @@ public class RecordingDto {
   private Recording toRecordingWithoutMessages() {
     Option<Course> c = course == null ? none(Course.class) : some(course.toCourse());
     Option<SchedulingSource> s = schedulingSource == null ? none(SchedulingSource.class) : some(schedulingSource.toSchedulingSource());
-    Recording rec = Recording.recording(
-            activityId,
+    Recording rec = Recording.recording(activityId,
             title,
             blacklisted,
             new ArrayList<Person>(),
@@ -808,7 +821,8 @@ public class RecordingDto {
             reviewStatus,
             option(reviewDate),
             deleted,
-            trim);
+            edit,
+            recordingInput);
     for (PersonDto p : this.staff) {
       rec.addStaffMember(p.toPerson());
     }

@@ -52,6 +52,11 @@ public class Recording {
     UNCONFIRMED, CONFIRMED, OPTED_OUT
   }
 
+  /* which inputs to be recorded, SCREEN is the default */
+  public enum RecordingInput {
+    SCREEN, CAMERA, SCREEN_CAMERA
+  }
+
   /** The recording identifier */
   private Option<Long> id;
 
@@ -65,7 +70,7 @@ public class Recording {
   private String title;
 
   /** The staff for this recording */
-  private List<Person> staff = new ArrayList<Person>();
+  private List<Person> staff = new ArrayList<>();
 
   /** The course */
   private Option<Course> course = Option.<Course> none();
@@ -98,10 +103,10 @@ public class Recording {
   private Option<Date> reviewDate;
 
   /** The participation list */
-  private List<Person> participation = new ArrayList<Person>();
+  private List<Person> participation = new ArrayList<>();
 
   /** The list of messages */
-  private List<Message> messages = new ArrayList<Message>();
+  private List<Message> messages = new ArrayList<>();
 
   /** The capture agent */
   private CaptureAgent captureAgent;
@@ -112,24 +117,27 @@ public class Recording {
   /** The scheduling schedulingSource */
   private Option<SchedulingSource> schedulingSource;
 
-  /** Trim flag. If true the recording will be handled by the TrimWOH. */
-  private boolean trim;
+  /** Edit flag. If true the recording will be marked for editing. */
+  private boolean edit;
+
+  /** The inputs to be recorded */
+  private RecordingInput recordingInput;
 
   /** The actions triggered by the recording */
-  private List<Action> actions = new ArrayList<Action>();
+  private List<Action> actions = new ArrayList<>();
 
   public Recording(Option<Long> id, String activityId, Option<Long> eventId, String title, List<Person> staff,
           Option<Course> course, Room room, Date modificationDate, boolean deleted, boolean blacklisted, Date start,
           Date stop, EmailStatus emailStatus, ReviewStatus reviewStatus, Option<Date> reviewDate, List<Person> participation,
           List<Message> messages, CaptureAgent captureAgent, List<Action> actions, Option<String> fingerprint,
-          boolean trim) {
+          boolean edit, RecordingInput recordingInput) {
     this.id = id;
     this.activityId = activityId;
     this.eventId = eventId;
     this.title = title;
     // since this field is mutable a copy has to be created to both prevent side effects on the passed list
     // and to ensure the list is mutable
-    this.staff = new ArrayList<Person>(staff);
+    this.staff = new ArrayList<>(staff);
     this.course = course;
     this.room = room;
     this.modificationDate = modificationDate;
@@ -140,12 +148,13 @@ public class Recording {
     this.emailStatus = emailStatus;
     this.reviewStatus = reviewStatus;
     this.reviewDate = reviewDate;
-    this.participation = new ArrayList<Person>(participation);
-    this.messages = new ArrayList<Message>(messages);
+    this.participation = new ArrayList<>(participation);
+    this.messages = new ArrayList<>(messages);
     this.captureAgent = captureAgent;
-    this.actions = new ArrayList<Action>(actions);
+    this.actions = new ArrayList<>(actions);
     this.fingerprint = fingerprint;
-    this.trim = trim;
+    this.edit = edit;
+    this.recordingInput = recordingInput;
     this.schedulingSource = Option.none(SchedulingSource.class);
   }
 
@@ -172,12 +181,13 @@ public class Recording {
    *          the participation list
    * @param captureAgent
    *          the capture agent
+   * @return
    */
   public static Recording recording(String activityId, String title, List<Person> staff, Course course, Room room,
           Date modificationDate, Date start, Date stop, List<Person> participation, CaptureAgent captureAgent) {
     return new Recording(none(Long.class), activityId, none(Long.class), title, staff, some(course), room,
             modificationDate, false, false, start, stop, EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, none(Date.class), participation,
-            nil(Message.class), captureAgent, nil(Action.class), none(String.class), false);
+            nil(Message.class), captureAgent, nil(Action.class), none(String.class), false, RecordingInput.SCREEN);
   }
 
   /**
@@ -219,14 +229,19 @@ public class Recording {
    *          the review date
    * @param deleted
    *          the deleted flag
+   * @param edit
+   *          the editing flag
+   * @param recordingInput
+   *          the recorded input
+   * @return
    */
   public static Recording recording(String activityId, String title, boolean blacklisted, List<Person> staff,
           Option<Course> course, Room room, Date modificationDate, Date start, Date stop, List<Person> participation,
           List<Message> messages, Option<Long> eventId, CaptureAgent captureAgent, List<Action> actions,
-          EmailStatus emailStatus, ReviewStatus reviewStatus, Option<Date> reviewDate, boolean deleted, boolean trim) {
+          EmailStatus emailStatus, ReviewStatus reviewStatus, Option<Date> reviewDate, boolean deleted, boolean edit, RecordingInput recordingInput) {
     return new Recording(none(Long.class), activityId, eventId, title, staff, course, room, modificationDate, deleted,
             blacklisted, start, stop, emailStatus, reviewStatus, reviewDate, participation, messages, captureAgent, actions,
-            none(String.class), trim);
+            none(String.class), edit, recordingInput);
   }
 
   /**
@@ -752,12 +767,20 @@ public class Recording {
     return fingerprint;
   }
 
-  public boolean isTrim() {
-    return trim;
+  public boolean isEdit() {
+    return edit;
   }
 
-  public void setTrim(boolean trim) {
-    this.trim = trim;
+  public void setEdit(boolean edit) {
+    this.edit = edit;
+  }
+
+  public RecordingInput getRecordingInput() {
+    return recordingInput;
+  }
+
+  public void setRecordingInput(RecordingInput recordingInput) {
+    this.recordingInput = recordingInput;
   }
 
   public void setSchedulingSource(Option<SchedulingSource> schedulingSource) {
@@ -793,14 +816,14 @@ public class Recording {
             && (reviewDate == null && recording.getReviewDate() == null || reviewDate.equals(recording.getReviewDate()))
             && reviewStatus.equals(recording.getReviewStatus())
             && deleted == recording.isDeleted()
-            && trim == recording.trim
+            && edit == recording.edit
             && schedulingSource.equals(recording.getSchedulingSource());
   }
 
   @Override
   public int hashCode() {
     return EqualsUtil.hash(id, activityId, title, blacklisted, staff, course, room, modificationDate, start, stop,
-            participation, messages, eventId, captureAgent, actions, emailStatus, reviewStatus, reviewDate, deleted, trim, schedulingSource);
+            participation, messages, eventId, captureAgent, actions, emailStatus, reviewStatus, reviewDate, deleted, edit, schedulingSource);
   }
 
   @Override

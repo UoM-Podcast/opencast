@@ -26,6 +26,7 @@ import org.opencastproject.pm.api.Course;
 import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
+import org.opencastproject.pm.api.Recording.RecordingInput;
 import org.opencastproject.pm.api.Recording.RecordingStatus;
 import org.opencastproject.util.data.Option;
 
@@ -67,7 +68,9 @@ public class RecordingView {
 
   private final String actions;
 
-  private final boolean trim;
+  private final boolean edit;
+
+  private final RecordingInput input;
 
   // these values are set externally
   private Option<Long> workflowId;
@@ -75,7 +78,7 @@ public class RecordingView {
   private String processingStatus;
 
   public RecordingView(long id, Option<Long> eventId, String title, String presenter, String course, Date start,
-          Date end, String room, String agent, EmailStatus emailStatus, RecordingStatus status, Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean trim) {
+          Date end, String room, String agent, EmailStatus emailStatus, RecordingStatus status, Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean edit, RecordingInput input) {
     this.id = id;
     this.eventId = eventId;
     this.title = title;
@@ -90,7 +93,8 @@ public class RecordingView {
     this.requiresRecording = requiresRecording;
     this.requiresCaptions = requiresCaptions;
     this.actions = actions;
-    this.trim = trim;
+    this.edit = edit;
+    this.input = input;
     this.workflowId = Option.none();
   }
 
@@ -130,9 +134,9 @@ public class RecordingView {
             recording.getRecordingStatus(false),
             requiredRecording,
             captionRecording,
-
             StringUtils.join(actions, ", "),
-            recording.isTrim());
+            recording.isEdit(),
+            recording.getRecordingInput());
   }
 
   public String getTitle() {
@@ -191,8 +195,12 @@ public class RecordingView {
     return eventId;
   }
 
-  public boolean isTrim() {
-    return trim;
+  public boolean isEdit() {
+    return edit;
+  }
+
+  public RecordingInput getRecordingInput() {
+    return input;
   }
 
   public Option<Long> getWorkflowId() {

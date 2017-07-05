@@ -25,6 +25,7 @@ import static org.opencastproject.util.data.Option.none;
 import static org.opencastproject.util.data.VCell.iocell;
 
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
+import org.opencastproject.pm.syllabus.api.SyllabusService;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.data.Cell;
@@ -41,6 +42,7 @@ import org.slf4j.LoggerFactory;
 public class PmDependencies {
   private static final Logger logger = LoggerFactory.getLogger(PmDependencies.class);
   private final VCell<Option<ParticipationManagementDatabase>> pm = iocell(none(ParticipationManagementDatabase.class));
+  private SyllabusService syllabusService;
   private SecurityService security;
   private WorkflowService workflowService;
   private ArchiveServices archiveServices;
@@ -58,6 +60,15 @@ public class PmDependencies {
   /** OSGi DI */
   public void unsetParticipationManagementDatabase(ParticipationManagementDatabase pm) {
     this.pm.set(Option.<ParticipationManagementDatabase>none());
+  }
+
+  /** OSGi container callback */
+  public void setSyllabusService(SyllabusService syllabusService) {
+    this.syllabusService = syllabusService;
+  }
+
+  public SyllabusService getSyllabusService() {
+    return syllabusService;
   }
 
   public Cell<Option<ParticipationManagementDatabase>> getParticipationManagementDatabase() {
