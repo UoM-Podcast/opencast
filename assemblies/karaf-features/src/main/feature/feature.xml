@@ -161,7 +161,6 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-admin/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-admin-vaadin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-dass/${project.version}</bundle>
   </feature>
@@ -169,7 +168,6 @@
   <feature name="opencast-participation-management-teacher" version="0.0.0">
     <feature>opencast-participation-management-core</feature>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher-vaadin/${project.version}</bundle>
   </feature>
 
   <feature name="opencast-allinone">

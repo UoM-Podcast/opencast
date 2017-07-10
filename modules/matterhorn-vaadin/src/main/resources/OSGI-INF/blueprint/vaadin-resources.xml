@@ -5,7 +5,8 @@
     <service-properties>
       <entry key="servlet-name" value="Vaadin Resources" />
       <entry key="alias" value="/VAADIN" />
-      <entry key="contextId" value="matterhorn-vaadin" />
+      <entry key="httpContext.id" value="opencast.httpcontext"/>
+      <entry key="httpContext.shared" value="true" />
     </service-properties>
     <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />
   </service>

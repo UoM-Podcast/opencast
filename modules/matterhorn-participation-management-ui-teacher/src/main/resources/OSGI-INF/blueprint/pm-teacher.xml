@@ -5,7 +5,8 @@
     <service-properties>
       <entry key="servlet-name" value="Participation Management Teacher UI" />
       <entry key="alias" value="/pm-teacher" />
-      <entry key="contextId" value="matterhorn-participation-management-ui-teacher" />
+      <entry key="httpContext.id" value="opencast.httpcontext"/>
+      <entry key="httpContext.shared" value="true" />
       <entry key="init.UIProvider" value="org.opencastproject.pm.ui.teacher.vaadin.PmTeacherUiProvider" />
     </service-properties>
     <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />
