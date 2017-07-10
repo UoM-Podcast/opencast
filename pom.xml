@@ -144,10 +144,8 @@
     <module>modules/matterhorn-participation-management-syllabus-api</module>
     <module>modules/matterhorn-participation-management-syllabus-impl</module>
     <module>modules/matterhorn-participation-management-ui-admin</module>
-    <module>modules/matterhorn-participation-management-ui-admin-vaadin</module>
     <module>modules/matterhorn-participation-management-ui-common</module>
     <module>modules/matterhorn-participation-management-ui-teacher</module>
-    <module>modules/matterhorn-participation-management-ui-teacher-vaadin</module>
     <module>modules/matterhorn-presets</module>
     <module>modules/matterhorn-publication-service-api</module>
     <module>modules/matterhorn-publication-service-oaipmh</module>
