@@ -28,9 +28,6 @@ import org.opencastproject.pm.api.util.Security;
 import org.opencastproject.pm.ui.common.components.MainLayout;
 import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.pm.ui.common.util.UiUtil;
-import org.opencastproject.security.api.DefaultOrganization;
-import org.opencastproject.security.api.SecurityService;
-import org.opencastproject.security.api.User;
 import org.opencastproject.util.Crypt;
 
 import com.vaadin.annotations.Theme;
@@ -67,13 +64,6 @@ public class PmTeacher extends UI {
     final I18N i18n = i18n(ResourceBundle.getBundle("messages", request.getLocale()));
 
     getPage().setTitle(i18n.s("title"));
-
-    SecurityService securityService = dep.getSecurityService();
-    if (null == securityService.getOrganization()) {
-      securityService.setOrganization(new DefaultOrganization());
-    }
-    User user = securityService.getUser();
-    logger.info("User {} is accessing the participation management page for teaching staff", user);
 
     String teacherEMail;
     try {
