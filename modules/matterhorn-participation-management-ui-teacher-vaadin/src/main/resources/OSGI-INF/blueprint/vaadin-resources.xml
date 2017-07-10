@@ -4,7 +4,7 @@
   <service interface="javax.servlet.Servlet">
     <service-properties>
       <entry key="servlet-name" value="Vaadin Resources" />
-      <entry key="alias" value="/VAADIN" />
+      <entry key="alias" value="/VAADIN-ui-teacher" />
       <entry key="contextId" value="matterhorn-vaadin" />
     </service-properties>
     <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />
