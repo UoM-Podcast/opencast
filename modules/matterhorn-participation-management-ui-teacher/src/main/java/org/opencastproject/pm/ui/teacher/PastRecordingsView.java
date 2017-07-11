@@ -34,7 +34,6 @@ import org.opencastproject.archive.api.ArchiveException;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
-import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.pm.api.persistence.RecordingView;
 import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.pm.ui.common.util.UiUtil;
@@ -56,14 +55,16 @@ import com.vaadin.ui.Notification;
 import com.vaadin.ui.Notification.Type;
 import com.vaadin.ui.Table;
 import com.vaadin.ui.Table.ColumnGenerator;
+import com.vaadin.ui.UI;
 
 import org.apache.commons.lang.StringUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.vaadin.dialogs.ConfirmDialog;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -83,42 +84,31 @@ public class PastRecordingsView extends RecordingsView {
   };
 
   // FIXME: these values should be a in a properties file
-  public static final String RETRACT_WORKFLOW_ID = "retract";
-  private static final String EDIT_WORKFLOW_ID = "manchester";
-  private static final String EDITOR_DOMAIN = "http://mh-admin.localdomain";
-
-  private static final Map<String, String> EDIT_WORKFLOW_OPTIONS;
+  private static final String EDITOR_DOMAIN = "http://oc-admin.localdomain";
 
   private static final String[] COLS = array(COL_REC_STATUS, COL_TITLE, COL_START_DATE, COL_TIME, COL_ROOM,
           COL_ACTION_EDIT, COL_ACTIONS);
 
-  private final WorkflowServices workflowServices;
-  private final ArchiveServices archiveServices;
+  private final TeacherPm teacherPm;
+  private final WorkflowServiceUtils workflowServiceUtils;
+  private final ArchiveServiceUtils archiveServiceUtils;
   private final SecurityService securityService;
   private final Date now = new Date();
 
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
-  static {
-    Map<String, String> tempMap = new HashMap<String, String>();
-    tempMap.put("trimHold", "true");
-    tempMap.put("videoPreview", "true");
-    EDIT_WORKFLOW_OPTIONS = Collections.unmodifiableMap(tempMap);
-  }
-
   public PastRecordingsView(final I18N i18n,
           final String email,
-          final ParticipationManagementDatabase pmDb,
-          final SecurityService securityService,
-          final WorkflowServices workflowServices,
-          final ArchiveServices archiveServices) {
+          final TeacherPm teacherPm,
+          final WorkflowServiceUtils workflowServices) {
     super(i18n, i18n.s("past.title"), i18n.s("past.text"),
-            email, pmDb, Option.some(workflowServices), false);
+            email, teacherPm, Option.some(workflowServices), false);
 
     log.debug("Create PastRecordingsView");
-    this.workflowServices = workflowServices;
-    this.securityService = securityService;
-    this.archiveServices = archiveServices;
+    this.teacherPm = teacherPm;
+    this.workflowServiceUtils = workflowServices;
+    this.securityService = teacherPm.getSecurityService();
+    this.archiveServiceUtils = teacherPm.getArchiveServiceUtils();
 
     content.addComponents(vlayout(withMargin, table));
 
@@ -146,23 +136,24 @@ public class PastRecordingsView extends RecordingsView {
             public void buttonClick(final ClickEvent event) {
               // Disable edit button to prevent multiple clicks.
               event.getButton().setEnabled(true);
-//              ConfirmDialog.show(UI.getCurrent(), i18n.s("confirm.text.edit"), required,
-//                      i18n.s("confirm.affirmative"), i18n.s("confirm.negative"), new ConfirmDialog.Listener() {
-//                @Override
-//                public void onClose(ConfirmDialog dialog) {
-//                  if (dialog.isConfirmed()) {
-//                    if (!runAction(Action.EDIT, recording)) {
-//                      event.getButton().setEnabled(true);
-//                    }
-//                  } else {
-//                    event.getButton().setEnabled(true);
-//                  }
-//                }
-//              });
+              ConfirmDialog.show(UI.getCurrent(), i18n.s("confirm.text.edit"), required,
+                      i18n.s("confirm.affirmative"), i18n.s("confirm.negative"), new ConfirmDialog.Listener() {
+                @Override
+                public void onClose(ConfirmDialog dialog) {
+                  if (dialog.isConfirmed()) {
+                    if (!runAction(Action.EDIT, recording)) {
+                      event.getButton().setEnabled(true);
+                    }
+                  } else {
+                    event.getButton().setEnabled(true);
+                  }
+                }
+              });
             }
           });
         } else if ("edit".equals(recording.getProcessingStatus()) && recording.getWorkflowId().isSome()) {
-          return label(format("<a target=\"_blank\" href=\"%s/admin/editor.html?id=%d\">%s</a>", EDITOR_DOMAIN, recording.getWorkflowId().get(), i18n.s("table.action.edit.link")), UiUtil.htmlLabel);
+          return label(format("<a target=\"_blank\" href=\"%s/admin-ng/index.html#/events/events/%s/tools/editor\">%s</a>",
+                  teacherPm.getEditServer().get(), recording.getMediaPackageId().get(), i18n.s("table.action.edit.link")), UiUtil.htmlLabel);
         }
         return new Label("");
       }
@@ -180,19 +171,19 @@ public class PastRecordingsView extends RecordingsView {
             public void buttonClick(final ClickEvent event) {
               // Disable edit button to prevent multiple clicks.
               event.getButton().setEnabled(true);
-//              ConfirmDialog.show(UI.getCurrent(), i18n.s("confirm.text.retract"), required,
-//                      i18n.s("confirm.affirmative"), i18n.s("confirm.negative"), new ConfirmDialog.Listener() {
-//                @Override
-//                public void onClose(ConfirmDialog dialog) {
-//                  if (dialog.isConfirmed()) {
-//                    if (!runAction(Action.RETRACT, recording)) {
-//                      event.getButton().setEnabled(true);
-//                    }
-//                  } else {
-//                    event.getButton().setEnabled(true);
-//                  }
-//                }
-//              });
+              ConfirmDialog.show(UI.getCurrent(), i18n.s("confirm.text.retract"), required,
+                      i18n.s("confirm.affirmative"), i18n.s("confirm.negative"), new ConfirmDialog.Listener() {
+                @Override
+                public void onClose(ConfirmDialog dialog) {
+                  if (dialog.isConfirmed()) {
+                    if (!runAction(Action.RETRACT, recording)) {
+                      event.getButton().setEnabled(true);
+                    }
+                  } else {
+                    event.getButton().setEnabled(true);
+                  }
+                }
+              });
             }
           });
         } else if ("processing".equals(recording.getProcessingStatus())) {
@@ -201,19 +192,19 @@ public class PastRecordingsView extends RecordingsView {
             public void buttonClick(final ClickEvent event) {
               // Disable edit button to prevent multiple clicks.
               event.getButton().setEnabled(true);
-//              ConfirmDialog.show(UI.getCurrent(), i18n.s("confirm.text.pause"), required,
-//                      i18n.s("confirm.affirmative"), i18n.s("confirm.negative"), new ConfirmDialog.Listener() {
-//                @Override
-//                public void onClose(ConfirmDialog dialog) {
-//                  if (dialog.isConfirmed()) {
-//                    if (!runAction(Action.PAUSE, recording)) {
-//                      event.getButton().setEnabled(true);
-//                    }
-//                  } else {
-//                    event.getButton().setEnabled(true);
-//                  }
-//                }
-//              });
+              ConfirmDialog.show(UI.getCurrent(), i18n.s("confirm.text.pause"), required,
+                      i18n.s("confirm.affirmative"), i18n.s("confirm.negative"), new ConfirmDialog.Listener() {
+               @Override
+                public void onClose(ConfirmDialog dialog) {
+                  if (dialog.isConfirmed()) {
+                    if (!runAction(Action.PAUSE, recording)) {
+                      event.getButton().setEnabled(true);
+                    }
+                  } else {
+                    event.getButton().setEnabled(true);
+                  }
+                }
+              });
             }
           });
         } else {
@@ -232,7 +223,7 @@ public class PastRecordingsView extends RecordingsView {
     final WorkflowInstance wi;
 
     try {
-      wi = workflowServices.getSvc().getWorkflowById(recording.getWorkflowId().get());
+      wi = workflowServiceUtils.getSvc().getWorkflowById(recording.getWorkflowId().get());
     } catch (WorkflowDatabaseException e) {
       showError(format("Unable to process action on recording %s", recording.getTitle()));
       return false;
@@ -244,7 +235,7 @@ public class PastRecordingsView extends RecordingsView {
       return false;
     }
 
-    if (action != Action.PAUSE && WorkflowServices.notFinished(wi)) {
+    if (action != Action.PAUSE && WorkflowServiceUtils.notFinished(wi)) {
       Notification.show(format("Recording %s busy", recording.getTitle()),
               "There is still a workflow running on that recording. Please try again later.", Type.WARNING_MESSAGE);
       return false;
@@ -276,27 +267,25 @@ public class PastRecordingsView extends RecordingsView {
           protected void run() {
             String mpId = wi.getMediaPackage().getIdentifier().toString();
 
-            log.info("Action: User {} initited editing of mediapackage {}", email, mpId);
+            log.info("Action: User {} initiated editing of mediapackage {}", email, mpId);
             log.info("\tStart retract workflow on media package " + mpId);
 
             try {
-              MediaPackage mp = archiveServices.getMediaPackage(mpId);
+              MediaPackage mp = archiveServiceUtils.getMediaPackage(mpId);
 
-              //  for (WorkflowInstance retractWi : workflowServices.runWorkflow(RETRACT_WORKFLOW_ID, mp)) {
-              if (workflowServices.runWorkflow(RETRACT_WORKFLOW_ID, mp).isSome()) {
-                final Map<String, String> workflowProperties = new HashMap<String, String>(EDIT_WORKFLOW_OPTIONS);
+              if (workflowServiceUtils.runWorkflow(teacherPm.getWorkflowRetract().get(), mp).isSome()) {
+                final Map<String, String> workflowProperties = teacherPm.getWorkflowEditConfig().get();
                 Option<Recording> rec = getRecording(recording.getId());
                 if (rec.isNone()) {
                   Notification.show(format("The recording %s could not be found", recording.getTitle()), Type.ERROR_MESSAGE);
                   return;
                 }
-                workflowProperties.put("emailAddresses", getStaffMailList(rec.get()));
+                workflowProperties.put(teacherPm.getEmailProperty().get(), getStaffMailList(rec.get()));
 
                 log.info("\tStart default workflow with edit/review on media package " + mpId);
                 // Get updated version of mediapackge
-                MediaPackage retractedMp = archiveServices.getMediaPackage(mpId);
-                workflowServices.startWorkflow(EDIT_WORKFLOW_ID, retractedMp, workflowProperties);
-                return;
+                MediaPackage retractedMp = archiveServiceUtils.getMediaPackage(mpId);
+                workflowServiceUtils.startWorkflow(teacherPm.getWorkflowEdit().get(), retractedMp, workflowProperties);
               }
             } catch (NotFoundException e) {
               log.error("Mediapackage not found: {}", e.getMessage());
@@ -322,7 +311,7 @@ public class PastRecordingsView extends RecordingsView {
 
           private String getStaffMailList(Recording rec) {
             String emailAddresses = "";
-            List<String> staffMailList = new ArrayList<String>();
+            List<String> staffMailList = new ArrayList<>();
             for (Person p : rec.getStaff()) {
               if (StringUtils.isNotBlank(p.getEmail())) {
                 staffMailList.add(p.getEmail());
@@ -358,10 +347,9 @@ public class PastRecordingsView extends RecordingsView {
             log.info("\tStart retract workflow on media package " + mpId);
 
             try {
-              MediaPackage mp = archiveServices.getMediaPackage(mpId);
-              final Map<String, String> workflowProperties = new HashMap<String, String>();
-              workflowProperties.put("emailAddresses", email);
-              workflowServices.startWorkflow(RETRACT_WORKFLOW_ID, mp, workflowProperties);
+              MediaPackage mp = archiveServiceUtils.getMediaPackage(mpId);
+              final Map<String, String> workflowProperties = new HashMap<>();
+              workflowServiceUtils.startWorkflow(teacherPm.getWorkflowRetract().get(), mp, workflowProperties);
             } catch (NotFoundException e) {
               log.error("Mediapackage not found: {}", e.getMessage());
             } catch (UnauthorizedException e) {
@@ -383,7 +371,7 @@ public class PastRecordingsView extends RecordingsView {
             "It may not be possible to pause processing before publication, please check Video Portal");
     log.info("Action: User {} initited pausing of workflow {}", email, wi.getId());
 
-    if (workflowServices.pauseWorkflow(wi.getId())) {
+    if (workflowServiceUtils.pauseWorkflow(wi.getId())) {
       return true;
     } else {
       showError(format("Processing of recording %s could not be paused", recording.getTitle()));

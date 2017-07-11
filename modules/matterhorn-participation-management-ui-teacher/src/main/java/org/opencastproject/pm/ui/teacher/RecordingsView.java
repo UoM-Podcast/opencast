@@ -67,15 +67,17 @@ public class RecordingsView extends CustomComponent {
 
   public RecordingsView(final I18N i18n, String viewTitle, String viewCaption,
                         final String email,
-                        final ParticipationManagementDatabase pmDb,
-                        final Option<WorkflowServices> workflowServices,
+                        final TeacherPm dependencies,
+                        final Option<WorkflowServiceUtils> workflowServices,
                         final Boolean future)
  {
     log.debug("Create RecordingsView");
-    this.pmDb = pmDb;
+    this.pmDb = dependencies.getParticipationManagementDatabase().get().get();
     this.email = email;
     final Person teacher = person("", email);
-    recordingContainer = new RecordingContainer(pmDb, workflowServices, teacher, future);
+    recordingContainer = new RecordingContainer(dependencies,
+            workflowServices,
+            teacher, future);
     table = new Table();
     table.setContainerDataSource(recordingContainer);
     table.setPageLength(Math.min(recordingContainer.size(), 20));

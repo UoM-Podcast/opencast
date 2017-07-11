@@ -73,9 +73,9 @@ public class FutureRecordingsView extends RecordingsView {
 
   public FutureRecordingsView(final I18N i18n,
                         String email,
-                        final ParticipationManagementDatabase pmDb) {
+                        final TeacherPm dependencies) {
     super(i18n, i18n.s("future.title"), i18n.s("future.text"),
-            email, pmDb, Option.none(WorkflowServices.class), true);
+            email, dependencies, Option.none(WorkflowServiceUtils.class), true);
 
     log.debug("Create FutureRecordingsView");
 

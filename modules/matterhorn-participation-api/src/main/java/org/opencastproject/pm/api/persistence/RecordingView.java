@@ -75,6 +75,9 @@ public class RecordingView {
   // these values are set externally
   private Option<Long> workflowId;
 
+  // these values are set externally
+  private Option<String> mediaPackageId;
+
   private String processingStatus;
 
   public RecordingView(long id, Option<Long> eventId, String title, String presenter, String course, Date start,
@@ -96,6 +99,7 @@ public class RecordingView {
     this.edit = edit;
     this.input = input;
     this.workflowId = Option.none();
+    this.mediaPackageId = Option.none();
   }
 
   public static RecordingView fromRecording(Recording recording) {
@@ -211,6 +215,13 @@ public class RecordingView {
     this.workflowId = workflowId;
   }
 
+  public Option<String> getMediaPackageId() {
+    return mediaPackageId;
+  }
+
+  public void seMediaPackageId(Option<String> mediaPackageId) {
+    this.mediaPackageId = mediaPackageId;
+  }
   public String getProcessingStatus() {
     return processingStatus;
   }

@@ -46,13 +46,13 @@ import java.util.ResourceBundle;
 
 /** Created by {@link org.opencastproject.pm.ui.teacher.vaadin.PmTeacherUiProvider}. */
 @Theme("PM")
-public class PmTeacher extends UI {
+public class TeacherPmUI extends UI {
 
-  private static final Logger logger = LoggerFactory.getLogger(PmTeacher.class);
+  private static final Logger logger = LoggerFactory.getLogger(TeacherPmUI.class);
 
-  private final PmDependencies dep;
+  private final TeacherPm dep;
 
-  public PmTeacher(PmDependencies dep) {
+  public TeacherPmUI(TeacherPm dep) {
     this.dep = dep;
   }
 
@@ -84,14 +84,12 @@ public class PmTeacher extends UI {
 
     RecordingsView futureRecordingsView = new FutureRecordingsView(i18n,
                                                        teacherEMail,
-                                                       dep.getParticipationManagementDatabase().get().get());
+                                                       dep);
 
-    RecordingsView pastRecordingsView = new PastRecordingsView(i18n,
+    RecordingsView pastRecordingsView = new  PastRecordingsView(i18n,
                                                        teacherEMail,
-                                                       dep.getParticipationManagementDatabase().get().get(),
-                                                       dep.getSecurityService(),
-                                                       new WorkflowServices(dep.getWorkflowService()),
-                                                       dep.getArchiveServices());
+                                                       dep,
+                                                       new WorkflowServiceUtils(dep.getWorkflowService()));
 
     final MainLayout mainLayout = new MainLayout(i18n.s("title"), i18n).addPage(
             vlayout(futureRecordingsView, UiUtil.vspacerBig() ,pastRecordingsView));

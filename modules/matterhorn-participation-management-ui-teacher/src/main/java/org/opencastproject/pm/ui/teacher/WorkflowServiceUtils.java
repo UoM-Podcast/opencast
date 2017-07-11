@@ -44,13 +44,13 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 /** Some code borrowed from module entwine-integration-tests. */
-public final class WorkflowServices {
-  private static final Logger log = LoggerFactory.getLogger(WorkflowServices.class);
+public final class WorkflowServiceUtils {
+  private static final Logger log = LoggerFactory.getLogger(WorkflowServiceUtils.class);
   private static final long POLLING_INTERVAL = 30000;
 
   private final WorkflowService svc;
 
-  public WorkflowServices(WorkflowService svc) {
+  public WorkflowServiceUtils(WorkflowService svc) {
     this.svc = svc;
   }
 
