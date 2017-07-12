@@ -336,7 +336,7 @@ public class ParticipationFeederRunner {
       final Map<String, String> locationSuitabilityInputs = new HashMap<>();
       for (Map.Entry<String, Map<String, String>> caPropsEntry : syllabus.getCaptureRooms().entrySet()) {
         Map<String, String> properties = caPropsEntry.getValue();
-        locationSuitabilityInputs.put(properties.get("id"), properties.get("options"));
+        locationSuitabilityInputs.put(properties.get("id"), properties.get("inputs"));
       }
 
       if (StringUtils.isNotBlank(sourceDescription)) {
