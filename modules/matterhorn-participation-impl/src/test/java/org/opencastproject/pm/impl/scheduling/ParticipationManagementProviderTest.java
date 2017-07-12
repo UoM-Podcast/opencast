@@ -95,7 +95,7 @@ public class ParticipationManagementProviderTest {
     students.add(person("Student 2", "student2@university.org", studentTypes));
 
     Room room = new Room("Aula");
-    CaptureAgent captureAgent = new CaptureAgent(room, "mh_ncast1");
+    CaptureAgent captureAgent = new CaptureAgent(room, "mh_ncast1", "SCREEN");
     Course course = new Course("mathe", "uuid", "Math", "Simple course about algebra.", "I1234-MATH-56789-1151-1YR-012345");
 
     return Recording.recording("activityId", "Test title", false, staff, some(course), room, new Date(), new DateTime()

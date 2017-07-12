@@ -42,6 +42,9 @@ public class CaptureAgent {
   /** The MH agent identifier */
   private String mhAgent;
 
+  /** Available recording inputs | separated */
+  private String inputs;
+
   /**
    * Creates an capture agent
    *
@@ -50,14 +53,15 @@ public class CaptureAgent {
    * @param agentId
    *          the agent id
    */
-  public CaptureAgent(Room room, String agentId) {
+  public CaptureAgent(Room room, String agentId, String inputs) {
     this.setRoom(notNull(room, "room"));
     this.mhAgent = notEmpty(agentId, "mhAgent");
+    this.inputs = notEmpty(inputs, "inputs");
   }
 
   /**
    * Sets the id
-   * 
+   *
    * @param id
    *          the capture agent id
    */
@@ -67,7 +71,7 @@ public class CaptureAgent {
 
   /**
    * Returns the capture agent id
-   * 
+   *
    * @return the id
    */
   public Long getId() {
@@ -76,7 +80,7 @@ public class CaptureAgent {
 
   /**
    * Sets the MH agent identifier
-   * 
+   *
    * @param mhAgent
    *          the agent id
    */
@@ -86,7 +90,7 @@ public class CaptureAgent {
 
   /**
    * Returns the MH agent identifier
-   * 
+   *
    * @return the agent id
    */
   public String getMhAgent() {
@@ -95,7 +99,7 @@ public class CaptureAgent {
 
   /**
    * Gets the room containing the capture agent
-   * 
+   *
    * @return the room
    */
   public Room getRoom() {
@@ -104,12 +108,32 @@ public class CaptureAgent {
 
   /**
    * Sets the room containing the capture agent
-   * 
+   *
    * @param room
    *          the room containing the agent
    */
   public void setRoom(Room room) {
     this.room = room;
+  }
+
+  /**
+   * Gets the recording inputs of the capture agent
+   *
+   * @return inputs
+   *          | separate string of inputs
+   */
+  public String getInputs() {
+    return inputs;
+  }
+
+  /**
+   * Sets the recording inputs of the capture agent
+   *
+   * @param inputs
+   *          the room containing the agent
+   */
+  public void setInputs(String inputs) {
+    this.inputs = inputs;
   }
 
   @Override
@@ -119,12 +143,13 @@ public class CaptureAgent {
     if (o == null || getClass() != o.getClass())
       return false;
     CaptureAgent ca = (CaptureAgent) o;
-    return getRoom().equals(ca.getRoom()) && mhAgent.equals(ca.getMhAgent());
+    return getRoom().equals(ca.getRoom()) && mhAgent.equals(ca.getMhAgent())
+            && inputs.equals(ca.getInputs());
   }
 
   @Override
   public int hashCode() {
-    return EqualsUtil.hash(id, room, mhAgent);
+    return EqualsUtil.hash(id, room, mhAgent, inputs);
   }
 
   @Override
@@ -134,7 +159,7 @@ public class CaptureAgent {
 
   /**
    * Get the Matterhorn capture agent id based on the room name
-   * 
+   *
    * @param room
    *          the room containing the capture agent
    * @return the Matterhorn capture agent id

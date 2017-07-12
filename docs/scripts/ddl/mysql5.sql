@@ -661,6 +661,7 @@ CREATE TABLE mh_pm_capture_agent (
   id BIGINT(20) NOT NULL,
   mh_agent VARCHAR(255) NOT NULL,
   room BIGINT(20) DEFAULT NULL,
+  inputs  VARCHAR(255) NOT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY UNQ_mh_pm_capture_agent_0 (mh_agent),
   KEY FK_mh_pm_capture_agent_room (room),

@@ -769,7 +769,7 @@ public class ParticipationManagementDatabaseImplTest {
     students.add(person("Student 2", "student2@university.org", studentTypes));
 
     Room room = new Room("Aula");
-    CaptureAgent captureAgent = new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room));
+    CaptureAgent captureAgent = new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), "SCREEN");
     Course course = new Course("mathe", "uuid", "Math", "Simple course about algebra.", "ckey");
 
     return Recording.recording("activityId", "Test title", false, staff, some(course), room, new Date(), new DateTime()

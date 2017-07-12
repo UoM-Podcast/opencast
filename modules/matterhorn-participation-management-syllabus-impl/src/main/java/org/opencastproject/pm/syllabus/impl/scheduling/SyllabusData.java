@@ -27,14 +27,12 @@ import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VActivityStaffF;
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VDepartmentF;
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VLocationF;
-import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VLocationSuitabilityF;
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VModuleF;
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VStaffF;
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VZonesF;
 import static org.opencastproject.util.data.Collections.asMap;
 import static org.opencastproject.util.data.Collections.groupBy;
 import static org.opencastproject.util.data.Collections.grouped;
-import static org.opencastproject.util.data.Collections.toSet;
 import static org.opencastproject.util.data.Monadics.mlist;
 
 import org.opencastproject.pm.syllabus.api.SyllabusService;
@@ -49,6 +47,7 @@ import org.opencastproject.pm.syllabus.api.VModule;
 import org.opencastproject.pm.syllabus.api.VStaff;
 import org.opencastproject.pm.syllabus.api.VZones;
 import org.opencastproject.util.data.Function;
+import org.opencastproject.util.data.Tuple;
 import org.opencastproject.util.data.functions.Functions;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -59,9 +58,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** This data type holds data fetched from the S+ database together with some helper functions. */
 public abstract class SyllabusData {
@@ -89,7 +88,7 @@ public abstract class SyllabusData {
 
   public abstract String getSourceDescription();
 
-  public abstract boolean hasCaptureAgent(VLocation location);
+  public abstract String getCaptureAgentSuitabilityId(VLocation location);
 
   /** Fetches data from the S+ database. */
   public static SyllabusData fetch(final SyllabusService syl) {
@@ -117,15 +116,17 @@ public abstract class SyllabusData {
             mlist(activityPartitioned).bind(Functions.<List<VActivity>>identity()).value(),
             AccessorFunctions.VActivityF.getId);
     final Map<String, VLocation> location = mapById(syl.findLocations(), VLocationF.getId, "location");
-    final Set<String> locationHasCaptureAgent;
+    // location id and suitability id, filtered by capture agent room type ids
+    final Map<String, String> locationSuitability = new HashMap<>();
     {
-      List<VLocationSuitability> caLocations = new ArrayList<VLocationSuitability>();
+      List<VLocationSuitability> caLocations = new ArrayList<>();
       for (String roomIdWithCa : syl.getCaptureRoomTypeIDs()) {
         caLocations.addAll(syl.findLocationSuitability(roomIdWithCa));
       }
-      locationHasCaptureAgent = toSet(mlist(caLocations).map(VLocationSuitabilityF.getLocationId).value());
-    }
-    logger.debug("# locations featuring capture agents " + locationHasCaptureAgent.size());
+      makeMap(locationSuitability, caLocations, toLocationSuitabilityIds);
+     }
+
+    logger.debug("# locations featuring capture agents " + locationSuitability.size());
     final Multimap<String, VActivityLocation> activityLocation =
             multimapById(syl.findActivityLocation(), VActivityLocationF.getActivityId, "activityLocation");
     final Multimap<String, VActivityParents> activityParent =
@@ -183,8 +184,8 @@ public abstract class SyllabusData {
         return sourceDescription;
       };
 
-      @Override public boolean hasCaptureAgent(VLocation location) {
-        return locationHasCaptureAgent.contains(location.getId());
+      @Override public String getCaptureAgentSuitabilityId(VLocation location) {
+        return locationSuitability.get(location.getId());
       }
     };
   }
@@ -263,8 +264,8 @@ public abstract class SyllabusData {
         return null;
       };
 
-      @Override public boolean hasCaptureAgent(VLocation location) {
-        return false;
+      @Override public String getCaptureAgentSuitabilityId(VLocation location) {
+        return null;
       }
     };
   }
@@ -278,4 +279,22 @@ public abstract class SyllabusData {
     logger.debug("# " + name + " " + as.size());
     return groupBy(ArrayListMultimap.<String, A>create(), as, id);
   }
+
+  public static <K, V, X> Map<K, V> makeMap(Map<K, V> map,
+                                            Iterable<? extends X> values,
+                                            Function<? super X, Tuple<K, V>> group) {
+    for (X value : values) {
+      final Tuple<K, V> entry = group.apply(value);
+      map.put(entry.getA(), entry.getB());
+    }
+    return map;
+  }
+
+  private static final Function<VLocationSuitability, Tuple<String, String>> toLocationSuitabilityIds =
+          new Function<VLocationSuitability, Tuple<String, String>>() {
+    @Override
+    public Tuple<String, String> apply(VLocationSuitability s) {
+      return new Tuple(s.getLocationId(), s.getSuitabilityId());
+    }
+  };
 }

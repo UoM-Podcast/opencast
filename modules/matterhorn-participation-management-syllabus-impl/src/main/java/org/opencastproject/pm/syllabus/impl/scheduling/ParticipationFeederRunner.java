@@ -323,41 +323,54 @@ public class ParticipationFeederRunner {
 
     /** Run the actual harvest. */
     private void harvest(final Synchronization synchronization, final ParticipationFeederRunner parent) {
-      final SyllabusService syl = parent.syllabusService;
-      final SyllabusData data = SyllabusData.fetch(syl);
-      final Map<String, Set<Room>> buildingMap = new HashMap<String, Set<Room>>();
-      final Set<Long> treatedRecordings = new HashSet<Long>();
+      logger.info("Start harvesting from Syllabus+");
+
+      final SyllabusService syllabus = parent.syllabusService;
+      final SyllabusData data = SyllabusData.fetch(syllabus);
+      final Map<String, Set<Room>> buildingMap = new HashMap<>();
+      final Set<Long> treatedRecordings = new HashSet<>();
       final ModuleFinder moduleFinder = new ModuleFinder(data.getModule(), data.getActivityParent(), data.getActivity());
       final String sourceDescription = data.getSourceDescription();
       Option<SchedulingSource> schedulingSource;
-      logger.info("Start harvesting from Syllabus+");
+
+      final Map<String, String> locationSuitabilityInputs = new HashMap<>();
+      for (Map.Entry<String, Map<String, String>> caPropsEntry : syllabus.getCaptureRooms().entrySet()) {
+        Map<String, String> properties = caPropsEntry.getValue();
+        locationSuitabilityInputs.put(properties.get("id"), properties.get("options"));
+      }
+
       if (StringUtils.isNotBlank(sourceDescription)) {
         schedulingSource = Option.some(new SchedulingSource(sourceDescription));
       } else {
         schedulingSource = none();
       }
+
       final HarvestStats stats = new HarvestStats();
       // limit the amount of harvested recordings for testing
       final Option<Integer> limitRecordings = none();
       // iterate activity partitions
+
       ACTIVITIES: for (List<VActivity> activityPartition : data.getActivityPartitioned()) {
         // fetch matching V_ACTIVITY_DATETIME entities
         final String firstActivityId = activityPartition.get(0).getId();
         final String lastActivityId = activityPartition.get(activityPartition.size() - 1).getId();
-        final List<VActivityDateTime> activityDateTimeList = fetch(syl, firstActivityId, lastActivityId, 4);
+        final List<VActivityDateTime> activityDateTimeList = fetch(syllabus, firstActivityId, lastActivityId, 4);
         logger.debug("# activityDateTime from " + firstActivityId + " to " + lastActivityId + " "
                 + activityDateTimeList.size());
+
         if (activityDateTimeList.size() == 0) {
           logger.warn("ActivityDateTime range query did non yield any results. That may not be correct. Be"
                   + " aware that all recordings of that range will be deleted.");
         }
+
         final Multimap<String, VActivityDateTime> activityDateTimeMap = groupBy(
                 ArrayListMultimap.<String, VActivityDateTime> create(), activityDateTimeList,
                 VActivityDateTimeF.getActivityId);
+
         // iterate activity partition
         for (final VActivity activity : activityPartition) {
           final String aId = activity.getId();
-          if (!syl.isCaptureActivityType(activity)) {
+          if (!syllabus.isCaptureActivityType(activity)) {
             continue;
           }
           logger.info(format("********** Handling activity %s", aId));
@@ -399,14 +412,21 @@ public class ParticipationFeederRunner {
               logInconsistency("location", activityLocation.getLocationId());
               continue;
             }
+
             // only process if location features a capture agent
-            if (!data.hasCaptureAgent(location)) {
+            final String suitability = data.getCaptureAgentSuitabilityId(location);
+            if (suitability == null) {
               logger.info(format("Location %s does not have a capture agent. Skipping...", location.getName()));
               continue;
             }
+
+            // Determine available capture agent inputs, FIXME cannot be null!
+            final String inputs = locationSuitabilityInputs.get(suitability);
+
             // iterate dates
             for (final VActivityDateTime dateTime : activityDateTimeMap.get(aId)) {
               final Room room = new Room(location.getName());
+
               final Recording newRecording = Recording.recording(
                       // no need to create a virtual id for the recording
                       aId,
@@ -425,7 +445,7 @@ public class ParticipationFeederRunner {
                       // - or, the recording may hold a capture start date, event start date
                       // and a capture end date and an event end date
                       dateTime.getStartDateTime().toDate(), dateTime.getEndDateTime().toDate(), participation,
-                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room)));
+                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), inputs));
               newRecording.setSchedulingSource(schedulingSource);
               try {
                 List<Recording> recordings = parent.persistence.findRecordings(RecordingQuery.create()

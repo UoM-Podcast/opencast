@@ -664,6 +664,7 @@ CREATE TABLE mh_pm_capture_agent (
   id BIGINT NOT NULL,
   mh_agent VARCHAR(255) NOT NULL,
   room BIGINT DEFAULT NULL,
+  inputs VARCHAR(255) NOT NULL,
   PRIMARY KEY (id),
   CONSTRAINT UNQ_mh_pm_capture_agent_0 UNIQUE (mh_agent),
   CONSTRAINT FK_mh_pm_capture_agent_room FOREIGN KEY (room) REFERENCES mh_pm_room (id) ON DELETE CASCADE

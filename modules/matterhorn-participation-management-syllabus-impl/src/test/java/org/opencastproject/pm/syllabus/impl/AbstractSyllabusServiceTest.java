@@ -558,7 +558,7 @@ public class AbstractSyllabusServiceTest {
                       // - or, the recording may hold a capture start date, event start date
                       // and a capture end date and an event end date
                       dateTime.getStartDateTime().toDate(), dateTime.getEndDateTime().toDate(), participation,
-                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room)));
+                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), "SCREEN"));
               // todo store in database
 //              System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                      + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ "

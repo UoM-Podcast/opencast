@@ -61,6 +61,9 @@ public class CaptureAgentDto {
   @Column(name = "mh_agent", nullable = false)
   private String mhAgent;
 
+  @Column(name = "inputs", nullable = false)
+  private String inputs;
+
   /**
    * Default constructor
    */
@@ -69,20 +72,21 @@ public class CaptureAgentDto {
 
   /**
    * Creates an capture agent
-   * 
+   *
    * @param id
    *          the id
    * @param agentId
    *          the agent id
    */
-  public CaptureAgentDto(RoomDto room, String agentId) {
+  public CaptureAgentDto(RoomDto room, String agentId, String inputs) {
     this.room = notNull(room, "room");
     this.mhAgent = notEmpty(agentId, "mhAgent");
+    this.inputs = notEmpty(inputs, "inputs");
   }
 
   /**
    * Gets the room containing the capture agent
-   * 
+   *
    * @return the room
    */
   public RoomDto getRoom() {
@@ -91,7 +95,7 @@ public class CaptureAgentDto {
 
   /**
    * Sets the room containing the capture agent
-   * 
+   *
    * @param room
    *          the room containing the agent
    */
@@ -101,7 +105,7 @@ public class CaptureAgentDto {
 
   /**
    * Sets the MH agent identifier
-   * 
+   *
    * @param mhAgent
    *          the agent id
    */
@@ -111,20 +115,40 @@ public class CaptureAgentDto {
 
   /**
    * Returns the MH agent identifier
-   * 
+   *
    * @return the agent id
    */
   public String getMhAgent() {
     return mhAgent;
   }
 
+   /**
+   * Gets the recording inputs of the capture agent
+   *
+   * @return inputs
+   *          | separate string of inputs
+   */
+  public String getInputs() {
+    return inputs;
+  }
+
+  /**
+   * Sets the recording inputs of the capture agent
+   *
+   * @param inputs
+   *          the room containing the agent
+   */
+  public void setInputs(String inputs) {
+    this.inputs = inputs;
+  }
+
   /**
    * Returns the business object of this capture agent
-   * 
+   *
    * @return the business object model of this capture agent
    */
   public CaptureAgent toCaptureAgent() {
-    CaptureAgent ca = new CaptureAgent(room.toRoom(), mhAgent);
+    CaptureAgent ca = new CaptureAgent(room.toRoom(), mhAgent, inputs);
     ca.setId(id);
     return ca;
   }
