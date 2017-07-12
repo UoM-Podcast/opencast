@@ -68,7 +68,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
 
   private static final String CAPTURE_ROOMS_PROPERTY = "capture.rooms";
   private static final String CAPTURE_ROOM_PROPERTY = "capture.room";
-  private static final String[] CAPTURE_ROOM_PROPS = {"name","id","options"};
+  private static final String[] CAPTURE_ROOM_PROPS = {"name","id","inputs"};
 
   private static final String CAPTURE_TYPES_PROPERTY = "capture.types";
   private static final String CAPTURE_TYPE_PROPERTY = "capture.type";
