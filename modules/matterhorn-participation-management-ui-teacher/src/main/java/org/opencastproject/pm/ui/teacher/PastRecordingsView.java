@@ -47,6 +47,7 @@ import org.opencastproject.workflow.api.WorkflowDatabaseException;
 import org.opencastproject.workflow.api.WorkflowInstance;
 
 import com.vaadin.server.Page;
+import com.vaadin.shared.ui.label.ContentMode;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Button.ClickEvent;
 import com.vaadin.ui.Button.ClickListener;
@@ -117,8 +118,10 @@ public class PastRecordingsView extends RecordingsView {
       public Object generateCell(Table t, Object item, Object colId) {
         RecordingView recording = (RecordingView) item;
         String required = recording.requiresRecording() ? " " + i18n.s("table.rec_status.required") : "";
-        Label recStatusLabel = new Label(
-                i18n.s("table.rec_status." + recording.getProcessingStatus()) + required);
+        Label recStatusLabel = new Label();
+        recStatusLabel.setContentMode(ContentMode.HTML);
+        recStatusLabel.setValue(i18n.s("table.rec_status." + recording.getProcessingStatus())
+                + required + getInputIcons(recording.getRecordingInput(), "The %s was recorded"));
         recStatusLabel.setPrimaryStyleName("pm_" + recording.getProcessingStatus());
         return recStatusLabel;
       }

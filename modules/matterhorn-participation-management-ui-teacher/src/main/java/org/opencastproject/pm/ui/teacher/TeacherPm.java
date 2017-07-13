@@ -43,17 +43,23 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /* OSGi component */
 public class TeacherPm implements ManagedService {
-
+  private static final String DEFAULT_CA_INPUT = "screen";
   private static final String DEFAULT_WORKFLOW_EDIT = "ng-schedule-upload";
   private static final String DEFAULT_WORKFLOW_RETRACT = "ng-retract";
   private static final String DEFAULT_WORKFLOW_EMAIL_PROPERTY = "emailAddresses";
+  private static final Map<String, String>DEFAULT_CA_INPUT_DESCRIPTION = new HashMap<>();
+  {
+    DEFAULT_CA_INPUT_DESCRIPTION.put(DEFAULT_CA_INPUT, "Screen only");
+  }
 
   private static final Logger logger = LoggerFactory.getLogger(TeacherPm.class);
   private final VCell<Option<ParticipationManagementDatabase>> pm = iocell(none(ParticipationManagementDatabase.class));
@@ -64,6 +70,8 @@ public class TeacherPm implements ManagedService {
   private EventCommentService eventCommentService;
   private String systemUserName;
 
+  private final VCell<List<String>> captureAgentInputs = cell(Arrays.asList(DEFAULT_CA_INPUT));
+  private final VCell<Map<String, String>>captureAgentInputDescriptions = cell(DEFAULT_CA_INPUT_DESCRIPTION);
   private final VCell<String> workflowEdit = cell(DEFAULT_WORKFLOW_EDIT);
   private final VCell<String> workflowRetract = cell(DEFAULT_WORKFLOW_RETRACT);
   private final VCell<HashMap<String, String>> workflowEditConfig = cell(new HashMap<String, String>());
@@ -139,10 +147,17 @@ public class TeacherPm implements ManagedService {
 
   @Override
   public void updated(Dictionary properties) throws ConfigurationException {
-    if (properties != null) {
+    if (properties == null) {
       return;
     }
-
+    logger.info("reading properties");
+    final String caInputs = getCfg(properties, "capture.room.__ANY__.inputs");
+    captureAgentInputs.set(Arrays.asList(caInputs.split("\\|")));
+    final Map<String, String>caInputDescrips = new HashMap<>();
+    for (String input : captureAgentInputs.get()) {
+      caInputDescrips.put(input, getCfg(properties, "capture.room.__ANY__.input." + input));
+    }
+    captureAgentInputDescriptions.set(caInputDescrips);
     final String wfEdit = getCfg(properties, "workflow.edit.definition");
     final String wfRetract = getCfg(properties, "workflow.retract.definition");
     final HashMap<String, String> wfCfg = new HashMap<>(getWfCfgAsMap(properties, "workflow.edit.config"));
@@ -165,6 +180,14 @@ public class TeacherPm implements ManagedService {
         config.put(dKey.substring(key.length() + 1), d.get(dKey));
     }
     return config;
+  }
+
+  public VCell<List<String>> getCaptureAgentInputs() {
+    return captureAgentInputs;
+  }
+
+  public VCell<Map<String, String>> getCaptureAgentInputDescriptions() {
+    return captureAgentInputDescriptions;
   }
 
   public VCell<String> getWorkflowEdit() {

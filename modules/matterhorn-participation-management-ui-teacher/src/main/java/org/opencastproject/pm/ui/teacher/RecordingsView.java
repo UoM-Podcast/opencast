@@ -35,6 +35,7 @@ import org.opencastproject.pm.ui.common.util.UiUtil;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 
+import com.vaadin.shared.ui.label.ContentMode;
 import com.vaadin.ui.CustomComponent;
 import com.vaadin.ui.Label;
 import com.vaadin.ui.Panel;
@@ -105,6 +106,17 @@ public class RecordingsView extends CustomComponent {
       }
     }));
     table.setColumnWidth(COL_TIME, COL_WIDTH_SMALL);
+
+    table.addGeneratedColumn(COL_ROOM, new Table.ColumnGenerator() {
+      @Override
+      public Object generateCell(Table t, final Object item, Object colId) {
+        final RecordingView recording = (RecordingView) item;
+        Label roomLabel = new Label(recording.getRoom()
+                + getInputIcons(recording.getAgentInputs(), "A %s can be recorded"));
+        roomLabel.setContentMode(ContentMode.HTML);
+        return roomLabel;
+      }
+    });
     table.setColumnWidth(COL_ROOM, COL_WIDTH_MEDIUM);
 
     table.setSortContainerPropertyId(COL_START_DATE);
@@ -120,6 +132,15 @@ public class RecordingsView extends CustomComponent {
     for (String colId : colIds) {
       table.setColumnHeader(colId, i18n.s("table.column." + colId));
     }
+  }
+
+  protected String getInputIcons(String inputs, String tipFormat) {
+    String icons = "";
+    for (String input : inputs.split("\\|")) {
+      String tip = String.format(tipFormat, input);
+      icons = icons + String.format("<div title=\"%s\" class=\"pm_room_%s\"></div>", tip, input);
+    }
+    return "<span class=\"pm_room_icons\">" + icons + "</span>";
   }
 
 }
