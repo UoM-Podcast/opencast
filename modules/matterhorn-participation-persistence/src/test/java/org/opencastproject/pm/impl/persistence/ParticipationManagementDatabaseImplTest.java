@@ -52,7 +52,6 @@ import org.opencastproject.pm.api.Period;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.PersonType;
 import org.opencastproject.pm.api.Recording;
-import org.opencastproject.pm.api.Recording.RecordingInput;
 import org.opencastproject.pm.api.Recording.ReviewStatus;
 import org.opencastproject.pm.api.Room;
 import org.opencastproject.pm.api.Synchronization;
@@ -769,12 +768,12 @@ public class ParticipationManagementDatabaseImplTest {
     students.add(person("Student 2", "student2@university.org", studentTypes));
 
     Room room = new Room("Aula");
-    CaptureAgent captureAgent = new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), "SCREEN");
+    CaptureAgent captureAgent = new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), "screen");
     Course course = new Course("mathe", "uuid", "Math", "Simple course about algebra.", "ckey");
 
     return Recording.recording("activityId", "Test title", false, staff, some(course), room, new Date(), new DateTime()
             .plusHours(2).toDate(), new DateTime().plusHours(3).toDate(), students, nil(Message.class), some(4L),
-            captureAgent, nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, none(Date.class), false, false, RecordingInput.SCREEN);
+            captureAgent, nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, none(Date.class), false, false, "screen");
   }
 
   private Message createAndPersistMessage(Person creator, MessageTemplate msgTmpl, MessageSignature msgSig,

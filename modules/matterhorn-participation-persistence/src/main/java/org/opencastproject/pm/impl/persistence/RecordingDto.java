@@ -32,7 +32,6 @@ import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.Message;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
-import org.opencastproject.pm.api.Recording.RecordingInput;
 import org.opencastproject.pm.api.Recording.ReviewStatus;
 import org.opencastproject.pm.api.SchedulingSource;
 import org.opencastproject.pm.api.persistence.EmailView;
@@ -172,8 +171,8 @@ public class RecordingDto {
   @Column(name = "edit", nullable = false)
   private boolean edit;
 
-  @Enumerated(EnumType.STRING)
-  private RecordingInput recordingInput;
+  @Column(name = "recording_inputs", nullable = false)
+  private String recordingInputs;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "source", referencedColumnName = "id")
@@ -226,12 +225,14 @@ public class RecordingDto {
    *         the deleted flag
    * @param fingerprint
    *         the entry's hash value
+   * @param edit
+   * @param recordingInputs
    */
   public RecordingDto(String activityId, String title, boolean blacklisted, List<PersonDto> staff, CourseDto course,
                       RoomDto room, Date modificationDate, Date start, Date stop, List<PersonDto> participation,
                       List<MessageDto> messages, Long eventId, CaptureAgentDto captureAgent, List<ActionDto> action,
                       EmailStatus emailStatus, ReviewStatus reviewStatus, Date reviewDate, boolean deleted, String fingerprint,
-                      boolean edit, RecordingInput recordingInput) {
+                      boolean edit, String recordingInputs) {
     if (staff != null)
       this.staff = staff;
     if (participation != null)
@@ -257,7 +258,7 @@ public class RecordingDto {
     this.deleted = deleted;
     this.fingerprint = fingerprint;
     this.edit = edit;
-    this.recordingInput = recordingInput;
+    this.recordingInputs = recordingInputs;
   }
 
   /**
@@ -755,12 +756,12 @@ public class RecordingDto {
     this.edit = edit;
   }
 
-  public RecordingInput getRecordingInput() {
-    return recordingInput;
+  public String getRecordingInputs() {
+    return recordingInputs;
   }
 
-  public void setRecordingInput(RecordingInput recordingInput) {
-    this.recordingInput = recordingInput;
+  public void setRecordingInputs(String recordingInputs) {
+    this.recordingInputs = recordingInputs;
   }
 
   /**
@@ -822,7 +823,7 @@ public class RecordingDto {
             option(reviewDate),
             deleted,
             edit,
-            recordingInput);
+            recordingInputs);
     for (PersonDto p : this.staff) {
       rec.addStaffMember(p.toPerson());
     }

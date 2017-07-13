@@ -41,7 +41,6 @@ import org.opencastproject.pm.api.Message;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.PersonType;
 import org.opencastproject.pm.api.Recording;
-import org.opencastproject.pm.api.Recording.RecordingInput;
 import org.opencastproject.pm.api.Recording.ReviewStatus;
 import org.opencastproject.pm.api.Room;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
@@ -127,8 +126,8 @@ public class AbstractEmailSenderServiceTest {
                     "ced@neopoly.de", nil(PersonType.class))), some(new Course((long) nr, "course-" + nr, "series",
                     "Course " + nr, "This is course " + nr, "courseKey-" + nr, null)), room, new Date(), new Date(), new Date(),
             list(new Person(4L, "Student 1", "ced@gmx.de", nil(PersonType.class))), nil(Message.class), some(1L),
-            new CaptureAgent(room, "ca-" + nr, "SCREEN"), nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED,
-            some(new Date()), false, false, RecordingInput.SCREEN);
+            new CaptureAgent(room, "ca-" + nr, "screen"), nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED,
+            some(new Date()), false, false, "screen");
   }
 
   private Message message() {

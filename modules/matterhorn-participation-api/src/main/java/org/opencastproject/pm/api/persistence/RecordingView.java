@@ -26,7 +26,6 @@ import org.opencastproject.pm.api.Course;
 import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
-import org.opencastproject.pm.api.Recording.RecordingInput;
 import org.opencastproject.pm.api.Recording.RecordingStatus;
 import org.opencastproject.util.data.Option;
 
@@ -58,6 +57,8 @@ public class RecordingView {
 
   private final String agent;
 
+  private final String agentInputs;
+
   private final RecordingStatus status;
 
   private final EmailStatus emailStatus;
@@ -70,7 +71,7 @@ public class RecordingView {
 
   private final boolean edit;
 
-  private final RecordingInput input;
+  private final String input;
 
   // these values are set externally
   private Option<Long> workflowId;
@@ -81,7 +82,7 @@ public class RecordingView {
   private String processingStatus;
 
   public RecordingView(long id, Option<Long> eventId, String title, String presenter, String course, Date start,
-          Date end, String room, String agent, EmailStatus emailStatus, RecordingStatus status, Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean edit, RecordingInput input) {
+          Date end, String room, String agent, String agentInputs, EmailStatus emailStatus, RecordingStatus status, Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean edit, String input) {
     this.id = id;
     this.eventId = eventId;
     this.title = title;
@@ -91,6 +92,7 @@ public class RecordingView {
     this.endDate = end;
     this.room = room;
     this.agent = agent;
+    this.agentInputs = agentInputs;
     this.status = status;
     this.emailStatus = emailStatus;
     this.requiresRecording = requiresRecording;
@@ -134,13 +136,14 @@ public class RecordingView {
             recording.getStop(),
             recording.getRoom().getName(),
             recording.getCaptureAgent().getMhAgent(),
+            recording.getCaptureAgent().getInputs(),
             recording.getEmailStatus(),
             recording.getRecordingStatus(false),
             requiredRecording,
             captionRecording,
             StringUtils.join(actions, ", "),
             recording.isEdit(),
-            recording.getRecordingInput());
+            recording.getRecordingInputs());
   }
 
   public String getTitle() {
@@ -169,6 +172,10 @@ public class RecordingView {
 
   public String getAgent() {
     return agent;
+  }
+
+  public String getAgentInputs() {
+    return agentInputs;
   }
 
   public RecordingStatus getStatus() {
@@ -203,7 +210,7 @@ public class RecordingView {
     return edit;
   }
 
-  public RecordingInput getRecordingInput() {
+  public String getRecordingInput() {
     return input;
   }
 

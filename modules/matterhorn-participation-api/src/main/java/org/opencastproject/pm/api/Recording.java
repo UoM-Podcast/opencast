@@ -52,11 +52,6 @@ public class Recording {
     UNCONFIRMED, CONFIRMED, OPTED_OUT
   }
 
-  /* which inputs to be recorded, SCREEN is the default */
-  public enum RecordingInput {
-    SCREEN, CAMERA, SCREEN_CAMERA
-  }
-
   /** The recording identifier */
   private Option<Long> id;
 
@@ -121,7 +116,7 @@ public class Recording {
   private boolean edit;
 
   /** The inputs to be recorded */
-  private RecordingInput recordingInput;
+  private String recordingInputs;
 
   /** The actions triggered by the recording */
   private List<Action> actions = new ArrayList<>();
@@ -130,7 +125,7 @@ public class Recording {
           Option<Course> course, Room room, Date modificationDate, boolean deleted, boolean blacklisted, Date start,
           Date stop, EmailStatus emailStatus, ReviewStatus reviewStatus, Option<Date> reviewDate, List<Person> participation,
           List<Message> messages, CaptureAgent captureAgent, List<Action> actions, Option<String> fingerprint,
-          boolean edit, RecordingInput recordingInput) {
+          boolean edit, String recordingInputs) {
     this.id = id;
     this.activityId = activityId;
     this.eventId = eventId;
@@ -154,7 +149,7 @@ public class Recording {
     this.actions = new ArrayList<>(actions);
     this.fingerprint = fingerprint;
     this.edit = edit;
-    this.recordingInput = recordingInput;
+    this.recordingInputs = recordingInputs;
     this.schedulingSource = Option.none(SchedulingSource.class);
   }
 
@@ -187,7 +182,7 @@ public class Recording {
           Date modificationDate, Date start, Date stop, List<Person> participation, CaptureAgent captureAgent) {
     return new Recording(none(Long.class), activityId, none(Long.class), title, staff, some(course), room,
             modificationDate, false, false, start, stop, EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, none(Date.class), participation,
-            nil(Message.class), captureAgent, nil(Action.class), none(String.class), false, RecordingInput.SCREEN);
+            nil(Message.class), captureAgent, nil(Action.class), none(String.class), false, "default");
   }
 
   /**
@@ -231,17 +226,17 @@ public class Recording {
    *          the deleted flag
    * @param edit
    *          the editing flag
-   * @param recordingInput
+   * @param recordingInputs
    *          the recorded input
    * @return
    */
   public static Recording recording(String activityId, String title, boolean blacklisted, List<Person> staff,
           Option<Course> course, Room room, Date modificationDate, Date start, Date stop, List<Person> participation,
           List<Message> messages, Option<Long> eventId, CaptureAgent captureAgent, List<Action> actions,
-          EmailStatus emailStatus, ReviewStatus reviewStatus, Option<Date> reviewDate, boolean deleted, boolean edit, RecordingInput recordingInput) {
+          EmailStatus emailStatus, ReviewStatus reviewStatus, Option<Date> reviewDate, boolean deleted, boolean edit, String recordingInputs) {
     return new Recording(none(Long.class), activityId, eventId, title, staff, course, room, modificationDate, deleted,
             blacklisted, start, stop, emailStatus, reviewStatus, reviewDate, participation, messages, captureAgent, actions,
-            none(String.class), edit, recordingInput);
+            none(String.class), edit, recordingInputs);
   }
 
   /**
@@ -775,12 +770,12 @@ public class Recording {
     this.edit = edit;
   }
 
-  public RecordingInput getRecordingInput() {
-    return recordingInput;
+  public String getRecordingInputs() {
+    return recordingInputs;
   }
 
-  public void setRecordingInput(RecordingInput recordingInput) {
-    this.recordingInput = recordingInput;
+  public void setRecordingInputs(String recordingInputs) {
+    this.recordingInputs = recordingInputs;
   }
 
   public void setSchedulingSource(Option<SchedulingSource> schedulingSource) {

@@ -52,6 +52,8 @@ public class CaptureAgent {
    *          the room
    * @param agentId
    *          the agent id
+   * @param inputs
+   *          the agents available inputs
    */
   public CaptureAgent(Room room, String agentId, String inputs) {
     this.setRoom(notNull(room, "room"));

@@ -778,7 +778,7 @@ CREATE TABLE mh_pm_recording (
   source BIGINT DEFAULT NULL,
   fingerprint VARCHAR(32) DEFAULT NULL,
   edit bit NOT NULL DEFAULT '0',
-  RECORDINGINPUT VARCHAR(255) NOT NULL DEFAULT 'SCREEN',
+  recording_inputs VARCHAR(255) NOT NULL DEFAULT 'default',
   PRIMARY KEY (id),
   CONSTRAINT UNQ_mh_pm_recording_0 UNIQUE (activity,start_date,end_date,room),
   CONSTRAINT FK_mh_pm_recording_capture_agent FOREIGN KEY (capture_agent) REFERENCES mh_pm_capture_agent (id) ON DELETE CASCADE,

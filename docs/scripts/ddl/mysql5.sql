@@ -777,7 +777,7 @@ CREATE TABLE mh_pm_recording (
   source BIGINT(20) DEFAULT NULL,
   fingerprint VARCHAR(32) DEFAULT NULL,
   edit TINYINT(1) NOT NULL DEFAULT '0',
-  RECORDINGINPUT VARCHAR(255) NOT NULL DEFAULT 'SCREEN',
+  recording_inputs VARCHAR(255) NOT NULL DEFAULT 'default',
   PRIMARY KEY (id),
   UNIQUE KEY UNQ_mh_pm_recording_0 (activity,start_date,end_date,room),
   KEY FK_mh_pm_recording_course (course),
