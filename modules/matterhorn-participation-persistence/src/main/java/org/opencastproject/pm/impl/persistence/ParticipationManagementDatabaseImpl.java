@@ -929,6 +929,41 @@ public class ParticipationManagementDatabaseImpl implements ParticipationManagem
   }
 
   @Override
+  public Recording updateRecordingOptOut(long id, ReviewStatus status, boolean edit, String inputs)
+          throws ParticipationManagementDatabaseException, NotFoundException {
+        EntityManager em = null;
+    EntityTransaction tx = null;
+    try {
+      em = emf.createEntityManager();
+      tx = em.getTransaction();
+      tx.begin();
+      Option<RecordingDto> recordingOption = ParticipationManagementPersistenceUtil.findRecording(id, em);
+      if (recordingOption.isNone())
+        throw new NotFoundException();
+
+      RecordingDto dto = recordingOption.get();
+
+      dto.setReviewDate(new Date());
+      dto.setReviewStatus(status);
+      dto.setEdit(edit);
+      dto.setRecordingInputs(inputs);
+
+      tx.commit();
+      return dto.toRecording(userDirectoryService);
+    } catch (NotFoundException e) {
+      throw e;
+    } catch (Exception e) {
+      logger.error("Could not set trim status on recording '{}': {}", id, ExceptionUtils.getStackTrace(e));
+      if (tx.isActive())
+        tx.rollback();
+      throw new ParticipationManagementDatabaseException(e);
+    } finally {
+      if (em != null)
+        em.close();
+    }
+  }
+
+  @Override
   public Recording updateRecording(Recording recording) throws ParticipationManagementDatabaseException {
     EntityManager em = null;
     EntityTransaction tx = null;
