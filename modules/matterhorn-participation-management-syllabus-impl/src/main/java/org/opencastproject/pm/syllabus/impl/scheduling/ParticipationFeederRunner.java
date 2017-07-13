@@ -447,6 +447,7 @@ public class ParticipationFeederRunner {
                       dateTime.getStartDateTime().toDate(), dateTime.getEndDateTime().toDate(), participation,
                       new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), inputs));
               newRecording.setSchedulingSource(schedulingSource);
+              newRecording.setRecordingInputs(inputs.split("\\|")[0]); // set default to CA first input
               try {
                 List<Recording> recordings = parent.persistence.findRecordings(RecordingQuery.create()
                         .withActivityId(newRecording.getActivityId()).withRoom(newRecording.getRoom()).withStartDate(newRecording.getStart())
