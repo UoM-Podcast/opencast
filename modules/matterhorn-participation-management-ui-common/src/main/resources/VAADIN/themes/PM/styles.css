@@ -78,3 +78,31 @@ div.page-sub-title {
   font-weight: bold;
   letter-spacing: -0.8pt;
 }
+
+span.pm_room_icons {
+ float: right;
+}
+
+div.pm_room_default{
+  min-width: 16px;
+  min-height: 16px;
+  display: inline-block;
+  background-image: url("img/screen16.png");
+  background-repeat: no-repeat;
+}
+
+div.pm_room_screen {
+  min-width: 16px;
+  min-height: 16px;
+  display: inline-block;
+  background-image: url("img/screen16.png");
+  background-repeat: no-repeat;
+}
+
+div.pm_room_camera {
+  min-width: 16px;
+  min-height: 16px;
+  display: inline-block;
+  background-image: url("img/camera16.png");
+  background-repeat: no-repeat;
+}
