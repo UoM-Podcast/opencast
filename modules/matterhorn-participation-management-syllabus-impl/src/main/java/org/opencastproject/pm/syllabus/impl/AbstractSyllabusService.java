@@ -363,7 +363,7 @@ public abstract class AbstractSyllabusService implements SyllabusService {
 
   @Override
   public boolean isCaptureActivityType(VActivity activity) {
-    if (getCaptureRoomTypeIDs().contains(ACTIVITY_TYPE_ANY)) {
+    if (getCaptureActivityTypeIDs().contains(ACTIVITY_TYPE_ANY)) {
         return true;
     }
     return getCaptureActivityTypeIDs().contains(activity.getActivityTypeId());
