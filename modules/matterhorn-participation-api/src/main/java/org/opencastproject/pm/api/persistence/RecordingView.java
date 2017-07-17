@@ -82,7 +82,8 @@ public class RecordingView {
   private String processingStatus;
 
   public RecordingView(long id, Option<Long> eventId, String title, String presenter, String course, Date start,
-          Date end, String room, String agent, String agentInputs, EmailStatus emailStatus, RecordingStatus status, Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean edit, String input) {
+          Date end, String room, String agent, String agentInputs, EmailStatus emailStatus, RecordingStatus status,
+          Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean edit, String input) {
     this.id = id;
     this.eventId = eventId;
     this.title = title;
