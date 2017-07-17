@@ -155,7 +155,7 @@ public class TeacherPm implements ManagedService {
     captureAgentInputs.set(Arrays.asList(caInputs.split("\\|")));
     final Map<String, String>caInputDescrips = new HashMap<>();
     for (String input : captureAgentInputs.get()) {
-      caInputDescrips.put(input, getCfg(properties, "capture.room.__ANY__.input." + input));
+      caInputDescrips.put("options.record.input." + input, getCfg(properties, "ui.input." + input));
     }
     captureAgentInputDescriptions.set(caInputDescrips);
     final String wfEdit = getCfg(properties, "workflow.edit.definition");
