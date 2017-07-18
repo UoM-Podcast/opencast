@@ -67,6 +67,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -109,6 +110,8 @@ public class ScheduleFeederRunner {
   private final Cell<Integer> preEditAvailDelay;
   private final Cell<String> editProperty;
   private final Cell<String> emailProperty;
+  private final Cell<HashMap<String, String>> inputProperties;
+  private final Cell<HashMap<String, String>> inputCANames;
   private final Scheduler scheduler;
 
   public ScheduleFeederRunner(ScheduleFeederServiceImpl scheduleFeeder, SchedulerService schedulerService,
@@ -116,6 +119,7 @@ public class ScheduleFeederRunner {
           Cell<Option<SecurityContext>> secCtx,
           Cell<String> workflow, Cell<HashMap<String, String>> workflowConfigs,
           Cell<String> editProperty, Cell<String> emailProperty,
+          Cell<HashMap<String, String>> inputProperties, Cell<HashMap<String, String>> inputCANames,
           Cell<Integer> preEditAvailDelay) {
     this.scheduleFeederService = scheduleFeeder;
     this.schedulerService = schedulerService;
@@ -126,6 +130,8 @@ public class ScheduleFeederRunner {
     this.workflowConfigs = workflowConfigs;
     this.editProperty = editProperty;
     this.emailProperty = emailProperty;
+    this.inputProperties = inputProperties;
+    this.inputCANames = inputCANames;
     this.preEditAvailDelay = preEditAvailDelay;
 
 
@@ -155,6 +161,7 @@ public class ScheduleFeederRunner {
   }
 
   public Map<String, String> getWorkflowProperties() {
+    // copy as they may be modified
     Map<String, String> map = new HashMap<String, String>(workflowConfigs.get());
     return map;
   }
@@ -165,6 +172,14 @@ public class ScheduleFeederRunner {
 
   public Cell<String> getEmailProperty() {
     return emailProperty;
+  }
+
+  public Cell<HashMap<String, String>> getInputProperties() {
+    return inputProperties;
+  }
+
+  public Cell<HashMap<String, String>> getInputCANames() {
+    return inputCANames;
   }
 
   public Cell<Integer> getPreEditAvailDelay() {
@@ -298,6 +313,7 @@ public class ScheduleFeederRunner {
                   scheduleRecordings(newSchedule.getEpisodes(), parent.schedulerService,
                           parent.participationManagementDB, caConfig, wfProperties,
                           parent.getEditProperty(), parent.getEmailProperty(),
+                          parent.getInputProperties(), parent.getInputCANames(),
                           parent.getPreEditAvailDelay());
                 } catch (ParticipationManagementSchedulingException e) {
                   logger.error("Scheduling of recordings from participation management failed.");
@@ -365,7 +381,9 @@ public class ScheduleFeederRunner {
     private static void scheduleRecordings(List<Tuple<Recording, DublinCoreCatalog>> list,
             SchedulerService schedulerService, ParticipationManagementDatabase participationManagementDB,
             Properties parentCAConfig, Map<String, String> parentWFProperties,
-            Cell<String>editProperty, Cell<String>emailProperty, Cell<Integer> preEditAvailDelay)
+            Cell<String>editProperty, Cell<String>emailProperty,
+            Cell<HashMap<String, String>> inputProperties, Cell<HashMap<String, String>> inputCANames,
+            Cell<Integer> preEditAvailDelay)
                     throws ParticipationManagementSchedulingException {
 
       int i = 0;
@@ -375,23 +393,18 @@ public class ScheduleFeederRunner {
       for (Tuple<Recording, DublinCoreCatalog> t : list) {
         // UOM: Reset the config and properties to that of the parent
         caConfig = (Properties) parentCAConfig.clone();
-        wfProperties = new HashMap<String, String>(parentWFProperties);
+        wfProperties = new HashMap<>(parentWFProperties);
 
         i++;
         try {
           Recording rec = t.getA();
           DublinCoreCatalog dc = t.getB();
 
-          String trimValue = "false";
-          if (rec.isTrim()) {
-            trimValue = "true";
-          }
-
-          wfProperties.put(editProperty.get(), trimValue);
-          caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(editProperty.get()), trimValue);
+          wfProperties.put(editProperty.get(), Boolean.toString(rec.isEdit()));
+          caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(editProperty.get()), Boolean.toString(rec.isEdit()));
 
           String emailAddresses;
-          List<String> staffMailList = new ArrayList<String>();
+          List<String> staffMailList = new ArrayList<>();
           for (Person p : rec.getStaff()) {
             if (StringUtils.isNotBlank(p.getEmail())) {
               staffMailList.add(p.getEmail());
@@ -405,6 +418,33 @@ public class ScheduleFeederRunner {
             caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(emailProperty.get()), emailAddresses);
           }
 
+          // Set inputs to use in workflow
+          // Should not matter as capture agent should only record those selected below
+          for (Map.Entry<String, String> prop : inputProperties.get().entrySet()) {
+            final Boolean value;
+            if (Arrays.asList(rec.getRecordingInputs().split("\\|")).contains(prop.getKey())) {
+              value = true;
+            } else {
+              value = false;
+            }
+
+            wfProperties.put(prop.getValue(), value.toString());
+            caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(prop.getValue()), value.toString());
+          }
+
+          // Set which Capture Agent input devices to record
+          // Check if we are using the "defaults" ie CA's one and only input
+          String captureAgentInputs = rec.getCaptureAgent().getInputs();
+          if (captureAgentInputs.split("\\|").length == 1) {
+            caConfig.put("capture.device.names", "defaults");
+          } else {
+            List<String> inputNames = new ArrayList<>();
+            for (String input : rec.getRecordingInputs().split("\\|")) {
+              inputNames.add(inputCANames.get().get(input));
+            }
+            caConfig.put("capture.device.names", String.join(",", inputNames));
+          }
+
           // Check if course is required to be recorded and optout should be ignored
           Boolean requiredRecording = false;
 
@@ -412,7 +452,7 @@ public class ScheduleFeederRunner {
             requiredRecording = rec.getCourse().get().getRequirements().contains(Course.REQUIREMENT_RECORD);
 
             // Only mark add audience restricted if to be trimmed or opted out
-            if (requiredRecording && (rec.isTrim() || rec.getReviewStatus() == Recording.ReviewStatus.OPTED_OUT)) {
+            if (requiredRecording && (rec.isEdit() || rec.getReviewStatus() == Recording.ReviewStatus.OPTED_OUT)) {
               // if DASS student on course add them to audience
               dc.add(DublinCore.PROPERTY_AUDIENCE, "restricted");
             }
@@ -423,7 +463,7 @@ public class ScheduleFeederRunner {
             }
 
             // Set availablility date
-            if (requiredRecording && rec.isTrim())  {
+            if (requiredRecording && rec.isEdit())  {
               Calendar cal = Calendar.getInstance();
               cal.setTime(rec.getStop());
               cal.add(Calendar.HOUR, preEditAvailDelay.get());

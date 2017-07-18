@@ -768,12 +768,12 @@ public class ParticipationManagementDatabaseImplTest {
     students.add(person("Student 2", "student2@university.org", studentTypes));
 
     Room room = new Room("Aula");
-    CaptureAgent captureAgent = new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room));
+    CaptureAgent captureAgent = new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), "screen");
     Course course = new Course("mathe", "uuid", "Math", "Simple course about algebra.", "ckey");
 
     return Recording.recording("activityId", "Test title", false, staff, some(course), room, new Date(), new DateTime()
             .plusHours(2).toDate(), new DateTime().plusHours(3).toDate(), students, nil(Message.class), some(4L),
-            captureAgent, nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, none(Date.class), false, false);
+            captureAgent, nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, none(Date.class), false, false, "screen");
   }
 
   private Message createAndPersistMessage(Person creator, MessageTemplate msgTmpl, MessageSignature msgSig,
@@ -1134,18 +1134,18 @@ public class ParticipationManagementDatabaseImplTest {
   }
 
   @Test
-  public void testTrimRecording() throws Exception {
+  public void testEditRecording() throws Exception {
     final Recording rec = pmDB.updateRecording(createRecording());
     final long recId = rec.getId().get();
-    assertFalse("Recording should not be trimmed initially", pmDB.getRecording(recId).isTrim());
+    assertFalse("Recording should not be edited initially", pmDB.getRecording(recId).isEdit());
     // update via Recording object
-    rec.setTrim(true);
+    rec.setEdit(true);
     pmDB.updateRecording(rec);
-    assertTrue("Recording should be trimmed", pmDB.getRecording(recId).isTrim());
+    assertTrue("Recording should be edited", pmDB.getRecording(recId).isEdit());
     // update via persistence service method
     pmDB.trimRecording(recId, false);
-    assertFalse("Recording should not be trimmed", pmDB.getRecording(recId).isTrim());
+    assertFalse("Recording should not be edited", pmDB.getRecording(recId).isEdit());
     pmDB.trimRecording(recId, true);
-    assertTrue("Recording should be trimmed", pmDB.getRecording(recId).isTrim());
+    assertTrue("Recording should be edited", pmDB.getRecording(recId).isEdit());
   }
 }

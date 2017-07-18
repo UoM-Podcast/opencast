@@ -22,10 +22,12 @@
 package org.opencastproject.pm.ui.teacher;
 
 import static java.lang.String.format;
-import static org.opencastproject.pm.ui.teacher.PastRecordingsView.RETRACT_WORKFLOW_ID;
 import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.data.functions.Misc.chuck;
 
+import org.opencastproject.event.comment.EventComment;
+import org.opencastproject.event.comment.EventCommentException;
+import org.opencastproject.event.comment.EventCommentService;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
 import org.opencastproject.pm.api.Recording.ReviewStatus;
@@ -33,7 +35,8 @@ import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseException;
 import org.opencastproject.pm.api.persistence.RecordingQuery;
 import org.opencastproject.pm.api.persistence.RecordingView;
-import org.opencastproject.security.api.UnauthorizedException;
+import org.opencastproject.scheduler.api.SchedulerException;
+import org.opencastproject.scheduler.api.SchedulerService;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.workflow.api.WorkflowDatabaseException;
@@ -52,16 +55,23 @@ import java.util.List;
 
 public class RecordingContainer extends BeanItemContainer<RecordingView> implements Serializable {
   private static final Logger log = LoggerFactory.getLogger(RecordingContainer.class);
+  private final TeacherPm teacherPm;
   private final ParticipationManagementDatabase pm;
   private final RecordingQuery baseQuery;
-  private WorkflowServices workflowServices;
+  private final EventCommentService eventCommentService;
+  private final SchedulerService schedulerService;
+  private final WorkflowServiceUtils workflowServiceUtils;
 
-  public RecordingContainer(final ParticipationManagementDatabase pm, final Option<WorkflowServices> workflowServices, Person teacher, Boolean future) {
+  public RecordingContainer(final TeacherPm teacherPm,
+          final Option<WorkflowServiceUtils> workflowServices,
+          Person teacher, Boolean future) {
     super(RecordingView.class);
-    this.pm = pm;
-    if (workflowServices.isSome()) {
-      this.workflowServices = workflowServices.get();
-    }
+    this.teacherPm = teacherPm;
+    this.pm = teacherPm.getParticipationManagementDatabase().get().get();
+    this.eventCommentService = teacherPm.getEventCommentService();
+    this.schedulerService = teacherPm.getSchedulerService();
+    this.workflowServiceUtils = workflowServices.getOrElseNull();
+
     this.baseQuery = RecordingQuery.createWithoutDeleted().withStaff(new Person[]{teacher}).withoutBlacklisted();
 
     try {
@@ -141,81 +151,105 @@ public class RecordingContainer extends BeanItemContainer<RecordingView> impleme
    * Depending on the outcome return an appropriate component.
    */
   private RecordingView checkRecordingStatus(RecordingView recording) {
+    final String mediaPackageId;
     final WorkflowInstance wi;
+    final WorkflowSet workflowInstances;
+    final Long eventId = recording.getEventId().get();
+
+    // First check if event is being recorded
+    Date now = new Date();
+
+    if (recording.getStartDate().before(now) && recording.getEndDate().after(now)) {
+      recording.setProcessingStatus("capturing");
+      return recording;
+    }
+
+    // If event has completed check workflows
     try {
       log.debug(format("Query workflow service for event '%s' %s",
               recording.getTitle(),
-              recording.getEventId().get()));
-      wi = workflowServices.getSvc().getWorkflowById(recording.getEventId().get());
+              eventId));
+      mediaPackageId = schedulerService.getMediaPackageId(eventId);
+      workflowInstances = workflowServiceUtils.getSvc().getWorkflowInstances(
+                new WorkflowQuery().withMediaPackage(mediaPackageId));
     } catch (WorkflowDatabaseException e) {
-      log.error("Worflow database error: couldn't get status for {}: {}", recording.getEventId().get(), e.getMessage());
+      log.error("Worflow database error: couldn't get status for {}: {}", eventId, e.getMessage());
       recording.setProcessingStatus("error");
       return recording;
     } catch (NotFoundException e) {
-      log.error("Workflow not found: couldn't get status for {}: {}", recording.getEventId().get(), e.getMessage());
+      log.error("Workflow not found: couldn't get status for {}: {}", eventId, e.getMessage());
       recording.setProcessingStatus("error");
       return recording;
-    } catch (UnauthorizedException e) {
-      log.error("Not authorized: couldn't get status for {}: {}", recording.getEventId().get(), e.getMessage());
+    } catch (SchedulerException e) {
+      log.error("Scheduler can't find event {}: {}", eventId, e.getMessage());
       recording.setProcessingStatus("error");
       return recording;
     }
 
-    recording.setWorkflowId(Option.some(wi.getId()));
+    recording.seMediaPackageId(Option.some(mediaPackageId));
 
-    if (WorkflowServices.isPaused(wi)) {
-      if (wi.getCurrentOperation() != null && ("schedule".equals(wi.getCurrentOperation().getTemplate()))) {
-        recording.setProcessingStatus("upcoming");
-      } else if (wi.getCurrentOperation() != null && ("trim".equals(wi.getCurrentOperation().getTemplate())
-              || "editor".equals(wi.getCurrentOperation().getTemplate()))) {
-        recording.setProcessingStatus("edit");
-      } else {
+    if (workflowInstances.size() > 0) {
+      wi = workflowInstances.getItems()[0];
+      recording.setWorkflowId(Option.some(wi.getId()));
+
+      // Users may still pause a running workflow in Opencast
+      if (WorkflowServiceUtils.isPaused(wi)) {
         recording.setProcessingStatus("paused");
-      }
-    } else if (WorkflowServices.isRunning(wi)) {
-      recording.setProcessingStatus("processing");
-    } else if (WorkflowServices.isSucceeded(wi)) {
-      // The associated workflow succeeded so the recording is maybe ready to be edited.
-      // Check if there are any other workflows processing the media package of the recording.
-      final WorkflowSet workflowInstances;
-      try {
-        log.debug("\tInitial workflow succeeded. Querying for subsequent workflows:");
-        workflowInstances = workflowServices.getSvc().getWorkflowInstances(
-                new WorkflowQuery()
-                .withMediaPackage(wi.getMediaPackage().getIdentifier().compact()));
-      } catch (WorkflowDatabaseException ex) {
-        log.error("An error occurred while querying the workflow service", ex);
-        recording.setProcessingStatus("error");
-        return recording;
-      }
-      if (workflowInstances.size() == 0) {
-        log.debug("\tNone found");
-        recording.setProcessingStatus("published");
-      } else {
-        log.debug(format("\t%d found", workflowInstances.size()));
-        final WorkflowInstance newWi = workflowInstances.getItems()[(int) (workflowInstances.size() - 1)];
-        if (WorkflowServices.isPaused(newWi)) {
-          if ("trim".equals(newWi.getCurrentOperation().getTemplate())
-                  || "editor".equals(newWi.getCurrentOperation().getTemplate())) {
+      } else if (WorkflowServiceUtils.isRunning(wi)) {
+        recording.setProcessingStatus("processing");
+      } else if (WorkflowServiceUtils.isSucceeded(wi)) {
+        // The associated workflow succeeded so the recording is maybe ready to be edited.
+        log.debug("\tInitial workflow succeeded. Checking for subsequent workflows:");
+
+        if (workflowInstances.size() == 1) {
+          log.debug("\tNone found");
+          if (isAwaitingEditing(mediaPackageId)) {
             recording.setProcessingStatus("edit");
-          } else {
-            recording.setProcessingStatus("paused");
-          }
-        } else if (WorkflowServices.isRunning(newWi)) {
-          recording.setProcessingStatus("processing");
-        } else if (WorkflowServices.isSucceeded(newWi)) {
-          if (RETRACT_WORKFLOW_ID.equals(newWi.getTemplate())) {
-            recording.setProcessingStatus("unpublished");
           } else {
             recording.setProcessingStatus("published");
           }
+        } else {
+          log.debug(format("\t%d found", workflowInstances.size()));
+          final WorkflowInstance newWi = workflowInstances.getItems()[(int) (workflowInstances.size() - 1)];
+          if (WorkflowServiceUtils.isPaused(newWi)) {
+            recording.setProcessingStatus("paused");
+          } else if (WorkflowServiceUtils.isRunning(newWi)) {
+            recording.setProcessingStatus("processing");
+          } else if (WorkflowServiceUtils.isSucceeded(newWi)) {
+            if (this.teacherPm.getWorkflowRetract().get().equals(newWi.getTemplate())) {
+              recording.setProcessingStatus("unpublished");
+            } else if (isAwaitingEditing(mediaPackageId)) {
+              recording.setProcessingStatus("edit");
+            } else {
+              recording.setProcessingStatus("published");
+            }
+          } else {
+            recording.setProcessingStatus("error");
+          }
+          recording.setWorkflowId(Option.some(newWi.getId()));
         }
-        recording.setWorkflowId(Option.some(newWi.getId()));
+      } else {
+        recording.setProcessingStatus("error");
       }
-    } else {
-      recording.setProcessingStatus("error");
     }
 
     return recording;
+  }
+
+  private boolean isAwaitingEditing(String identifier) {
+    try {
+      // check if edit comment has been resolved
+      List<EventComment> comments = eventCommentService.getComments(identifier);
+      for (EventComment comment : comments) {
+        if (EventComment.REASON_NEEDS_CUTTING.equalsIgnoreCase(comment.getReason())
+                && !comment.isResolvedStatus()) {
+          return true;
+        }
+      }
+    } catch (EventCommentException e) {
+      log.error("Can't get comments for event {}: {}", identifier, e.getMessage());
+    }
+
+    return false;
   }
 }

@@ -3,11 +3,11 @@
   <!-- Vaadin servlet running the HQ UI -->
   <service interface="javax.servlet.Servlet">
     <service-properties>
-      <entry key="servlet-name" value="Participation Management Teacher UI" />
+      <entry key="servlet-name" value="Teacher Participation Management UI" />
       <entry key="alias" value="/pm-teacher" />
       <entry key="httpContext.id" value="opencast.httpcontext"/>
       <entry key="httpContext.shared" value="true" />
-      <entry key="init.UIProvider" value="org.opencastproject.pm.ui.teacher.vaadin.PmTeacherUiProvider" />
+      <entry key="init.UIProvider" value="org.opencastproject.pm.ui.teacher.vaadin.TeacherPmUiProvider" />
     </service-properties>
     <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />
   </service>

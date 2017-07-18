@@ -46,10 +46,10 @@ import org.slf4j.LoggerFactory;
  * this class only makes read-only calls to the archive service using the REST
  * endpoints.
  */
-public class ArchiveServices extends RemoteBase {
-  private static final Logger logger = LoggerFactory.getLogger(ArchiveServices.class);
+public class ArchiveServiceUtils extends RemoteBase {
+  private static final Logger logger = LoggerFactory.getLogger(ArchiveServiceUtils.class);
 
-  public ArchiveServices() {
+  public ArchiveServiceUtils() {
     super(JOB_TYPE);
   }
 
