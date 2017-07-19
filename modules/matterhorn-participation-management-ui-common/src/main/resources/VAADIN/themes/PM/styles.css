@@ -13,14 +13,26 @@ span.v-menubar-menuitem-main-title {
 
 .v-menubar {
   width: 100%;
-  height: 90px;
+  height: 100px;
   background-color: white;
   background-size: 175px;
   padding-left: 200px;
   line-height: 90px;
   background-position: 20px 20px;
-  background-image: url("img/opencast.svg");
+  background-image: url("img/uom-logo.jpg");
   background-repeat: no-repeat;
+}
+
+.v-table-header-wrap {
+	text-transform: none;
+  font-size: 12px;
+}
+
+.v-panel-caption {
+	white-space: nowrap;
+	overflow: hidden;
+  font-size: 16px;
+	font-weight: bold;
 }
 
 body > div:first-child {
@@ -38,8 +50,18 @@ div.pm_opted_out {
   color: red;
 }
 
-div.pm_email_failed {
-  /* font-weight: bold;*/  
+div.pm_recording, div.pm_published {
+  font-weight: bold;
+  color: green;
+}
+
+div.pm_paused, div.pm_edit {
+  font-weight: bold;
+  color: orange;
+}
+
+div.pm_not_recording, div.pm_unpublished, div.pm_failed, div.pm_error {
+  font-weight: bold;
   color: red;
 }
 
@@ -55,4 +77,32 @@ div.page-sub-title {
   font-size: 10pt !important;
   font-weight: bold;
   letter-spacing: -0.8pt;
+}
+
+span.pm_room_icons {
+ float: right;
+}
+
+div.pm_room_default{
+  min-width: 16px;
+  min-height: 16px;
+  display: inline-block;
+  background-image: url("img/screen16.png");
+  background-repeat: no-repeat;
+}
+
+div.pm_room_screen {
+  min-width: 16px;
+  min-height: 16px;
+  display: inline-block;
+  background-image: url("img/screen16.png");
+  background-repeat: no-repeat;
+}
+
+div.pm_room_camera {
+  min-width: 16px;
+  min-height: 16px;
+  display: inline-block;
+  background-image: url("img/camera16.png");
+  background-repeat: no-repeat;
 }

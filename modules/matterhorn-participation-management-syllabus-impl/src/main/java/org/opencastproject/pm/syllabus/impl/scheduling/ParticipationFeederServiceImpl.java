@@ -68,7 +68,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
 
   private static final String CAPTURE_ROOMS_PROPERTY = "capture.rooms";
   private static final String CAPTURE_ROOM_PROPERTY = "capture.room";
-  private static final String[] CAPTURE_ROOM_PROPS = {"name","id","options","workflow"};
+  private static final String[] CAPTURE_ROOM_PROPS = {"name","id","inputs"};
 
   private static final String CAPTURE_TYPES_PROPERTY = "capture.types";
   private static final String CAPTURE_TYPE_PROPERTY = "capture.type";
@@ -140,7 +140,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
       final Synchronization sync = persistence.getLastSynchronization();
       if (null == sync) {
         Response.ResponseBuilder respb = Response.status(Response.Status.PRECONDITION_FAILED);
-        respb.type("Can't trigger inital harvest externally, try harvesting through UI!");
+        respb.type("Can't trigger initial harvest externally, try harvesting through UI!");
         return respb.build();
       }
 
@@ -220,7 +220,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
             for (String prop : CAPTURE_ROOM_PROPS) {
                 Option<String> value = getOptCfg(properties, CAPTURE_ROOM_PROPERTY + "." + room.trim() + "." + prop);
                 if (value.isSome()) {
-                    SyllabusData.addAgentLocationProperty(room.trim(), prop, value.get());
+                    syllabusService.addCaptureRoomProperty(room.trim(), prop, value.get());
                 }
             }
         }
@@ -231,12 +231,12 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
                 for (String prop : CAPTURE_TYPE_PROPS) {
                     Option<String> value = getOptCfg(properties, CAPTURE_TYPE_PROPERTY + "." + type.trim() + "." + prop);
                     if (value.isSome()) {
-                        SyllabusData.addActivityTypeProperty(type.trim(), prop, value.get());
+                        syllabusService.addCaptureActivityTypeProperty(type.trim(), prop, value.get());
                     }
                 }
             }
         } else {
-            SyllabusData.addActivityTypeProperty("ANY", "id", SyllabusData.ACTIVITY_TYPE_ANY);
+            syllabusService.addCaptureActivityTypeProperty("ANY", "id", syllabusService.ACTIVITY_TYPE_ANY);
         }
   }
 

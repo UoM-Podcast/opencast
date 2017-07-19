@@ -18,13 +18,11 @@
     <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>javax.servlet-api</artifactId>
-      <version>3.1.0</version>
     </dependency>
     <!-- Vaadin -->
     <dependency>
       <groupId>com.vaadin</groupId>
       <artifactId>vaadin-server</artifactId>
-      <version>${vaadin.version}</version>
     </dependency>
   </dependencies>
   <build>
@@ -39,8 +37,8 @@
             <Build-Number>${build.number}</Build-Number>
             <!-- add all application packages here -->
             <Import-Package>
-              javax.servlet;version="2.5.0",
-              javax.servlet.http;version="2.5.0",
+              javax.servlet;version="3.1.0",
+              javax.servlet.http;version="3.1.0",
               org.osgi.service.blueprint,
               org.slf4j,
               com.vaadin.server;version="[7.1.0, 7.2.0)",

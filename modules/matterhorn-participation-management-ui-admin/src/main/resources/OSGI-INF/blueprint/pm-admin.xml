@@ -5,7 +5,8 @@
     <service-properties>
       <entry key="servlet-name" value="Opencast Participation Management Admin UI" />
       <entry key="alias" value="/pm-admin" />
-      <entry key="contextId" value="matterhorn-participation-management-ui" />
+      <entry key="httpContext.id" value="opencast.httpcontext"/>
+      <entry key="httpContext.shared" value="true" />
       <entry key="init.UIProvider" value="org.opencastproject.pm.ui.admin.vaadin.PmAdminUiProvider" />
     </service-properties>
     <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />

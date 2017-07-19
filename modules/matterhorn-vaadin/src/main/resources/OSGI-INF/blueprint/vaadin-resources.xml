@@ -5,7 +5,7 @@
     <service-properties>
       <entry key="servlet-name" value="Vaadin Resources" />
       <entry key="alias" value="/VAADIN" />
-      <entry key="contextId" value="matterhorn-vaadin" />
+      <entry key="contextId" value="opencast-vaadin" />
     </service-properties>
     <bean class="org.opencastproject.vaadin.ConfiguredVaadinServlet" />
   </service>

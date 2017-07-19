@@ -25,6 +25,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.opencastproject.adminui.usersettings.persistence.UserSettingDto;
 import org.opencastproject.adminui.usersettings.persistence.UserSettingsServiceException;
+import org.opencastproject.messages.persistence.MessageSignatureDto;
 import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.User;
@@ -70,6 +71,17 @@ public class UserSettingsServiceTest {
     userDirectoryService = EasyMock.createNiceMock(UserDirectoryService.class);
     EasyMock.expect(userDirectoryService.loadUser(USER_NAME)).andReturn(user).anyTimes();
     EasyMock.replay(userDirectoryService);
+  }
+
+  private List<MessageSignatureDto> createSignatureList(int signatureCount) {
+    LinkedList<MessageSignatureDto> signatures = new LinkedList<MessageSignatureDto>();
+    for (int i = 0; i < signatureCount; i++) {
+//      MessageSignatureDto messageSignatureDto = new MessageSignatureDto(NAME_PREFIX + i, ORG, USER_NAME, SENDER_PREFIX
+//              + i, SENDER_NAME_PREFIX + i, REPLY_TO_PREFIX + i, REPLY_TO_PREFIX + 1, SIGNATURE_PREFIX + i,
+//              creationDate, new LinkedList<CommentDto>());
+//      signatures.add(messageSignatureDto);
+    }
+    return signatures;
   }
 
   private List<UserSettingDto> createUserSettingsList(int settingCount) {
@@ -133,7 +145,7 @@ public class UserSettingsServiceTest {
     return findSettings;
   }
 
-  private EntityManagerFactory setupEntityManagerFactory(int settingCount, int settingTotal, int offset, int limit) {
+  private EntityManagerFactory setupEntityManagerFactory(int settingCount, int signatureCount, int settingTotal, int signatureTotal, int offset, int limit) {
     EntityManagerFactory emf = EasyMock.createMock(EntityManagerFactory.class);
     EasyMock.expect(emf.createEntityManager()).andReturn(setupUserSettingEntityManager(settingCount, offset, limit));
     EasyMock.expect(emf.createEntityManager()).andReturn(setupUserSettingCountEntityManager(settingTotal, offset, limit));
@@ -153,7 +165,7 @@ public class UserSettingsServiceTest {
   public void findUserSettingsInputNoSettingsNoSignaturesExpectsEmptyUserSettings() throws UserSettingsServiceException {
     int offset = 0;
     int limit = 10;
-    EntityManagerFactory emf = setupEntityManagerFactory(0, limit, offset, limit);
+    EntityManagerFactory emf = setupEntityManagerFactory(0, 0, limit, limit, offset, limit);
     UserSettingsService userSettingsService = setupUserSettingsService(emf);
     userSettingsService.findUserSettings(limit, offset);
   }
@@ -163,7 +175,7 @@ public class UserSettingsServiceTest {
           throws UserSettingsServiceException {
     int offset = 0;
     int limit = 1;
-    EntityManagerFactory emf = setupEntityManagerFactory(limit, limit, offset, limit);
+    EntityManagerFactory emf = setupEntityManagerFactory(limit, limit, limit, limit, offset, limit);
     UserSettingsService userSettingsService = setupUserSettingsService(emf);
     userSettingsService.findUserSettings(limit, offset);
   }
@@ -173,7 +185,7 @@ public class UserSettingsServiceTest {
           throws UserSettingsServiceException {
     int offset = 0;
     int limit = 10;
-    EntityManagerFactory emf = setupEntityManagerFactory(limit, limit, offset, limit);
+    EntityManagerFactory emf = setupEntityManagerFactory(limit, limit, limit, limit, offset, limit);
     UserSettingsService userSettingsService = setupUserSettingsService(emf);
     userSettingsService.findUserSettings(limit, offset);
   }

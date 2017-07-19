@@ -21,17 +21,16 @@
 
 package org.opencastproject.pm.ui.teacher;
 
-import static org.opencastproject.pm.ui.common.util.UiUtil.i18n;
 import static org.opencastproject.pm.ui.common.util.UiUtil.vlayout;
 
 import org.opencastproject.pm.api.util.Security;
 import org.opencastproject.pm.ui.common.components.MainLayout;
 import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.pm.ui.common.util.UiUtil;
-import org.opencastproject.security.api.DefaultOrganization;
-import org.opencastproject.security.api.SecurityService;
-import org.opencastproject.security.api.User;
 import org.opencastproject.util.Crypt;
+import org.opencastproject.util.data.Function;
+import org.opencastproject.util.data.VCell;
+import org.opencastproject.util.data.functions.Functions;
 
 import com.vaadin.annotations.Theme;
 import com.vaadin.server.VaadinRequest;
@@ -45,18 +44,19 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.ResourceBundle;
 
 /** Created by {@link org.opencastproject.pm.ui.teacher.vaadin.PmTeacherUiProvider}. */
 @Theme("PM")
-public class PmTeacher extends UI {
+public class TeacherPmUI extends UI {
 
-  private static final Logger logger = LoggerFactory.getLogger(PmTeacher.class);
+  private static final Logger logger = LoggerFactory.getLogger(TeacherPmUI.class);
 
-  private final PmDependencies dep;
+  private final TeacherPm teacherPm;
 
-  public PmTeacher(PmDependencies dep) {
-    this.dep = dep;
+  public TeacherPmUI(TeacherPm teacherPm) {
+    this.teacherPm = teacherPm;
   }
 
   @SuppressWarnings("unchecked")
@@ -64,16 +64,9 @@ public class PmTeacher extends UI {
   protected void init(VaadinRequest request) {
 
     logger.debug("Init HQ " + this);
-    final I18N i18n = i18n(ResourceBundle.getBundle("messages", request.getLocale()));
+    final I18N i18n = new I18N(ResourceBundle.getBundle("messages", request.getLocale()), customMessages(teacherPm.getCaptureAgentInputDescriptions()));
 
     getPage().setTitle(i18n.s("title"));
-
-    SecurityService securityService = dep.getSecurityService();
-    if (null == securityService.getOrganization()) {
-      securityService.setOrganization(new DefaultOrganization());
-    }
-    User user = securityService.getUser();
-    logger.info("User {} is accessing the participation management page for teaching staff", user);
 
     String teacherEMail;
     try {
@@ -84,7 +77,7 @@ public class PmTeacher extends UI {
       return;
     }
 
-    if (dep.getParticipationManagementDatabase().get().isNone()) {
+    if (teacherPm.getParticipationManagementDatabase().get().isNone()) {
       setContent(getErrorLabel(i18n.s("error.db")));
       return;
     } else if (StringUtils.isBlank(teacherEMail)) {
@@ -94,14 +87,12 @@ public class PmTeacher extends UI {
 
     RecordingsView futureRecordingsView = new FutureRecordingsView(i18n,
                                                        teacherEMail,
-                                                       dep.getParticipationManagementDatabase().get().get());
+                                                       teacherPm);
 
-    RecordingsView pastRecordingsView = new PastRecordingsView(i18n,
+    RecordingsView pastRecordingsView = new  PastRecordingsView(i18n,
                                                        teacherEMail,
-                                                       dep.getParticipationManagementDatabase().get().get(),
-                                                       dep.getSecurityService(),
-                                                       new WorkflowServices(dep.getWorkflowService()),
-                                                       dep.getArchiveServices());
+                                                       teacherPm,
+                                                       new WorkflowServiceUtils(teacherPm.getWorkflowService()));
 
     final MainLayout mainLayout = new MainLayout(i18n.s("title"), i18n).addPage(
             vlayout(futureRecordingsView, UiUtil.vspacerBig() ,pastRecordingsView));
@@ -112,4 +103,18 @@ public class PmTeacher extends UI {
   private Label getErrorLabel(String error) {
     return UiUtil.label(error, UiUtil.bold, UiUtil.htmlLabel, UiUtil.sizeUndefined);
   }
+
+  private Function<String, String> customMessages(final VCell<Map<String, String>> messages) {
+    return new Function<String, String>() {
+      @Override
+      public String apply(String a) {
+        if (messages.get().containsKey(a)) {
+          return messages.get().get(a);
+        } else {
+          return Functions.<String>identity().apply(a);
+        }
+      }
+    };
+  }
+
 }

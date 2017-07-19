@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.ui.teacher.TeacherPm"
+               immediate="true"
+               activate="activate">
+  <implementation class="org.opencastproject.pm.ui.teacher.TeacherPm" />
+  <property name="service.pid" value="org.opencastproject.pm.ui.teacher.TeacherPm" />
+  <property name="service.description" value="Teacher Participation Management UI" />
+  <service>
+    <provide interface="org.opencastproject.pm.ui.teacher.TeacherPm" />
+    <provide interface="org.osgi.service.cm.ManagedService" />
+  </service>
+  <reference interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
+             name="participationManagementDatabase"
+             cardinality="0..1"
+             policy="dynamic"
+             bind="setParticipationManagementDatabase"
+             unbind="unsetParticipationManagementDatabase" />
+  <reference name="scheduler"
+             interface="org.opencastproject.scheduler.api.SchedulerService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSchedulerService" />
+  <reference interface="org.opencastproject.security.api.SecurityService"
+             name="security"
+             cardinality="1..1"
+             policy="static"
+             bind="setSecurityService" />
+  <reference interface="org.opencastproject.workflow.api.WorkflowService"
+             name="workflowService"
+             cardinality="1..1"
+             policy="static"
+             bind="setWorkflowService" />
+  <reference name="event-comment-service"
+             interface="org.opencastproject.event.comment.EventCommentService"
+             cardinality="1..1"
+             policy="static"
+             bind="setEventCommentService" />
+  <reference interface="org.opencastproject.pm.ui.teacher.ArchiveServiceUtils"
+             name="archiveServiceUtils"
+             cardinality="1..1"
+             policy="static"
+             bind="setArchiveServiceUtils" />
+</scr:component>

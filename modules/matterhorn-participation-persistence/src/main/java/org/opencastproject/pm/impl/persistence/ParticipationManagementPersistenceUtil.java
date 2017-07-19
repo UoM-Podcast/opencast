@@ -184,7 +184,7 @@ public final class ParticipationManagementPersistenceUtil {
       em.merge(dto);
     } else {
       RoomDto room = mergeRoom(captureAgent.getRoom(), em);
-      dto = new CaptureAgentDto(room, captureAgent.getMhAgent());
+      dto = new CaptureAgentDto(room, captureAgent.getMhAgent(), captureAgent.getInputs());
       em.persist(dto);
     }
     return dto;
@@ -488,7 +488,8 @@ public final class ParticipationManagementPersistenceUtil {
       dto.setReviewDate(recording.getReviewDate().getOrElseNull());
       dto.setDeleted(recording.isDeleted());
       dto.setFingerprint(recording.getFingerprint().getOrElseNull());
-      dto.setTrim(recording.isTrim());
+      dto.setEdit(recording.isEdit());
+      dto.setRecordingInputs(recording.getRecordingInputs());
       dto.setSchedulingSource(schedulingSource);
       em.merge(dto);
     } else {
@@ -496,7 +497,7 @@ public final class ParticipationManagementPersistenceUtil {
               room, recording.getModificationDate(), recording.getStart(), recording.getStop(), participation,
               messages, recording.getEventId().getOrElseNull(), captureAgent, actions, recording.getEmailStatus(),
               recording.getReviewStatus(), recording.getReviewDate().getOrElseNull(), recording.isDeleted(),
-              recording.getFingerprint().getOrElseNull(), recording.isTrim());
+              recording.getFingerprint().getOrElseNull(), recording.isEdit(), recording.getRecordingInputs());
       dto.setSchedulingSource(schedulingSource);
       em.persist(dto);
     }

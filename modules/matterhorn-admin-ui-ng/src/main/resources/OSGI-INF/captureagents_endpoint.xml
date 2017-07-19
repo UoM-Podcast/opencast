@@ -11,9 +11,6 @@
     <provide interface="org.opencastproject.adminui.endpoint.CaptureAgentsEndpoint" />
   </service>
 
-  <reference name="captureAgentService"
-             interface="org.opencastproject.capture.admin.api.CaptureAgentStateService"
-             cardinality="1..1"
-             policy="static"
-             bind="setCaptureAgentService" />
+  <reference name="captureAgentService" interface="org.opencastproject.capture.admin.api.CaptureAgentStateService"
+    cardinality="1..1" policy="static" bind="setCaptureAgentService" />
 </scr:component>

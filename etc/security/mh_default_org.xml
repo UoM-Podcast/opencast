@@ -21,9 +21,8 @@
   <sec:http pattern="/admin-ng/styles/**" security="none" />
  
   <!-- Allow anonymous access to Vaadin resources -->
-  <sec:http pattern="/opencast-vaadin/**" security="none" />
   <sec:http pattern="/VAADIN/**" security="none" />
-  <sec:http pattern="/VAADIN-ui/**" security="none" />
+  <sec:http pattern="/VAADIN-ui-admin/**" security="none" />
   <sec:http pattern="/VAADIN-ui-teacher/**" security="none" />
 
   <sec:http create-session="ifRequired" servlet-api-provision="true" realm="Opencast"

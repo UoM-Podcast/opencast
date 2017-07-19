@@ -1505,7 +1505,6 @@ public abstract class AbstractEventEndpoint {
       collection.removeField(collection.getOutputFields().get(DublinCore.PROPERTY_CREATED.getLocalName()));
       collection.removeField(collection.getOutputFields().get("duration"));
       collection.removeField(collection.getOutputFields().get(DublinCore.PROPERTY_IDENTIFIER.getLocalName()));
-      collection.removeField(collection.getOutputFields().get(DublinCore.PROPERTY_SOURCE.getLocalName()));
       collection.removeField(collection.getOutputFields().get("startDate"));
       collection.removeField(collection.getOutputFields().get("startTime"));
       collection.removeField(collection.getOutputFields().get("location"));

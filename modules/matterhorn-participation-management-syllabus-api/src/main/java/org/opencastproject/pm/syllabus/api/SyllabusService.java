@@ -25,9 +25,12 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import java.util.List;
+import java.util.Map;
 
 /** Provides access to a Syllabus+ data store. */
 public interface SyllabusService {
+  String ACTIVITY_TYPE_ANY = "**any**";
+
   /**
    * Return a list of {@link Occurrence occurrences} matching the following criteria
    * <ul>
@@ -207,4 +210,56 @@ public interface SyllabusService {
    * @return source description
    */
   VModule getModuleByCourseKey(String courseKey);
+
+  /**
+   * Get Capture Room Type Identifiers
+   * @return list of ids
+   */
+  List<String> getCaptureRoomTypeIDs();
+
+  /**
+   * Get Activity Type Identifiers
+   * @return list of ids
+   */
+  List<String> getCaptureActivityTypeIDs();
+
+  /**
+   * Get capture rooms
+   * @return collection of rooms and their properties
+   */
+  Map<String, Map<String, String>>getCaptureRooms();
+
+  /**
+   * Get capture activity types
+   * @return collection of rooms and their properties
+   */
+  Map<String, Map<String, String>>getCaptureActivityTypes();
+
+  /**
+   * Add a capture room property
+   * @param captureRoom
+   * @param property
+   * @param value
+   */
+  void addCaptureRoomProperty(String captureRoom, String property, String value);
+
+  /**
+   * Add an activity type property
+   * @param activityType
+   * @param property
+   * @param value
+   */
+  void addCaptureActivityTypeProperty(String activityType, String property, String value);
+
+  /**
+   * Is activity of the correct type to be captured?
+   * @return boolean
+   */
+  boolean isCaptureActivityType(VActivity activity);
+
+  /**
+   * Does the location have capture agent?
+   * @return boolean
+   */
+  boolean hasCaptureAgent(VLocationSuitability suitability);
 }
