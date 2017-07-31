@@ -27,9 +27,6 @@ import static org.opencastproject.util.data.Option.option;
 import static org.opencastproject.util.data.Tuple.tuple;
 import static org.opencastproject.util.data.functions.Strings.toLong;
 
-import org.opencastproject.event.comment.EventComment;
-import org.opencastproject.event.comment.EventCommentException;
-import org.opencastproject.event.comment.EventCommentService;
 import org.opencastproject.metadata.dublincore.DCMIPeriod;
 import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
@@ -46,9 +43,7 @@ import org.opencastproject.pm.api.scheduling.ScheduleProvider;
 import org.opencastproject.scheduler.api.SchedulerException;
 import org.opencastproject.scheduler.api.SchedulerQuery;
 import org.opencastproject.scheduler.api.SchedulerService;
-import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UnauthorizedException;
-import org.opencastproject.security.api.User;
 import org.opencastproject.security.util.SecurityContext;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.data.Cell;
@@ -80,10 +75,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-
 /**
- * <The schedule feeder feeds scheduling data from external data sources into Matterhorn.
- * <br>
+ * The schedule feeder feeds scheduling data from external data sources into Matterhorn.
+ * <p/>
  * The current approach is as follows:
  * <ul>
  * <li>query external data source, then if successful:</li>
@@ -109,8 +103,6 @@ public class ScheduleFeederRunner {
   private final ScheduleFeederServiceImpl scheduleFeederService;
   private final SchedulerService schedulerService;
   private final ScheduleProvider scheduleProvider;
-  private final SecurityService securityService;
-  private final EventCommentService eventCommentService;
   private final ParticipationManagementDatabase participationManagementDB;
   private final Cell<Option<SecurityContext>> secCtx;
   private final Cell<String> workflow;
@@ -123,21 +115,15 @@ public class ScheduleFeederRunner {
   private final Scheduler scheduler;
 
   public ScheduleFeederRunner(ScheduleFeederServiceImpl scheduleFeeder, SchedulerService schedulerService,
-          ParticipationManagementDatabase participationManagementDB,
-          SecurityService securityService,
-          EventCommentService eventCommentService,
-          ScheduleProvider scheduleProvider,
+          ParticipationManagementDatabase participationManagementDB, ScheduleProvider scheduleProvider,
           Cell<Option<SecurityContext>> secCtx,
           Cell<String> workflow, Cell<HashMap<String, String>> workflowConfigs,
           Cell<String> editProperty, Cell<String> emailProperty,
           Cell<HashMap<String, String>> inputProperties, Cell<HashMap<String, String>> inputCANames,
           Cell<Integer> preEditAvailDelay) {
-
     this.scheduleFeederService = scheduleFeeder;
     this.schedulerService = schedulerService;
     this.participationManagementDB = participationManagementDB;
-    this.securityService = securityService;
-    this.eventCommentService = eventCommentService;
     this.scheduleProvider = scheduleProvider;
     this.secCtx = secCtx;
     this.workflow = workflow;
@@ -325,9 +311,7 @@ public class ScheduleFeederRunner {
                 logger.info("Scheduling {} recordings between {} and {}", new Object[] { newSchedule.getEpisodes().size(), interval.getA(), interval.getB() });
                 try {
                   scheduleRecordings(newSchedule.getEpisodes(), parent.schedulerService,
-                          parent.participationManagementDB,
-                          parent.securityService, parent.eventCommentService,
-                          caConfig, wfProperties,
+                          parent.participationManagementDB, caConfig, wfProperties,
                           parent.getEditProperty(), parent.getEmailProperty(),
                           parent.getInputProperties(), parent.getInputCANames(),
                           parent.getPreEditAvailDelay());
@@ -396,8 +380,6 @@ public class ScheduleFeederRunner {
     @SuppressWarnings("unchecked")
     private static void scheduleRecordings(List<Tuple<Recording, DublinCoreCatalog>> list,
             SchedulerService schedulerService, ParticipationManagementDatabase participationManagementDB,
-            SecurityService securityService,
-            EventCommentService eventCommentService,
             Properties parentCAConfig, Map<String, String> parentWFProperties,
             Cell<String>editProperty, Cell<String>emailProperty,
             Cell<HashMap<String, String>> inputProperties, Cell<HashMap<String, String>> inputCANames,
@@ -407,7 +389,6 @@ public class ScheduleFeederRunner {
       int i = 0;
       Properties caConfig;
       Map<String, String> wfProperties;
-      User user = securityService.getUser();
 
       for (Tuple<Recording, DublinCoreCatalog> t : list) {
         // UOM: Reset the config and properties to that of the parent
@@ -520,19 +501,6 @@ public class ScheduleFeederRunner {
             rec.setEventId(eventId);
             rec.setFingerprint(Option.some(md5));
             schedulerService.updateCaptureAgentMetadata(caConfig, tuple(rec.getEventId().get(), dc));
-
-            // If edit set requires cutting comment
-            if (rec.isEdit()) {
-              String mpId = schedulerService.getMediaPackageId(eventId);
-              EventComment comment = EventComment.create(Option.none(Long.class), mpId, securityService.getOrganization().getId(),
-                      "Requires editing", user, EventComment.REASON_NEEDS_CUTTING, false);
-              try {
-                eventCommentService.updateComment(comment);
-              } catch (EventCommentException e) {
-                logger.error("Unable to add editing comment to {} {}", rec.getId().get(), e.getMessage());
-              }
-            }
-
             try {
               rec = participationManagementDB.updateRecording(rec);
             } catch (ParticipationManagementDatabaseException e) {
@@ -571,34 +539,8 @@ public class ScheduleFeederRunner {
               try {
                 schedulerService.updateEvent(eventId, dc, wfProperties);
                 schedulerService.updateCaptureAgentMetadata(caConfig, tuple(eventId, t.getB()));
-                String mpId = schedulerService.getMediaPackageId(eventId);
                 rec.setFingerprint(Option.some(md5));
                 participationManagementDB.updateRecording(rec);
-
-                try {
-                  // Does the event have a cutting comment on it?
-                  EventComment editComment = null;
-                  List<EventComment>comments = eventCommentService.getComments(mpId);
-
-                  for (EventComment comment : comments) {
-                    if (EventComment.REASON_NEEDS_CUTTING.equalsIgnoreCase(comment.getReason())) {
-                      editComment = comment;
-                      break;
-                    }
-                  }
-
-                  if (rec.isEdit() && editComment == null) {
-                    EventComment comment = EventComment.create(Option.none(Long.class), mpId, securityService.getOrganization().getId(),
-                            "Requires editing", user, EventComment.REASON_NEEDS_CUTTING, false);
-
-                    eventCommentService.updateComment(comment);
-                  } else if (!rec.isEdit() && editComment != null) {
-                    eventCommentService.deleteComment(editComment.getId().get());
-                  }
-                } catch (EventCommentException e) {
-                  logger.error("Unable to add editing comment to {} {}", rec.getId().get(), e.getMessage());
-                }
-
               } catch (NotFoundException e) {
                 logger.warn("The event {} cannot be found in Matterhorn and therefore can not be updated.", eventId);
               } catch (ParticipationManagementDatabaseException e) {
