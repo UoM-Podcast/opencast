@@ -32,6 +32,7 @@ import static org.opencastproject.util.data.VCell.ocell;
 import static org.opencastproject.util.data.functions.Strings.toBool;
 import static org.opencastproject.util.data.functions.Strings.toInt;
 
+import org.opencastproject.event.comment.EventCommentService;
 import org.opencastproject.pm.api.Course;
 import org.opencastproject.pm.api.Recording;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
@@ -126,6 +127,7 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
   protected boolean syncPast = false;
 
   // Dependencies
+  private EventCommentService eventCommentService;
   private SchedulerService schedulerService;
   private SecurityService securityService;
   private OrganizationDirectoryService organizationDirectoryService;
@@ -148,6 +150,11 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
   private final VCell<HashMap<String, String>> inputCANames = cell(new HashMap<String, String>());
 
   private ScheduleFeederRunner runner;
+
+  /** OSGi container callback. */
+  public void setEventCommentService(EventCommentService eventCommentService) {
+    this.eventCommentService = eventCommentService;
+  }
 
   /** OSGi container callback. */
   public void setSchedulerService(SchedulerService schedulerService) {
@@ -180,7 +187,9 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
             hasToCreateNewSeries.get(), startMargin, endMargin);
     logger.info("Start schedule feeder using provider {}", scheduleProvider);
     systemUser = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
-    runner = new ScheduleFeederRunner(this, schedulerService, participationManagementDB, scheduleProvider,
+    runner = new ScheduleFeederRunner(this, schedulerService, participationManagementDB,
+            securityService,
+            eventCommentService, scheduleProvider,
             secCtx, workflow, workflowConfigs, editProperty, emailProperty, inputProperties, inputCANames, preEditAvailDelay);
   }
 
