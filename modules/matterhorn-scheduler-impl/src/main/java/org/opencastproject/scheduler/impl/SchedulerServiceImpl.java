@@ -1569,4 +1569,27 @@ public class SchedulerServiceImpl extends AbstractIndexProducer implements Sched
     return SchedulerServiceImpl.class.getName();
   }
 
+  @Override
+  public Map<String, String> getWorkflowConfig(String mediaPackageId) throws NotFoundException, UnauthorizedException, SchedulerException {
+    Map<String, String> configuration = new HashMap<>();
+    Properties properties = getEventCaptureAgentConfiguration(getEventId(mediaPackageId));
+    for (Entry<Object, Object> prop : properties.entrySet()) {
+      String key = (String)prop.getKey();
+      if (key.startsWith(WORKFLOW_CONFIG_PREFIX)) {
+        configuration.put(key.replace(WORKFLOW_CONFIG_PREFIX, ""), (String)prop.getValue());
+      }
+    }
+    return configuration;
+  }
+
+  @Override
+  public Map<String, String> getCaptureAgentConfiguration(String mediaPackageId) throws NotFoundException, UnauthorizedException, SchedulerException {
+    Properties properties = getEventCaptureAgentConfiguration(getEventId(mediaPackageId));
+    Map<String, String> configuration = new HashMap<>();
+    for (Entry<Object, Object> prop : properties.entrySet()) {
+      configuration.put((String)prop.getKey(), (String)prop.getValue());
+    }
+    return configuration;
+  }
+
 }
