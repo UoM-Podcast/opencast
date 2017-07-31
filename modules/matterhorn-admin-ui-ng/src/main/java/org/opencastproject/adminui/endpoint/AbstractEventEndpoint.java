@@ -60,6 +60,7 @@ import org.opencastproject.authorization.xacml.manager.api.AclServiceException;
 import org.opencastproject.authorization.xacml.manager.api.EpisodeACLTransition;
 import org.opencastproject.authorization.xacml.manager.api.ManagedAcl;
 import org.opencastproject.authorization.xacml.manager.api.TransitionQuery;
+import org.opencastproject.capture.CaptureParameters;
 import org.opencastproject.capture.admin.api.Agent;
 import org.opencastproject.capture.admin.api.CaptureAgentStateService;
 import org.opencastproject.capture.admin.api.Recording;
@@ -162,8 +163,10 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -1081,9 +1084,25 @@ public abstract class AbstractEventEndpoint {
       return notFound("Cannot find an event with id '%s'.", id);
 
     try {
-      return okJson(getJobService().getTasksAsJSON(new WorkflowQuery().withMediaPackage(id)));
+      if (!optEvent.get().hasRecordingStarted()) {
+        Map<String, JField> fields = new HashMap<>();
+        Map<String, String> workflowConfig = getSchedulerService().getWorkflowConfig(id);
+        for (Entry<String, String> entry : workflowConfig.entrySet()) {
+          fields.put(entry.getKey(), f(entry.getKey(), v(entry.getValue())));
+        }
+
+        Map<String, String> agentConfiguration = getSchedulerService().getCaptureAgentConfiguration(id);
+        return okJson(j(
+                f("workflowId", v(agentConfiguration.get(CaptureParameters.INGEST_WORKFLOW_DEFINITION))),
+                f("configuration", j(fields))));
+      } else {
+        return okJson(getJobService().getTasksAsJSON(new WorkflowQuery().withMediaPackage(id)));
+      }
     } catch (NotFoundException e) {
       return notFound("Cannot find workflows for event %s", id);
+    } catch (SchedulerException e) {
+      logger.error("Unable to get workflow data for event with id {}", id);
+      throw new WebApplicationException(e, SC_INTERNAL_SERVER_ERROR);
     }
   }
 
