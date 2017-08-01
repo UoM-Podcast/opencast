@@ -1273,7 +1273,11 @@ public class SchedulerRestService {
   public Response getAccessControlList(@PathParam("id") long eventId) {
     try {
       AccessControlList accessControlList = service.getAccessControlList(eventId);
-      return Response.ok(AccessControlParser.toJson(accessControlList)).type(MediaType.APPLICATION_JSON_TYPE).build();
+      if (accessControlList != null) {
+        return Response.ok(AccessControlParser.toJson(accessControlList)).type(MediaType.APPLICATION_JSON_TYPE).build();
+      } else {
+        return Response.ok().type(MediaType.APPLICATION_JSON_TYPE).build();
+      }
     } catch (NotFoundException e) {
       logger.warn("Event with id '{}' does not exist.", eventId);
       return Response.status(Status.NOT_FOUND).build();
