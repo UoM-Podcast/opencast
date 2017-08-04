@@ -1269,6 +1269,7 @@ public class SchedulerRestService {
   @Path("{id}/acl")
   @RestQuery(name = "getaccesscontrollist", description = "Retrieves the access control list for specified event", returnDescription = "The access control list", pathParameters = { @RestParameter(name = "id", isRequired = true, description = "ID of event for which the access control list will be retrieved", type = Type.STRING) }, reponses = {
           @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "The access control list as JSON "),
+          @RestResponse(responseCode = HttpServletResponse.SC_NO_CONTENT, description = "The event has no access control list"),
           @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "Event with specified ID does not exist") })
   public Response getAccessControlList(@PathParam("id") long eventId) {
     try {
@@ -1276,7 +1277,7 @@ public class SchedulerRestService {
       if (accessControlList != null) {
         return Response.ok(AccessControlParser.toJson(accessControlList)).type(MediaType.APPLICATION_JSON_TYPE).build();
       } else {
-        return Response.ok().type(MediaType.APPLICATION_JSON_TYPE).build();
+        return Response.noContent().build();
       }
     } catch (NotFoundException e) {
       logger.warn("Event with id '{}' does not exist.", eventId);
