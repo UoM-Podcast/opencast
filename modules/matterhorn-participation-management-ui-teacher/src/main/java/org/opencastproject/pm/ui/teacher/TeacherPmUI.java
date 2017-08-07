@@ -27,6 +27,7 @@ import org.opencastproject.pm.api.util.Security;
 import org.opencastproject.pm.ui.common.components.MainLayout;
 import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.pm.ui.common.util.UiUtil;
+import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.Crypt;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.VCell;
@@ -64,8 +65,11 @@ public class TeacherPmUI extends UI {
   protected void init(VaadinRequest request) {
 
     logger.debug("Init HQ " + this);
-    final I18N i18n = new I18N(ResourceBundle.getBundle("messages", request.getLocale()), customMessages(teacherPm.getCaptureAgentInputDescriptions()));
 
+    // Internally we need to access services using admin rights as we are not using user credentials
+    teacherPm.getSecurityService().setUser(SecurityUtil.createSystemUser("admin", teacherPm.getSecurityService().getOrganization()));
+
+    final I18N i18n = new I18N(ResourceBundle.getBundle("messages", request.getLocale()), customMessages(teacherPm.getCaptureAgentInputDescriptions()));
     getPage().setTitle(i18n.s("title"));
 
     String teacherEMail;
