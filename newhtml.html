@@ -1,0 +1,102 @@
+<!doctype html>
+<html ng-app="editNg">
+  <head>
+    <meta charset="utf-8">
+    <title>Opencast</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width">
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+    <link rel="stylesheet" href="styles/vendor.d41d8cd9.css">
+    <link rel="stylesheet" href="styles/main.7943d79c.css">
+    <link type="text/css" href="lib/datepicker/themes/smoothness/jquery-ui-1.10.3.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <script> window.jQuery || document.write('<script src="lib/jquery-1.10.2.js"><\/script>')</script>
+    <script type="text/javascript" src="lib/jquery-ui.js"></script>
+    <script type="text/javascript" src="lib/datepicker/i18n/jquery-ui-i18n.js"></script>
+    <script type="text/javascript" src="lib/underscore-1.5.2.js"></script>
+    <script type="text/javascript" src="lib/backbone-1.1.0.js"></script>
+    <script type="text/javascript" src="lib/visualsearch.js"></script>
+    <script type="text/javascript" src="lib/chosen.jquery.js"></script>
+    <script type="text/javascript" src="lib/moment.min.js"></script>
+  </head>
+  <body ng-cloak ng-controller="ApplicationCtrl" ng-click="bodyClicked()">
+    <header ng-controller="NavCtrl" class="primary-header">
+      <div class="header-branding">
+        <a href="/" target="_self" class="logo">
+          <img src="img/opencast-white.svg" alt="Opencast Logo">
+        </a>
+      </div>
+      <nav class="header-nav nav-dd-container" id="nav-dd-container">
+        <div class="nav-dd lang-dd" id="lang-dd" old-admin-ng-dropdown="">
+          <div class="lang" ng-class="currentLanguageCode">
+            <img ng-attr-src="img/lang/{{ currentLanguageCode}}.svg" ng-attr-alt="{{ currentLanguageCode}}">
+          </div>
+          <ul class="dropdown-ul">
+            <li><a ng-repeat="language in availableLanguages| orderBy:'displayLanguage'" ng-click="changeLanguage(language.code)">
+                <img class="lang-flag" ng-attr-src="img/lang/{{ language.code}}.svg" ng-attr-alt="{{ language.code}}"> {{ language.displayLanguage}}</a>
+            </li>
+          </ul>
+        </div>
+        <div ng-if="mediaModuleUrl" class="nav-dd" title="{{ 'MEDIAMODULE' | translate}}">
+          <a href="{{mediaModuleUrl}}">
+            <span class="fa fa-play-circle-o"><!-- Media Module --></span>
+          </a>
+        </div>
+        <div ng-if="documentationUrl || restdocsUrl" title="{{ 'HELP.HELP' | translate}}" class="nav-dd" id="help-dd" old-admin-ng-dropdown="">
+          <div class="fa fa-question-circle"></div>
+          <ul class="dropdown-ul">
+            <li ng-if="documentationUrl">
+              <a href="{{documentationUrl}}">
+                <span translate="HELP.DOCUMENTATION"><!-- Documentation Server --></span>
+              </a>
+            </li>
+            <li ng-if="restdocsUrl" with-role="ROLE_ADMIN">
+              <a target="_self" href="{{restdocsUrl}}">
+                <span translate="HELP.REST_DOC"><!-- REST Doc --></span>
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div class="nav-dd user-dd" id="user-dd" old-admin-ng-dropdown="">
+          <div class="h-nav dropdown-icon">{{ currentUser.user.name || currentUser.user.username }}</div>
+          <ul class="dropdown-ul">
+            <li>
+              <a ng-click="logout()">
+                <span class="logout-icon" translate="LOGOUT"><!-- Logout--></span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </header>
+    <section ng-view class="main-content">
+    </section>
+    <footer id="main-footer" ng-controller="NavCtrl">
+      <div class="default-footer">
+        <div ng-if="version.version" class="meta"> Opencast (v.{{ version.version}}<span ng-if="version.buildNumber"> - build: {{ version.buildNumber}}</span>) </div>
+        <div ng-if="feedbackUrl" class="feedback-btn" id="feedback-btn">
+          <a href="javascript:;">Feedback</a>
+        </div>
+      </div>
+    </footer>
+    <script src="scripts/bower.1ac1d218.js"></script>
+    <script src="scripts/vendor.3a1bc97f.js"></script>
+    <script src="scripts/scripts.6510a8a0.js"></script>
+    <script ng-if="feedbackUrl" type="text/javascript" ng-src="{{ feedbackUrl | trusted }}"></script>
+    <script ng-if="feedbackUrl" type="text/javascript"> window.ATL_JQ_PAGE_PROPS = {
+            "triggerFunction": function (showCollectorDialog) {
+              //Requires that jQuery is available!
+              jQuery("#feedback-btn").click(function (e) {
+                e.preventDefault();
+                showCollectorDialog();
+              });
+            }};</script>
+    <!-- <script src="modules/configuration/controllers/emailtemplatesController.js"></script> -->
+    <!-- <script src="modules/configuration/controllers/emailtemplateController.js"></script> -->
+    <!-- <script src="shared/resources/emailTemplateResource.js"></script> -->
+    <!-- <script src="shared/resources/emailResource.js"></script> -->
+    <!-- <script src="shared/services/wizards/emailtemplate/states.js"></script> -->
+    <!-- <script src="shared/services/wizards/emailtemplate/message.js"></script> -->
+    <!-- <script src="shared/services/wizards/emailtemplate/summary.js"></script> -->
+  </body>
+</html> 
