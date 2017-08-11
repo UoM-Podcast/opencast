@@ -40,6 +40,7 @@ import org.opencastproject.pm.ui.common.util.UiUtil;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.security.util.SecurityContext;
+import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.data.Effect0;
 import org.opencastproject.util.data.Option;
@@ -190,6 +191,8 @@ public class PastRecordingsView extends RecordingsView {
             }
           });
         } else if ("processing".equals(recording.getProcessingStatus())) {
+          return new Label(""); // TODO: Disable Pause button until OC supports
+          /*
           return new Button(i18n.s("table.action.pause"), new ClickListener() {
             @Override
             public void buttonClick(final ClickEvent event) {
@@ -209,7 +212,7 @@ public class PastRecordingsView extends RecordingsView {
                 }
               });
             }
-          });
+          });*/
         } else {
           return new Label("");
         }
@@ -224,7 +227,7 @@ public class PastRecordingsView extends RecordingsView {
 
   private boolean runAction(final Action action, final RecordingView recording) {
     final WorkflowInstance wi;
-
+    securityService.setUser(SecurityUtil.createSystemUser("admin", securityService.getOrganization()));
     try {
       wi = workflowServiceUtils.getSvc().getWorkflowById(recording.getWorkflowId().get());
     } catch (WorkflowDatabaseException e) {
