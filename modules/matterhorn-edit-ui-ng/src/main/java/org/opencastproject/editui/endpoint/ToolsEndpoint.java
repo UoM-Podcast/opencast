@@ -18,7 +18,6 @@
  * the License.
  *
  */
-
 package org.opencastproject.editui.endpoint;
 
 import static com.entwinemedia.fn.Stream.$;
@@ -113,42 +112,61 @@ import javax.xml.bind.JAXBException;
 
 @Path("/")
 @RestService(name = "toolsService", title = "Tools API Service",
-  abstractText = "Provides a location for the tools API.",
-  notes = { "This service provides a location for the tools API for the admin UI.",
-            "<strong>Important:</strong> "
-              + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
-              + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
-              + "DO NOT use this for integration of third-party applications.<em>"})
+        abstractText = "Provides a location for the tools API.",
+        notes = {"This service provides a location for the tools API for the admin UI.",
+          "<strong>Important:</strong> "
+          + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
+          + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
+          + "DO NOT use this for integration of third-party applications.<em>"})
 public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService {
-  /** The logging facility */
+
+  /**
+   * The logging facility
+   */
   private static final Logger logger = LoggerFactory.getLogger(ToolsEndpoint.class);
 
-  /** The default file name for generated Smil catalogs. */
+  /**
+   * The default file name for generated Smil catalogs.
+   */
   private static final String TARGET_FILE_NAME = "cut.smil";
 
-  /** The Json key for the cutting details object. */
+  /**
+   * The Json key for the cutting details object.
+   */
   private static final String CONCAT_KEY = "concat";
 
-  /** The Json key for the end of a segment. */
+  /**
+   * The Json key for the end of a segment.
+   */
   private static final String END_KEY = "end";
 
-  /** The Json key for the beginning of a segment. */
+  /**
+   * The Json key for the beginning of a segment.
+   */
   private static final String START_KEY = "start";
 
-  /** The Json key for the segments array. */
+  /**
+   * The Json key for the segments array.
+   */
   private static final String SEGMENTS_KEY = "segments";
 
-  /** The Json key for the tracks array. */
+  /**
+   * The Json key for the tracks array.
+   */
   private static final String TRACKS_KEY = "tracks";
 
-  /** Tag that marks workflow for being used from the editor tool */
+  /**
+   * Tag that marks workflow for being used from the editor tool
+   */
   private static final String EDITOR_WORKFLOW_TAG = "editor";
 
   private long expireSeconds = UrlSigningServiceOsgiUtil.DEFAULT_URL_SIGNING_EXPIRE_DURATION;
 
   private Boolean signWithClientIP = UrlSigningServiceOsgiUtil.DEFAULT_SIGN_WITH_CLIENT_IP;
 
-  /** A parser for handling JSON documents inside the body of a request. **/
+  /**
+   * A parser for handling JSON documents inside the body of a request. *
+   */
   private final JSONParser parser = new JSONParser();
 
   // service references
@@ -163,52 +181,72 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   private WorkflowService workflowService;
   private Workspace workspace;
 
-  /** OSGi DI. */
+  /**
+   * OSGi DI.
+   */
   void setAdminUIConfiguration(AdminUIConfiguration adminUIConfiguration) {
     this.adminUIConfiguration = adminUIConfiguration;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setAdminUISearchIndex(AdminUISearchIndex adminUISearchIndex) {
     this.searchIndex = adminUISearchIndex;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setArchive(Archive<?> archive) {
     this.archive = archive;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setHttpMediaPackageElementProvider(HttpMediaPackageElementProvider mpElementProvider) {
     this.mpElementProvider = mpElementProvider;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setIndexService(IndexService index) {
     this.index = index;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setSecurityService(SecurityService securityService) {
     this.securityService = securityService;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setSmilService(SmilService smilService) {
     this.smilService = smilService;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setUrlSigningService(UrlSigningService urlSigningService) {
     this.urlSigningService = urlSigningService;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setWorkflowService(WorkflowService workflowService) {
     this.workflowService = workflowService;
   }
 
-  /** OSGi DI */
+  /**
+   * OSGi DI
+   */
   void setWorkspace(Workspace workspace) {
     this.workspace = workspace;
   }
@@ -218,7 +256,9 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
     return securityService;
   }
 
-  /** OSGi callback if properties file is present */
+  /**
+   * OSGi callback if properties file is present
+   */
   @SuppressWarnings("rawtypes")
   @Override
   public void updated(Dictionary properties) throws ConfigurationException {
@@ -230,12 +270,13 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   @GET
   @Path("{mediapackageid}.json")
   @RestQuery(name = "getAvailableTools", description = "Returns a list of tools which are currently available for the given media package.", returnDescription = "A JSON array with tools identifiers", pathParameters = {
-          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
-                  @RestResponse(description = "Available tools evaluated", responseCode = HttpServletResponse.SC_OK) })
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+    @RestResponse(description = "Available tools evaluated", responseCode = HttpServletResponse.SC_OK)})
   public Response getAvailableTools(@PathParam("mediapackageid") final String mediaPackageId) {
     final List<JValue> jTools = new ArrayList<JValue>();
-    if (isEditorAvailable(mediaPackageId))
+    if (isEditorAvailable(mediaPackageId)) {
       jTools.add(v("editor"));
+    }
 
     return RestUtils.okJson(j(f("available", a(jTools))));
   }
@@ -244,9 +285,9 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   @Path("{mediapackageid}/editor.json")
   @Produces(MediaType.APPLICATION_JSON)
   @RestQuery(name = "getVideoEditor", description = "Returns all the information required to get the editor tool started", returnDescription = "JSON object", pathParameters = {
-          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
-                  @RestResponse(description = "Media package found", responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+    @RestResponse(description = "Media package found", responseCode = HttpServletResponse.SC_OK),
+    @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})
   public Response getVideoEditor(@PathParam("mediapackageid") final String mediaPackageId)
           throws IndexServiceException, NotFoundException {
     return forwardRequest("/admin-ng/tools/" + mediaPackageId + "/editor.json", "GET", null);
@@ -256,10 +297,10 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   @Path("{mediapackageid}/editor.json")
   @Consumes(MediaType.APPLICATION_JSON)
   @RestQuery(name = "editVideo", description = "Takes editing information from the client side and processes it", returnDescription = "", pathParameters = {
-          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
-                  @RestResponse(description = "Editing information saved and processed", responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND),
-                  @RestResponse(description = "The editing information cannot be parsed", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+    @RestResponse(description = "Editing information saved and processed", responseCode = HttpServletResponse.SC_OK),
+    @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND),
+    @RestResponse(description = "The editing information cannot be parsed", responseCode = HttpServletResponse.SC_BAD_REQUEST)})
   public Response editVideo(@PathParam("mediapackageid") final String mediaPackageId,
           @Context HttpServletRequest request) throws IndexServiceException, NotFoundException, WorkflowDatabaseException {
     String details;
@@ -275,13 +316,10 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   /**
    * Creates a SMIL cutting catalog based on the passed editing information and the media package.
    *
-   * @param editingInfo
-   *          the editing information
-   * @param mediaPackage
-   *          the media package
+   * @param editingInfo the editing information
+   * @param mediaPackage the media package
    * @return a SMIL catalog
-   * @throws SmilException
-   *           if creating the SMIL catalog failed
+   * @throws SmilException if creating the SMIL catalog failed
    */
   Smil createSmilCuttingCatalog(final EditingInfo editingInfo, final MediaPackage mediaPackage) throws SmilException {
     // Create initial SMIL catalog
@@ -304,9 +342,10 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
             return trackId.equals(a.getIdentifier());
           }
         }).head();
-        if (trackOpt.isNone())
+        if (trackOpt.isNone()) {
           throw new IllegalStateException(
                   format("The track '%s' doesn't exist in media package '%s'", trackId, mediaPackage));
+        }
 
         track = trackOpt.get();
       }
@@ -328,29 +367,26 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   /**
    * Adds the SMIL file as {@link Catalog} to the media package and sends the updated media package to the archive.
    *
-   * @param mediaPackage
-   *          the media package to at the SMIL catalog
-   * @param smil
-   *          the SMIL catalog
+   * @param mediaPackage the media package to at the SMIL catalog
+   * @param smil the SMIL catalog
    * @return the updated media package
-   * @throws IOException
-   *           if the SMIL catalog cannot be read or not be written to the archive
+   * @throws IOException if the SMIL catalog cannot be read or not be written to the archive
    */
   MediaPackage addSmilToArchive(MediaPackage mediaPackage, final Smil smil) throws IOException {
-   MediaPackageElementFlavor mediaPackageElementFlavor = adminUIConfiguration.getSmilCatalogFlavor();
-   //set default catalog Id if there is none existing
+    MediaPackageElementFlavor mediaPackageElementFlavor = adminUIConfiguration.getSmilCatalogFlavor();
+    //set default catalog Id if there is none existing
     String catalogId = smil.getId();
     Catalog[] catalogs = mediaPackage.getCatalogs();
 
     //get the first smil/cutting  catalog-ID to overwrite it with new smil info
-    for (Catalog p: catalogs) {
-       if (p.getFlavor().matches(mediaPackageElementFlavor)) {
-         logger.debug("Set Idendifier for Smil-Catalog to: " + p.getIdentifier());
-         catalogId = p.getIdentifier();
-       break;
-       }
-     }
-     Catalog catalog = mediaPackage.getCatalog(catalogId);
+    for (Catalog p : catalogs) {
+      if (p.getFlavor().matches(mediaPackageElementFlavor)) {
+        logger.debug("Set Idendifier for Smil-Catalog to: " + p.getIdentifier());
+        catalogId = p.getIdentifier();
+        break;
+      }
+    }
+    Catalog catalog = mediaPackage.getCatalog(catalogId);
 
     URI smilURI;
     try (InputStream is = IOUtils.toInputStream(smil.toXML(), "UTF-8")) {
@@ -402,8 +438,7 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   /**
    * Returns {@code true} if the media package is ready to be edited.
    *
-   * @param mediaPackageId
-   *          the media package identifier
+   * @param mediaPackageId the media package identifier
    */
   private boolean isEditorAvailable(final String mediaPackageId) {
     final Opt<Event> optEvent = getEvent(mediaPackageId);
@@ -418,8 +453,7 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   /**
    * Get an {@link Event}
    *
-   * @param mediaPackageId
-   *          The mediapackage id that is also the event id.
+   * @param mediaPackageId The mediapackage id that is also the event id.
    * @return The event if available or none if it is missing.
    */
   private Opt<Event> getEvent(final String mediaPackageId) {
@@ -451,10 +485,8 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
    * Merges two different segments lists together. Keeps untouched segments and combines touching segments by the
    * overlapping points.
    *
-   * @param segments
-   *          the first segments to be merge
-   * @param segments2
-   *          the second segments to be merge
+   * @param segments the first segments to be merge
+   * @param segments2 the second segments to be merge
    * @return the merged segments
    */
   private List<Tuple<Long, Long>> mergeInternal(List<Tuple<Long, Long>> segments, List<Tuple<Long, Long>> segments2) {
@@ -480,8 +512,7 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   /**
    * Extracts the segments of a SMIL catalog and returns them as a list of tuples (start, end).
    *
-   * @param smil
-   *          the SMIL catalog
+   * @param smil the SMIL catalog
    * @return the list of segments
    */
   List<Tuple<Long, Long>> getSegmentsFromSmil(Smil smil) {
@@ -497,7 +528,7 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
               break;
             } catch (SmilException e) {
               logger.warn("Media element '{}' of SMIL catalog '{}' seems to be invalid: {}",
-                      new Object[] { videoElem, smil, e });
+                      new Object[]{videoElem, smil, e});
             }
           }
         }
@@ -506,7 +537,9 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
     return segments;
   }
 
-  /** Provides access to the parsed editing information */
+  /**
+   * Provides access to the parsed editing information
+   */
   static final class EditingInfo {
 
     private final List<Tuple<Long, Long>> segments;
@@ -522,8 +555,7 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
     /**
      * Parse {@link JSONObject} to {@link EditingInfo}.
      *
-     * @param obj
-     *          the JSON object to parse
+     * @param obj the JSON object to parse
      * @return all editing information found in the JSON object
      */
     static EditingInfo parse(JSONObject obj) {
@@ -537,8 +569,9 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
         final JSONObject jSegment = (JSONObject) segment;
         final Long start = (Long) jSegment.get(START_KEY);
         final Long end = (Long) jSegment.get(END_KEY);
-        if (end < start)
+        if (end < start) {
           throw new IllegalArgumentException("The end date of a segment must be after the start date of the segment");
+        }
         segments.add(Tuple.tuple(start, end));
       }
 
@@ -558,12 +591,16 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
       return Collections.unmodifiableList(segments);
     }
 
-    /** Returns a list of track identifiers. */
+    /**
+     * Returns a list of track identifiers.
+     */
     List<String> getConcatTracks() {
       return Collections.unmodifiableList(tracks);
     }
 
-    /** Returns the optional workflow to start */
+    /**
+     * Returns the optional workflow to start
+     */
     Opt<String> getPostProcessingWorkflow() {
       return workflow;
     }

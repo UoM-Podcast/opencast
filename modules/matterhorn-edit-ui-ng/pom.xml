@@ -410,7 +410,6 @@
                         <Service-Component>
                             OSGI-INF/acl_endpoint.xml,
                             OSGI-INF/editui_configuration.xml,
-                            OSGI-INF/captureagents_endpoint.xml,
                             OSGI-INF/event_endpoint.xml,
                             OSGI-INF/groups_endpoint.xml,
                             OSGI-INF/index_endpoint.xml,
@@ -427,7 +426,6 @@
                             OSGI-INF/message-receiver-theme.xml,
                             OSGI-INF/message-receiver-workflow.xml,
                             OSGI-INF/presets_endpoint.xml,
-<!--                            OSGI-INF/search-index.xml,-->
                             OSGI-INF/server_endpoint.xml,
                             OSGI-INF/series_endpoint.xml,
                             OSGI-INF/services_endpoint.xml,

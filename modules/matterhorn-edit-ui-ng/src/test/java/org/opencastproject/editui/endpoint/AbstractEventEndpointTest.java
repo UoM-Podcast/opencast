@@ -31,12 +31,10 @@ import org.opencastproject.archive.opencast.OpencastArchive;
 import org.opencastproject.authorization.xacml.manager.api.AclService;
 import org.opencastproject.capture.admin.api.CaptureAgentStateService;
 import org.opencastproject.capture.admin.api.Recording;
-import org.opencastproject.capture.admin.api.RecordingState;
 import org.opencastproject.editui.impl.AdminUIConfiguration;
 import org.opencastproject.editui.impl.index.AdminUISearchIndex;
 import org.opencastproject.event.comment.EventCommentService;
 import org.opencastproject.index.service.api.IndexService;
-import org.opencastproject.index.service.util.RestUtils;
 import org.opencastproject.rest.NotFoundExceptionMapper;
 import org.opencastproject.rest.RestServiceTestEnv;
 import org.opencastproject.scheduler.api.SchedulerService;
@@ -45,7 +43,6 @@ import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.urlsigning.service.UrlSigningService;
 import org.opencastproject.workflow.api.WorkflowService;
 
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
@@ -59,9 +56,6 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.IOException;
-
-import javax.ws.rs.WebApplicationException;
 
 import uk.co.datumedge.hamcrest.json.SameJSONAs;
 
@@ -515,26 +509,6 @@ public class AbstractEventEndpointTest {
     EasyMock.expect(recording.getState()).andStubReturn(state);
     EasyMock.replay(recording);
     return recording;
-  }
-
-  @Test
-  public void testRecordingToJson() throws WebApplicationException, IOException {
-    String id = "rec-id";
-    // 09/17/2015 @ 8:46pm UTC
-    long lastCheckinTime = 1442522772000L;
-    Recording recording = createRecording(id, lastCheckinTime, RecordingState.CAPTURING);
-    String result = RestUtils.getJsonString(AbstractEventEndpoint.recordingToJson.ap(Opt.some(recording)));
-    String expected = "{\"lastCheckInTimeUTC\":\"2015-09-17T20:46:12Z\",\"id\":\"rec-id\",\"state\":\"capturing\",\"lastCheckInTime\":\"1442522772000\"}";
-    assertThat(expected, SameJSONAs.sameJSONAs(result));
-
-    recording = createRecording(null, 0L, null);
-    result = RestUtils.getJsonString(AbstractEventEndpoint.recordingToJson.ap(Opt.some(recording)));
-    expected = "{\"lastCheckInTimeUTC\":\"1970-01-01T00:00:00Z\",\"id\":\"\",\"state\":\"\",\"lastCheckInTime\":\"0\"}";
-    assertThat(expected, SameJSONAs.sameJSONAs(result));
-
-    result = RestUtils.getJsonString(AbstractEventEndpoint.recordingToJson.ap(Opt.<Recording> none()));
-    expected = "{}";
-    assertThat(expected, SameJSONAs.sameJSONAs(result));
   }
 
   @BeforeClass
