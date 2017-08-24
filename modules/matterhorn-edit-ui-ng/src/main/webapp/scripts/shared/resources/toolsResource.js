@@ -64,7 +64,6 @@ angular.module('editNg.resources')
                 if (angular.isUndefined(data)) {
                     return data;
                 }
-
                 var response = {}, segments = [];
                 angular.forEach(data.segments, function (segment) {
                     delete segment.$$hashKey;
@@ -77,11 +76,27 @@ angular.module('editNg.resources')
                     segments: segments,
                     tracks:   JsHelper.map(data.tracks, 'id')
                 };
-
-                if (data.workflow) {
-                    response.workflow = data.workflow;
+                return JSON.stringify(response);
+            }
+        },
+        submit: {
+            method: 'POST',
+            transformRequest: function (data) {
+                if (angular.isUndefined(data)) {
+                    return data;
                 }
-
+                var response = {}, segments = [];
+                angular.forEach(data.segments, function (segment) {
+                    delete segment.$$hashKey;
+                    if (!segment.deleted) {
+                        this.push(segment);
+                    }
+                }, segments);
+                response.concat = {
+                    segments: segments,
+                    tracks:   JsHelper.map(data.tracks, 'id')
+                };
+                response.workflow = data.workflows[1].id;
                 return JSON.stringify(response);
             }
         }

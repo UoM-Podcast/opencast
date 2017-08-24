@@ -34,7 +34,6 @@ import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
-import static org.apache.commons.lang3.StringUtils.trimToNull;
 import static org.opencastproject.index.service.util.RestUtils.conflictJson;
 import static org.opencastproject.index.service.util.RestUtils.notFound;
 import static org.opencastproject.index.service.util.RestUtils.okJson;
@@ -58,7 +57,6 @@ import org.opencastproject.capture.admin.api.Recording;
 import org.opencastproject.editui.exception.JobEndpointException;
 import org.opencastproject.editui.impl.AdminUIConfiguration;
 import org.opencastproject.editui.impl.index.AdminUISearchIndex;
-import org.opencastproject.editui.util.QueryPreprocessor;
 import org.opencastproject.event.comment.EventComment;
 import org.opencastproject.event.comment.EventCommentReply;
 import org.opencastproject.event.comment.EventCommentService;
@@ -67,17 +65,8 @@ import org.opencastproject.index.service.api.IndexService.Source;
 import org.opencastproject.index.service.catalog.adapter.MetadataList;
 import org.opencastproject.index.service.exception.IndexServiceException;
 import org.opencastproject.index.service.impl.index.event.Event;
-import org.opencastproject.index.service.impl.index.event.EventIndexSchema;
-import org.opencastproject.index.service.impl.index.event.EventSearchQuery;
 import org.opencastproject.index.service.impl.index.event.EventUtils;
-import org.opencastproject.index.service.resources.list.provider.EventCommentsListProvider;
-import org.opencastproject.index.service.resources.list.provider.EventsListProvider.Comments;
-import org.opencastproject.index.service.resources.list.query.EventListQuery;
-import org.opencastproject.index.service.util.RestUtils;
 import org.opencastproject.matterhorn.search.SearchIndexException;
-import org.opencastproject.matterhorn.search.SearchResult;
-import org.opencastproject.matterhorn.search.SearchResultItem;
-import org.opencastproject.matterhorn.search.SortCriterion;
 import org.opencastproject.mediapackage.Attachment;
 import org.opencastproject.mediapackage.AudioStream;
 import org.opencastproject.mediapackage.Catalog;
@@ -113,7 +102,6 @@ import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.RestUtil;
 import org.opencastproject.util.UrlSupport;
 import org.opencastproject.util.data.Option;
-import org.opencastproject.util.data.Tuple;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
@@ -149,8 +137,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.TimeZone;
 
 import javax.servlet.http.HttpServletRequest;
@@ -1582,161 +1568,7 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
   public Response getEvents(@QueryParam("id") String id, @QueryParam("commentReason") String reasonFilter,
           @QueryParam("commentResolution") String resolutionFilter, @QueryParam("filter") String filter,
           @QueryParam("sort") String sort, @QueryParam("offset") Integer offset, @QueryParam("limit") Integer limit) {
-
-    Option<Integer> optLimit = Option.option(limit);
-    Option<Integer> optOffset = Option.option(offset);
-    Option<String> optSort = Option.option(trimToNull(sort));
-    ArrayList<JValue> eventsList = new ArrayList<JValue>();
-    EventSearchQuery query = new EventSearchQuery(getSecurityService().getOrganization().getId(),
-            getSecurityService().getUser());
-
-    // If the limit is set to 0, this is not taken into account
-    if (optLimit.isSome() && limit == 0) {
-      optLimit = Option.none();
-    }
-
-    Map<String, String> filters = RestUtils.parseFilter(filter);
-    for (String name : filters.keySet()) {
-      if (EventListQuery.FILTER_PRESENTERS_BIBLIOGRAPHIC_NAME.equals(name)) {
-        query.withPresenter(filters.get(name));
-      }
-      if (EventListQuery.FILTER_PRESENTERS_TECHNICAL_NAME.equals(name)) {
-        query.withTechnicalPresenters(filters.get(name));
-      }
-      if (EventListQuery.FILTER_CONTRIBUTORS_NAME.equals(name)) {
-        query.withContributor(filters.get(name));
-      }
-      if (EventListQuery.FILTER_LOCATION_NAME.equals(name)) {
-        query.withLocation(filters.get(name));
-      }
-      if (EventListQuery.FILTER_AGENT_NAME.equals(name)) {
-        query.withAgentId(filters.get(name));
-      }
-      if (EventListQuery.FILTER_TEXT_NAME.equals(name)) {
-        query.withText(QueryPreprocessor.sanitize(filters.get(name)));
-      }
-      if (EventListQuery.FILTER_SERIES_NAME.equals(name)) {
-        query.withSeriesId(filters.get(name));
-      }
-      if (EventListQuery.FILTER_STATUS_NAME.equals(name)) {
-        query.withEventStatus(filters.get(name));
-      }
-      if (EventListQuery.FILTER_OPTEDOUT_NAME.equals(name)) {
-        query.withOptedOut(Boolean.parseBoolean(filters.get(name)));
-      }
-      if (EventListQuery.FILTER_REVIEW_STATUS_NAME.equals(name)) {
-        query.withReviewStatus(filters.get(name));
-      }
-      if (EventListQuery.FILTER_COMMENTS_NAME.equals(name)) {
-        switch (Comments.valueOf(filters.get(name))) {
-          case NONE:
-            query.withComments(false);
-            break;
-          case OPEN:
-            query.withOpenComments(true);
-            break;
-          case RESOLVED:
-            query.withComments(true);
-            query.withOpenComments(false);
-            break;
-          default:
-            logger.info("Unknown comment {}", filters.get(name));
-            return Response.status(SC_BAD_REQUEST).build();
-        }
-      }
-      if (EventListQuery.FILTER_STARTDATE_NAME.equals(name)) {
-        try {
-          Tuple<Date, Date> fromAndToCreationRange = RestUtils.getFromAndToDateRange(filters.get(name));
-          query.withStartFrom(fromAndToCreationRange.getA());
-          query.withStartTo(fromAndToCreationRange.getB());
-        } catch (IllegalArgumentException e) {
-          return RestUtil.R.badRequest(e.getMessage());
-        }
-      }
-    }
-
-    if (optSort.isSome()) {
-      Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
-      for (SortCriterion criterion : sortCriteria) {
-        switch (criterion.getFieldName()) {
-          case EventIndexSchema.TITLE:
-            query.sortByTitle(criterion.getOrder());
-            break;
-          case EventIndexSchema.PRESENTER:
-            query.sortByPresenter(criterion.getOrder());
-            break;
-          case EventIndexSchema.TECHNICAL_START:
-          case "technical_date":
-            query.sortByTechnicalStartDate(criterion.getOrder());
-            break;
-          case EventIndexSchema.TECHNICAL_END:
-            query.sortByTechnicalEndDate(criterion.getOrder());
-            break;
-          case EventIndexSchema.PUBLICATION:
-            query.sortByPublicationIgnoringInternal(criterion.getOrder());
-            break;
-          case EventIndexSchema.START_DATE:
-          case "date":
-            query.sortByStartDate(criterion.getOrder());
-            break;
-          case EventIndexSchema.END_DATE:
-            query.sortByEndDate(criterion.getOrder());
-            break;
-          case EventIndexSchema.SERIES_NAME:
-            query.sortBySeriesName(criterion.getOrder());
-            break;
-          case EventIndexSchema.LOCATION:
-            query.sortByLocation(criterion.getOrder());
-            break;
-          case EventIndexSchema.EVENT_STATUS:
-            query.sortByEventStatus(criterion.getOrder());
-            break;
-          default:
-            throw new WebApplicationException(Status.BAD_REQUEST);
-        }
-      }
-    }
-
-    // TODO: Add the comment resolution filter to the query
-    EventCommentsListProvider.RESOLUTION resolution = null;
-    if (StringUtils.isNotBlank(resolutionFilter)) {
-      try {
-        resolution = EventCommentsListProvider.RESOLUTION.valueOf(resolutionFilter);
-      } catch (Exception e) {
-        logger.warn("Unable to parse comment resolution filter {}", resolutionFilter);
-        return Response.status(Status.BAD_REQUEST).build();
-      }
-    }
-
-    if (optLimit.isSome()) {
-      query.withLimit(optLimit.get());
-    }
-    if (optOffset.isSome()) {
-      query.withOffset(offset);
-    }
-    // TODO: Add other filters to the query
-
-    SearchResult<Event> results = null;
-    try {
-      results = getIndex().getByQuery(query);
-    } catch (SearchIndexException e) {
-      logger.error("The admin UI Search Index was not able to get the events list: {}", e);
-      return RestUtil.R.serverError();
-    }
-
-    // If the results list if empty, we return already a response.
-    if (results.getPageSize() == 0) {
-      logger.debug("No events match the given filters.");
-      return okJsonList(eventsList, Opt.nul(offset).or(0), Opt.nul(limit).or(0), 0);
-    }
-
-    for (SearchResultItem<Event> item : results.getItems()) {
-      Event source = item.getSource();
-      source.updatePreview(getAdminUIConfiguration().getPreviewSubtype());
-      eventsList.add(eventToJSON(source));
-    }
-
-    return okJsonList(eventsList, Opt.nul(offset).or(0), Opt.nul(limit).or(0), results.getHitCount());
+    return okJsonList(new ArrayList<JValue>(), 0, 0, 0);
   }
 
   // --

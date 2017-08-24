@@ -68,7 +68,7 @@ angular.module('editNg', [
         },
         reloadOnSearch: false
     });
-    $routeProvider.otherwise({redirectTo: '/events/events'});
+    $routeProvider.otherwise({redirectTo: '/success.html'});
 }])
 .config(['LanguageProvider', '$translateProvider', function (LanguageProvider, $translateProvider) {
     LanguageProvider.setTranslateProvider($translateProvider);

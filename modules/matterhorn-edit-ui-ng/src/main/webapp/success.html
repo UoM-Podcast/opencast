@@ -1,0 +1,60 @@
+<!doctype html>
+<html ng-app="editNg">
+  <head>
+    <meta charset="utf-8">
+    <title>Opencast</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width">
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+    <!-- build:css(.) styles/vendor.css -->
+    <!-- bower:css -->
+    <link rel="stylesheet" href="../../bower_components/angular-hotkeys/build/hotkeys.css" />
+    <!-- endbower -->
+    <!-- endbuild -->
+    <!-- build:css(.tmp) styles/main.css -->
+    <link rel="stylesheet" href="styles/main.css">
+    <!-- endbuild -->
+    <link type="text/css" href="lib/datepicker/themes/smoothness/jquery-ui-1.10.3.min.css" rel="stylesheet">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <script>
+      window.jQuery || document.write('<script src="lib/jquery-1.10.2.js"><\/script>')
+    </script>
+    <script type="text/javascript" src="lib/jquery-ui.js"></script>
+    <script type="text/javascript" src="lib/datepicker/i18n/jquery-ui-i18n.js"></script>
+    <script type="text/javascript" src="lib/underscore-1.5.2.js"></script>
+    <script type="text/javascript" src="lib/backbone-1.1.0.js"></script>
+    <script type="text/javascript" src="lib/visualsearch.js"></script>
+    <script type="text/javascript" src="lib/chosen.jquery.js"></script>
+    <script type="text/javascript" src="lib/moment.min.js"></script>
+  </head>
+  <body ng-cloak ng-controller="ApplicationCtrl" ng-click="bodyClicked()">
+    <header ng-controller="NavCtrl" class="primary-header">
+      <div class="header-branding">
+        <a target="_self" class="logo">
+          <img src="img/UoMlogo.png" alt="University of Manchester"/> 
+          <h1 class="title">Podcast Editing Service</h1>
+        </a>
+      </div>
+      <nav class="header-nav nav-dd-container" id="nav-dd-container">
+        <div class="nav-dd lang-dd" id="lang-dd" old-edit-ng-dropdown="">
+          <div class="lang" ng-class="currentLanguageCode">
+            <img ng-attr-src="img/lang/{{ currentLanguageCode}}.svg"
+                 ng-attr-alt="{{ currentLanguageCode}}" />
+          </div>
+          <ul class="dropdown-ul">
+            <li><a ng-repeat="language in availableLanguages| orderBy:'displayLanguage'"
+                   ng-click="changeLanguage(language.code)">
+                <img class=lang-flag ng-attr-src="img/lang/{{ language.code}}.svg"
+                     ng-attr-alt="{{ language.code}}" />
+                {{ language.displayLanguage}}</a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </header>
+
+    <section ng-view class="main-content">
+      thanks
+    </section>
+  </body>
+</html>

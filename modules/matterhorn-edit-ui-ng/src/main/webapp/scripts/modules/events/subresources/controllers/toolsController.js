@@ -69,16 +69,27 @@ angular.module('editNg.controllers')
         $scope.video  = ToolsResource.get({ id: $scope.id, tool: 'editor' });
 
         $scope.submitButton = false;
-        $scope.submit = function () {
+        $scope.save = function () {
+            
             $scope.submitButton = true;
-            $scope.video.$save({ id: $scope.id, tool: $scope.tab }, function () {
+            
+            $scope.video.$save({ id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
-                if ($scope.video.workflow) {
-                    Notifications.add('success', 'VIDEO_CUT_PROCESSING');
-                } else {
-                    Notifications.add('success', 'VIDEO_CUT_SAVED');
-                }
-                $location.url('/events/' + $scope.resource);
+                Notifications.add('success', 'VIDEO_CUT_SAVED');
+                $location.path('/success.html').replace();
+            }, function () {
+                $scope.submitButton = false;
+                Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
+            });
+        };
+        $scope.submit = function () {
+            
+            $scope.submitButton = true;
+            
+            $scope.video.$submit ({ id: $scope.id, tool: $scope.tab}, function () {
+                $scope.submitButton = false;
+                Notifications.add('success', 'VIDEO_CUT_PROCESSING');
+                $location.path('/success.html').replace();
             }, function () {
                 $scope.submitButton = false;
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');

@@ -24,6 +24,7 @@ import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.security.api.TrustedHttpClientException;
+import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.systems.MatterhornConstants;
 
 import org.apache.commons.io.IOUtils;
@@ -72,7 +73,9 @@ abstract class RemoteRestEndpoint {
   }
 
   public Response forwardRequest(String request, String method, String json, List<BasicNameValuePair> params) {
+    SecurityService secService = getSecurityService();
     Organization org = getSecurityService().getOrganization();
+    secService.setUser(SecurityUtil.createSystemUser("admin", org));
     HttpResponse httpResponse = null;
     HttpRequestBase httpRequest = null;
     Response response = null;

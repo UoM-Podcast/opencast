@@ -50,3 +50,8 @@ phantomjsdriver.log
 # Ignore Manchester workflows and encodings
 /etc/workflows/Manchester-*
 /etc/encoding/Manchester-*
+/modules/matterhorn-edit-ui-ng/bower_components/
+/modules/matterhorn-edit-ui-ng-err/bower_components/
+/modules/matterhorn-edit-ui-ng-clean/bower_components/
+/modules/matterhorn-edit-ui-ng-old/bower_components/
+/modules/matterhorn-edit-ui-ng-admin/bower_components/
