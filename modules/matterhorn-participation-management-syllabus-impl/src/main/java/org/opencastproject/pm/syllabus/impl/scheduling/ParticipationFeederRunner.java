@@ -241,7 +241,7 @@ public class ParticipationFeederRunner {
     /** Run the harvest verification inside a security context. */
     private void verifyInSecurityCtx(final ParticipationFeederRunner parent) {
       for (final SecurityContext secCtx : parent.secCtx.get()) {
-        logger.info("participation Harvest Verification start");
+        logger.info("START: Verify participation harvest ====================================");
         secCtx.runInContext(new Effect0() {
           @Override
           public void run() {
@@ -263,14 +263,14 @@ public class ParticipationFeederRunner {
             }
           }
         });
-        logger.info("Participation Harvest Verification  end");
+        logger.info("END: Verify participation harvest ====================================");
       }
     }
 
     /** Run the harvest inside a security context. */
     private void executeInSecurityCtx(final ParticipationFeederRunner parent) {
       for (final SecurityContext secCtx : parent.secCtx.get()) {
-        logger.info("Harvesting participation start");
+        logger.info("START: Harvesting participation ####################################");
         secCtx.runInContext(new Effect0() {
           @Override
           public void run() {
@@ -294,9 +294,9 @@ public class ParticipationFeederRunner {
             parent.requirementManager.updateRequirements();
           }
         });
-        logger.info("Harvesting participation end");
+        logger.info("END: Harvesting participation ####################################");
         if (null !=  parent.snapCountService) {
-          logger.info("Start verify participation harvest");
+          logger.info("START: Verify participation harvest ####################################");
           parent.snapCountService.verifyParticipationFeeder();
         }
       }
@@ -323,41 +323,54 @@ public class ParticipationFeederRunner {
 
     /** Run the actual harvest. */
     private void harvest(final Synchronization synchronization, final ParticipationFeederRunner parent) {
-      final SyllabusService syl = parent.syllabusService;
-      final SyllabusData data = SyllabusData.fetch(syl);
-      final Map<String, Set<Room>> buildingMap = new HashMap<String, Set<Room>>();
-      final Set<Long> treatedRecordings = new HashSet<Long>();
+      logger.info("Start harvesting from Syllabus+");
+
+      final SyllabusService syllabus = parent.syllabusService;
+      final SyllabusData data = SyllabusData.fetch(syllabus);
+      final Map<String, Set<Room>> buildingMap = new HashMap<>();
+      final Set<Long> treatedRecordings = new HashSet<>();
       final ModuleFinder moduleFinder = new ModuleFinder(data.getModule(), data.getActivityParent(), data.getActivity());
       final String sourceDescription = data.getSourceDescription();
       Option<SchedulingSource> schedulingSource;
-      logger.info("start harvesting from S+");
+
+      final Map<String, String> locationSuitabilityInputs = new HashMap<>();
+      for (Map.Entry<String, Map<String, String>> caPropsEntry : syllabus.getCaptureRooms().entrySet()) {
+        Map<String, String> properties = caPropsEntry.getValue();
+        locationSuitabilityInputs.put(properties.get("id"), properties.get("inputs"));
+      }
+
       if (StringUtils.isNotBlank(sourceDescription)) {
         schedulingSource = Option.some(new SchedulingSource(sourceDescription));
       } else {
         schedulingSource = none();
       }
+
       final HarvestStats stats = new HarvestStats();
       // limit the amount of harvested recordings for testing
       final Option<Integer> limitRecordings = none();
       // iterate activity partitions
+
       ACTIVITIES: for (List<VActivity> activityPartition : data.getActivityPartitioned()) {
         // fetch matching V_ACTIVITY_DATETIME entities
         final String firstActivityId = activityPartition.get(0).getId();
         final String lastActivityId = activityPartition.get(activityPartition.size() - 1).getId();
-        final List<VActivityDateTime> activityDateTimeList = fetch(syl, firstActivityId, lastActivityId, 4);
+        final List<VActivityDateTime> activityDateTimeList = fetch(syllabus, firstActivityId, lastActivityId, 4);
         logger.debug("# activityDateTime from " + firstActivityId + " to " + lastActivityId + " "
                 + activityDateTimeList.size());
+
         if (activityDateTimeList.size() == 0) {
           logger.warn("ActivityDateTime range query did non yield any results. That may not be correct. Be"
                   + " aware that all recordings of that range will be deleted.");
         }
+
         final Multimap<String, VActivityDateTime> activityDateTimeMap = groupBy(
                 ArrayListMultimap.<String, VActivityDateTime> create(), activityDateTimeList,
                 VActivityDateTimeF.getActivityId);
+
         // iterate activity partition
         for (final VActivity activity : activityPartition) {
           final String aId = activity.getId();
-          if (!SyllabusData.isSubjectToSchedule(activity)) {
+          if (!syllabus.isCaptureActivityType(activity)) {
             continue;
           }
           logger.info(format("********** Handling activity %s", aId));
@@ -399,14 +412,21 @@ public class ParticipationFeederRunner {
               logInconsistency("location", activityLocation.getLocationId());
               continue;
             }
+
             // only process if location features a capture agent
-            if (!data.hasCaptureAgent(location)) {
+            final String suitability = data.getCaptureAgentSuitabilityId(location);
+            if (suitability == null) {
               logger.info(format("Location %s does not have a capture agent. Skipping...", location.getName()));
               continue;
             }
+
+            // Determine available capture agent inputs, FIXME cannot be null!
+            final String inputs = locationSuitabilityInputs.get(suitability);
+
             // iterate dates
             for (final VActivityDateTime dateTime : activityDateTimeMap.get(aId)) {
               final Room room = new Room(location.getName());
+
               final Recording newRecording = Recording.recording(
                       // no need to create a virtual id for the recording
                       aId,
@@ -425,8 +445,9 @@ public class ParticipationFeederRunner {
                       // - or, the recording may hold a capture start date, event start date
                       // and a capture end date and an event end date
                       dateTime.getStartDateTime().toDate(), dateTime.getEndDateTime().toDate(), participation,
-                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room)));
+                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), inputs));
               newRecording.setSchedulingSource(schedulingSource);
+              newRecording.setRecordingInputs(inputs.split("\\|")[0]); // set default to CA first input
               try {
                 List<Recording> recordings = parent.persistence.findRecordings(RecordingQuery.create()
                         .withActivityId(newRecording.getActivityId()).withRoom(newRecording.getRoom()).withStartDate(newRecording.getStart())
@@ -441,7 +462,7 @@ public class ParticipationFeederRunner {
                   if (oldRecording != null) {
                     newRecording.setReviewStatus(oldRecording.getReviewStatus());
                     newRecording.setReviewDate(oldRecording.getReviewDate());
-                    newRecording.setTrim(oldRecording.isTrim());
+                    newRecording.setEdit(oldRecording.isEdit());
                   }
 
                   updatedRecording = parent.persistence.updateRecording(newRecording);
@@ -466,7 +487,7 @@ public class ParticipationFeederRunner {
                       newRecording.setMessages(existingRecording.getMessages());
                       newRecording.setReviewDate(existingRecording.getReviewDate());
                       newRecording.setReviewStatus(existingRecording.getReviewStatus());
-                      newRecording.setTrim(existingRecording.isTrim());
+                      newRecording.setEdit(existingRecording.isEdit());
                       newRecording.setFingerprint(existingRecording.getFingerprint());
                       newRecording.setSchedulingSource(existingRecording.getSchedulingSource());
                       if (existingRecording.getCourse().isSome()) {

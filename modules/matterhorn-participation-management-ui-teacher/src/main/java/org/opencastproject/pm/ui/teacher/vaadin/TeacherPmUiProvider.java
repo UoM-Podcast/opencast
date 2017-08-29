@@ -22,8 +22,8 @@
 package org.opencastproject.pm.ui.teacher.vaadin;
 
 import org.opencastproject.pm.ui.common.util.ClassServiceTracker;
-import org.opencastproject.pm.ui.teacher.PmDependencies;
-import org.opencastproject.pm.ui.teacher.PmTeacher;
+import org.opencastproject.pm.ui.teacher.TeacherPm;
+import org.opencastproject.pm.ui.teacher.TeacherPmUI;
 
 import com.vaadin.server.UIClassSelectionEvent;
 import com.vaadin.server.UICreateEvent;
@@ -33,23 +33,23 @@ import com.vaadin.ui.UI;
 /**
  * Created and managed by Vaadin. Bridges between Vaadin and OSGi DI.
  */
-public class PmTeacherUiProvider extends UIProvider {
+public class TeacherPmUiProvider extends UIProvider {
 
-  private final ClassServiceTracker<PmDependencies> uiTracker;
+  private final ClassServiceTracker<TeacherPm> teacherPmTracker;
 
-  public PmTeacherUiProvider() {
-    uiTracker = new ClassServiceTracker<PmDependencies>(PmDependencies.class);
+  public TeacherPmUiProvider() {
+    teacherPmTracker = new ClassServiceTracker<>(TeacherPm.class);
   }
 
   @Override
   public Class<? extends UI> getUIClass(UIClassSelectionEvent event) {
-    return PmTeacher.class;
+    return TeacherPmUI.class;
   }
 
   @Override
   public UI createInstance(UICreateEvent event) {
-    for (PmDependencies dep : uiTracker.get()) {
-      return new PmTeacher(dep);
+    for (TeacherPm teacherPm : teacherPmTracker.get()) {
+      return new TeacherPmUI(teacherPm);
     }
     // todo maybe answer with an error UI
     throw new RuntimeException("No Participation Management Teacher UI available");

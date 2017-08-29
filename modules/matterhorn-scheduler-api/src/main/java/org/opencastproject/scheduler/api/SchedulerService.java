@@ -409,4 +409,31 @@ public interface SchedulerService {
    */
   void updateBlacklistStatus(String mediapackageId, boolean blacklisted) throws NotFoundException, SchedulerException;
 
+  /**
+   * Retrieves workflow configuration associated with specified event ID.
+   *
+   * @param mediaPackageId
+   *          ID of event for which workflow configuration will be retrieved
+   * @return configuration of the workflow
+   * @throws NotFoundException
+   *           if event with specified ID cannot be found
+   * @throws SchedulerException
+   *           if exception occurred
+   */
+  Map<String, String> getWorkflowConfig(String mediaPackageId)
+          throws NotFoundException, UnauthorizedException, SchedulerException;
+
+  /**
+   * Retrieves capture agent configuration for specified event.
+   *
+   * @param mediaPackageId
+   *          ID of event for which capture agent configuration will be retrieved
+   * @return configurations of capture agent
+   * @throws NotFoundException
+   *           if event with specified ID cannot be found
+   * @throws SchedulerException
+   *           if exception occurred
+   */
+  Map<String, String> getCaptureAgentConfiguration(String mediaPackageId)
+          throws NotFoundException, UnauthorizedException, SchedulerException;
 }

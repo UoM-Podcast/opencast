@@ -128,6 +128,8 @@ public interface ParticipationManagementDatabase {
 
   Recording trimRecording(long id, boolean trim) throws ParticipationManagementDatabaseException, NotFoundException;
 
+  Recording updateRecordingOptOut(long id, ReviewStatus status, boolean edit, String inputs)throws ParticipationManagementDatabaseException, NotFoundException;
+
   Recording updateRecording(Recording recording) throws ParticipationManagementDatabaseException;
 
   void deleteRecording(long id) throws ParticipationManagementDatabaseException, NotFoundException;

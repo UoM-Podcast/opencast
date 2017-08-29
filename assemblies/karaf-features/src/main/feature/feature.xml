@@ -151,13 +151,13 @@
     <bundle start-level="80">mvn:org.jsoup/jsoup/1.7.2</bundle>
     <bundle start-level="80">mvn:org.opencastproject/matterhorn-vaadin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-api/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-persistence/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-common/${project.version}</bundle>
   </feature>
 
   <feature name="opencast-participation-management-admin" version="0.0.0">
     <feature>opencast-participation-management-core</feature>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-admin/${project.version}</bundle>
@@ -168,6 +168,7 @@
 
   <feature name="opencast-participation-management-teacher" version="0.0.0">
     <feature>opencast-participation-management-core</feature>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-event-comment/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-teacher-vaadin/${project.version}</bundle>
   </feature>
@@ -692,6 +693,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-oaipmh/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-runtime-info-ui/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-scheduler-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-search-service-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-search-service-feeds/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-search-service-impl/${project.version}</bundle>

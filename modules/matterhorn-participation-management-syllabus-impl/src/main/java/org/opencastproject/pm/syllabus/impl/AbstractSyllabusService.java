@@ -18,7 +18,6 @@
  * the License.
  *
  */
-
 package org.opencastproject.pm.syllabus.impl;
 
 import static org.opencastproject.util.data.Collections.last;
@@ -56,19 +55,26 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.persistence.EntityManager;
 
 /** Manchester implementation. */
 public abstract class AbstractSyllabusService implements SyllabusService {
+
   /** Persistence environment dependency. */
   protected abstract PersistenceEnv getPenv();
 
   protected abstract void closePenv();
 
   private final String sqlFindAllOccurrence;
+
+  private final Map<String, Map<String, String>> captureRooms = new HashMap<>();
+  private final Map<String, Map<String, String>> captureActivityTypes = new HashMap<>();
 
   protected AbstractSyllabusService() {
     sqlFindAllOccurrence = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-all-occurrence.sql"),
@@ -77,6 +83,7 @@ public abstract class AbstractSyllabusService implements SyllabusService {
 
   // CHECKSTYLE:OFF
   public static class OccurrenceJoinTable extends Table<OccurrenceJoinTable> {
+
     public final Col<String> actId = stringCol();
     public final Col<String> actName = stringCol();
     public final Col<DateTime> actLastChanged = dateTimeCol();
@@ -96,10 +103,9 @@ public abstract class AbstractSyllabusService implements SyllabusService {
   }
 
   // CHECKSTYLE:ON
-
   @Override
   public List<Occurrence> findOccurrences(DateTime since, DateTime untilStartDate) {
-    return mlist(getPenv().tx(sql.<Object[]> findAll(sqlFindAllOccurrence, since.toDate(), untilStartDate.toDate())))
+    return mlist(getPenv().tx(sql.<Object[]>findAll(sqlFindAllOccurrence, since.toDate(), untilStartDate.toDate())))
             .map(rowToOccurrence).value();
   }
 
@@ -301,7 +307,7 @@ public abstract class AbstractSyllabusService implements SyllabusService {
 
   @Override
   public List<String> findModuleActivityIdsByCourseKey(String courseKey) {
-    Function<EntityManager, List<String>> f = ((VActivityDto.ActivityFinder)VActivityDto.finder).findIdsByCourseKey(courseKey);
+    Function<EntityManager, List<String>> f = ((VActivityDto.ActivityFinder) VActivityDto.finder).findIdsByCourseKey(courseKey);
     return getPenv().tx(f);
   }
 
@@ -315,10 +321,77 @@ public abstract class AbstractSyllabusService implements SyllabusService {
   public VModule getModuleByCourseKey(String courseKey) {
     Option<Object> dto = getPenv().tx(Queries.named.findFirst("VModule.getByCourseKey", tuple("courseKey", courseKey)));
     if (dto.isSome()) {
-      return VModuleDto.toDomain.apply((VModuleDto)dto.get());
+      return VModuleDto.toDomain.apply((VModuleDto) dto.get());
     } else {
       return null;
     }
+  }
+
+  @Override
+  public List<String> getCaptureRoomTypeIDs() {
+    List<String> locIds = new ArrayList<>();
+    for (Map<String, String> location : captureRooms.values()) {
+      String locId = location.get("id");
+      if (null != locId) {
+        locIds.add(locId);
+      }
+    }
+    return locIds;
+  }
+
+  @Override
+  public List<String> getCaptureActivityTypeIDs() {
+    List<String> activityIds = new ArrayList<>();
+    for (Map<String, String> activity : captureActivityTypes.values()) {
+      String acId = activity.get("id");
+      if (null != acId) {
+        activityIds.add(acId);
+      }
+    }
+    return activityIds;
+  }
+
+  @Override
+  public Map<String, Map<String, String>>getCaptureRooms() {
+    return captureRooms;
+  }
+
+  @Override
+  public Map<String, Map<String, String>>getCaptureActivityTypes() {
+    return captureActivityTypes;
+  }
+
+  @Override
+  public boolean isCaptureActivityType(VActivity activity) {
+    if (getCaptureActivityTypeIDs().contains(ACTIVITY_TYPE_ANY)) {
+        return true;
+    }
+    return getCaptureActivityTypeIDs().contains(activity.getActivityTypeId());
+  }
+
+  @Override
+  public boolean hasCaptureAgent(VLocationSuitability suitability) {
+    return getCaptureRoomTypeIDs().contains(suitability.getSuitabilityId());
+  }
+
+  @Override
+  public void addCaptureRoomProperty(final String captureRoom, String property, String value) {
+    Map<String, String> loc = captureRooms.get(captureRoom);
+    if (null == loc) {
+      loc = new HashMap<>();
+      captureRooms.put(captureRoom, loc);
+    }
+    loc.put(property, value);
+  }
+
+  @Override
+  public void addCaptureActivityTypeProperty(final String activityType, String property, String value) {
+    Map<String, String> type = captureActivityTypes.get(activityType);
+    if (null == type) {
+      type = new HashMap<>();
+      captureActivityTypes.put(activityType, type);
+    }
+    type.put(property, value);
   }
 
   // could by solved with JPA @javax.persistence.SqlResultSetMapping also

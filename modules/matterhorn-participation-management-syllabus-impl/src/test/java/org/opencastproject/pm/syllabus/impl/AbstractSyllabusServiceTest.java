@@ -61,7 +61,6 @@ import org.opencastproject.pm.syllabus.api.VModule;
 import org.opencastproject.pm.syllabus.api.VStaff;
 import org.opencastproject.pm.syllabus.api.VStudentSet;
 import org.opencastproject.pm.syllabus.api.VZones;
-import org.opencastproject.pm.syllabus.impl.scheduling.SyllabusData;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.persistence.PersistenceEnv;
@@ -250,7 +249,7 @@ public class AbstractSyllabusServiceTest {
                   nil(Message.class), // todo
                   some(0L), // todo
                   null, // todo
-                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false);
+                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false, "screen");
           // todo store in database
 //          System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                  + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ " + rec.getRoom().getName());
@@ -326,7 +325,7 @@ public class AbstractSyllabusServiceTest {
                   nil(Message.class), // todo
                   some(0L), // todo
                   null, // todo
-                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false);
+                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false, "screen");
           // todo store in database
 //          System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                  + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ " + rec.getRoom().getName());
@@ -380,7 +379,7 @@ public class AbstractSyllabusServiceTest {
                   nil(Message.class), // todo
                   some(0L), // todo
                   null, // todo
-                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false);
+                  nil(Action.class), EmailStatus.UNSENT, ReviewStatus.UNCONFIRMED, null, false, false, "screen");
           // todo store in database
 //          System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                  + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ " + rec.getRoom().getName());
@@ -458,7 +457,7 @@ public class AbstractSyllabusServiceTest {
       final Set<String> as = toSet(mlist(al).bind(new Function<VLocationSuitability, Option<String>>() {
         @Override
         public Option<String> apply(VLocationSuitability a) {
-          return hasCaptureAgent(a) ? some(a.getLocationId()) : none(String.class);
+          return syl.getCaptureRoomTypeIDs().contains(a.getSuitabilityId()) ? some(a.getLocationId()) : none(String.class);
         }
       }).value());
 //      System.out.pri ntln("# locations featuring capture agents " + as.size());
@@ -482,7 +481,7 @@ public class AbstractSyllabusServiceTest {
       // iterate activity partition
       for (VActivity activity : activityPartition) {
         final String aId = activity.getId();
-        if (!SyllabusData.isSubjectToSchedule(activity))
+        if (!syl.isCaptureActivityType(activity))
           continue;
         for (VActivityDateTime dateTime : activityDateTimeMap.get(aId)) {
           for (VActivityLocation activityLocation : activityLocationMap.get(aId)) {
@@ -558,7 +557,7 @@ public class AbstractSyllabusServiceTest {
                       // - or, the recording may hold a capture start date, event start date
                       // and a capture end date and an event end date
                       dateTime.getStartDateTime().toDate(), dateTime.getEndDateTime().toDate(), participation,
-                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room)));
+                      new CaptureAgent(room, CaptureAgent.getMhAgentIdFromRoom(room), "screen"));
               // todo store in database
 //              System.out.pri ntln(String.format("%6d ", ++i) + "Recording " + rec.getActivityId() + " "
 //                      + new DateTime(rec.getStart()) + " " + new DateTime(rec.getStop()) + " @ "
@@ -616,10 +615,5 @@ public class AbstractSyllabusServiceTest {
       protected void closePenv() {
       }
     };
-  }
-
-  /** Check if a location features a capture agent. */
-  private static boolean hasCaptureAgent(VLocationSuitability locationSuitability) {
-    return SyllabusData.getAgentLocationID().contains(locationSuitability.getSuitabilityId());
   }
 }

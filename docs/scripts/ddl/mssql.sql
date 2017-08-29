@@ -664,6 +664,7 @@ CREATE TABLE mh_pm_capture_agent (
   id BIGINT NOT NULL,
   mh_agent VARCHAR(255) NOT NULL,
   room BIGINT DEFAULT NULL,
+  inputs VARCHAR(255) NOT NULL,
   PRIMARY KEY (id),
   CONSTRAINT UNQ_mh_pm_capture_agent_0 UNIQUE (mh_agent),
   CONSTRAINT FK_mh_pm_capture_agent_room FOREIGN KEY (room) REFERENCES mh_pm_room (id) ON DELETE CASCADE
@@ -776,7 +777,8 @@ CREATE TABLE mh_pm_recording (
   room BIGINT DEFAULT NULL,
   source BIGINT DEFAULT NULL,
   fingerprint VARCHAR(32) DEFAULT NULL,
-  trim bit NOT NULL DEFAULT '0',
+  edit bit NOT NULL DEFAULT '0',
+  recording_inputs VARCHAR(255) NOT NULL DEFAULT 'default',
   PRIMARY KEY (id),
   CONSTRAINT UNQ_mh_pm_recording_0 UNIQUE (activity,start_date,end_date,room),
   CONSTRAINT FK_mh_pm_recording_capture_agent FOREIGN KEY (capture_agent) REFERENCES mh_pm_capture_agent (id) ON DELETE CASCADE,

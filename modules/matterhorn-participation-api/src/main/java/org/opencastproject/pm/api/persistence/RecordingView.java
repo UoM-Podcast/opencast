@@ -57,6 +57,8 @@ public class RecordingView {
 
   private final String agent;
 
+  private final String agentInputs;
+
   private final RecordingStatus status;
 
   private final EmailStatus emailStatus;
@@ -67,15 +69,21 @@ public class RecordingView {
 
   private final String actions;
 
-  private final boolean trim;
+  private final boolean edit;
+
+  private final String input;
 
   // these values are set externally
   private Option<Long> workflowId;
 
+  // these values are set externally
+  private Option<String> mediaPackageId;
+
   private String processingStatus;
 
   public RecordingView(long id, Option<Long> eventId, String title, String presenter, String course, Date start,
-          Date end, String room, String agent, EmailStatus emailStatus, RecordingStatus status, Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean trim) {
+          Date end, String room, String agent, String agentInputs, EmailStatus emailStatus, RecordingStatus status,
+          Boolean requiresRecording, Boolean requiresCaptions, String actions, boolean edit, String input) {
     this.id = id;
     this.eventId = eventId;
     this.title = title;
@@ -85,13 +93,16 @@ public class RecordingView {
     this.endDate = end;
     this.room = room;
     this.agent = agent;
+    this.agentInputs = agentInputs;
     this.status = status;
     this.emailStatus = emailStatus;
     this.requiresRecording = requiresRecording;
     this.requiresCaptions = requiresCaptions;
     this.actions = actions;
-    this.trim = trim;
+    this.edit = edit;
+    this.input = input;
     this.workflowId = Option.none();
+    this.mediaPackageId = Option.none();
   }
 
   public static RecordingView fromRecording(Recording recording) {
@@ -126,13 +137,14 @@ public class RecordingView {
             recording.getStop(),
             recording.getRoom().getName(),
             recording.getCaptureAgent().getMhAgent(),
+            recording.getCaptureAgent().getInputs(),
             recording.getEmailStatus(),
             recording.getRecordingStatus(false),
             requiredRecording,
             captionRecording,
-
             StringUtils.join(actions, ", "),
-            recording.isTrim());
+            recording.isEdit(),
+            recording.getRecordingInputs());
   }
 
   public String getTitle() {
@@ -163,6 +175,10 @@ public class RecordingView {
     return agent;
   }
 
+  public String getAgentInputs() {
+    return agentInputs;
+  }
+
   public RecordingStatus getStatus() {
     return status;
   }
@@ -191,8 +207,12 @@ public class RecordingView {
     return eventId;
   }
 
-  public boolean isTrim() {
-    return trim;
+  public boolean isEdit() {
+    return edit;
+  }
+
+  public String getRecordingInput() {
+    return input;
   }
 
   public Option<Long> getWorkflowId() {
@@ -203,6 +223,13 @@ public class RecordingView {
     this.workflowId = workflowId;
   }
 
+  public Option<String> getMediaPackageId() {
+    return mediaPackageId;
+  }
+
+  public void seMediaPackageId(Option<String> mediaPackageId) {
+    this.mediaPackageId = mediaPackageId;
+  }
   public String getProcessingStatus() {
     return processingStatus;
   }

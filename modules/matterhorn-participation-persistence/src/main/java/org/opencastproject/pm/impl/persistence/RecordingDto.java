@@ -168,8 +168,11 @@ public class RecordingDto {
   @JoinTable(name = "mh_pm_recording_action", joinColumns = {@JoinColumn(name = "recording_id", referencedColumnName = "id")}, inverseJoinColumns = {@JoinColumn(name = "action_id", referencedColumnName = "id")})
   private List<ActionDto> actions = new ArrayList<ActionDto>();
 
-  @Column(name = "trim", nullable = false)
-  private boolean trim;
+  @Column(name = "edit", nullable = false)
+  private boolean edit;
+
+  @Column(name = "recording_inputs", nullable = false)
+  private String recordingInputs;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "source", referencedColumnName = "id")
@@ -222,11 +225,14 @@ public class RecordingDto {
    *         the deleted flag
    * @param fingerprint
    *         the entry's hash value
+   * @param edit
+   * @param recordingInputs
    */
   public RecordingDto(String activityId, String title, boolean blacklisted, List<PersonDto> staff, CourseDto course,
                       RoomDto room, Date modificationDate, Date start, Date stop, List<PersonDto> participation,
                       List<MessageDto> messages, Long eventId, CaptureAgentDto captureAgent, List<ActionDto> action,
-                      EmailStatus emailStatus, ReviewStatus reviewStatus, Date reviewDate, boolean deleted, String fingerprint, boolean trim) {
+                      EmailStatus emailStatus, ReviewStatus reviewStatus, Date reviewDate, boolean deleted, String fingerprint,
+                      boolean edit, String recordingInputs) {
     if (staff != null)
       this.staff = staff;
     if (participation != null)
@@ -251,7 +257,8 @@ public class RecordingDto {
     this.reviewDate = reviewDate;
     this.deleted = deleted;
     this.fingerprint = fingerprint;
-    this.trim = trim;
+    this.edit = edit;
+    this.recordingInputs = recordingInputs;
   }
 
   /**
@@ -728,7 +735,7 @@ public class RecordingDto {
   }
 
   /**
-   * Sets a fingprint for this recording, which is supposed to be a 32 bit hash.
+   * Sets a fingerprint for this recording, which is supposed to be a 32 bit hash.
    *
    * @param fingerprint
    *         the fingerprint
@@ -741,12 +748,20 @@ public class RecordingDto {
     this.fingerprint = fingerprint;
   }
 
-  public boolean isTrim() {
-    return trim;
+  public boolean isEdit() {
+    return edit;
   }
 
-  public void setTrim(boolean trim) {
-    this.trim = trim;
+  public void setEdit(boolean edit) {
+    this.edit = edit;
+  }
+
+  public String getRecordingInputs() {
+    return recordingInputs;
+  }
+
+  public void setRecordingInputs(String recordingInputs) {
+    this.recordingInputs = recordingInputs;
   }
 
   /**
@@ -789,8 +804,7 @@ public class RecordingDto {
   private Recording toRecordingWithoutMessages() {
     Option<Course> c = course == null ? none(Course.class) : some(course.toCourse());
     Option<SchedulingSource> s = schedulingSource == null ? none(SchedulingSource.class) : some(schedulingSource.toSchedulingSource());
-    Recording rec = Recording.recording(
-            activityId,
+    Recording rec = Recording.recording(activityId,
             title,
             blacklisted,
             new ArrayList<Person>(),
@@ -808,7 +822,8 @@ public class RecordingDto {
             reviewStatus,
             option(reviewDate),
             deleted,
-            trim);
+            edit,
+            recordingInputs);
     for (PersonDto p : this.staff) {
       rec.addStaffMember(p.toPerson());
     }

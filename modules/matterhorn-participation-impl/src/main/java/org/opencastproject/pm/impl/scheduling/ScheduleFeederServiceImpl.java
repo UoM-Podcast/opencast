@@ -51,7 +51,6 @@ import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.series.api.SeriesException;
 import org.opencastproject.series.api.SeriesService;
 import org.opencastproject.util.NotFoundException;
-import org.opencastproject.util.data.Cell;
 import org.opencastproject.util.data.Collections;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.Tuple;
@@ -145,7 +144,8 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
   private final VCell<Integer> preEditAvailDelay = cell(DEFAULT_PREEDIT_AVAILABILITY_DELAY);
   private final VCell<String> editProperty = cell("");
   private final VCell<String> emailProperty = cell("");
-  private Cell<String> testCell;
+  private final VCell<HashMap<String, String>> inputProperties = cell(new HashMap<String, String>());
+  private final VCell<HashMap<String, String>> inputCANames = cell(new HashMap<String, String>());
 
   private ScheduleFeederRunner runner;
 
@@ -181,7 +181,7 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
     logger.info("Start schedule feeder using provider {}", scheduleProvider);
     systemUser = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
     runner = new ScheduleFeederRunner(this, schedulerService, participationManagementDB, scheduleProvider,
-            secCtx, workflow, workflowConfigs, editProperty, emailProperty, preEditAvailDelay);
+            secCtx, workflow, workflowConfigs, editProperty, emailProperty, inputProperties, inputCANames, preEditAvailDelay);
   }
 
   /** OSGi container callback. */
@@ -211,6 +211,15 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
       final String editProp = getCfg(properties, "workflow.property.edit");
       final String emailProp = getCfg(properties, "workflow.property.email");
 
+      final String captureInputsAny = getCfg(properties, "capture.room.__ANY__.inputs");
+      final HashMap<String, String> inputWFProps = new HashMap<>();
+      final HashMap<String, String> inputCANames = new HashMap<>();
+
+      for (String input : captureInputsAny.split("\\|")) {
+        inputWFProps.put(input, getCfg(properties, "workflow.property.input." + input));
+        inputCANames.put(input, getCfg(properties, "capture.device.name.input." + input));
+      }
+
       // configure
       this.workflow.set(wf);
       this.workflowConfigs.set(wfCfg);
@@ -220,6 +229,8 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
 
       this.editProperty.set(editProp);
       this.emailProperty.set(emailProp);
+      this.inputProperties.set(inputWFProps);
+      this.inputCANames.set(inputCANames);
 
       // Configure upcoming days
       String optUpcomingDays = (String) properties.get(OPT_UPCOMING_DAYS);
