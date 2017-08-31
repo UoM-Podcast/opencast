@@ -81,6 +81,9 @@ abstract class RemoteRestEndpoint {
     Response response = null;
     String adminHost = org.getProperties().get(MatterhornConstants.ADMIN_URL_ORG_PROPERTY);
     String url = adminHost + request;
+
+    logger.debug("Forwarding request: {} {}", method, url);
+
     switch (method) {
       case "GET": {
         httpRequest = new HttpGet(url);
