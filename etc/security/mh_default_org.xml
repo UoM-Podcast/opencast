@@ -19,9 +19,9 @@
   <sec:http pattern="/admin-ng/fonts/**" security="none" />
   <sec:http pattern="/admin-ng/scripts/**" security="none" />
   <sec:http pattern="/admin-ng/styles/**" security="none" />
-
-  <!-- Allow anonymous access to the editor -->
-  <sec:http pattern="/edit-ng/**" security="none" />
+  <sec:http pattern="/edit-ng/fonts/**" security="none" />
+  <sec:http pattern="/edit-ng/scripts/**" security="none" />
+  <sec:http pattern="/edit-ng/styles/**" security="none" />
   
   <!-- Allow anonymous access to Vaadin resources -->
   <sec:http pattern="/VAADIN/**" security="none" />
@@ -41,7 +41,8 @@
     <sec:intercept-url pattern="/edit-ng/login.html" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/sysinfo/bundles/version" method="GET" access="ROLE_ANONYMOUS" />
 
-    <!-- Allow anonymous access to the editor form -->
+    <!-- Allow anonymous access to the editor required endpoints -->
+    <sec:intercept-url pattern="/edit-ng/**" method="GET" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/edit-ng/event/*/metadata" method="PUT" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/edti-ng/tools/*/editor.json" method="POST" access="ROLE_ANONYMOUS" />
 
