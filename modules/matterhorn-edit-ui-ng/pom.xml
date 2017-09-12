@@ -45,137 +45,9 @@
         </dependency>
         <dependency>
             <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-dublincore</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-ingest-service-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-index-service</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-metadata-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-presets</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-series-service-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-static-file-service-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-userdirectory</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-scheduler-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-participation-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-composer-service-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
             <artifactId>matterhorn-authorization-manager</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-capture-admin-service-api</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-event-comment</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-themes</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-archive-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-archive-schema</artifactId>
-            <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.opencastproject</groupId>
-                    <artifactId>matterhorn-solr</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.solr</groupId>
-                    <artifactId>solr-core</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-workflow-service-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-search-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-search</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-smil-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-messages</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>javax.ws.rs</groupId>
@@ -223,18 +95,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.opencastproject</groupId>
-            <artifactId>matterhorn-series-service-impl</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.opencastproject</groupId>
-                    <artifactId>matterhorn-solr</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>xalan</groupId>
@@ -371,10 +231,6 @@
     <build>
         <plugins>
             <plugin>
-              <groupId>de.empulse.eclipselink</groupId>
-              <artifactId>staticweave-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
                 <extensions>true</extensions>
@@ -387,11 +243,6 @@
                         <Http-Alias>/edit-ng</Http-Alias>
                         <Http-Classpath>/webapp</Http-Classpath>
                         <Http-Welcome>index.html</Http-Welcome>
-                        <Import-Package>
-                            net.fortuna.ical4j.*,
-                            org.opencastproject.index.service.message,
-                            *
-                        </Import-Package>
                         <Private-Package>
                             org.opencastproject.editui.util,
                             org.opencastproject.editui.exception
@@ -401,46 +252,15 @@
                             org.opencastproject.editui.endpoint;version=${project.version},
                             org.opencastproject.editui.exception;version=${project.version},
                             org.opencastproject.editui.impl;version=${project.version},
-                            org.opencastproject.editui.impl.index;version=${project.version},
-                            org.opencastproject.editui.userdirectory;version=${project.version},
-                            org.opencastproject.editui.usersettings;version=${project.version},
-                            org.opencastproject.editui.usersettings.persistence;version=${project.version},
                             org.opencastproject.editui.util;version=${project.version}
                         </Export-Package>
                         <Service-Component>
-                            OSGI-INF/acl_endpoint.xml,
                             OSGI-INF/editui_configuration.xml,
                             OSGI-INF/event_endpoint.xml,
-                            OSGI-INF/groups_endpoint.xml,
-                            OSGI-INF/index_endpoint.xml,
-                            OSGI-INF/job_endpoint.xml,
                             OSGI-INF/language-service.xml,
                             OSGI-INF/languages_endpoint.xml,
-                            OSGI-INF/message-receiver-acl.xml,
-                            OSGI-INF/message-receiver-archive.xml,
-                            OSGI-INF/message-receiver-comment.xml,
-                            OSGI-INF/message-receiver-group.xml,
-                            OSGI-INF/message-receiver-recording.xml,
-                            OSGI-INF/message-receiver-scheduler.xml,
-                            OSGI-INF/message-receiver-series.xml,
-                            OSGI-INF/message-receiver-theme.xml,
-                            OSGI-INF/message-receiver-workflow.xml,
-                            OSGI-INF/presets_endpoint.xml,
-                            OSGI-INF/server_endpoint.xml,
-                            OSGI-INF/series_endpoint.xml,
-                            OSGI-INF/services_endpoint.xml,
-                            OSGI-INF/tasks_endpoint.xml,
-                            OSGI-INF/themes_endpoint.xml,
-                            OSGI-INF/tools_endpoint.xml,
-                            OSGI-INF/ui-roles-role-provider.xml,
-                            OSGI-INF/user_settings_endpoint.xml,
-                            OSGI-INF/user_settings_service.xml,
-                            OSGI-INF/users_endpoint.xml,
-                            OSGI-INF/list_providers_endpoint.xml
+                            OSGI-INF/tools_endpoint.xml
                         </Service-Component>
-                        <Meta-Persistence>
-                            META-INF/persistence.xml
-                        </Meta-Persistence>
                     </instructions>
                 </configuration>
             </plugin>

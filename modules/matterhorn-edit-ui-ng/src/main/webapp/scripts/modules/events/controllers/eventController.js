@@ -184,24 +184,6 @@ angular.module('editNg.controllers')
                         $scope.accessSave();
                       }
                     },
-                    checkForActiveTransactions = function () {
-                      EventTransactionResource.hasActiveTransaction({id: $scope.resourceId}, function (data) {
-                        $scope.transactions.read_only = angular.isUndefined(data.hasActiveTransaction) ? true : data.hasActiveTransaction;
-
-                        if ($scope.transactions.read_only) {
-                          if (!angular.isUndefined(me.transactionNotification)) {
-                            Notifications.remove(me.transactionNotification, NOTIFICATION_CONTEXT);
-                          }
-                          me.transactionNotification = Notifications.add('warning', 'ACTIVE_TRANSACTION', NOTIFICATION_CONTEXT, 3000);
-                        } else {
-                          if (!angular.isUndefined(me.transactionNotification)) {
-                            Notifications.remove(me.transactionNotification, NOTIFICATION_CONTEXT);
-                          }
-                        }
-                      });
-
-                      $scope.checkForActiveTransactionsTimer = $timeout(checkForActiveTransactions, 3000);
-                    },
                     updateRoles = function () {
                       //MH-11716: We have to wait for both the access (series ACL), and the roles (list of system roles)
                       //to resolve before we can add the roles that are present in the series but not in the system
@@ -221,20 +203,6 @@ angular.module('editNg.controllers')
                       $scope.general = EventGeneralResource.get({id: id}, function () {
                         angular.forEach($scope.general.publications, function (publication) {
                           publication.label = publication.name;
-                        });
-                        $scope.publicationChannelLabels = ResourcesListResource.get({resource: 'PUBLICATION.CHANNEL.LABELS'}, function () {
-                          angular.forEach($scope.general.publications, function (publication) {
-                            if (angular.isDefined($scope.publicationChannelLabels[publication.id])) {
-                              publication.label = $scope.publicationChannelLabels[publication.id];
-                            }
-                          });
-                        });
-                        $scope.publicationChannelIcons = ResourcesListResource.get({resource: 'PUBLICATION.CHANNEL.ICONS'}, function () {
-                          angular.forEach($scope.general.publications, function (publication) {
-                            if (angular.isDefined($scope.publicationChannelIcons[publication.id])) {
-                              publication.icon = $scope.publicationChannelIcons[publication.id];
-                            }
-                          });
                         });
                       });
 
@@ -277,27 +245,6 @@ angular.module('editNg.controllers')
                         }
                         if (angular.isDefined(episodeCatalogIndex)) {
                           metadata.entries.splice(episodeCatalogIndex, 1);
-                        }
-                      });
-
-                      $scope.acls = ResourcesListResource.get({resource: 'ACL'});
-                      $scope.actions = {};
-                      $scope.hasActions = false;
-                      ResourcesListResource.get({resource: 'ACL.ACTIONS'}, function (data) {
-                        angular.forEach(data, function (value, key) {
-                          if (key.charAt(0) !== '$') {
-                            $scope.actions[key] = value;
-                            $scope.hasActions = true;
-                          }
-                        });
-                      });
-                      $scope.roles = updateRoles();
-
-                      $scope.assets = EventAssetsResource.get({id: id});
-
-                      $scope.participation = EventParticipationResource.get({id: id}, function (data) {
-                        if (data.read_only) {
-                          $scope.lastNotificationId = Notifications.add('warning', 'EVENT_PARTICIPATION_STATUS_READONLY', 'event-scheduling', -1);
                         }
                       });
 
@@ -353,101 +300,6 @@ angular.module('editNg.controllers')
               });
               return rolePromise;
             };
-
-            /**
-             * <===============================
-             * START Scheduling related resources
-             */
-
-            /* Get the current client timezone */
-            $scope.tz = 'UTC' + (tzOffset < 0 ? '-' : '+') + tzOffset;
-
-            $scope.scheduling = {};
-            $scope.sortedWeekdays = JsHelper.getWeekDays();
-            $scope.hours = JsHelper.initArray(24);
-            $scope.minutes = JsHelper.initArray(60);
-
-            this.conflicts = [];
-            this.readyToPollConflicts = function () {
-              var data = $scope.source, result;
-              result = angular.isDefined(data) && angular.isDefined(data.start) &&
-                      angular.isDefined(data.start.date) && data.start.date.length > 0 &&
-                      angular.isDefined(data.device) &&
-                      angular.isDefined(data.device.id) && data.device.id.length > 0;
-
-              return result;
-            };
-
-            this.noConflictsDetected = function () {
-              while (me.conflicts.length > 0) {
-                me.conflicts.pop();
-              }
-              me.checkingConflicts = false;
-            };
-
-            this.conflictsDetected = function (response) {
-              if (response.status === 409) {
-                if (me.notification) {
-                  Notifications.remove(me.notification, SCHEDULING_CONTEXT);
-                }
-                me.conflicts = []; // reset
-                me.notification = Notifications.add('error', 'CONFLICT_DETECTED', SCHEDULING_CONTEXT);
-                var data = response.data;
-                angular.forEach(data, function (d) {
-                  me.conflicts.push({
-                    title: d.title,
-                    start: Language.toLocalTime(d.start.substr(6, d.start.length)),
-                    end: Language.toLocalTime(d.end.substr(5, d.end.length))
-                  });
-                });
-              }
-              me.checkingConflicts = false;
-            };
-
-            $scope.checkConflicts = function () {
-              return new Promise(function (resolve, reject) {
-                me.checkingConflicts = true;
-                if (me.readyToPollConflicts()) {
-                  ConflictCheckResource.check($scope.source, me.noConflictsDetected, me.conflictsDetected)
-                          .$promise.then(function () {
-                            resolve();
-                          })
-                          .catch(function (err) {
-                            reject();
-                          });
-                } else {
-                  me.checkingConflicts = false;
-                  resolve();
-                }
-              });
-            };
-
-            $scope.saveScheduling = function () {
-              if (me.readyToPollConflicts()) {
-                ConflictCheckResource.check($scope.source, function () {
-                  while (me.conflicts.length > 0) {
-                    me.conflicts.pop();
-                  }
-
-                  $scope.source.agentId = $scope.source.device.id;
-                  $scope.source.agentConfiguration['capture.device.names'] = '';
-
-                  angular.forEach($scope.source.device.inputMethods, function (value, key) {
-                    if (value) {
-                      if ($scope.source.agentConfiguration['capture.device.names'] !== '') {
-                        $scope.source.agentConfiguration['capture.device.names'] += ',';
-                      }
-                      $scope.source.agentConfiguration['capture.device.names'] += key;
-                    }
-                  });
-                }, me.conflictsDetected);
-              }
-            };
-
-            /**
-             * End Scheduling related resources
-             * ===============================>
-             */
 
             $scope.policies = [];
             $scope.baseAcl = {};
@@ -702,8 +554,6 @@ angular.module('editNg.controllers')
               }
             }
 
-            $scope.components = ResourcesListResource.get({resource: 'components'});
-
             $scope.myComment = {};
 
             $scope.replyTo = function (comment) {
@@ -882,39 +732,5 @@ angular.module('editNg.controllers')
                       }
               );
             };
-
-            $scope.modal_close = $scope.close;
-            // CERV-1048 override default close of the modal to stop checking for active transactions.
-            $scope.close = function () {
-              $timeout.cancel($scope.checkForActiveTransactionsTimer);
-              if ($scope.lastNotificationId) {
-                Notifications.remove($scope.lastNotificationId, 'event-scheduling');
-                $scope.lastNotificationId = undefined;
-              }
-              $scope.modal_close();
-            };
-            checkForActiveTransactions();
-
-            $scope.setCaptureAgents = function (locationIndex) {
-              var agentCollection = {};
-              CaptureAgentsResource.query().$promise
-                      .then(function (agents) {
-                        if (agents.length === 0) {
-                          return;
-                        }
-
-                        angular.forEach(agents.rows, function (agent) {
-                          if (angular.isDefined(agent) && angular.isDefined(agent.id) &&
-                                  !angular.isDefined(agentCollection[agent.id])) {
-                            agentCollection[agent.id] = agent.name;
-                          }
-                        });
-
-                        $scope.episodeCatalog.fields[locationIndex]
-                                .collection = agentCollection;
-                        $scope.setSourceFields($scope.episodeCatalog);
-                      });
-
-            }
           }
         ]);

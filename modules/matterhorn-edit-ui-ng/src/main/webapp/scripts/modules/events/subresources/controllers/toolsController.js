@@ -22,78 +22,75 @@
 
 // Controller for all event screens.
 angular.module('editNg.controllers')
-.controller('ToolsCtrl', ['$scope', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService',
-    function ($scope, $route, $location, $window, ToolsResource, Notifications, EventHelperService) {
+        .controller('ToolsCtrl', ['$scope', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService',
+          function ($scope, $route, $location, $window, ToolsResource, Notifications, EventHelperService) {
 
-        $scope.navigateTo = function (path) {
-            // FIMXE When changing tabs, video playback breaks. Using playback
-            // controls after a tab change works for audio, but there is no
-            // video. Perhaps it results in an orphaned <video> element.
-            //
-            // The following hack prevents a racing condition between setting
-            // the path and a reload by preventing the path change from
-            // triggering a render sync before the reload takes place.
-            var lastRoute, off;
-            lastRoute = $route.current;
-            off = $scope.$on('$locationChangeSuccess', function () {
+            $scope.navigateTo = function (path) {
+              // FIMXE When changing tabs, video playback breaks. Using playback
+              // controls after a tab change works for audio, but there is no
+              // video. Perhaps it results in an orphaned <video> element.
+              //
+              // The following hack prevents a racing condition between setting
+              // the path and a reload by preventing the path change from
+              // triggering a render sync before the reload takes place.
+              var lastRoute, off;
+              lastRoute = $route.current;
+              off = $scope.$on('$locationChangeSuccess', function () {
                 $route.current = lastRoute;
                 off();
                 $window.location.reload();
-            });
-            $location.path(path).replace();
-        };
+              });
+              $location.path(path).replace();
+            };
 
-        $scope.event    = EventHelperService;
-        $scope.resource = $route.current.params.resource;
-        $scope.tab      = $route.current.params.tab;
-        if ($scope.tab === "editor") {
-          $scope.area   = "segments";
-        } else {
-          $scope.area   = "metadata";
-        }
-        $scope.id       = $route.current.params.itemId;
+            $scope.event = EventHelperService;
+            $scope.resource = $route.current.params.resource;
+            $scope.tab = $route.current.params.tab;
+            if ($scope.tab === "editor") {
+              $scope.area = "segments";
+            } else {
+              $scope.area = "metadata";
+            }
+            $scope.id = $route.current.params.itemId;
 
-        $scope.event.eventId = $scope.id;
+            $scope.event.eventId = $scope.id;
 
-        $scope.openTab = function (tab) {
-            $scope.navigateTo('events/' + $scope.resource + '/' +
-                $scope.id + '/tools/' + tab);
-        };
+            $scope.openTab = function (tab) {
+              $scope.navigateTo('events/' + $scope.resource + '/' +
+                      $scope.id + '/tools/' + tab);
+            };
 
-        $scope.openArea = function (area) {
-            $scope.area = area;
-        };
+            $scope.openArea = function (area) {
+              $scope.area = area;
+            };
 
-        // TODO Move the following to a VideoCtrl
-        $scope.player = {};
-        $scope.video  = ToolsResource.get({ id: $scope.id, tool: 'editor' });
+            // TODO Move the following to a VideoCtrl
+            $scope.player = {};
+            $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'});
 
-        $scope.submitButton = false;
-        $scope.save = function () {
-            
-            $scope.submitButton = true;
-            
-            $scope.video.$save({ id: $scope.id, tool: $scope.tab}, function () {
+            $scope.submitButton = false;
+            $scope.save = function () {
+              $scope.submitButton = true;
+              $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_SAVED');
                 $location.path('/success.html').replace();
-            }, function () {
+              }, function () {
                 $scope.submitButton = false;
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
-            });
-        };
-        $scope.submit = function () {
-            
-            $scope.submitButton = true;
-            
-            $scope.video.$submit ({ id: $scope.id, tool: $scope.tab}, function () {
+              });
+            };
+            $scope.submit = function () {
+              $scope.submitButton = true;
+
+              $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_PROCESSING');
                 $location.path('/success.html').replace();
-            }, function () {
+              }, function () {
                 $scope.submitButton = false;
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
-            });
-        };
-    }
-]);
+              });
+            };
+          }
+        ]);
