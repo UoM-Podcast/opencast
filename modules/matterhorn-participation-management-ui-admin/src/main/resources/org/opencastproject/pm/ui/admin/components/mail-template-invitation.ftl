@@ -30,4 +30,4 @@ https://video.manchester.ac.uk/lectures
 Lastly, if you are the unit coordinator for the above unit(s), please forward this message to all staff teaching on your unit as, in some cases, they may not be always be identified in the timetable system and therefore may not be sent this message directly.
 
 [1] http://documents.manchester.ac.uk/DocuInfo.aspx?DocID=16559
-[2] http://www.mypodcasts.manchester.ac.uk/support/opt-out/
+[2] http://www.mypodcasts.manchester.ac.uk/staff-faqs#collapse3
