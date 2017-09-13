@@ -88,12 +88,12 @@ public class FutureRecordingsView extends RecordingsView {
     final OptionGroup recordGroup = new OptionGroup();
     final Label recordInputsLabel = new Label(i18n.s("options.record.inputs"));
     final List<String> inputs = teacherPm.getCaptureAgentInputs().get();
-    setOptGroupItems(recordGroup, i18n, "options.record.input", inputs.get(0), inputs);
+    setOptGroupItems(recordGroup, i18n, "options.record.input", inputs.get(0), inputs, true);
     recordGroup.setMultiSelect(true);
     recordGroup.setNullSelectionAllowed(false); // FIXME seems to remember last selected but only after another event has been Listened
 
     final OptionGroup optOutGroup = new OptionGroup();
-    setOptGroupItems(optOutGroup, i18n, "options", OPT_OPT_OUT, Arrays.asList(OPT_OPT_OUT, OPT_RECORD, OPT_RECORD_EDIT));
+    setOptGroupItems(optOutGroup, i18n, "options", OPT_OPT_OUT, Arrays.asList(OPT_OPT_OUT, OPT_RECORD, OPT_RECORD_EDIT), false);
 
     Button applyButton = new Button("Apply");
     applyButton.addClickListener(new ClickListener() {
@@ -266,12 +266,16 @@ public class FutureRecordingsView extends RecordingsView {
    * @param selectId
    *         the id of the option to be selected by default
    */
-  private void setOptGroupItems(OptionGroup group, I18N i18n, String prefix, String selectId, List<String> optionIds) {
+  private void setOptGroupItems(OptionGroup group, I18N i18n, String prefix, String selectId, List<String> optionIds, boolean addIcons) {
+    group.setHtmlContentAllowed(addIcons);
     for (String optionId : optionIds) {
       group.addItem(optionId);
-      group.setItemCaption(optionId, i18n.s(prefix + "." + optionId));
+      if (addIcons) {
+        group.setItemCaption(optionId, i18n.s(prefix + "." + optionId) + " " + getInputIcons(optionId, "Select to record the %s"));
+      } else {
+        group.setItemCaption(optionId, i18n.s(prefix + "." + optionId));
+      }
     }
-    group.select(selectId);
   }
 
   /**
