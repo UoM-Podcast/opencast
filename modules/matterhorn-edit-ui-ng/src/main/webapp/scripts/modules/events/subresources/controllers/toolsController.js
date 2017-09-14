@@ -74,7 +74,8 @@ angular.module('editNg.controllers')
               $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_SAVED');
-                $location.path('/success.html').replace();
+                $scope.navigateTo('events/' + $scope.resource + '/' +
+                      $scope.id + '/tools/saved');
               }, function () {
                 $scope.submitButton = false;
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
@@ -86,7 +87,8 @@ angular.module('editNg.controllers')
               $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_PROCESSING');
-                $location.path('/success.html').replace();
+                $scope.navigateTo('events/' + $scope.resource + '/' +
+                      $scope.id + '/tools/submitted');
               }, function () {
                 $scope.submitButton = false;
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');

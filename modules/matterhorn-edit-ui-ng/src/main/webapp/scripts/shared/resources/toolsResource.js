@@ -95,7 +95,7 @@ angular.module('editNg.resources')
                     segments: segments,
                     tracks: JsHelper.map(data.tracks, 'id')
                   };
-                  response.workflow = data.workflows[1].id;
+                  response.workflow = 'manchester-after-editing';
                   return JSON.stringify(response);
                 }
               }
