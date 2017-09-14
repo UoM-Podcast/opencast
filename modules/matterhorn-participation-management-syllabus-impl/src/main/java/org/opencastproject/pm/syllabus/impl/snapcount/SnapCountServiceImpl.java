@@ -179,9 +179,9 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
 
   @Override
   public void verifyParticipationFeeder() {
-      User user = SecurityUtil.createSystemUser(systemUser, new DefaultOrganization());
-
-    Person creator = Person.person("Lecture Capture Service", "lecture-capture@university.org");
+    User user = SecurityUtil.createSystemUser(systemUser, new DefaultOrganization());
+    // FIXME: This should be configured from file
+    Person creator = Person.person("Podcast Service", "podcast-service@manchester.ac.uk");
     MessageSignature msgSign = MessageSignature.messageSignature("admin", user,
       emailAddress(creator.getEmail(), creator.getName()), "Send by admin");
 
