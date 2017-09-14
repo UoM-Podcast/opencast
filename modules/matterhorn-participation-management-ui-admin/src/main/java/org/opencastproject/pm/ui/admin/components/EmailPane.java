@@ -353,7 +353,8 @@ public class EmailPane extends CustomComponent {
    */
   private Message getDefaultMessage() {
     User user = SecurityUtil.createSystemUser(systemUserName, new DefaultOrganization());
-    Person creator = Person.person("Lecture Capture Service", "lecture-capture@university.org");
+    // FIXME: This should be configured from file
+    Person creator = Person.person("Podcast Service", "podcast-service@manchester.ac.uk");
     MessageSignature msgSign = MessageSignature.messageSignature("admin", user,
             emailAddress(creator.getEmail(), creator.getName()), "Send by admin");
 
