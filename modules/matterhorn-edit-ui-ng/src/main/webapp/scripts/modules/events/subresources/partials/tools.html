@@ -16,7 +16,7 @@
             <div class="video-save-panel video-more-options video-editor-actions-toolbar" ng-if="tab === 'editor' && player.adapter">
             </div>
         </div>
-        <div class="tab-menu">
+        <div ng-if="tab === 'editor' || tab === 'playback'" class="tab-menu">
             <nav class="view-controller">
 <!--                <a ng-class="{active: tab === 'playback'}"
                     ng-click="openTab('playback')" translate>VIDEO_TOOL.TABS.PLAY</a>-->
@@ -24,7 +24,31 @@
                     ng-click="openTab('editor')" translate>VIDEO_TOOL.TABS.EDIT</a>
             </nav>
         </div>
-        <div class="video-container">
+        <div ng-if="tab === 'saved'">
+          <div class="video-timeline">
+            <div class="timeline-control">
+              <header>
+                <span class="ng-scope">Thank you for editing your video.</span>
+              </header>
+              <br/>
+              <p>Please note that the podcast has not yet been published - any marked segments have been saved.</p>
+              <br/>
+              <p>You will need to access the editor and press Save & Continue to allow the edited podcast to be published.</p>
+            </div>
+          </div>
+        </div>
+        <div ng-if="tab === 'submitted'">
+          <div class="video-timeline">
+            <div class="timeline-control">
+              <header>
+                <span class="ng-scope">Thank you for editing your video.</span>
+              </header>
+              <br/>
+              <p>The recording will now be processed and published on the Video Portal.</p>
+            </div>
+          </div>
+        </div>
+        <div ng-if="tab === 'editor' || tab === 'playback'" class="video-container">
 
             <div data-video-player data-player="player" data-video="video" data-adapter="html5" data-player-ref="player" data-controls="{{ tab === 'playback' }}"/>
 
@@ -107,7 +131,7 @@
 
             <div class="video-editor-actions-toolbar">
                 <div class="video-nav-controls">
-                    <a class="return-button" ng-click="navigateTo('/success.html')" translate>VIDEO_TOOL.BUTTONS.CLOSE</a>
+                    <!--<a class="return-button" ng-click="navigateTo('/cancel.html')" translate>VIDEO_TOOL.BUTTONS.CLOSE</a>-->
                 </div>
 
                 <div class="video-save-panel" ng-if="tab === 'editor' && player.adapter">
