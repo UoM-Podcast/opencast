@@ -7,6 +7,7 @@ target-grunt/
 node_modules/
 node/
 /build/
+/data/
 
 # ignore Eclipse project data
 .project
@@ -26,6 +27,7 @@ node/
 *.swp
 *.iml
 .idea
+.sonarlint
 
 # Ignore Maven files and local repository
 /.m2/
@@ -38,6 +40,7 @@ docs/guides/*/site
 # Sometimes they help, but they should never be tracked
 Makefile
 /modules/matterhorn-admin-ui-ng/bower_components/
+/modules/matterhorn-edit-ui-ng/bower_components/
 
 # Ignore OS artifacts
 .DS_Store
