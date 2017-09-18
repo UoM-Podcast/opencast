@@ -421,15 +421,17 @@ public class ScheduleFeederRunner {
           // Set inputs to use in workflow
           // Should not matter as capture agent should only record those selected below
           for (Map.Entry<String, String> prop : inputProperties.get().entrySet()) {
-            final Boolean value;
-            if (Arrays.asList(rec.getRecordingInputs().split("\\|")).contains(prop.getKey())) {
-              value = true;
-            } else {
-              value = false;
-            }
+            if (prop.getValue() != null) {
+              final Boolean value;
+              if (Arrays.asList(rec.getRecordingInputs().split("\\|")).contains(prop.getKey())) {
+                value = true;
+              } else {
+                value = false;
+              }
 
-            wfProperties.put(prop.getValue(), value.toString());
-            caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(prop.getValue()), value.toString());
+              wfProperties.put(prop.getValue(), value.toString());
+              caConfig.put(WORKFLOW_CONFIG_PREFIX.concat(prop.getValue()), value.toString());
+            }
           }
 
           // Set which Capture Agent input devices to record
@@ -439,7 +441,8 @@ public class ScheduleFeederRunner {
             caConfig.put("capture.device.names", "defaults");
           } else {
             List<String> inputNames = new ArrayList<>();
-            for (String input : rec.getRecordingInputs().split("\\|")) {
+            // MAT-131, add audio explicitly when not using defaults
+            for (String input : (rec.getRecordingInputs() + "|audio").split("\\|")) {
               inputNames.add(inputCANames.get().get(input));
             }
             caConfig.put("capture.device.names", String.join(",", inputNames));

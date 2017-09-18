@@ -216,7 +216,7 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
       final HashMap<String, String> inputCANames = new HashMap<>();
 
       for (String input : captureInputsAny.split("\\|")) {
-        inputWFProps.put(input, getCfg(properties, "workflow.property.input." + input));
+        inputWFProps.put(input, getOptCfg(properties, "workflow.property.input." + input).getOrElseNull());
         inputCANames.put(input, getCfg(properties, "capture.device.name.input." + input));
       }
 
