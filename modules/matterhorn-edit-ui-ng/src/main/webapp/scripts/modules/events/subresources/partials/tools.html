@@ -1,0 +1,147 @@
+
+<section class="main-content">
+    <nav id="roll-up-menu"></nav>
+
+    <div class="main-view" ng-controller="ToolsCtrl">
+      <div ng-controller="VideoEditCtrl">
+        <div class="video-header">
+            <div class="main-video-details">
+                <h1 class="video-title">{{ video.title }}</h1>
+                <h4 class="video-details"><span class="video-details-date">{{ video.date | localizeDate : 'date' : 'short'}}</span>
+                  <span class="video-details-presenters">
+                      {{(video.presenters && video.presenters.length > 0)  ?  " - " + video.presenters.join(', ') : "" }}
+                  </span>
+                  <span class="video-details-series">{{(video.series && video.series.title) ? " - " + video.series.title : "" }}</span></h4>
+            </div>
+            <div class="video-save-panel video-more-options video-editor-actions-toolbar" ng-if="tab === 'editor' && player.adapter">
+            </div>
+        </div>
+        <div ng-if="tab === 'editor' || tab === 'playback'" class="tab-menu">
+            <nav class="view-controller">
+<!--                <a ng-class="{active: tab === 'playback'}"
+                    ng-click="openTab('playback')" translate>VIDEO_TOOL.TABS.PLAY</a>-->
+                <a ng-class="{active: tab === 'editor'}"
+                    ng-click="openTab('editor')" translate>VIDEO_TOOL.TABS.EDIT</a>
+            </nav>
+        </div>
+        <div ng-if="tab === 'saved'">
+          <div class="video-timeline">
+            <div class="timeline-control">
+              <header>
+                <span class="ng-scope">Thank you for editing your video.</span>
+              </header>
+              <br/>
+              <p>Please note that the podcast has not yet been published - any marked segments have been saved.</p>
+              <br/>
+              <p>You will need to access the editor and press Save & Continue to allow the edited podcast to be published.</p>
+            </div>
+          </div>
+        </div>
+        <div ng-if="tab === 'submitted'">
+          <div class="video-timeline">
+            <div class="timeline-control">
+              <header>
+                <span class="ng-scope">Thank you for editing your video.</span>
+              </header>
+              <br/>
+              <p>The recording will now be processed and published on the Video Portal.</p>
+            </div>
+          </div>
+        </div>
+        <div ng-if="tab === 'editor' || tab === 'playback'" class="video-container">
+
+            <div data-video-player data-player="player" data-video="video" data-adapter="html5" data-player-ref="player" data-controls="{{ tab === 'playback' }}"/>
+
+            <div ng-if="tab === 'playback'">
+              <!-- nothing to show here yet -->
+            </div>
+
+            <div class="tool-tab" ng-if="tab === 'editor' && player.adapter">
+                <div data-edit-ng-timeline="" data-video="video" data-player="player"></div>
+
+                <div data-edit-ng-notifications="" context="video-tools"></div>
+
+            </div>
+            <!-- captions and annotations to come later
+            <div ng-if="tab === 'captions'">
+            </div>
+            <div ng-if="tab === 'annotations'">
+            </div>-->
+            <div class="event-container" ng-controller="EventCtrl">
+                <div>
+                    <nav class="view-controller">
+                        <a ng-class="{active: area === 'segments'}" ng-if="tab === 'editor'"
+                            ng-click="openArea('segments')" translate>VIDEO_TOOL.AREAS.SEGMENTS</a>
+                        <a ng-class="{active: area === 'metadata'}"
+                            ng-click="openArea('metadata')" translate>VIDEO_TOOL.AREAS.METADATA</a>
+<!--                        <a ng-class="{active: area === 'comments'}"
+                            ng-click="openArea('comments')" translate>VIDEO_TOOL.AREAS.COMMENTS</a>-->
+                    </nav>
+                </div>
+
+                <div ng-if="area === 'metadata'">
+                  <div class="area-body">
+                      <div data-edit-ng-notifications="" context="events-access"></div>
+                      <div data-edit-ng-notification="" data-type="warning" show="metadata.locked" message="{{ metadata.locked }}"></div>
+                      <div class="full-col">
+                          <div class="obj tbl-details">
+                              <header><span translate="EVENTS.EVENTS.DETAILS.METADATA.CAPTION"><!-- Event details --></span></header>
+                              <div class="obj-container">
+                                  <table class="main-tbl">
+                                      <tr ng-repeat="row in episodeCatalog.fields track by $index">
+                                        <td translate="{{ row.label }}"></td>
+                                        <td ng-if="row.id === 'created'">{{ row.value  | localizeDate : 'dateTime' : 'medium' }}</td>
+                                        <td ng-if="row.id !== 'created'" edit-ng-editable
+                                            params="row" save="getSaveFunction(episodeCatalog.flavor)"></td>
+                                      </tr>
+                                  </table>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                </div>
+
+                <div ng-if="area === 'segments'">
+                  <div class="area-body">
+                      <div class="video-toolbar">
+                          <div class="start-column">
+                              <div class="primary-functions function-buttons">
+                                  <a class="split" ng-click="split()" translate>VIDEO_TOOL.ACTIONS.SPLIT</a>
+                                  <a class="cut" ng-click="cut()" translate>VIDEO_TOOL.ACTIONS.CUT</a>
+                                  <a class="replay" ng-click="replay()" translate>VIDEO_TOOL.ACTIONS.REPLAY_SEGMENT</a>
+                                  <a class="replay-end-of-segment" ng-click="replayEndOfSegment()" translate>VIDEO_TOOL.ACTIONS.REPLAY_END_OF_SEGMENT</a>
+                                  <a class="replay-with-preroll" ng-click="replayPreRoll()" translate>VIDEO_TOOL.ACTIONS.REPLAY_SEGMENT_WITH_PREROLL</a>
+                                  <!--
+                                  <a class="switch-feed" translate>VIDEO_TOOL.ACTIONS.SWITCH_FEED</a>
+                                  -->
+                              </div>
+                          </div>
+                          <div class="end-column">
+                              <div class="destructive-functions function-buttons">
+                                  <a class="clear-segments" ng-click="clearSelectedSegment()" translate>VIDEO_TOOL.ACTIONS.CLEAR_SELECTED_SEGMENT</a>
+                                  <a class="clear-segments" ng-click="clearSegments()" translate>VIDEO_TOOL.ACTIONS.CLEAR_SEGMENTS</a>
+                              </div>
+                          </div>
+                      </div>
+                      <div data-edit-ng-segments="" data-video="video" data-player="player"></div>
+                  </div>
+                </div>
+
+            </div>
+
+            <div class="video-editor-actions-toolbar">
+                <div class="video-nav-controls">
+                    <!--<a class="return-button" ng-click="navigateTo('/cancel.html')" translate>VIDEO_TOOL.BUTTONS.CLOSE</a>-->
+                </div>
+
+                <div class="video-save-panel" ng-if="tab === 'editor' && player.adapter">
+                    <div class="buttons">
+                        <a ng-click="save()" ng-class="{disabled: submitButton}" class="return-button" translate="VIDEO_TOOL.BUTTONS.SAVE"></a>
+                        <a ng-click="submit()" ng-class="{disabled: submitButton}" class="save-and-close-button" translate="VIDEO_TOOL.BUTTONS.PROCESS"></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+</section>

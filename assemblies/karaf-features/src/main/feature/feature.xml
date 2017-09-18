@@ -289,6 +289,7 @@
 
   <feature name="opencast-complete">
     <feature start-level="80">opencast-allinone</feature>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-edit-ui-ng/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-runtime-info-ui/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-composer-service-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-cover-image-remote/${project.version}</bundle>
@@ -313,7 +314,6 @@
   <feature name="opencast-admin">
     <feature start-level="80">opencast-core</feature>
     <feature start-level="82">opencast-participation-management-admin</feature>
-
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-admin-ui-ng/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-schema/${project.version}</bundle>
@@ -663,7 +663,7 @@
   <feature name="opencast-presentation">
     <feature start-level="80">opencast-core</feature>
     <feature start-level="82">opencast-participation-management-teacher</feature>
-    
+        
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-acl/${project.version}</bundle>
@@ -703,6 +703,14 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-usertracking-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-usertracking-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-workflow-service-remote/${project.version}</bundle>
+  </feature>
+
+  <feature name="opencast-edit-distribution">
+    <feature start-level="80">opencast-presentation</feature>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-authorization-manager/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-workflowoperation/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-edit-ui-ng/${project.version}</bundle>
   </feature>
 
   <feature name="opencast-migration">

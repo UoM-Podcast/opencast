@@ -19,12 +19,16 @@
   <sec:http pattern="/admin-ng/fonts/**" security="none" />
   <sec:http pattern="/admin-ng/scripts/**" security="none" />
   <sec:http pattern="/admin-ng/styles/**" security="none" />
- 
+  <sec:http pattern="/edit-ng/fonts/**" security="none" />
+  <sec:http pattern="/edit-ng/scripts/**" security="none" />
+  <sec:http pattern="/edit-ng/styles/**" security="none" />
+  
   <!-- Allow anonymous access to Vaadin resources -->
   <sec:http pattern="/VAADIN/**" security="none" />
   <sec:http pattern="/VAADIN-ui-admin/**" security="none" />
   <sec:http pattern="/VAADIN-ui-teacher/**" security="none" />
-
+  
+  
   <sec:http create-session="ifRequired" servlet-api-provision="true" realm="Opencast"
     entry-point-ref="matterhornEntryPoint">
 
@@ -34,7 +38,13 @@
 
     <!-- Allow anonymous access to the login form -->
     <sec:intercept-url pattern="/admin-ng/login.html" access="ROLE_ANONYMOUS" />
+    <sec:intercept-url pattern="/edit-ng/login.html" access="ROLE_ANONYMOUS" />
     <sec:intercept-url pattern="/sysinfo/bundles/version" method="GET" access="ROLE_ANONYMOUS" />
+
+    <!-- Allow anonymous access to the editor required endpoints -->
+    <sec:intercept-url pattern="/edit-ng/**" method="GET" access="ROLE_ANONYMOUS" />
+    <sec:intercept-url pattern="/edit-ng/event/*/metadata" method="PUT" access="ROLE_ANONYMOUS" />
+    <sec:intercept-url pattern="/edit-ng/tools/*/editor.json" method="POST" access="ROLE_ANONYMOUS" />
 
     <!-- Protect admin UI facade -->
     <sec:intercept-url pattern="/email/templates.json" method="GET" access="ROLE_ADMIN, ROLE_UI_EMAILTEMPLATES_VIEW" />
