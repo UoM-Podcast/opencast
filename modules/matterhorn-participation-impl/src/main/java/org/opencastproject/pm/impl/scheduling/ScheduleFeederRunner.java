@@ -441,7 +441,7 @@ public class ScheduleFeederRunner {
             caConfig.put("capture.device.names", "defaults");
           } else {
             List<String> inputNames = new ArrayList<>();
-            // MAT-131, add audio explicitly when not using defaults
+            // MAT-231, add audio explicitly when not using defaults
             for (String input : (rec.getRecordingInputs() + "|audio").split("\\|")) {
               inputNames.add(inputCANames.get().get(input));
             }
