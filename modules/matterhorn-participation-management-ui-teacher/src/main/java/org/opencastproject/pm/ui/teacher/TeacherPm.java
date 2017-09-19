@@ -76,7 +76,7 @@ public class TeacherPm implements ManagedService {
   private final VCell<String> workflowRetract = cell(DEFAULT_WORKFLOW_RETRACT);
   private final VCell<HashMap<String, String>> workflowEditConfig = cell(new HashMap<String, String>());
   private final VCell<String> emailProperty = cell(DEFAULT_WORKFLOW_EMAIL_PROPERTY);
-  private final VCell<String> editServer = cell("http://localhost:8080");
+  private final VCell<String> editToolUrl = cell("http://localhost:8080");
 
   public void activate(ComponentContext cc) {
     systemUserName = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
@@ -162,13 +162,13 @@ public class TeacherPm implements ManagedService {
     final String wfRetract = getCfg(properties, "workflow.retract.definition");
     final HashMap<String, String> wfCfg = new HashMap<>(getWfCfgAsMap(properties, "workflow.edit.config"));
     final String emailProp = getCfg(properties, "workflow.property.email");
-    final String editSrv = getCfg(properties, "edit.server");
+    final String editUrl = getCfg(properties, "edit.tool.url");
 
     workflowEdit.set(wfEdit);
     workflowRetract.set(wfRetract);
     workflowEditConfig.set(wfCfg);
     emailProperty.set(emailProp);
-    editServer.set(editSrv);
+    editToolUrl.set(editUrl);
   }
 
   public static Map<String, String> getWfCfgAsMap(Dictionary<String, String> d, String key)
@@ -207,6 +207,6 @@ public class TeacherPm implements ManagedService {
   }
 
   public VCell<String> getEditServer() {
-    return editServer;
+    return editToolUrl;
   }
 }

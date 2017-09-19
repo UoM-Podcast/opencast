@@ -156,7 +156,7 @@ public class PastRecordingsView extends RecordingsView {
             }
           });
         } else if ("edit".equals(recording.getProcessingStatus()) && recording.getWorkflowId().isSome()) {
-          return label(format("<a target=\"_blank\" href=\"%s/edit-ng/index.html#/events/events/%s/tools/editor\">%s</a>",
+          return label(format("<a target=\"_blank\" href=\"%s/%s\">%s</a>",
                   teacherPm.getEditServer().get(), recording.getMediaPackageId().get(), i18n.s("table.action.edit.link")), UiUtil.htmlLabel);
         }
         return new Label("");
