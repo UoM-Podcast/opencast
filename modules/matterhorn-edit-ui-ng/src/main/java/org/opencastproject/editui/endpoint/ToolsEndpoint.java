@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Dictionary;
 
 import javax.servlet.http.HttpServletRequest;
@@ -102,6 +104,22 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
     @RestResponse(description = "Available tools evaluated", responseCode = HttpServletResponse.SC_OK)})
   public Response getAvailableTools(@PathParam("mediapackageid") final String mediaPackageId) {
     return forwardRequest("/admin-ng/tools/" + mediaPackageId + ".json", "GET", null);
+  }
+
+  @GET
+  @Path("editor/{mediapackageid}")
+  @RestQuery(name = "getEditor", description = "Redirects to the editor for the mediapackage", returnDescription = "editor redirect", pathParameters = {
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+    @RestResponse(description = "Redirect to editor", responseCode = HttpServletResponse.SC_SEE_OTHER),
+    @RestResponse(description = "Editor not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})
+          public Response getEditor(@PathParam("mediapackageid") final String mediaPackageId) {
+    try {
+      URI uri = new URI("../index.html#/events/events/" + mediaPackageId + "/tools/editor");
+      return Response.seeOther(uri).build();
+    } catch (URISyntaxException ex) {
+      logger.error(null, ex);
+    }
+    return R.notFound();
   }
 
   @GET
