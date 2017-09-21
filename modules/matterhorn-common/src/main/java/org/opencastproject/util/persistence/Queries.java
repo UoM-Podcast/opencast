@@ -140,15 +140,16 @@ public final class Queries {
    * are recognized and set as a timestamp ({@link javax.persistence.TemporalType#TIMESTAMP}.
    */
   public static <A extends Query> A setParams(A q, Object... params) {
+    Integer jpaImplPositionOffset = 1; // Hibernate = 0, EclipseLink = 1
     for (int i = 0; i < params.length; i++) {
       final Object value = params[i];
       if (value instanceof Date) {
-        q.setParameter(i, (Date) value, TemporalType.TIMESTAMP);
+        q.setParameter(i+jpaImplPositionOffset, (Date) value, TemporalType.TIMESTAMP);
       }
       if (value instanceof AbstractInstant) {
-        q.setParameter(i, ((AbstractInstant) value).toDate(), TemporalType.TIMESTAMP);
+        q.setParameter(i+jpaImplPositionOffset, ((AbstractInstant) value).toDate(), TemporalType.TIMESTAMP);
       } else {
-        q.setParameter(i, value);
+        q.setParameter(i+jpaImplPositionOffset, value);
       }
     }
     return q;
