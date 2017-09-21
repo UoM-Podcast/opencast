@@ -172,8 +172,8 @@ public final class VActivityDto {
     @Override
     public Function<EntityManager, List<String>> findIdsByCourseKey(String courseKey) {
       return Queries.sql.findAll(
-              "select id from V_ACTIVITY as a join V_ACTIVITY_module as am on a.id = am.ActivityId "
-                      + "where am.moduleid = (select id from V_MODULE where userText4 = ?1) "
+              "select id from rdowner.V_ACTIVITY as a join rdowner.V_ACTIVITY_MODULE as am on a.id = am.ActivityId "
+                      + "where am.moduleid = (select id from rdowner.V_MODULE where userText4 = ?1) "
                       + "and a.IsJtaParent != 1;", courseKey);
     }
   };
