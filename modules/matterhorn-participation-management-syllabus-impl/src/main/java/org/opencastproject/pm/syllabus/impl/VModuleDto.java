@@ -45,7 +45,8 @@ import javax.persistence.TemporalType;
 @Table(name = "V_MODULE")
 @NamedQueries({
         @NamedQuery(name = "VModule.findAllSince", query = "select a from VModule a where a.lastChanged > :since"),
-        @NamedQuery(name = "VModule.findAll", query = "select a from VModule a") })
+        @NamedQuery(name = "VModule.findAll", query = "select a from VModule a"),
+        @NamedQuery(name = "VModule.getByCourseKey", query = "select a from VModule a where a.userText4 = :courseKey") })
 public final class VModuleDto {
   @Id
   private String id;
