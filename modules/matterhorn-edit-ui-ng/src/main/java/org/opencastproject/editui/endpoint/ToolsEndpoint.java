@@ -144,6 +144,11 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   public Response editVideo(@PathParam("mediapackageid") final String mediaPackageId,
           @Context HttpServletRequest request) {
     String details;
+    try {
+      Thread.sleep(10000);
+    } catch (InterruptedException e) {
+      logger.error("Sleep interrupted: {}", ExceptionUtils.getStackTrace(e));
+    }
     try (InputStream is = request.getInputStream()) {
       details = IOUtils.toString(is);
     } catch (IOException e) {
