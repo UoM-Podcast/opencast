@@ -36,13 +36,17 @@ import com.entwinemedia.fn.Fn;
 import org.apache.commons.lang3.StringUtils;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
 public final class EventUtils {
   private static final int CREATED_BY_UI_ORDER = 14;
+
+  private static List<String> readOnlyFields = new ArrayList<String>();
 
   public static final Map<String, String> PUBLICATION_CHANNELS = new HashMap<String, String>();
 
@@ -53,6 +57,20 @@ public final class EventUtils {
 
   private EventUtils() {
 
+  }
+
+  public static void addReadOnlyField(String field) {
+    if (!readOnlyFields.contains(field)) {
+      readOnlyFields.add(field);
+    }
+  }
+
+  public static void clearReadOnlyFields(String field) {
+    readOnlyFields.clear();
+  }
+
+  public static boolean isReadOnly(String field) {
+      return readOnlyFields.contains(field);
   }
 
   /**
@@ -66,6 +84,9 @@ public final class EventUtils {
   public static MetadataCollection getEventMetadata(Event event, EventCatalogUIAdapter eventCatalogUIAdapter)
           throws Exception {
     MetadataCollection metadata = eventCatalogUIAdapter.getRawFields();
+    for (MetadataField<?>field : metadata.getFields()) {
+      field.setReadOnly(isReadOnly(field.getInputID()));
+    }
 
     MetadataField<?> title = metadata.getOutputFields().get(DublinCore.PROPERTY_TITLE.getLocalName());
     metadata.removeField(title);
