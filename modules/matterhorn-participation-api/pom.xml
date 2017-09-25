@@ -82,6 +82,9 @@
               org.opencastproject.pm.api.scheduling;version=${project.version},
               org.opencastproject.pm.api.util;version=${project.version}
             </Export-Package>
+            <Embed-Dependency>
+              matterhorn-common;inline=true
+            </Embed-Dependency>
             <Main-Class>org.opencastproject.pm.api.util.Security</Main-Class>
           </instructions>
         </configuration>
