@@ -43,6 +43,9 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.mail.Message.RecipientType;
+import javax.mail.internet.MimeMessage;
+
 public class EmailWorkflowOperationHandlerTest {
   private WorkflowOperationInstance operation;
   private EmailWorkflowOperationHandler operationHandler;
@@ -55,6 +58,7 @@ public class EmailWorkflowOperationHandlerTest {
   private static final String DEFAULT_SUBJECT = "This is a subject";
 
   private Capture<String> capturedTo;
+  private Capture<RecipientType> capturedRecipient;
   private Capture<String> capturedSubject;
   private Capture<String> capturedBody;
 
@@ -81,10 +85,17 @@ public class EmailWorkflowOperationHandlerTest {
 
     SmtpService smtpService = EasyMock.createMock(SmtpService.class);
     capturedTo = new Capture<>();
+    capturedRecipient = new Capture<>();
     capturedSubject = new Capture<>();
     capturedBody = new Capture<>();
-    smtpService.send(EasyMock.capture(capturedTo), EasyMock.capture(capturedSubject), EasyMock.capture(capturedBody));
-    EasyMock.expectLastCall().once();
+
+    MimeMessage message = EasyMock.createMock(MimeMessage.class);
+    EasyMock.expect(smtpService.createMessage()).andReturn(message);
+    message.addRecipients(EasyMock.capture(capturedRecipient), EasyMock.capture(capturedTo));
+    message.setSubject(EasyMock.capture(capturedSubject));
+    message.setText(EasyMock.capture(capturedBody));
+    smtpService.send(message);
+    EasyMock.replay(message);
     EasyMock.replay(smtpService);
     operationHandler.setSmtpService(smtpService);
 

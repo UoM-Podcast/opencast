@@ -36,7 +36,9 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.mail.Message.RecipientType;
 import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
 
 /**
  * Please describe what this handler does.
@@ -104,7 +106,14 @@ public class EmailWorkflowOperationHandler extends AbstractWorkflowOperationHand
 
     try {
       logger.debug("Sending e-mail notification to {} with subject {} and body {}", to, subject, bodyText);
-      smtpService.send(to, subject, bodyText);
+
+      // smtpService.send() does not handle multiple recipients
+      MimeMessage message = smtpService.createMessage();
+      message.addRecipients(RecipientType.TO, to);
+      message.setSubject(subject);
+      message.setText(bodyText);
+      smtpService.send(message);
+
       logger.info("E-mail notification sent to {}", to);
     } catch (MessagingException e) {
       throw new WorkflowOperationException(e);
