@@ -23,13 +23,9 @@ package org.opencastproject.pm.api.util;
 
 import org.opencastproject.util.Crypt;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.security.Key;
 
 public final class Security {
-  private static final Logger logger = LoggerFactory.getLogger(Security.class);
 
   private Security() {
   }
@@ -38,16 +34,18 @@ public final class Security {
 
   /**
    * Simple way of encoding a teacher e-mail address to
-   * 
+   *
    * @param args
    *          the commandline arguments
    */
   public static void main(String[] args) {
+//CHECKSTYLE:OFF
     if (args.length == 1) {
-      logger.info(Crypt.encrypt(Security.TEACHER_EMAIL_KEY, args[0]));
+      System.out.println(Crypt.encrypt(Security.TEACHER_EMAIL_KEY, args[0]));
     } else {
-      logger.info("Usage: java -jar matterhorn-participation-api.jar <email address>");
+      System.err.println("Usage: java -jar matterhorn-participation-api.jar <email address>");
     }
+//CHECKSTYLE:ON
   }
 
 }
