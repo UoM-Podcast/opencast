@@ -186,7 +186,7 @@ public class RecordingContainer extends BeanItemContainer<RecordingView> impleme
       return recording;
     }
 
-    recording.seMediaPackageId(Option.some(mediaPackageId));
+    recording.setMediaPackageId(Option.some(mediaPackageId));
 
     if (workflowInstances.size() > 0) {
       wi = workflowInstances.getItems()[0];

@@ -227,7 +227,7 @@ public class RecordingView {
     return mediaPackageId;
   }
 
-  public void seMediaPackageId(Option<String> mediaPackageId) {
+  public void setMediaPackageId(Option<String> mediaPackageId) {
     this.mediaPackageId = mediaPackageId;
   }
   public String getProcessingStatus() {
