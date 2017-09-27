@@ -108,14 +108,22 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
 
   @GET
   @Path("editor/{mediapackageid}")
+  @Produces(MediaType.TEXT_HTML)
   @RestQuery(name = "getEditor", description = "Redirects to the editor for the mediapackage", returnDescription = "editor redirect", pathParameters = {
     @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
-    @RestResponse(description = "Redirect to editor", responseCode = HttpServletResponse.SC_SEE_OTHER),
+    @RestResponse(description = "Editor URL", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "Editor not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})
           public Response getEditor(@PathParam("mediapackageid") final String mediaPackageId) {
     try {
-      URI uri = new URI("../index.html#/events/events/" + mediaPackageId + "/tools/editor");
-      return Response.seeOther(uri).build();
+      URI uri = new URI("../../index.html#/events/events/" + mediaPackageId + "/tools/editor");
+      String html = "<html>\n<head>\n<title>Redirect to the editor</title>\n";
+      html += "<meta http-equiv=\"refresh\" content=\"2; URL=" + uri.toString() + "\">\n";
+      html += "<meta name=\"keywords\" content=\"automatic redirection\">\n";
+      html += "</head>\n<body>\n";
+      html += "<p>If your browser doesn't redirect you to the editor go there within a few seconds,";
+      html += "please <a href=\"" + uri.toString() + "\">click here</a>.\n";
+      html += "</p></body>\n</html>\n";
+      return Response.ok(html).build();
     } catch (URISyntaxException ex) {
       logger.error(null, ex);
     }
