@@ -23,7 +23,7 @@ package org.opencastproject.pm.impl.persistence;
 
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
-//import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseException;
+import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseException;
 import org.opencastproject.security.api.JaxbOrganization;
 import org.opencastproject.security.api.JaxbRole;
 import org.opencastproject.security.api.JaxbUser;
@@ -31,7 +31,7 @@ import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.User;
 import org.opencastproject.security.api.UserProvider;
 import org.opencastproject.util.data.Function2;
-//import org.opencastproject.util.data.Monadics;
+import org.opencastproject.util.data.Monadics;
 
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-//import java.util.List;
+import java.util.List;
 
 /**
  * A UserProvider that reads users from the participation management person table.
@@ -93,15 +93,13 @@ public class PersonUserProvider implements UserProvider {
   @Override
   @SuppressWarnings("unchecked")
   public Iterator<User> getUsers() {
-  // disable user Provider result;
-    return Collections.EMPTY_LIST.iterator();
-//    try {
-//      return Monadics.mlist(database.getPersons())
-//              .map(toUser.curry(JaxbOrganization.fromOrganization(securityService.getOrganization()))).value()
-//              .iterator();
-//    } catch (ParticipationManagementDatabaseException e) {
-//      return Collections.EMPTY_LIST.iterator();
-//    }
+    try {
+      return Monadics.mlist(database.getPersons())
+              .map(toUser.curry(JaxbOrganization.fromOrganization(securityService.getOrganization()))).value()
+              .iterator();
+    } catch (ParticipationManagementDatabaseException e) {
+      return Collections.EMPTY_LIST.iterator();
+    }
   }
 
   @Override
@@ -116,13 +114,11 @@ public class PersonUserProvider implements UserProvider {
 
   @Override
   public long countUsers() {
-    // disable user Provider result;
-    return 0;
-//    try {
-//      return database.countPersons();
-//    } catch (ParticipationManagementDatabaseException e) {
-//      return 0;
-//    }
+    try {
+      return database.countPersons();
+    } catch (ParticipationManagementDatabaseException e) {
+      return 0;
+    }
   }
 
   @Override
@@ -133,15 +129,13 @@ public class PersonUserProvider implements UserProvider {
   @Override
   @SuppressWarnings("unchecked")
   public Iterator<User> findUsers(String query, int offset, int limit) {
-// disable user Provider result;
+    try {
+      List<Person> persons = database.findPersons(query, offset, limit);
+      return Monadics.mlist(persons)
+              .map(toUser.curry(JaxbOrganization.fromOrganization(securityService.getOrganization()))).iterator();
+    } catch (ParticipationManagementDatabaseException e) {
       return Collections.EMPTY_LIST.iterator();
-//    try {
-//      List<Person> persons = database.findPersons(query, offset, limit);
-//      return Monadics.mlist(persons)
-//              .map(toUser.curry(JaxbOrganization.fromOrganization(securityService.getOrganization()))).iterator();
-//    } catch (ParticipationManagementDatabaseException e) {
-//      return Collections.EMPTY_LIST.iterator();
-//    }
+    }
 
   }
 

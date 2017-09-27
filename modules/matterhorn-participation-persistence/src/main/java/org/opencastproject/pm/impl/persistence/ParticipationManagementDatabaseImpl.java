@@ -105,9 +105,8 @@ public class ParticipationManagementDatabaseImpl implements ParticipationManagem
    */
   public void activate(ComponentContext cc) {
      logger.info("Activating persistence manager for participation management");
-//    emf = persistenceProvider.createEntityManagerFactory(PERSISTENCE_UNIT, persistenceProperties);
   }
-;
+
   /** OSGi DI */
   public void setEntityManagerFactory(EntityManagerFactory emf) {
     this.emf = emf;
@@ -689,7 +688,6 @@ public class ParticipationManagementDatabaseImpl implements ParticipationManagem
     }
   }
 
-//  @Override
   @SuppressWarnings("unchecked")
   public List<Message> getMessagesBySeriesId(String seriesId) throws ParticipationManagementDatabaseException {
     EntityManager em = null;

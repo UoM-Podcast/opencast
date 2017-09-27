@@ -2,7 +2,8 @@
 <scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
                name="org.opencastproject.pm.impl.persistence.PersonUserProvider"
                immediate="true"
-               activate="activate">
+               activate="activate"
+               enabled="false">
   <implementation class="org.opencastproject.pm.impl.persistence.PersonUserProvider" />
   <property name="service.description" value="Participation Management Person User Provider" />
   <service>

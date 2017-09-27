@@ -27,12 +27,12 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.opencastproject.pm.api.Period.period;
 import static org.opencastproject.pm.api.Person.person;
-//import static org.opencastproject.pm.impl.persistence.ParticipationManagementPersistenceUtil.partialize;
-//import static org.opencastproject.pm.impl.persistence.ParticipationManagementPersistenceUtil.quarterBeginnings;
+import static org.opencastproject.pm.impl.persistence.ParticipationManagementPersistenceUtil.partialize;
+import static org.opencastproject.pm.impl.persistence.ParticipationManagementPersistenceUtil.quarterBeginnings;
 import static org.opencastproject.util.data.Collections.nil;
-//import static org.opencastproject.util.data.Monadics.mlist;
+import static org.opencastproject.util.data.Monadics.mlist;
 import static org.opencastproject.util.data.Option.none;
-//import static org.opencastproject.util.data.Option.option;
+import static org.opencastproject.util.data.Option.option;
 import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.persistence.PersistenceUtil.newTestEntityManagerFactory;
 
@@ -66,12 +66,12 @@ import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.User;
 import org.opencastproject.security.api.UserDirectoryService;
 import org.opencastproject.util.NotFoundException;
-//import org.opencastproject.util.data.Function2;
+import org.opencastproject.util.data.Function2;
 import org.opencastproject.util.data.Option;
 
 import org.easymock.EasyMock;
 import org.joda.time.DateTime;
-//import org.joda.time.Partial;
+import org.joda.time.Partial;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -185,29 +185,29 @@ public class ParticipationManagementDatabaseImplTest {
       assertEquals(3, pmDB.countMessagesSent());
       assertEquals(2, pmDB.countDailyMessagesSent());
       assertEquals(1, pmDB.countMessageErrors());
-//      assertTrue(ParticipationManagementPersistenceUtil.find(option(msg1.getId()), em, MessageDto.class).isSome());
-//      assertTrue(ParticipationManagementPersistenceUtil.find(option(msg2.getId()), em, MessageDto.class).isSome());
-//      assertTrue(ParticipationManagementPersistenceUtil.find(option(msg3.getId()), em, MessageDto.class).isSome());
+      assertTrue(ParticipationManagementPersistenceUtil.find(option(msg1.getId()), em, MessageDto.class).isSome());
+      assertTrue(ParticipationManagementPersistenceUtil.find(option(msg2.getId()), em, MessageDto.class).isSome());
+      assertTrue(ParticipationManagementPersistenceUtil.find(option(msg3.getId()), em, MessageDto.class).isSome());
     } catch (ParticipationManagementDatabaseException e) {
       fail("Not able to get the message: " + e.getMessage());
     }
 
     // Update
-//    try {
-//      msg2.addError(errors.get(0));
-//      msg2 = pmDB.updateMessage(msg2);
-//      assertEquals(2, pmDB.countMessageErrors());
-//      Option<MessageDto> foundMsg = ParticipationManagementPersistenceUtil.find(option(msg2.getId()), em,
-//              MessageDto.class);
-//      if (foundMsg.isSome()) {
-//        assertEquals(1, foundMsg.get().getErrors().size());
-//        assertEquals(msg2.getErrors().get(0), foundMsg.get().getErrors().get(0).toError());
-//      } else {
-//        fail("Update message not found!");
-//      }
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Not able to update a message signature entity: " + e.getMessage());
-//    }
+    try {
+      msg2.addError(errors.get(0));
+      msg2 = pmDB.updateMessage(msg2);
+      assertEquals(2, pmDB.countMessageErrors());
+      Option<MessageDto> foundMsg = ParticipationManagementPersistenceUtil.find(option(msg2.getId()), em,
+              MessageDto.class);
+      if (foundMsg.isSome()) {
+        assertEquals(1, foundMsg.get().getErrors().size());
+        assertEquals(msg2.getErrors().get(0), foundMsg.get().getErrors().get(0).toError());
+      } else {
+        fail("Update message not found!");
+      }
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Not able to update a message signature entity: " + e.getMessage());
+    }
   }
 
   @Test
@@ -358,17 +358,16 @@ public class ParticipationManagementDatabaseImplTest {
       fail("Unable to get the recordings: " + e.getMessage());
     }
 
-//    try {
-//      RecordingQuery query = RecordingQuery.createWithoutDeleted().withCourse(recording.getCourse().get())
-//              .withStartDateRange(recording.getStart()).withEndDateRange(recording.getStop()).withoutBlacklisted()
-//              .withFullText("ula").withStaff(recording.getStaff().toArray(new Person[recording.getStaff().size()]))
-//              // .withAssistedStudents()
-//              .withParticipation(recording.getParticipation().toArray(new Person[recording.getParticipation().size()]));
-//      List<Recording> recordings = pmDB.findRecordings(query);
-//      assertEquals(1, recordings.size());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Unable to get the recordings: " + e.getMessage());
-//    }
+    try {
+      RecordingQuery query = RecordingQuery.createWithoutDeleted().withCourse(recording.getCourse().get())
+              .withStartDateRange(recording.getStart()).withEndDateRange(recording.getStop()).withoutBlacklisted()
+              .withFullText("ula").withStaff(recording.getStaff().toArray(new Person[recording.getStaff().size()]))
+              .withParticipation(recording.getParticipation().toArray(new Person[recording.getParticipation().size()]));
+      List<Recording> recordings = pmDB.findRecordings(query);
+      assertEquals(1, recordings.size());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Unable to get the recordings: " + e.getMessage());
+    }
   }
 
   @Ignore
@@ -704,19 +703,19 @@ public class ParticipationManagementDatabaseImplTest {
     }
   }
 
-//  private DateTime getDateForQuarter() {
-//    final DateTime today = new DateTime().withTimeAtStartOfDay();
-//    final Partial partialToday = partialize(today);
-//    final DateTime quarterBeginning = mlist(quarterBeginnings).foldl(quarterBeginnings.get(0),
-//            new Function2<Partial, Partial, Partial>() {
-//              @Override
-//              public Partial apply(Partial sum, Partial quarterBeginning) {
-//                return partialToday.isAfter(quarterBeginning) ? quarterBeginning : sum;
-//              }
-//            }).toDateTime(today);
-//
-//    return quarterBeginning;
-//  }
+  private DateTime getDateForQuarter() {
+    final DateTime today = new DateTime().withTimeAtStartOfDay();
+    final Partial partialToday = partialize(today);
+    final DateTime quarterBeginning = mlist(quarterBeginnings).foldl(quarterBeginnings.get(0),
+            new Function2<Partial, Partial, Partial>() {
+              @Override
+              public Partial apply(Partial sum, Partial quarterBeginning) {
+                return partialToday.isAfter(quarterBeginning) ? quarterBeginning : sum;
+              }
+            }).toDateTime(today);
+
+    return quarterBeginning;
+  }
 
   private Blacklist createRoomBlacklist() {
     Room room = new Room("Auditorium");
@@ -791,227 +790,227 @@ public class ParticipationManagementDatabaseImplTest {
     return message;
   }
 
-//  @Test
-//  public void testMessageCountQueries() {
-//    User user = new JaxbUser("test@email.ch", null, "teste", "test@email.ch", "test", new DefaultOrganization(),
-//            new HashSet<JaxbRole>());
-//
-//    Person person = Person.fromUser(user);
-//    DateTime today = new DateTime();
-//    DateTime startQuarter = getDateForQuarter().plusDays(1);
-//
-//    MessageTemplate tmplInvitation = new MessageTemplate("Invitation", user, "test", "test");
-//    MessageSignature messageSignature = MessageSignature.messageSignature("Test", user,
-//            EmailAddress.emailAddress(user.getEmail(), user.getName()), "Test signature");
-//
-//    Message msg = createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
-//    createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
-//    createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
-//    createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
-//    createAndPersistMessage(person, tmplInvitation, messageSignature, option(startQuarter.toDate()));
-//    createAndPersistMessage(person, tmplInvitation, messageSignature, option(startQuarter.toDate()));
-//
-//    msg.addError(new Error("Test error", "Simple error for tests", "unit tests"));
-//    try {
-//      pmDB.updateMessage(msg);
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during message update: " + e.getMessage());
-//    }
-//
-//    // Count all messages
-//    try {
-//      assertEquals(6, pmDB.countMessagesSent());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of message count query");
-//    }
-//
-//    // Count daily messages
-//    try {
-//      int dailySum = 4;
-//      if (today.getDayOfYear() == startQuarter.getDayOfYear())
-//        dailySum += 2;
-//      assertEquals(dailySum, pmDB.countDailyMessagesSent());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of message count query:" + e.getMessage());
-//    }
-//
-//    // Count messages sent for this quarter
-//    try {
-//      assertTrue(2 <= pmDB.countQuarterMessagesSent());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of message count query:" + e.getMessage());
-//    }
-//
-//    // Count messages with error
-//    try {
-//      assertEquals(1, pmDB.countMessageErrors());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of message count query:" + e.getMessage());
-//    }
-//  }
+  @Test
+  public void testMessageCountQueries() {
+    User user = new JaxbUser("test@email.ch", null, "teste", "test@email.ch", "test", new DefaultOrganization(),
+            new HashSet<JaxbRole>());
 
-//  @Test
-//  public void testMessageBySeries() {
-//    Recording recording = createRecording();
-//
-//    User user = new JaxbUser("test@email.ch", null, "teste", "test@email.ch", "test", new DefaultOrganization(),
-//            new HashSet<JaxbRole>());
-//
-//    Person person = Person.fromUser(user);
-//    DateTime today = new DateTime();
-//    DateTime startQuarter = getDateForQuarter().plusDays(1);
-//
-//    MessageTemplate tmplInvitation = new MessageTemplate("Invitation", user, "test", "test");
-//    MessageSignature messageSignature = MessageSignature.messageSignature("Test", user,
-//            EmailAddress.emailAddress(user.getEmail(), user.getName()), "Test signature");
-//
-//    Message msg = createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
-//    recording.addMessage(msg);
-//    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate())));
-//    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate())));
-//    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate())));
-//    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature,
-//            option(startQuarter.toDate())));
-//    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature,
-//            option(startQuarter.toDate())));
-//
-//    msg.addError(new Error("Test error", "Simple error for tests", "unit tests"));
-//    try {
-//      pmDB.updateRecording(recording);
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during recording update: " + e.getMessage());
-//    }
-//
-//    try {
-//      List<Message> messages = pmDB.getMessagesBySeriesId("uui");
-//      assertEquals(0, messages.size());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of message by series query:" + e.getMessage());
-//    }
-//
-//    try {
-//      List<Message> messages = pmDB.getMessagesBySeriesId("uuid");
-//      assertEquals(6, messages.size());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of message by series query:" + e.getMessage());
-//    }
-//  }
+    Person person = Person.fromUser(user);
+    DateTime today = new DateTime();
+    DateTime startQuarter = getDateForQuarter().plusDays(1);
 
-//  @Test
-//  public void testRecordingCountQueries() {
-//    DateTime today = new DateTime();
-//    DateTime startQuarter = getDateForQuarter();
-//    Recording rec1 = createRecording();
-//    Recording rec2 = createRecording();
-//    Recording rec3 = createRecording();
-//    Recording rec4 = createRecording();
-//    rec1.setStart(today.plusMinutes(1).toDate());
-//    rec1.setStop(today.plusMinutes(2).toDate());
-//    rec1.setReviewDate(some(today.toDate()));
-//    rec2.setStart(today.plusMinutes(3).toDate());
-//    rec2.setStop(today.plusMinutes(4).toDate());
-//    rec2.setReviewDate(some(today.toDate()));
-//    rec3.setStart(today.plusMinutes(5).toDate());
-//    rec3.setStop(today.plusMinutes(6).toDate());
-//    rec3.setReviewDate(some(today.toDate()));
-//    rec4.setStart(startQuarter.plusMinutes(7).toDate());
-//    rec4.setStop(startQuarter.plusMinutes(8).toDate());
-//    rec4.setReviewDate(some(startQuarter.plusDays(1).toDate()));
-//
-//    try {
-//      rec1 = pmDB.updateRecording(rec1);
-//      rec2 = pmDB.updateRecording(rec2);
-//      rec3 = pmDB.updateRecording(rec3);
-//      rec4 = pmDB.updateRecording(rec4);
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Not able to save recording:" + e.getMessage());
-//    }
-//
-//    // Count all messages
-//    try {
-//      assertEquals(4, pmDB.countTotalRecordings());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//
-//    // Count daily messages
-//    try {
-//      rec4 = pmDB.updateRecording(rec4);
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Not able to save recording:" + e.getMessage());
-//    }
-//
-//    try {
-//      int dailySum = 3;
-//      if (today.getDayOfYear() == startQuarter.getDayOfYear())
-//        dailySum++;
-//      assertEquals(dailySum, pmDB.countDailyRecordings());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//
-//    // Count weekly recording
-//    try {
-//      int weeklySum = 3;
-//      if (today.getWeekOfWeekyear() == startQuarter.getWeekOfWeekyear())
-//        weeklySum++;
-//      assertEquals(weeklySum, pmDB.countWeekRecordings());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//
-//    // Count confirmed recording
-//    rec1.setReviewStatus(ReviewStatus.CONFIRMED);
-//    rec4.setReviewStatus(ReviewStatus.CONFIRMED);
-//    rec2.setReviewStatus(ReviewStatus.UNCONFIRMED);
-//    rec3.setReviewStatus(ReviewStatus.OPTED_OUT);
-//    try {
-//      rec1 = pmDB.updateRecording(rec1);
-//      rec4 = pmDB.updateRecording(rec4);
-//      rec2 = pmDB.updateRecording(rec2);
-//      rec3 = pmDB.updateRecording(rec3);
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Not able to save recording:" + e.getMessage());
-//    }
-//
-//    try {
-//      assertEquals(2, pmDB.countConfirmedResponses());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//
-//    // Count daily confirmed recording
-//    try {
-//      int dailySum = 1;
-//      if (today.getDayOfYear() == startQuarter.getDayOfYear()
-//              || startQuarter.plusDays(1).getDayOfYear() == today.getDayOfYear())
-//        dailySum++;
-//      assertEquals(dailySum, pmDB.countDailyConfirmedResponses());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//
-//    // Count confirmed recording for this quarter
-//    try {
-//      assertTrue(1 <= pmDB.countQuarterConfirmedResponses());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//
-//    // Count unconfirmed recording
-//    try {
-//      assertEquals(1, pmDB.countUnconfirmedResponses());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//
-//    // Count opted-out recording
-//    try {
-//      assertEquals(1, pmDB.countOptedOutResponses());
-//    } catch (ParticipationManagementDatabaseException e) {
-//      fail("Error during execution of recording count query");
-//    }
-//  }
+    MessageTemplate tmplInvitation = new MessageTemplate("Invitation", user, "test", "test");
+    MessageSignature messageSignature = MessageSignature.messageSignature("Test", user,
+            EmailAddress.emailAddress(user.getEmail(), user.getName()), "Test signature");
+
+    Message msg = createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
+    createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
+    createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
+    createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
+    createAndPersistMessage(person, tmplInvitation, messageSignature, option(startQuarter.toDate()));
+    createAndPersistMessage(person, tmplInvitation, messageSignature, option(startQuarter.toDate()));
+
+    msg.addError(new Error("Test error", "Simple error for tests", "unit tests"));
+    try {
+      pmDB.updateMessage(msg);
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during message update: " + e.getMessage());
+    }
+
+    // Count all messages
+    try {
+      assertEquals(6, pmDB.countMessagesSent());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of message count query");
+    }
+
+    // Count daily messages
+    try {
+      int dailySum = 4;
+      if (today.getDayOfYear() == startQuarter.getDayOfYear())
+        dailySum += 2;
+      assertEquals(dailySum, pmDB.countDailyMessagesSent());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of message count query:" + e.getMessage());
+    }
+
+    // Count messages sent for this quarter
+    try {
+      assertTrue(2 <= pmDB.countQuarterMessagesSent());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of message count query:" + e.getMessage());
+    }
+
+    // Count messages with error
+    try {
+      assertEquals(1, pmDB.countMessageErrors());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of message count query:" + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testMessageBySeries() {
+    Recording recording = createRecording();
+
+    User user = new JaxbUser("test@email.ch", null, "teste", "test@email.ch", "test", new DefaultOrganization(),
+            new HashSet<JaxbRole>());
+
+    Person person = Person.fromUser(user);
+    DateTime today = new DateTime();
+    DateTime startQuarter = getDateForQuarter().plusDays(1);
+
+    MessageTemplate tmplInvitation = new MessageTemplate("Invitation", user, "test", "test");
+    MessageSignature messageSignature = MessageSignature.messageSignature("Test", user,
+            EmailAddress.emailAddress(user.getEmail(), user.getName()), "Test signature");
+
+    Message msg = createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate()));
+    recording.addMessage(msg);
+    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate())));
+    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate())));
+    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature, option(today.toDate())));
+    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature,
+            option(startQuarter.toDate())));
+    recording.addMessage(createAndPersistMessage(person, tmplInvitation, messageSignature,
+            option(startQuarter.toDate())));
+
+    msg.addError(new Error("Test error", "Simple error for tests", "unit tests"));
+    try {
+      pmDB.updateRecording(recording);
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during recording update: " + e.getMessage());
+    }
+
+    try {
+      List<Message> messages = pmDB.getMessagesBySeriesId("uui");
+      assertEquals(0, messages.size());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of message by series query:" + e.getMessage());
+    }
+
+    try {
+      List<Message> messages = pmDB.getMessagesBySeriesId("uuid");
+      assertEquals(6, messages.size());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of message by series query:" + e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRecordingCountQueries() {
+    DateTime today = new DateTime();
+    DateTime startQuarter = getDateForQuarter();
+    Recording rec1 = createRecording();
+    Recording rec2 = createRecording();
+    Recording rec3 = createRecording();
+    Recording rec4 = createRecording();
+    rec1.setStart(today.plusMinutes(1).toDate());
+    rec1.setStop(today.plusMinutes(2).toDate());
+    rec1.setReviewDate(some(today.toDate()));
+    rec2.setStart(today.plusMinutes(3).toDate());
+    rec2.setStop(today.plusMinutes(4).toDate());
+    rec2.setReviewDate(some(today.toDate()));
+    rec3.setStart(today.plusMinutes(5).toDate());
+    rec3.setStop(today.plusMinutes(6).toDate());
+    rec3.setReviewDate(some(today.toDate()));
+    rec4.setStart(startQuarter.plusMinutes(7).toDate());
+    rec4.setStop(startQuarter.plusMinutes(8).toDate());
+    rec4.setReviewDate(some(startQuarter.plusDays(1).toDate()));
+
+    try {
+      rec1 = pmDB.updateRecording(rec1);
+      rec2 = pmDB.updateRecording(rec2);
+      rec3 = pmDB.updateRecording(rec3);
+      rec4 = pmDB.updateRecording(rec4);
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Not able to save recording:" + e.getMessage());
+    }
+
+    // Count all messages
+    try {
+      assertEquals(4, pmDB.countTotalRecordings());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+
+    // Count daily messages
+    try {
+      rec4 = pmDB.updateRecording(rec4);
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Not able to save recording:" + e.getMessage());
+    }
+
+    try {
+      int dailySum = 3;
+      if (today.getDayOfYear() == startQuarter.getDayOfYear())
+        dailySum++;
+      assertEquals(dailySum, pmDB.countDailyRecordings());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+
+    // Count weekly recording
+    try {
+      int weeklySum = 3;
+      if (today.getWeekOfWeekyear() == startQuarter.getWeekOfWeekyear())
+        weeklySum++;
+      assertEquals(weeklySum, pmDB.countWeekRecordings());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+
+    // Count confirmed recording
+    rec1.setReviewStatus(ReviewStatus.CONFIRMED);
+    rec4.setReviewStatus(ReviewStatus.CONFIRMED);
+    rec2.setReviewStatus(ReviewStatus.UNCONFIRMED);
+    rec3.setReviewStatus(ReviewStatus.OPTED_OUT);
+    try {
+      rec1 = pmDB.updateRecording(rec1);
+      rec4 = pmDB.updateRecording(rec4);
+      rec2 = pmDB.updateRecording(rec2);
+      rec3 = pmDB.updateRecording(rec3);
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Not able to save recording:" + e.getMessage());
+    }
+
+    try {
+      assertEquals(2, pmDB.countConfirmedResponses());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+
+    // Count daily confirmed recording
+    try {
+      int dailySum = 1;
+      if (today.getDayOfYear() == startQuarter.getDayOfYear()
+              || startQuarter.plusDays(1).getDayOfYear() == today.getDayOfYear())
+        dailySum++;
+      assertEquals(dailySum, pmDB.countDailyConfirmedResponses());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+
+    // Count confirmed recording for this quarter
+    try {
+      assertTrue(1 <= pmDB.countQuarterConfirmedResponses());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+
+    // Count unconfirmed recording
+    try {
+      assertEquals(1, pmDB.countUnconfirmedResponses());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+
+    // Count opted-out recording
+    try {
+      assertEquals(1, pmDB.countOptedOutResponses());
+    } catch (ParticipationManagementDatabaseException e) {
+      fail("Error during execution of recording count query");
+    }
+  }
 
   @Test
   public void testOptedOutCourse() {
@@ -1040,7 +1039,7 @@ public class ParticipationManagementDatabaseImplTest {
     course.setOptedOut(true);
 
     assertTrue(course.isOptedOut());
-//    assertEquals(Recording.RecordingStatus.OPTED_OUT, rec1.getRecordingStatus());
+    assertEquals(Recording.RecordingStatus.OPTED_OUT, rec1.getRecordingStatus(false));
 
     try {
       pmDB.updateCourse(course);
@@ -1055,7 +1054,7 @@ public class ParticipationManagementDatabaseImplTest {
       assertEquals(2, recordings.size());
 
       for (Recording r : recordings) {
-//        assertEquals(Recording.RecordingStatus.OPTED_OUT, r.getRecordingStatus());
+        assertEquals(Recording.RecordingStatus.OPTED_OUT, r.getRecordingStatus(false));
       }
     } catch (ParticipationManagementDatabaseException e) {
       fail("Not able to find the course recordings.");
@@ -1082,10 +1081,10 @@ public class ParticipationManagementDatabaseImplTest {
     }
 
     EntityManager em = pmDB.emf.createEntityManager();
-//    Option<CourseDto> courseOption = ParticipationManagementPersistenceUtil.findCourse(option(course.getId()), course.getCourseId(), course.getSeriesId(), em);
-//    CourseDto dto = courseOption.get();
-//    assertTrue(dto.getRequirements().contains(Course.REQUIREMENT_RECORD));
-//    assertTrue(dto.getRequirements().contains(Course.REQUIREMENT_CAPTIONS));
+    Option<CourseDto> courseOption = ParticipationManagementPersistenceUtil.findCourse(option(course.getId()), course.getCourseId(), course.getSeriesId(), em);
+    CourseDto dto = courseOption.get();
+    assertTrue(dto.getRequirements().contains(Course.REQUIREMENT_RECORD));
+    assertTrue(dto.getRequirements().contains(Course.REQUIREMENT_CAPTIONS));
   }
 
 

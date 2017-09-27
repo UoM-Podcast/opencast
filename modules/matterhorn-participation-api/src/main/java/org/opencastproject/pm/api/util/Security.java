@@ -38,7 +38,7 @@ public final class Security {
 
   /**
    * Simple way of encoding a teacher e-mail address to
-   * 
+   *
    * @param args
    *          the commandline arguments
    */
