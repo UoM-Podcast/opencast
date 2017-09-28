@@ -20,15 +20,14 @@
  */
 package org.opencastproject.pm.ui.admin.components;
 
-import static org.opencastproject.pm.ui.common.util.UiUtil.dateTimeFormatSecond;
 import static org.opencastproject.pm.ui.common.util.UiUtil.hlayout;
 import static org.opencastproject.pm.ui.common.util.UiUtil.label;
-import static org.opencastproject.pm.ui.common.util.UiUtil.spacing;
 import static org.opencastproject.pm.ui.common.util.UiUtil.vlayout;
 import static org.opencastproject.util.data.Option.none;
 import static org.opencastproject.util.data.VCell.cell;
 
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
+import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.security.api.DefaultOrganization;
 import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
@@ -51,6 +50,7 @@ import com.vaadin.ui.VerticalLayout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -58,7 +58,7 @@ import java.util.concurrent.Executors;
 public abstract class AbstractSummaryComponent extends CustomComponent {
 
   public static final AbstractSummaryComponent ZERO = new AbstractSummaryComponent("",
-          cell(none(ParticipationManagementDatabase.class)), null) {
+          cell(none(ParticipationManagementDatabase.class)), null, null) {
     @Override
     protected void updateValues(ParticipationManagementDatabase pm) throws Exception {
     }
@@ -73,6 +73,8 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
   private final HorizontalLayout buttonsContainer;
   private final Cell<Option<ParticipationManagementDatabase>> pm;
   private final SecurityService securityService;
+  protected final I18N i18n;
+  protected final SimpleDateFormat dateFormater;
 
   /**
    * Thread pool to run the background workers.
@@ -80,9 +82,12 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
   private final ExecutorService executorService = Executors.newCachedThreadPool();
 
   public AbstractSummaryComponent(String title, final Cell<Option<ParticipationManagementDatabase>> pm,
-          final SecurityService securityService) {
+          final SecurityService securityService, I18N i18n) {
     this.pm = pm;
     this.securityService = securityService;
+    this.i18n = i18n;
+    this.dateFormater = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss z");
+
     lastUpdated = new Label();
     buttonsContainer = hlayout();
     buttonsContainer.setSizeFull();
@@ -97,9 +102,11 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
     final Panel main = new Panel(title);
     main.setWidth(400, Unit.PIXELS);
     content = new VerticalLayout();
-    final VerticalLayout mainContent = vlayout(buttonsContainer, hlayout(spacing, label("Updated"), lastUpdated),
-            content);
-    main.setContent(mainContent);
+    if (i18n != null) {
+      final VerticalLayout mainContent = vlayout(buttonsContainer, valueDisplay(i18n.s("tab.dashboard.updated.title"), lastUpdated),
+              content);
+      main.setContent(mainContent);
+    }
     setCompositionRoot(main);
   }
 
@@ -132,7 +139,7 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
     return String.format("%,d", value);
   }
 
-  public void setContent(Component... cs) {
+  public final void setContent(Component... cs) {
     content.removeAllComponents();
     content.addComponents(cs);
   }
@@ -140,7 +147,7 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
   /**
    * Add a new button at the top of the summary component
    */
-  protected AbstractSummaryComponent addButton(Button button, Alignment alignement) {
+  protected final AbstractSummaryComponent addButton(Button button, Alignment alignement) {
     buttonsContainer.addComponentAsFirst(button);
     buttonsContainer.setComponentAlignment(button, alignement);
     return this;
@@ -194,7 +201,7 @@ public abstract class AbstractSummaryComponent extends CustomComponent {
                 invokeUIChange(new Effect0() {
                   @Override
                   protected void run() {
-                    lastUpdated.setValue(dateTimeFormatSecond().format(new Date()));
+                    lastUpdated.setValue(dateFormater.format(new Date()));
                   }
                 });
               }
