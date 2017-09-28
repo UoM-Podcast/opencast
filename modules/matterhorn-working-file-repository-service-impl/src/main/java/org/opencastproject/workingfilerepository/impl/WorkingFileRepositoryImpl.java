@@ -52,6 +52,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -261,32 +264,40 @@ public class WorkingFileRepositoryImpl implements WorkingFileRepository, PathMap
           throws IOException {
     checkPathSafe(mediaPackageID);
     checkPathSafe(mediaPackageElementID);
-    File f = null;
     File dir = getElementDirectory(mediaPackageID, mediaPackageElementID);
+
+    File[] filesToDelete = null;
+
     if (dir.exists()) {
-      // clear the directory
-      File[] filesToDelete = dir.listFiles();
-      if (filesToDelete != null && filesToDelete.length > 0) {
-        for (File fileToDelete : filesToDelete) {
-          if (!fileToDelete.delete()) {
-            throw new IllegalStateException("Unable to delete file: " + fileToDelete.getAbsolutePath());
-          }
-        }
-      }
+      filesToDelete = dir.listFiles();
     } else {
       logger.debug("Attempting to create a new directory at {}", dir.getAbsolutePath());
       FileUtils.forceMkdir(dir);
     }
-    f = new File(dir, PathSupport.toSafeName(filename));
-    logger.debug("Attempting to write a file to {}", f.getAbsolutePath());
+
+    // Destination files
+    File f = new File(dir, PathSupport.toSafeName(filename));
+    File md5File = getMd5File(f);
+
+    // Temporary files while adding
+    File fTmp = null;
+    File md5FileTmp = null;
+
+    if (f.exists()) {
+      logger.debug("Updating file {}", f.getAbsolutePath());
+    } else {
+      logger.debug("Adding file {}", f.getAbsolutePath());
+    }
+
     FileOutputStream out = null;
     try {
-      if (!f.exists()) {
-        f.createNewFile();
-      } else {
-        logger.debug("Attempting to overwrite the file at {}", f.getAbsolutePath());
-      }
-      out = new FileOutputStream(f);
+
+      fTmp = File.createTempFile(f.getName(), ".tmp", dir);
+      md5FileTmp = File.createTempFile(md5File.getName(), ".tmp", dir);
+
+      logger.trace("Writing to new temporary file {}", fTmp.getAbsolutePath());
+
+      out = new FileOutputStream(fTmp);
 
       // Wrap the input stream and copy the input stream to the file
       MessageDigest messageDigest = null;
@@ -301,24 +312,46 @@ public class WorkingFileRepositoryImpl implements WorkingFileRepository, PathMap
 
       // Store the hash
       String md5 = Checksum.convertToHex(dis.getMessageDigest().digest());
-      File md5File = null;
       try {
-        md5File = getMd5File(f);
-        FileUtils.writeStringToFile(md5File, md5);
+        FileUtils.writeStringToFile(md5FileTmp, md5);
       } catch (IOException e) {
-        FileUtils.deleteQuietly(md5File);
+        FileUtils.deleteQuietly(md5FileTmp);
         throw e;
       } finally {
         IOUtils.closeQuietly(dis);
       }
 
     } catch (IOException e) {
-      FileUtils.deleteDirectory(dir);
+      IOUtils.closeQuietly(out);
+      FileUtils.deleteQuietly(dir);
       throw e;
     } finally {
       IOUtils.closeQuietly(out);
       IOUtils.closeQuietly(in);
     }
+
+    // Rename temporary files to the final version atomically
+    try {
+      Files.move(md5FileTmp.toPath(), md5File.toPath(), StandardCopyOption.ATOMIC_MOVE);
+      Files.move(fTmp.toPath(), f.toPath(), StandardCopyOption.ATOMIC_MOVE);
+    } catch (AtomicMoveNotSupportedException e) {
+      logger.trace("Atomic move not supported by this filesystem: using replace instead");
+      Files.move(md5FileTmp.toPath(), md5File.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      Files.move(fTmp.toPath(), f.toPath(), StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    // Clean up any other files
+    if (filesToDelete != null && filesToDelete.length > 0) {
+      for (File fileToDelete : filesToDelete) {
+        if (!fileToDelete.equals(f) && !fileToDelete.equals(md5File)) {
+          logger.trace("delete {}", fileToDelete.getAbsolutePath());
+          if (!fileToDelete.delete()) {
+            throw new IllegalStateException("Unable to delete file: " + fileToDelete.getAbsolutePath());
+          }
+        }
+      }
+    }
+
     return getURI(mediaPackageID, mediaPackageElementID, filename);
   }
 
@@ -457,16 +490,20 @@ public class WorkingFileRepositoryImpl implements WorkingFileRepository, PathMap
     File directory = null;
     try {
       directory = getCollectionDirectory(collectionId, false);
-      if (directory == null)
-        throw new NotFoundException(fileName);
+      if (directory == null) {
+        //getCollectionDirectory returns null on a non-existant directory which is not being created...
+        directory = new File(PathSupport.concat(new String[] { rootDirectory, COLLECTION_PATH_PREFIX, collectionId }));
+        throw new NotFoundException(directory.getAbsolutePath());
+      }
     } catch (IOException e) {
       // can be ignored, since we don't want the directory to be created, so it will never happen
     }
     File sourceFile = new File(directory, PathSupport.toSafeName(fileName));
     File md5File = getMd5File(sourceFile);
-    if (!sourceFile.exists() || !md5File.exists()) {
-      throw new NotFoundException(fileName);
-    }
+    if (!sourceFile.exists())
+      throw new NotFoundException(sourceFile.getAbsolutePath());
+    if (!md5File.exists())
+      throw new NotFoundException(md5File.getAbsolutePath());
     return sourceFile;
   }
 
@@ -695,10 +732,10 @@ public class WorkingFileRepositoryImpl implements WorkingFileRepository, PathMap
    * {@inheritDoc}
    *
    * @see org.opencastproject.workingfilerepository.api.WorkingFileRepository#deleteFromCollection(java.lang.String,
-   * java.lang.String)
+   * java.lang.String,boolean)
    */
   @Override
-  public boolean deleteFromCollection(String collectionId, String fileName) throws IOException {
+  public boolean deleteFromCollection(String collectionId, String fileName, boolean removeCollection) throws IOException {
     File f = null;
     try {
       f = getFileFromCollection(collectionId, fileName);
@@ -717,17 +754,30 @@ public class WorkingFileRepositoryImpl implements WorkingFileRepository, PathMap
     if (!f.delete())
       throw new IOException(f + " cannot be deleted");
 
-    File parentDirectory = f.getParentFile();
-    if (parentDirectory.isDirectory() && parentDirectory.list().length == 0) {
-      logger.debug("Attempting to delete empty collection directory {}", parentDirectory.getAbsolutePath());
-      try {
-        FileUtils.forceDelete(parentDirectory);
-      } catch (IOException e) {
-        logger.warn("Unable to delete empty collection directory {}", parentDirectory.getAbsolutePath());
-        return false;
+    if (removeCollection) {
+      File parentDirectory = f.getParentFile();
+      if (parentDirectory.isDirectory() && parentDirectory.list().length == 0) {
+        logger.debug("Attempting to delete empty collection directory {}", parentDirectory.getAbsolutePath());
+        try {
+          FileUtils.forceDelete(parentDirectory);
+        } catch (IOException e) {
+          logger.warn("Unable to delete empty collection directory {}", parentDirectory.getAbsolutePath());
+          return false;
+        }
       }
     }
     return true;
+  }
+
+  /**
+   * {@inheritDoc}
+   *
+   * @see org.opencastproject.workingfilerepository.api.WorkingFileRepository#deleteFromCollection(java.lang.String,
+   * java.lang.String)
+   */
+  @Override
+  public boolean deleteFromCollection(String collectionId, String fileName) throws IOException {
+    return deleteFromCollection(collectionId, fileName, false);
   }
 
   /**

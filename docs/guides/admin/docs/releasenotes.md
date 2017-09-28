@@ -86,6 +86,36 @@ New Features and Improvements
   - **Library Update** - Many libraries have been updated to more recent versions. Most noteworthy, Karaf has
     been updated to version 4.0.8
 
+
+Additional Notes about 3.1
+--------------------------
+
+Opencast 3.1 fixes a critical security issue which allowed unauthenticated remote users to access the OSGI shell. This
+could lead to exposure of all bundle configuration values, potentially including some authentication data. This issue 
+was resolved by updating Karaf to 4.0.9 as part of MH-12295. The underlying issue in Karaf was filed as KARAF-4993.
+
+
+Additional Notes about 3.2
+--------------------------
+
+Opencast 3.2 contains minor bug fixes which were merged after the release of 3.1.
+
+
+Additional Notes about 3.3
+--------------------------
+
+Opencast 3.3 contains a number of bug fixes, as well as updated libraries, several of which contain security issues. The
+following is a non-exhaustive list of known issues fixed by this release.
+
+|commons-fileupload|cxf-core       |
+|------------------|---------------|
+| CVE-2013-0248    | CVE-2017-5656 |
+| CVE-2014-0050    | CVE-2017-5653 |
+| CVE-2016-3092    | CVE-2017-3156 |
+|                  | CVE-2016-8739 |
+|                  | CVE-2016-6812 |
+
+
 Release Schedule
 ----------------
 

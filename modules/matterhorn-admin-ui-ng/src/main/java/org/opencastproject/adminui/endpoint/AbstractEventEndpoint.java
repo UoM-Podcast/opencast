@@ -252,9 +252,6 @@ public abstract class AbstractEventEndpoint {
   /** Service url */
   protected String serviceUrl = null;
 
-  /** A parser for handling JSON documents inside the body of a request. **/
-  private final JSONParser parser = new JSONParser();
-
   /**
    * Activates REST service.
    *
@@ -328,6 +325,7 @@ public abstract class AbstractEventEndpoint {
       return Response.status(Response.Status.BAD_REQUEST).build();
     }
 
+    JSONParser parser = new JSONParser();
     JSONArray eventIdsJsonArray;
     try {
       eventIdsJsonArray = (JSONArray) parser.parse(eventIdsContent);
@@ -1455,6 +1453,7 @@ public abstract class AbstractEventEndpoint {
                   @RestResponse(description = "Returns a JSON object with the results for the different opted out or in elements such as ok, notFound or error.", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "Unable to parse boolean value to opt out, or parse JSON array of opt out events", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
   public Response changeOptOuts(@FormParam("optout") boolean optout, @FormParam("eventIds") String eventIds) {
+    JSONParser parser = new JSONParser();
     JSONArray eventIdsArray;
     try {
       eventIdsArray = (JSONArray) parser.parse(eventIds);
@@ -1573,6 +1572,7 @@ public abstract class AbstractEventEndpoint {
       return Response.status(Status.BAD_REQUEST).build();
     }
 
+    JSONParser parser = new JSONParser();
     JSONObject metadataJson;
     try {
       metadataJson = (JSONObject) parser.parse(metadata);
