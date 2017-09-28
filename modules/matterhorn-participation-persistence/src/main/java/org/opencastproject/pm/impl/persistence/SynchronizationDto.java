@@ -50,7 +50,7 @@ import javax.persistence.UniqueConstraint;
 @Entity(name = "Synchronization")
 @Table(name = "mh_pm_synchronization", uniqueConstraints = { @UniqueConstraint(columnNames = { "date" }) })
 @NamedQueries({
-        @NamedQuery(name = "Synchronization.findAll", query = "SELECT s FROM Synchronization s ORDER BY s.date"),
+        @NamedQuery(name = "Synchronization.findAll", query = "SELECT s FROM Synchronization s ORDER BY s.date DESC"),
         @NamedQuery(name = "Synchronization.findByDate", query = "SELECT s FROM Synchronization s WHERE s.date = :date"),
         @NamedQuery(name = "Synchronization.clear", query = "DELETE FROM Synchronization") })
 public class SynchronizationDto {
@@ -78,7 +78,7 @@ public class SynchronizationDto {
 
   /**
    * Creates a synchronization point without errors and synchronized recordings logs
-   * 
+   *
    * @param date
    *          the synchronization date
    */
@@ -88,7 +88,7 @@ public class SynchronizationDto {
 
   /**
    * Creates a synchronization point with errors
-   * 
+   *
    * @param date
    *          the synchronization date
    * @param errors
@@ -104,7 +104,7 @@ public class SynchronizationDto {
 
   /**
    * Returns the id of this entity
-   * 
+   *
    * @return the id as long
    */
   public long getId() {
@@ -113,7 +113,7 @@ public class SynchronizationDto {
 
   /**
    * Sets a synchronization error list.
-   * 
+   *
    * @param errors
    *          the error list
    */
@@ -123,7 +123,7 @@ public class SynchronizationDto {
 
   /**
    * Returns the error list
-   * 
+   *
    * @return the error list
    */
   public List<ErrorDto> getErrors() {
@@ -132,10 +132,10 @@ public class SynchronizationDto {
 
   /**
    * Add an error to the synchronization
-   * 
+   *
    * @param error
    *          the error to add to this synchronization
-   * 
+   *
    * @return true if this collection changed as a result of the call
    */
   public boolean addError(ErrorDto error) {
@@ -144,10 +144,10 @@ public class SynchronizationDto {
 
   /**
    * Remove an error from the synchronization
-   * 
+   *
    * @param error
    *          the error to remove from this synchronization
-   * 
+   *
    * @return true if this collection changed as a result of the call
    */
   public boolean removeError(ErrorDto error) {
@@ -156,7 +156,7 @@ public class SynchronizationDto {
 
   /**
    * Sets a synchronized recordings list.
-   * 
+   *
    * @param synchronizedRecordings
    *          the synchronized recordings list
    */
@@ -166,7 +166,7 @@ public class SynchronizationDto {
 
   /**
    * Returns the synchronized recordings list.
-   * 
+   *
    * @return the synchronized recordings list
    */
   public List<SynchronizedRecordingDto> getSynchronizedRecordings() {
@@ -175,10 +175,10 @@ public class SynchronizationDto {
 
   /**
    * Add an error to the synchronized recordings list.
-   * 
+   *
    * @param synchronizedRecording
    *          the synchronized recordings list.
-   * 
+   *
    * @return true if this collection changed as a result of the call
    */
   public boolean addSynchronizedRecording(SynchronizedRecordingDto synchronizedRecording) {
@@ -187,10 +187,10 @@ public class SynchronizationDto {
 
   /**
    * Remove an error from the synchronized recordings list.
-   * 
+   *
    * @param synchronizedRecording
    *          the synchronized recordings list.
-   * 
+   *
    * @return true if this collection changed as a result of the call
    */
   public boolean removeSynchronizedRecording(SynchronizedRecordingDto synchronizedRecording) {
@@ -199,7 +199,7 @@ public class SynchronizationDto {
 
   /**
    * Sets the synchronization date
-   * 
+   *
    * @param date
    */
   public void setDate(Date date) {
@@ -208,7 +208,7 @@ public class SynchronizationDto {
 
   /**
    * Returns the synchronization date
-   * 
+   *
    * @return the synchronization date
    */
   public Date getDate() {
@@ -217,7 +217,7 @@ public class SynchronizationDto {
 
   /**
    * Returns the business object of this synchronization
-   * 
+   *
    * @return the business object model of this synchronization
    */
   public Synchronization toSynchronization(UserDirectoryService userDirectoryService) {
