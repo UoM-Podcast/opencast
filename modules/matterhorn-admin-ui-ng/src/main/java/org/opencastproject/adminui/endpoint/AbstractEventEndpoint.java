@@ -861,8 +861,9 @@ public abstract class AbstractEventEndpoint {
     Opt<Event> optEvent = getIndexService().getEvent(eventId, getIndex());
     if (optEvent.isNone())
       return notFound("Cannot find an event with id '%s'.", eventId);
+    ArrayList<String> readOnlyFields = new ArrayList<String>();
     if (roSeries != null) {
-      EventUtils.addReadOnlyField("isPartOf");
+      readOnlyFields.add("isPartOf");
     }
     MetadataList metadataList = new MetadataList();
     List<EventCatalogUIAdapter> catalogUIAdapters = getIndexService().getEventCatalogUIAdapters();
@@ -875,8 +876,10 @@ public abstract class AbstractEventEndpoint {
         }
       }
     }
-    metadataList.add(getIndexService().getCommonEventCatalogUIAdapter(),
-            EventUtils.getEventMetadata(optEvent.get(), getIndexService().getCommonEventCatalogUIAdapter()));
+    EventCatalogUIAdapter uiAdapter = getIndexService().getCommonEventCatalogUIAdapter();
+    uiAdapter.setReadOnlyFields(readOnlyFields);
+    metadataList.add(uiAdapter,
+            EventUtils.getEventMetadata(optEvent.get(), uiAdapter));
 
     if (WorkflowInstance.WorkflowState.RUNNING.toString().equals(optEvent.get().getWorkflowState()))
       metadataList.setLocked(Locked.WORKFLOW_RUNNING);

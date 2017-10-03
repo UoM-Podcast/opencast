@@ -56,7 +56,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -73,6 +75,8 @@ public class ConfigurableEventDCCatalogUIAdapter implements EventCatalogUIAdapte
 
   /** The catalog UI adapter configuration */
   private CatalogUIAdapterConfiguration config;
+
+  private List<String> readOnlyFields = new ArrayList<String>();
 
   private Map<String, MetadataField<?>> dublinCoreProperties = new TreeMap<String, MetadataField<?>>();
   private MediaPackageElementFlavor flavor;
@@ -108,7 +112,11 @@ public class ConfigurableEventDCCatalogUIAdapter implements EventCatalogUIAdapte
     // Add all of the rest of the fields that didn't have values as empty.
     for (String field : emptyFields) {
       try {
-        dublinCoreMetadata.addField(dublinCoreProperties.get(field), "", getListProvidersService());
+        ListProvidersService listProvider = null;
+        if (!readOnlyFields.contains(field)) {
+          listProvider = getListProvidersService();
+        }
+        dublinCoreMetadata.addField(dublinCoreProperties.get(field), "", listProvider);
       } catch (Exception e) {
         logger.error("Skipping metadata field '{}' because of error: {}", field, ExceptionUtils.getStackTrace(e));
       }
@@ -229,6 +237,11 @@ public class ConfigurableEventDCCatalogUIAdapter implements EventCatalogUIAdapte
 
   protected Workspace getWorkspace() {
     return workspace;
+  }
+
+  @Override
+  public void setReadOnlyFields(List<String> readOnlyFields) {
+    this.readOnlyFields = readOnlyFields;
   }
 
 }
