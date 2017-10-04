@@ -852,14 +852,19 @@ public abstract class AbstractEventEndpoint {
   @Path("{eventId}/metadata.json")
   @Produces(MediaType.APPLICATION_JSON)
   @RestQuery(name = "geteventmetadata", description = "Returns all the data related to the metadata tab in the event details modal as JSON", returnDescription = "All the data related to the event metadata tab as JSON", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING) }, restParameters = {
+          @RestParameter(name = "roSeries", isRequired = false, description = "Return the series as info only so we don't need a list of all series.", type = BOOLEAN)},
+          reponses = {
                   @RestResponse(description = "Returns all the data related to the event metadata tab as JSON", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
-  public Response getEventMetadata(@PathParam("eventId") String eventId) throws Exception {
+  public Response getEventMetadata(@PathParam("eventId") String eventId, @QueryParam("roSeries") Boolean roSeries) throws Exception {
     Opt<Event> optEvent = getIndexService().getEvent(eventId, getIndex());
     if (optEvent.isNone())
       return notFound("Cannot find an event with id '%s'.", eventId);
-
+    ArrayList<String> readOnlyFields = new ArrayList<String>();
+    if (roSeries != null) {
+      readOnlyFields.add("isPartOf");
+    }
     MetadataList metadataList = new MetadataList();
     List<EventCatalogUIAdapter> catalogUIAdapters = getIndexService().getEventCatalogUIAdapters();
     catalogUIAdapters.remove(getIndexService().getCommonEventCatalogUIAdapter());
@@ -871,8 +876,10 @@ public abstract class AbstractEventEndpoint {
         }
       }
     }
-    metadataList.add(getIndexService().getCommonEventCatalogUIAdapter(),
-            EventUtils.getEventMetadata(optEvent.get(), getIndexService().getCommonEventCatalogUIAdapter()));
+    EventCatalogUIAdapter uiAdapter = getIndexService().getCommonEventCatalogUIAdapter();
+    uiAdapter.setReadOnlyFields(readOnlyFields);
+    metadataList.add(uiAdapter,
+            EventUtils.getEventMetadata(optEvent.get(), uiAdapter));
 
     if (WorkflowInstance.WorkflowState.RUNNING.toString().equals(optEvent.get().getWorkflowState()))
       metadataList.setLocked(Locked.WORKFLOW_RUNNING);
