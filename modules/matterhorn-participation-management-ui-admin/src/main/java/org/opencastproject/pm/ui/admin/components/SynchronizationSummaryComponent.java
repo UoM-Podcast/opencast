@@ -38,8 +38,6 @@ import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Label;
 
-import java.text.SimpleDateFormat;
-
 public class SynchronizationSummaryComponent extends AbstractSummaryComponent {
 
   public static final String TITLE = "Synchronization";
@@ -52,17 +50,14 @@ public class SynchronizationSummaryComponent extends AbstractSummaryComponent {
   private final Label newReservations;
   private final Label errors;
   private final Label blacklistWeek;
-  private final SimpleDateFormat dateFormater;
 
   private Option<Synchronization> currentSynchronization = Option.<Synchronization> none();
 
-  private I18N i18n;
-
   public SynchronizationSummaryComponent(final Cell<Option<ParticipationManagementDatabase>> pm,
           Cell<Option<ParticipationFeederService>> syllabusSyncService,
-          Cell<Option<ScheduleFeederService>> matterhornSyncService, I18N i18n,
-          final SecurityService securityService) {
-    super(TITLE, pm, securityService);
+          Cell<Option<ScheduleFeederService>> matterhornSyncService,
+          final SecurityService securityService, I18N i18n) {
+    super(TITLE, pm, securityService, i18n);
     this.pm = pm;
 
     this.syllabusSyncService = syllabusSyncService;
@@ -73,10 +68,6 @@ public class SynchronizationSummaryComponent extends AbstractSummaryComponent {
     this.newReservations = new Label();
     this.errors = new Label();
     this.blacklistWeek = new Label();
-
-    this.i18n = i18n;
-
-    this.dateFormater = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss z");
 
     addButton(createSyllabusSynchronizationButton(), Alignment.MIDDLE_RIGHT);
     addButton(createMatterhornSynchronizationButton(), Alignment.MIDDLE_RIGHT);

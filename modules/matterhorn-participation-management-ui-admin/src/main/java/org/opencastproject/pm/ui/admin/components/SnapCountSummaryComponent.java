@@ -39,7 +39,6 @@ import com.vaadin.ui.Alignment;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Label;
 
-import java.text.SimpleDateFormat;
 import java.util.HashMap;
 
 public class SnapCountSummaryComponent extends AbstractSummaryComponent {
@@ -60,19 +59,16 @@ public class SnapCountSummaryComponent extends AbstractSummaryComponent {
   private final Label unchangedRecordings;
   private final Label errors;
   private final Label blacklistWeek;
-  private final SimpleDateFormat dateFormater;
-  private HashMap<String,String> snapCountStats = new HashMap<String,String>();
+  private HashMap<String,String> snapCountStats = new HashMap<>();
 
   private Option<Synchronization> currentSynchronization = Option.<Synchronization> none();
-
-  private I18N i18n;
 
   public SnapCountSummaryComponent(final Cell<Option<ParticipationManagementDatabase>> pm,
           Cell<Option<ParticipationFeederService>> syllabusSyncService,
           Cell<Option<ScheduleFeederService>> matterhornSyncService,
-          Cell<Option<SnapCountService>> snapCountService, I18N i18n,
-          final SecurityService securityService) {
-    super(TITLE, pm, securityService);
+          Cell<Option<SnapCountService>> snapCountService,
+          final SecurityService securityService, I18N i18n) {
+    super(TITLE, pm, securityService, i18n);
     this.pm = pm;
 
     this.syllabusSyncService = syllabusSyncService;
@@ -89,11 +85,6 @@ public class SnapCountSummaryComponent extends AbstractSummaryComponent {
     this.updatedRecordings = new Label();
     this.errors = new Label();
     this.blacklistWeek = new Label();
-
-
-    this.i18n = i18n;
-
-    this.dateFormater = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss z");
 
     addButton(createSnapCountSynchronizationButton(), Alignment.MIDDLE_RIGHT);
     //addButton(createSyllabusSynchronizationButton(), Alignment.MIDDLE_RIGHT);
