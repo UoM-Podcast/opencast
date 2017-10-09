@@ -198,13 +198,27 @@ public final class WorkspaceImpl implements Workspace {
     // Test whether hard linking between working file repository and workspace is possible
     if (wfr instanceof PathMappable) {
       File srcFile = new File(wfrRoot, ".linktest");
-      File targetFile = new File(wsRoot, ".linktest");
       try {
         FileUtils.touch(srcFile);
       } catch (IOException e) {
         throw new IllegalStateException("The working file repository seems read-only", e);
       }
+
+      // Create a unique target file
+      File targetFile = null;
+      try {
+        targetFile = File.createTempFile(".linktest.", ".tmp", new File(wsRoot));
+        targetFile.delete();
+      } catch (IOException e) {
+        throw new IllegalStateException("The workspace seems read-only", e);
+      }
+
+      // Test hard linking
       linkingEnabled = FileSupport.supportsLinking(srcFile, targetFile);
+
+      // Clean up
+      FileUtils.deleteQuietly(targetFile);
+
       if (linkingEnabled)
         logger.info("Hard links between the working file repository and the workspace enabled");
       else {
@@ -281,6 +295,29 @@ public final class WorkspaceImpl implements Workspace {
     }
     // do HTTP transfer
     return locked(inWs, downloadIfNecessary(uri));
+  }
+
+  @Override
+  public File read(final URI uri) throws NotFoundException, IOException {
+
+    if (wfrRoot != null && wfrUrl != null) {
+      if (uri.toString().startsWith(wfrUrl)) {
+        final String localPath = uri.toString().substring(wfrUrl.length());
+        final File wfrCopy = workingFileRepositoryFile(localPath);
+        // does the file exist?
+        logger.trace("Looking up {} at {} for read", uri.toString(), wfrCopy.getAbsolutePath());
+        if (wfrCopy.isFile()) {
+          logger.debug("Getting {} directly from working file repository root at {} for read", uri,  wfrCopy.getAbsolutePath());
+          return new File(wfrCopy.getAbsolutePath());
+        } else {
+          logger.warn("The working file repository URI and paths don't match for read. Looking up {} at {} failed",
+                  uri.toString(), wfrCopy.getAbsolutePath());
+        }
+      }
+    }
+
+    // fall back to get() which should download the file into local workspace if necessary
+    return get(uri);
   }
 
   /** Copy or link <code>src</code> to <code>dst</code>. */
@@ -657,20 +694,27 @@ public final class WorkspaceImpl implements Workspace {
   }
 
   @Override
-  public void deleteFromCollection(String collectionId, String fileName) throws NotFoundException, IOException {
+  public void deleteFromCollection(String collectionId, String fileName, boolean removeCollection) throws NotFoundException, IOException {
     // local delete
     final File f = workspaceFile(WorkingFileRepository.COLLECTION_PATH_PREFIX, collectionId,
             PathSupport.toSafeName(fileName));
     FileUtils.deleteQuietly(f);
-    FileSupport.delete(f.getParentFile());
+    if (removeCollection) {
+      FileSupport.delete(f.getParentFile());
+    }
     // delete in WFR
     try {
-      wfr.deleteFromCollection(collectionId, fileName);
+      wfr.deleteFromCollection(collectionId, fileName, removeCollection);
     } catch (IllegalArgumentException e) {
       throw new NotFoundException(e);
     }
     // wait for WFR
     waitForResource(wfr.getCollectionURI(collectionId, fileName), SC_NOT_FOUND, "File %s does not disappear in WFR");
+  }
+
+  @Override
+  public void deleteFromCollection(String collectionId, String fileName) throws NotFoundException, IOException {
+    deleteFromCollection(collectionId, fileName, false);
   }
 
   /**

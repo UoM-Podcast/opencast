@@ -127,9 +127,6 @@ public class SeriesEndpoint {
 
   private static final Logger logger = LoggerFactory.getLogger(SeriesEndpoint.class);
 
-  /** The json parser */
-  private static final JSONParser parser = new JSONParser();
-
   /** Default server URL */
   protected String serverUrl = "http://localhost:8080";
 
@@ -466,8 +463,8 @@ public class SeriesEndpoint {
 
     // Admin UI only field
     MetadataField<String> createdBy = MetadataField.createTextMetadataField("createdBy", Opt.<String> none(),
-            "EVENTS.SERIES.DETAILS.METADATA.CREATED_BY", true, false, Opt.<Map<String, String>> none(),
-            Opt.<String> none(), Opt.some(CREATED_BY_UI_ORDER), Opt.<String> none());
+            "EVENTS.SERIES.DETAILS.METADATA.CREATED_BY", true, false, Opt.<Boolean> none(),
+            Opt.<Map<String, String>> none(), Opt.<String> none(), Opt.some(CREATED_BY_UI_ORDER), Opt.<String> none());
     createdBy.setValue(series.getCreator());
     metadata.addField(createdBy);
 
@@ -656,6 +653,7 @@ public class SeriesEndpoint {
                   @RestResponse(description = "The series' access policy is returned.", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "The specified series does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
   public Response getSeriesAcl(@PathParam("seriesId") String id) throws Exception {
+    JSONParser parser = new JSONParser();
     for (final Series series : indexService.getSeries(id, externalIndex)) {
       // The ACL is stored as JSON string in the index. Parse it and extract the part we want to have in the API.
       JSONObject acl = (JSONObject) parser.parse(series.getAccessPolicy());
@@ -808,6 +806,7 @@ public class SeriesEndpoint {
    */
   protected MetadataList deserializeMetadataList(String json) throws ParseException, NotFoundException {
     MetadataList metadataList = new MetadataList();
+    JSONParser parser = new JSONParser();
     JSONArray jsonCatalogs = (JSONArray) parser.parse(json);
     for (int i = 0; i < jsonCatalogs.size(); i++) {
       JSONObject catalog = (JSONObject) jsonCatalogs.get(i);
@@ -883,6 +882,7 @@ public class SeriesEndpoint {
     if (isBlank(aclJson))
       return R.badRequest("Missing form parameter 'acl'");
 
+    JSONParser parser = new JSONParser();
     JSONArray acl;
     try {
       acl = (JSONArray) parser.parse(aclJson);
@@ -918,6 +918,7 @@ public class SeriesEndpoint {
     if (StringUtils.isBlank(propertiesJson))
       return R.badRequest("Missing form parameter 'acl'");
 
+    JSONParser parser = new JSONParser();
     JSONObject props;
     try {
       props = (JSONObject) parser.parse(propertiesJson);

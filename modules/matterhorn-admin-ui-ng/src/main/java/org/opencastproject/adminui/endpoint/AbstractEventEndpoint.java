@@ -252,9 +252,6 @@ public abstract class AbstractEventEndpoint {
   /** Service url */
   protected String serviceUrl = null;
 
-  /** A parser for handling JSON documents inside the body of a request. **/
-  private final JSONParser parser = new JSONParser();
-
   /**
    * Activates REST service.
    *
@@ -328,6 +325,7 @@ public abstract class AbstractEventEndpoint {
       return Response.status(Response.Status.BAD_REQUEST).build();
     }
 
+    JSONParser parser = new JSONParser();
     JSONArray eventIdsJsonArray;
     try {
       eventIdsJsonArray = (JSONArray) parser.parse(eventIdsContent);
@@ -852,27 +850,32 @@ public abstract class AbstractEventEndpoint {
   @Path("{eventId}/metadata.json")
   @Produces(MediaType.APPLICATION_JSON)
   @RestQuery(name = "geteventmetadata", description = "Returns all the data related to the metadata tab in the event details modal as JSON", returnDescription = "All the data related to the event metadata tab as JSON", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING) }, restParameters = {
+          @RestParameter(name = "roSeries", isRequired = false, description = "Return the series as info only so we don't need a list of all series.", type = BOOLEAN)},
+          reponses = {
                   @RestResponse(description = "Returns all the data related to the event metadata tab as JSON", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
-  public Response getEventMetadata(@PathParam("eventId") String eventId) throws Exception {
+  public Response getEventMetadata(@PathParam("eventId") String eventId, @QueryParam("roSeries") Boolean roSeries) throws Exception {
     Opt<Event> optEvent = getIndexService().getEvent(eventId, getIndex());
     if (optEvent.isNone())
       return notFound("Cannot find an event with id '%s'.", eventId);
-
+    ArrayList<String> readOnlyFields = new ArrayList<String>();
+    if (roSeries != null) {
+      readOnlyFields.add("isPartOf");
+    }
     MetadataList metadataList = new MetadataList();
     List<EventCatalogUIAdapter> catalogUIAdapters = getIndexService().getEventCatalogUIAdapters();
     catalogUIAdapters.remove(getIndexService().getCommonEventCatalogUIAdapter());
     Opt<MediaPackage> optMediaPackage = getIndexService().getEventMediapackage(optEvent.get());
-    if (catalogUIAdapters.size() > 0) {
-      if (optMediaPackage.isSome()) {
-        for (EventCatalogUIAdapter catalogUIAdapter : catalogUIAdapters) {
-          metadataList.add(catalogUIAdapter, catalogUIAdapter.getFields(optMediaPackage.get()));
-        }
+    if (optMediaPackage.isSome()) {
+      for (EventCatalogUIAdapter catalogUIAdapter : catalogUIAdapters) {
+        metadataList.add(catalogUIAdapter, catalogUIAdapter.getFields(optMediaPackage.get()));
       }
     }
-    metadataList.add(getIndexService().getCommonEventCatalogUIAdapter(),
-            EventUtils.getEventMetadata(optEvent.get(), getIndexService().getCommonEventCatalogUIAdapter()));
+    EventCatalogUIAdapter uiAdapter = getIndexService().getCommonEventCatalogUIAdapter();
+    uiAdapter.setReadOnlyFields(readOnlyFields);
+    metadataList.add(uiAdapter,
+            EventUtils.getEventMetadata(optEvent.get(), uiAdapter));
 
     if (WorkflowInstance.WorkflowState.RUNNING.toString().equals(optEvent.get().getWorkflowState()))
       metadataList.setLocked(Locked.WORKFLOW_RUNNING);
@@ -1455,6 +1458,7 @@ public abstract class AbstractEventEndpoint {
                   @RestResponse(description = "Returns a JSON object with the results for the different opted out or in elements such as ok, notFound or error.", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "Unable to parse boolean value to opt out, or parse JSON array of opt out events", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
   public Response changeOptOuts(@FormParam("optout") boolean optout, @FormParam("eventIds") String eventIds) {
+    JSONParser parser = new JSONParser();
     JSONArray eventIdsArray;
     try {
       eventIdsArray = (JSONArray) parser.parse(eventIds);
@@ -1573,6 +1577,7 @@ public abstract class AbstractEventEndpoint {
       return Response.status(Status.BAD_REQUEST).build();
     }
 
+    JSONParser parser = new JSONParser();
     JSONObject metadataJson;
     try {
       metadataJson = (JSONObject) parser.parse(metadata);

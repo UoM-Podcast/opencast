@@ -517,10 +517,14 @@ define(['require', 'jquery', 'underscore', 'backbone', 'basil', 'bootbox', 'enga
         initControlsEvents();
 
         if (isDesktopMode) {
-          if (aspectRatioTriggered) {
-            calculateEmbedAspectRatios();
-            addEmbedRatioEvents();
+          if (!aspectRatioTriggered) {
+            aspectRatioWidth = 0;
+            aspectRatioHeight = 0;
+            aspectRatio = 0;
+            Engage.trigger(plugin.events.aspectRatioSet.getName());
           }
+          calculateEmbedAspectRatios();
+          addEmbedRatioEvents();
         }
         if (!isMobileMode) {
           if (tempVars.hasmultiplevideos) {
@@ -988,28 +992,21 @@ define(['require', 'jquery', 'underscore', 'backbone', 'basil', 'bootbox', 'enga
   }
 
   function calculateEmbedAspectRatios() {
-    if ((aspectRatioWidth > 0) && (aspectRatioHeight > 0)) {
-      embedWidthOne = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightOne);
-      embedWidthTwo = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightTwo);
-      embedWidthThree = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightThree);
-      embedWidthFour = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightFour);
-      embedWidthFive = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightFive);
-
-      $('#' + id_embed0).html('Embed ' + embedWidthOne + 'x' + embedHeightOne);
-      $('#' + id_embed1).html('Embed ' + embedWidthTwo + 'x' + embedHeightTwo);
-      $('#' + id_embed2).html('Embed ' + embedWidthThree + 'x' + embedHeightThree);
-      $('#' + id_embed3).html('Embed ' + embedWidthFour + 'x' + embedHeightFour);
-      $('#' + id_embed4).html('Embed ' + embedWidthFive + 'x' + embedHeightFive);
-    } else {
-      embedWidthOne = 310;
-      embedHeightOne = 70;
-
-      $('#' + id_embed0).html('Embed ' + embedWidthOne + 'x' + embedHeightOne);
-      Utils.removeParentIfElementExists(id_embed1);
-      Utils.removeParentIfElementExists(id_embed2);
-      Utils.removeParentIfElementExists(id_embed3);
-      Utils.removeParentIfElementExists(id_embed4);
+    if ((aspectRatioWidth <= 0) && (aspectRatioHeight <= 0)) {
+      aspectRatioWidth = 1280;
+      aspectRatioHeight = 720;
     }
+    embedWidthOne = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightOne);
+    embedWidthTwo = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightTwo);
+    embedWidthThree = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightThree);
+    embedWidthFour = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightFour);
+    embedWidthFive = Utils.getAspectRatioWidth(aspectRatioWidth, aspectRatioHeight, embedHeightFive);
+
+    $('#' + id_embed0).html('Embed ' + embedWidthOne + 'x' + embedHeightOne);
+    $('#' + id_embed1).html('Embed ' + embedWidthTwo + 'x' + embedHeightTwo);
+    $('#' + id_embed2).html('Embed ' + embedWidthThree + 'x' + embedHeightThree);
+    $('#' + id_embed3).html('Embed ' + embedWidthFour + 'x' + embedHeightFour);
+    $('#' + id_embed4).html('Embed ' + embedWidthFive + 'x' + embedHeightFive);
 
     $('#' + id_embed_button).removeClass('disabled');
   }
@@ -1200,7 +1197,7 @@ define(['require', 'jquery', 'underscore', 'backbone', 'basil', 'bootbox', 'enga
         if (Engage.model.get('videoDataModel') && ! inited) {
           initPlugin();
         }
-      }, 500);
+      }, 2000);
       Engage.log("Controls: videoDataModel not available at start.");
       return;
     }
@@ -1220,12 +1217,10 @@ define(['require', 'jquery', 'underscore', 'backbone', 'basil', 'bootbox', 'enga
         }
       });
 
-      if (isMobileMode) {
-        // retrigger the event in case the videoFormatsFound event from the video plugin
-        // was fired before the controls plugin was initialized
-        // to make sure the quality dropdown menu is shown
-        Engage.trigger(plugin.events.videoFormatsFound.getName(), true);
-      }
+      // retrigger the event in case the videoFormatsFound event from the video plugin
+      // was fired before the controls plugin was initialized
+      // to make sure the quality dropdown menu is shown
+      Engage.trigger(plugin.events.videoFormatsFound.getName(), true);
 
       Engage.on(plugin.events.numberOfVideodisplaysSet.getName(), function (number) {
         numberVideos = number;

@@ -26,6 +26,7 @@ import static java.lang.String.format;
 import static java.nio.file.Files.createLink;
 import static java.nio.file.Files.deleteIfExists;
 import static java.nio.file.Files.exists;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.Objects.requireNonNull;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -333,7 +334,11 @@ public final class FileSupport {
       } catch (IOException e) {
         logger.debug("Copy file because creating a hard-link at '{}' for existing file '{}' did not work: {}",
                 new Object[] { targetPath, sourcePath, ExceptionUtils.getStackTrace(e) });
-        Files.copy(sourcePath, targetPath);
+        if (overwrite) {
+          Files.copy(sourcePath, targetPath, REPLACE_EXISTING);
+        } else {
+          Files.copy(sourcePath, targetPath);
+        }
       }
     } else {
       throw new IOException(format("No file/directory found at %s", sourcePath));
@@ -491,10 +496,14 @@ public final class FileSupport {
       return false;
     if (f.isDirectory()) {
       String[] children = f.list();
-      if (children.length > 0 && !recurse)
-        return false;
-      for (String child : children) {
-        delete(new File(f, child), true);
+      if (children != null) {
+        if (children.length > 0 && !recurse)
+          return false;
+        for (String child : children) {
+          delete(new File(f, child), true);
+        }
+      } else {
+        logger.debug("Unexpected null listing files in {}", f.getAbsolutePath());
       }
     }
     return f.delete();

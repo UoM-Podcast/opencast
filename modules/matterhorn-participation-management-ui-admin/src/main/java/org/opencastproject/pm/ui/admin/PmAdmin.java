@@ -71,17 +71,17 @@ public class PmAdmin extends UI {
                     new SummaryComponentsPane(
                             new SnapCountSummaryComponent(dep.getParticipationManagementDatabase(),
                                     dep.getParticipationFeederService(),
-                                    dep.getScheduleFeederService(), dep.getSnapCountService(), i18n, dep.getSecurityService()),
+                                    dep.getScheduleFeederService(), dep.getSnapCountService(), dep.getSecurityService(), i18n),
                             AbstractSummaryComponent.ZERO,
                             new SynchronizationSummaryComponent(dep.getParticipationManagementDatabase(),
                                     dep.getParticipationFeederService(),
-                                    dep.getScheduleFeederService(), i18n, dep.getSecurityService()),
+                                    dep.getScheduleFeederService(), dep.getSecurityService(), i18n),
                             new RecordingSummaryComponent(dep.getParticipationManagementDatabase(), dep
-                                    .getSecurityService()),
+                                    .getSecurityService(), i18n),
                             new MessageSummaryComponent(dep.getParticipationManagementDatabase(), dep
-                                    .getSecurityService()),
+                                    .getSecurityService(), i18n),
                             new ResponseSummaryComponent(dep
-                                    .getParticipationManagementDatabase(), dep.getSecurityService()))),
+                                    .getParticipationManagementDatabase(), dep.getSecurityService(), i18n))),
             tuple(i18n.s("tab.email"), emailPane));
 
     mainLayout.addSelectedTabChangeListener(new TabSheet.SelectedTabChangeListener() {

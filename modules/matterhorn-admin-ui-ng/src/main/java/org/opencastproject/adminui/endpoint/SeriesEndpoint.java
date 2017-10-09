@@ -62,7 +62,6 @@ import org.opencastproject.index.service.catalog.adapter.MetadataList;
 import org.opencastproject.index.service.catalog.adapter.MetadataUtils;
 import org.opencastproject.index.service.exception.IndexServiceException;
 import org.opencastproject.index.service.impl.index.event.Event;
-import org.opencastproject.index.service.impl.index.event.Event.SchedulingStatus;
 import org.opencastproject.index.service.impl.index.event.EventSearchQuery;
 import org.opencastproject.index.service.impl.index.series.Series;
 import org.opencastproject.index.service.impl.index.series.SeriesIndexSchema;
@@ -167,9 +166,6 @@ public class SeriesEndpoint {
 
   /** Default server URL */
   private String serverUrl = "http://localhost:8080";
-
-  /** A parser for handling JSON documents inside the body of a request. **/
-  private final JSONParser parser = new JSONParser();
 
   /** OSGi callback for the series service. */
   public void setSeriesService(SeriesService seriesService) {
@@ -318,6 +314,7 @@ public class SeriesEndpoint {
                   @RestResponse(description = "Returns a JSON object with the results for the different opted out or in elements such as ok, notFound or error.", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "Unable to parse boolean value to opt out, or parse JSON array of opt out series", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
   public Response changeOptOuts(@FormParam("optout") boolean optout, @FormParam("seriesIds") String seriesIds) {
+    JSONParser parser = new JSONParser();
     JSONArray seriesIdsArray;
     try {
       seriesIdsArray = (JSONArray) parser.parse(seriesIds);
@@ -442,8 +439,8 @@ public class SeriesEndpoint {
 
     // Admin UI only field
     MetadataField<String> createdBy = MetadataField.createTextMetadataField("createdBy", Opt.<String> none(),
-            "EVENTS.SERIES.DETAILS.METADATA.CREATED_BY", true, false, Opt.<Map<String, String>> none(),
-            Opt.<String> none(), Opt.some(CREATED_BY_UI_ORDER), Opt.<String> none());
+            "EVENTS.SERIES.DETAILS.METADATA.CREATED_BY", true, false, Opt.<Boolean> none(),
+            Opt.<Map<String, String>> none(), Opt.<String> none(), Opt.some(CREATED_BY_UI_ORDER), Opt.<String> none());
     createdBy.setValue(series.getCreator());
     metadata.addField(createdBy);
 
@@ -571,6 +568,7 @@ public class SeriesEndpoint {
       return Response.status(Status.BAD_REQUEST).build();
     }
 
+    JSONParser parser = new JSONParser();
     JSONArray seriesIdsArray;
     try {
       seriesIdsArray = (JSONArray) parser.parse(seriesIdsContent);
@@ -613,6 +611,7 @@ public class SeriesEndpoint {
           @QueryParam("offset") int offset, @QueryParam("limit") int limit, @QueryParam("optedOut") Boolean optedOut)
           throws UnauthorizedException {
     try {
+      logger.debug("Requested series list");
       SeriesSearchQuery query = new SeriesSearchQuery(securityService.getOrganization().getId(),
               securityService.getUser());
       Option<String> optSort = Option.option(trimToNull(sort));
@@ -688,10 +687,13 @@ public class SeriesEndpoint {
       logger.trace("Using Query: " + query.toString());
 
       SearchResult<Series> result = searchIndex.getByQuery(query);
+      if (logger.isDebugEnabled()) {
+        logger.debug("Found {} results in {} ms", result.getDocumentCount(), result.getSearchTime());
+      }
 
-      List<JValue> series = new ArrayList<JValue>();
+      List<JValue> series = new ArrayList<>();
       for (SearchResultItem<Series> item : result.getItems()) {
-        List<JField> fields = new ArrayList<JField>();
+        List<JField> fields = new ArrayList<>();
         Series s = item.getSource();
         String sId = s.getIdentifier();
         fields.add(f("id", v(sId)));
@@ -717,9 +719,9 @@ public class SeriesEndpoint {
         if (StringUtils.isNotBlank(s.getManagedAcl())) {
           fields.add(f("managedAcl", v(s.getManagedAcl())));
         }
-        extendEventsStatusOverview(fields, s);
         series.add(j(fields));
       }
+      logger.debug("Request done");
 
       return okJsonList(series, offset, limit, result.getHitCount());
     } catch (Exception e) {
@@ -1014,34 +1016,6 @@ public class SeriesEndpoint {
     }
 
     return elementsCount > 0;
-  }
-
-  private void extendEventsStatusOverview(List<JField> fields, Series series) throws SearchIndexException {
-    EventSearchQuery query = new EventSearchQuery(securityService.getOrganization().getId(), securityService.getUser())
-            .withoutActions().withSeriesId(series.getIdentifier());
-    SearchResult<Event> result = searchIndex.getByQuery(query);
-
-    // collect recording statuses
-    int blacklisted = 0;
-    int optOut = 0;
-    int ready = 0;
-
-    for (SearchResultItem<Event> item : result.getItems()) {
-      Event event = item.getSource();
-      if (event.getSchedulingStatus() == null)
-        continue;
-
-      SchedulingStatus schedulingStatus = SchedulingStatus.valueOf(event.getSchedulingStatus());
-      if (SchedulingStatus.BLACKLISTED.equals(schedulingStatus)) {
-        blacklisted++;
-      } else if (series.isOptedOut() || SchedulingStatus.OPTED_OUT.equals(schedulingStatus)) {
-        optOut++;
-      } else {
-        ready++;
-      }
-    }
-
-    fields.add(f("events", j(f("BLACKLISTED", v(blacklisted)), f("OPTED_OUT", v(optOut)), f("READY", v(ready)))));
   }
 
   /**

@@ -7,7 +7,6 @@
     <feature>http</feature>
     <feature>http-whiteboard</feature>
     <feature>scr</feature>
-    <feature>webconsole</feature>
     <feature>cxf-jaxrs</feature>
     <feature>cxf-http-jetty</feature>
 
@@ -15,16 +14,13 @@
     <bundle start-level="55">mvn:org.apache.httpcomponents/httpclient-osgi/${httpcomponents-httpclient.version}</bundle>
     <bundle start-level="55">mvn:org.apache.httpcomponents/httpcore-osgi/${httpcomponents-httpcore.version}</bundle>
     <bundle start-level="55">mvn:org.apache.servicemix.bundles/org.apache.servicemix.bundles.commons-httpclient/3.1_7</bundle>
-    <bundle start-level="55">mvn:commons-codec/commons-codec/1.9</bundle>
-
-    <!-- Webconsole plugins -->
-    <bundle>mvn:org.apache.felix/org.apache.felix.webconsole.plugins.ds/2.0.2</bundle>
+    <bundle start-level="55">mvn:commons-codec/commons-codec/1.10</bundle>
 
     <!-- General specifications -->
     <bundle>mvn:javax.el/javax.el-api/3.0.0</bundle>
     <bundle>mvn:javax.servlet.jsp/javax.servlet.jsp-api/2.3.1</bundle>
     <bundle>mvn:org.apache.geronimo.specs/geronimo-jms_1.1_spec/1.1.1</bundle>
-    <bundle>mvn:org.apache.servicemix.specs/org.apache.servicemix.specs.jsr311-api-1.1.1/2.5.0</bundle>
+    <bundle>mvn:org.apache.servicemix.specs/org.apache.servicemix.specs.jsr311-api-1.1.1/2.8.0</bundle>
 
     <!-- JPA -->
     <feature>jndi</feature>
@@ -35,15 +31,15 @@
     <bundle>mvn:com.entwinemedia.common/functional/1.1.1</bundle>
     <bundle>mvn:com.fasterxml.jackson.core/jackson-core/${jackson.version}</bundle>
     <bundle>mvn:com.google.guava/guava/18.0</bundle>
-    <bundle>mvn:com.google.code.gson/gson/2.7</bundle>
+    <bundle>mvn:com.google.code.gson/gson/2.8.1</bundle>
     <bundle>mvn:commons-collections/commons-collections/3.2.2</bundle>
-    <bundle>mvn:commons-fileupload/commons-fileupload/1.2.1</bundle>
+    <bundle>mvn:commons-fileupload/commons-fileupload/1.3.3</bundle>
     <bundle>mvn:commons-io/commons-io/2.1</bundle>
     <!-- FIXME: commons-lang 2.6 only needed for the ical library in the matterhorn-commons bundle -->
     <bundle>mvn:commons-lang/commons-lang/2.6</bundle>
     <bundle>mvn:joda-time/joda-time/2.9.4</bundle>
     <bundle>mvn:org.aopalliance/com.springsource.org.aopalliance/1.0.0</bundle>
-    <bundle>mvn:org.apache.commons/com.springsource.org.apache.commons.beanutils/1.7.0</bundle>
+    <bundle>mvn:org.apache.commons/com.springsource.org.apache.commons.beanutils/1.8.3</bundle>
     <bundle>mvn:org.apache.commons/commons-compress/${commons-compress.version}</bundle>
     <bundle>mvn:org.apache.commons/commons-csv/1.0</bundle>
     <bundle>mvn:org.apache.commons/commons-lang3/3.4</bundle>
@@ -65,7 +61,10 @@
     <bundle>mvn:org.apache.tika/tika-core/1.1</bundle>
     <bundle>mvn:org.codehaus.jettison/jettison/1.3.1</bundle>
     <bundle>mvn:org.codehaus.groovy/groovy/2.4.3</bundle>
-    <bundle>mvn:org.jdom/com.springsource.org.jdom/1.0.0</bundle>
+    <!-- At least matterhorn-ingest-service-impl need JDOM in version 1.x -->
+    <!-- JDOM 1.x updates will be bug fixes as new features are gone to 2.x (see http://www.jdom.org/) -->
+    <bundle>mvn:org.jdom/com.springsource.org.jdom/1.1.0</bundle>
+    <!-- At least matterhorn-search-service-impl need JDOM in version 2.x -->
     <bundle>mvn:org.jdom/com.springsource.org.jdom/2.0.1</bundle>
     <bundle>mvn:org.opencastproject/android-mms/1.1</bundle>
     <bundle>wrap:mvn:com.googlecode.json-simple/json-simple/${json-simple.version}</bundle>
@@ -81,10 +80,10 @@
     <bundle>mvn:org.springframework.osgi/spring-osgi-core/1.2.1</bundle>
     <bundle>mvn:org.springframework.osgi/spring-osgi-extender/1.2.1</bundle>
     <bundle>mvn:org.springframework.osgi/spring-osgi-io/1.2.1</bundle>
-    <bundle>mvn:org.springframework.security/spring-security-config/3.1.0.RELEASE</bundle>
-    <bundle>mvn:org.springframework.security/spring-security-core/3.1.0.RELEASE</bundle>
-    <bundle>mvn:org.springframework.security/spring-security-ldap/3.1.0.RELEASE</bundle>
-    <bundle>mvn:org.springframework.security/spring-security-web/3.1.0.RELEASE</bundle>
+    <bundle>mvn:org.springframework.security/spring-security-config/3.1.4.RELEASE</bundle>
+    <bundle>mvn:org.springframework.security/spring-security-core/3.1.4.RELEASE</bundle>
+    <bundle>mvn:org.springframework.security/spring-security-ldap/3.1.4.RELEASE</bundle>
+    <bundle>mvn:org.springframework.security/spring-security-web/3.1.4.RELEASE</bundle>
     <bundle>mvn:org.springframework/spring-aop/3.1.4.RELEASE</bundle>
     <bundle>mvn:org.springframework/spring-asm/3.1.4.RELEASE</bundle>
     <bundle>mvn:org.springframework/spring-beans/3.1.4.RELEASE</bundle>
@@ -214,19 +213,22 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-email-template-service-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-core/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-controls/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-mhConnection/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-notifications/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-piwik/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-usertracking/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-description/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-description/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-shortcuts/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-slidetext/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-timeline-statistics/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-video-videojs/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-controls/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-mhConnection/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-notifications/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-piwik/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-usertracking/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-description/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-description/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-shortcuts/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-slidetext/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-timeline-statistics/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-video-videojs/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-ui/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-event-comment/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-impl/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-external-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-fileupload/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-incident-workflowoperation/${project.version}</bundle>
@@ -297,6 +299,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-aws-s3-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-download-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-streaming-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-inspection-service-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-scheduler-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-oaipmh-remote/${project.version}</bundle>
@@ -345,6 +348,9 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-email-template-service-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-email-template-service-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-event-comment/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-external-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-fileupload/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-incident-workflowoperation/${project.version}</bundle>
@@ -440,19 +446,22 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-email-template-service-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-core/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-controls/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-mhConnection/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-notifications/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-piwik/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-usertracking/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-description/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-description/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-shortcuts/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-slidetext/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-timeline-statistics/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-video-videojs/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-controls/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-mhConnection/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-notifications/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-piwik/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-usertracking/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-description/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-description/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-shortcuts/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-slidetext/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-timeline-statistics/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-video-videojs/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-ui/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-event-comment/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-external-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-fileupload/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-incident-workflowoperation/${project.version}</bundle>
@@ -541,6 +550,8 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-cover-image-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-dictionary-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-dictionary-regexp/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-inspection-service-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-inspection-service-ffmpeg/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-api/${project.version}</bundle>
@@ -603,6 +614,9 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-email-template-service-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-email-template-service-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-event-comment/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-impl/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-execute-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-external-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-fileupload/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-incident-workflowoperation/${project.version}</bundle>
@@ -675,17 +689,17 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-streaming/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-core/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-controls/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-mhConnection/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-notifications/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-piwik/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-usertracking/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-description/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-description/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-shortcuts/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-slidetext/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-timeline-statistics/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-video-videojs/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-controls/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-mhConnection/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-notifications/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-piwik/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-custom-usertracking/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-description/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-description/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-shortcuts/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-tab-slidetext/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-timeline-statistics/${project.version}</bundle>
+    <bundle start-level="83">mvn:org.opencastproject/matterhorn-engage-theodul-plugin-video-videojs/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-engage-ui/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-lti/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-messages/${project.version}</bundle>
@@ -718,14 +732,14 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-migration/${project.version}</bundle>
   </feature>
 
-  <feature name="opencast-contrib-cas">
-    <bundle>mvn:net.sourceforge.nekohtml/com.springsource.org.cyberneko.html/1.9.13</bundle>
-    <bundle>mvn:org.apache.xml/com.springsource.org.apache.xml.security/1.4.2</bundle>
-    <bundle>mvn:org.jasig.cas/com.springsource.org.jasig.cas.client/3.1.12</bundle>
-    <bundle>mvn:org.openid4java/com.springsource.org.openid4java/0.9.5</bundle>
-    <bundle>mvn:org.opensaml/com.springsource.org.opensaml/1.1.0</bundle>
-    <bundle>mvn:org.springframework.security/spring-security-cas/3.1.0.RELEASE</bundle>
-    <bundle>mvn:org.springframework.security/spring-security-openid/3.1.0.RELEASE</bundle>
+  <feature name="opencast-security-cas" version="0.0.0">
+    <bundle start-level="82">mvn:org.apache.xml/com.springsource.org.apache.xml.security/1.4.2</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-security-cas-client-wrapper/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.springframework.security/spring-security-core/3.1.4.RELEASE</bundle>
+    <bundle start-level="82">mvn:org.springframework.security/spring-security-web/3.1.4.RELEASE</bundle>
+    <bundle start-level="82">mvn:org.springframework.security/spring-security-cas/3.1.4.RELEASE</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-security-cas/${project.version}</bundle>
   </feature>
+
 
 </features>

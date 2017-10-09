@@ -24,6 +24,7 @@ package org.opencastproject.pm.ui.admin.components;
 import static org.opencastproject.pm.ui.common.util.UiUtil.vlayout;
 
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
+import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.util.data.Cell;
 import org.opencastproject.util.data.Effect0;
@@ -38,8 +39,8 @@ public class ResponseSummaryComponent extends AbstractSummaryComponent {
   private final Label unconfirmed;
 
   public ResponseSummaryComponent(final Cell<Option<ParticipationManagementDatabase>> pm,
-          final SecurityService securityService) {
-    super("Responses", pm, securityService);
+          final SecurityService securityService, I18N i18n) {
+    super("Responses", pm, securityService, i18n);
     this.total = new Label();
     this.today = new Label();
     this.quarter = new Label();

@@ -107,6 +107,9 @@ public class SeriesListProvider implements ResourceListProvider {
     List<DublinCoreCatalog> result = null;
 
     try {
+      if (!CONTRIBUTORS.equals(listName) && !ORGANIZERS.equals(listName) && !TITLE_EXTENDED.equals(listName)) {
+        return seriesService.getIdTitleMapOfAllSeries();
+      }
       result = seriesService.getSeries(q).getCatalogList();
     } catch (SeriesException e) {
       throw new ListProviderException("Error appends on the series service: " + e);
@@ -145,5 +148,10 @@ public class SeriesListProvider implements ResourceListProvider {
     }
 
     return series;
+  }
+
+  @Override
+  public boolean isTranslatable(String listName) {
+    return false;
   }
 }

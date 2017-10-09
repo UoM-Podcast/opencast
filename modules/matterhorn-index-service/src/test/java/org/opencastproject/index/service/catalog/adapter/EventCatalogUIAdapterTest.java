@@ -93,6 +93,9 @@ public class EventCatalogUIAdapterTest {
     EasyMock.expect(
             listProvidersService.getList(EasyMock.anyString(), EasyMock.anyObject(ResourceListQueryImpl.class),
                     EasyMock.anyObject(Organization.class), EasyMock.anyBoolean())).andReturn(collection).anyTimes();
+    EasyMock.expect(
+            listProvidersService.isTranslatable(EasyMock.anyString()))
+            .andThrow(new ListProviderException("not implemented")).anyTimes();
     EasyMock.replay(listProvidersService);
 
     eventProperties = new Properties();
@@ -105,7 +108,7 @@ public class EventCatalogUIAdapterTest {
     URI eventDublincoreURI = getClass().getResource("/catalog-adapter/event-dublincore.xml").toURI();
 
     workspace = EasyMock.createMock(Workspace.class);
-    EasyMock.expect(workspace.get(eventDublincoreURI)).andReturn(new File(eventDublincoreURI));
+    EasyMock.expect(workspace.read(eventDublincoreURI)).andReturn(new File(eventDublincoreURI));
     EasyMock.replay(workspace);
 
     Catalog eventCatalog = EasyMock.createMock(Catalog.class);
