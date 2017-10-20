@@ -208,7 +208,6 @@ angular.module('editNg.controllers')
 
                       $scope.metadata = EventMetadataResource.get({id: id}, function (metadata) {
                         var episodeCatalogIndex;
-                        var locationIndex = -1;
                         var hiddenarr = [];
                         angular.forEach(metadata.entries, function (catalog, index) {
                           if (catalog.flavor === mainCatalog) {
@@ -219,8 +218,6 @@ angular.module('editNg.controllers')
                             angular.forEach(catalog.fields, function (entry, fieldIndex) {
                               if (entry.id === 'title' && angular.isString(entry.value)) {
                                 $scope.titleParams = {resourceId: entry.value.substring(0, 70)};
-                              } else if (entry.id === 'location') {
-                                locationIndex = fieldIndex;
                               }
                               if (hiddenFields.indexOf(entry.id) > -1) {
                                 hiddenarr.push(fieldIndex);
@@ -235,14 +232,10 @@ angular.module('editNg.controllers')
                               entry.tabindex = tabindex++;
                             });
                             for (var i = hiddenarr.length; i > 0; i--) {
-                              catalog.fields.splice(hiddenarr[i-1], 1);
+                              catalog.fields.splice(hiddenarr[i - 1], 1);
                             }
                           }
                         });
-
-                        if (locationIndex > -1) {
-                          $scope.setCaptureAgents(locationIndex);
-                        }
                         if (angular.isDefined(episodeCatalogIndex)) {
                           metadata.entries.splice(episodeCatalogIndex, 1);
                         }
@@ -271,7 +264,6 @@ angular.module('editNg.controllers')
                       $scope.comments = CommentResource.query({resource: 'event', resourceId: id, type: 'comments'});
                     },
                     tzOffset = (new Date()).getTimezoneOffset() / -60;
-
 
             $scope.getMoreRoles = function (value) {
 

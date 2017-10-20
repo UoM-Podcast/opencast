@@ -166,6 +166,7 @@
      "TASK_NOT_CREATED": "The task could not be created",
      "VIDEO_CUT_NOT_SAVED": "The editing information could not be saved",
      "VIDEO_CUT_SAVED": "The editing information has been saved",
+     "VIDEO_CUT_SAVED_AUTO":"The editing information has been saved automatically",
      "VIDEO_CUT_PROCESSING": "The video is being processed…",
      "SERVER_UNRESPONSIVE": "Oops! The server seems to be unresponsive. Please try again later.",
      "SERVICE_UNAVAILABLE": "Oops! The server seems to be unresponsive. Please try again later.",

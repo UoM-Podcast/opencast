@@ -166,6 +166,7 @@
     "TASK_NOT_CREATED":"Der Task konnte nicht erstellt werden",
     "VIDEO_CUT_NOT_SAVED":"Die Bearbeitungsinformationen konnten nicht gespeichert werden",
     "VIDEO_CUT_SAVED":"Die Bearbeitungsinformationen wurden gespeichert",
+    "VIDEO_CUT_SAVED_AUTO":"Die Bearbeitungsinformationen wurden automatisch gespeichert",
     "VIDEO_CUT_PROCESSING":"Das Video wird verarbeitet…",
     "SERVER_UNRESPONSIVE":"Hoppla! Der Server scheint nicht zu reagieren. Bitte versuchen Sie es später erneut.",
     "SERVICE_UNAVAILABLE":"Hoppla! Der Server scheint nicht zu reagieren. Bitte versuchen Sie es später erneut.",
