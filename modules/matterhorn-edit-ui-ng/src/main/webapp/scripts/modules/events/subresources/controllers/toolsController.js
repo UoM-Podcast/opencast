@@ -22,8 +22,8 @@
 
 // Controller for all event screens.
 angular.module('editNg.controllers')
-        .controller('ToolsCtrl', ['$scope', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService',
-          function ($scope, $route, $location, $window, ToolsResource, Notifications, EventHelperService) {
+        .controller('ToolsCtrl', ['$scope', '$interval', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService',
+          function ($scope, $interval, $route, $location, $window, ToolsResource, Notifications, EventHelperService) {
 
             $scope.navigateTo = function (path) {
               // FIMXE When changing tabs, video playback breaks. Using playback
@@ -68,12 +68,19 @@ angular.module('editNg.controllers')
             $scope.player = {};
             $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'});
 
+            $scope.autosave = function () {
+              $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
+                Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO', 'video-tools');
+              });
+            };
+            $scope.stopTime = $interval($scope.autosave, 1740000);
+
             $scope.submitButton = false;
             $scope.save = function () {
               $scope.submitButton = true;
               $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
-                Notifications.add('success', 'VIDEO_CUT_SAVED');
+                Notifications.add('success', 'VIDEO_CUT_SAVED', 'video-tools');
                 $scope.navigateTo('events/' + $scope.resource + '/' +
                       $scope.id + '/tools/saved');
               }, function () {
@@ -86,7 +93,7 @@ angular.module('editNg.controllers')
 
               $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
-                Notifications.add('success', 'VIDEO_CUT_PROCESSING');
+                Notifications.add('success', 'VIDEO_CUT_PROCESSING', 'video-tools');
                 $scope.navigateTo('events/' + $scope.resource + '/' +
                       $scope.id + '/tools/submitted');
               }, function () {

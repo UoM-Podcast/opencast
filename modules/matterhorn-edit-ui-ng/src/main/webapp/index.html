@@ -54,24 +54,9 @@
     </header>
     <section ng-view class="main-content">
     </section>
-<!--    <div class="main-view" ng-controller="Notifications">
+    <div class="main-view" ng-controller="Notifications">
       <div data-edit-ng-notifications="" context="global"></div>
-    </div>-->
-<!--    <div class="main-view" ng-controller="ToolsCtrl">
-      <div ng-controller="VideoEditCtrl">
-        <div class="video-header">
-            <div class="main-video-details">
-                <h1 class="video-title">{{ video.title }}</h1>
-                <h4 class="video-details"><span class="video-details-date">{{ video.date | localizeDate : 'date' : 'short'}}</span>
-                  <span class="video-details-presenters">
-                      {{(video.presenters && video.presenters.length > 0)  ?  " - " + video.presenters.join(', ') : "" }}
-                  </span>
-                  <span class="video-details-series">{{(video.series && video.series.title) ? " - " + video.series.title : "" }}</span></h4>
-            </div>
-        </div>
-      </div>
-    </div>-->
-
+    </div>
     <footer id="main-footer" ng-controller="NavCtrl">
       <div class="default-footer">
         <div ng-if="version.version" class="meta">
