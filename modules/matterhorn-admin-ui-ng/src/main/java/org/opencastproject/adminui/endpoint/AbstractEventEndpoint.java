@@ -876,7 +876,9 @@ public abstract class AbstractEventEndpoint {
     uiAdapter.setReadOnlyFields(readOnlyFields);
     metadataList.add(uiAdapter,
             EventUtils.getEventMetadata(optEvent.get(), uiAdapter));
-
+    if (roSeries != null) {
+      uiAdapter.setReadOnlyFields(new ArrayList<String>());
+    }
     if (WorkflowInstance.WorkflowState.RUNNING.toString().equals(optEvent.get().getWorkflowState()))
       metadataList.setLocked(Locked.WORKFLOW_RUNNING);
 
