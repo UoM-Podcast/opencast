@@ -24,8 +24,6 @@ import org.opencastproject.mediapackage.Catalog;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 
-import java.util.List;
-
 /**
  * An interface class to support the creation of data providers.
  */
@@ -50,8 +48,6 @@ public interface EventCatalogUIAdapter {
    * @return All of the fields with empty values for populating a new object.
    */
   MetadataCollection getRawFields();
-
-  void setReadOnlyFields(List<String> readOnlyFields);
 
     /**
    * @return Get the field names and values for this catalog.
