@@ -195,7 +195,12 @@ public class AddEpisodeAclWorkflowOperationHandler extends AbstractWorkflowOpera
       List<DublinCoreValue> audience = episodeDublinCore.get(DublinCore.PROPERTY_AUDIENCE);
       if (!audience.isEmpty()) {
         for (DublinCoreValue aud : audience) {
-          aces.add(aud.getValue());
+          if (!isBlank(aud.getValue())) {
+            List<String> rolelist = asList(aud.getValue());
+            for (String role : rolelist) {
+              aces.add(role);
+            }
+          }
         }
       }
     }

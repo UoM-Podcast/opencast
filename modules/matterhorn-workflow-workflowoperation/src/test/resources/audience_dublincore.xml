@@ -19,7 +19,7 @@
     10.0000/5819
     </dcterms:identifier>
   <dcterms:audience>
-    role_1
+    role_1,role_2
   </dcterms:audience>
   <dcterms:modified xsi:type="dcterms:W3CDTF">
     2007-12-05

@@ -106,7 +106,7 @@ public class AddEpisodeAclWorkflowOperationHandlerTest {
     instance.setMediaPackage(mp);
 
     if (config) {
-      operation.setConfiguration(AddEpisodeAclWorkflowOperationHandler.LIST_OF_ROLES, "Role_2");
+      operation.setConfiguration(AddEpisodeAclWorkflowOperationHandler.LIST_OF_ROLES, "Role_3");
     }
 
     WorkflowOperationResult result = operationHandler.start(instance, null);
