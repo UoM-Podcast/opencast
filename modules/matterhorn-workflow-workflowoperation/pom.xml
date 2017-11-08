@@ -106,7 +106,8 @@
               OSGI-INF/operations/series.xml,
               OSGI-INF/operations/tag.xml,
               OSGI-INF/operations/tag-by-dcterm.xml,
-              OSGI-INF/operations/zip.xml
+              OSGI-INF/operations/zip.xml,
+              OSGI-INF/operations/add-episode-acl.xml
             </Service-Component>
           </instructions>
         </configuration>
