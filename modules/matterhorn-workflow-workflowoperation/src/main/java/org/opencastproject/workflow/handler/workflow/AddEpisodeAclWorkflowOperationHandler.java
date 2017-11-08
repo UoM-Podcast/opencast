@@ -162,7 +162,8 @@ public class AddEpisodeAclWorkflowOperationHandler extends AbstractWorkflowOpera
     // Add ACLcontrolList based on given configuration values
     if (!roleListFromConfiguration.isEmpty()) {
       for (String role : roleListFromConfiguration) {
-        AccessControlEntry access = new AccessControlEntry(role, ROLE_ACTION, ROLE_ALLOW);
+        //Roles to be in uppercase
+        AccessControlEntry access = new AccessControlEntry(role.toUpperCase(), ROLE_ACTION, ROLE_ALLOW);
         entries.add(access);
       }
     }
@@ -170,7 +171,8 @@ public class AddEpisodeAclWorkflowOperationHandler extends AbstractWorkflowOpera
     // Add ACLcontrolList based on episode
     if (!roleListFromEpisode.isEmpty()) {
       for (String role : roleListFromEpisode) {
-        AccessControlEntry access = new AccessControlEntry(role, ROLE_ACTION, ROLE_ALLOW);
+        // Roles to be in uppercase
+        AccessControlEntry access = new AccessControlEntry(role.toUpperCase(), ROLE_ACTION, ROLE_ALLOW);
         entries.add(access);
       }
     }
@@ -179,7 +181,7 @@ public class AddEpisodeAclWorkflowOperationHandler extends AbstractWorkflowOpera
     AccessControlList acl = new AccessControlList(entries);
     try {
       authorizationService.setAcl(mediaPackage, AclScope.Episode, acl);
-      logger.info("Episode ACLs added to mediapackage");
+      logger.info("Episode ACL added to mediapackage");
     } catch (Exception e) {
       logger.error("Unable to add Episode ACL: {}", ExceptionUtils.getStackTrace(e));
       throw new WorkflowOperationException(e);
