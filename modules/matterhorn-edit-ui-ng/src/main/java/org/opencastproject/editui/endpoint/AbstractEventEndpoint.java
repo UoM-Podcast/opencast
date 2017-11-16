@@ -155,7 +155,7 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestResponse(description = "Returns all the data related to the event metadata tab as JSON", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND)})
   public Response getEventMetadata(@PathParam("eventId") String eventId) {
-    return forwardRequest("/admin-ng/event/" + eventId + "/metadata.json?roSeries", "GET", null);
+    return forwardRequest("/admin-ng/event/" + eventId + "/metadata.json", "GET", null);
   }
 
   @PUT

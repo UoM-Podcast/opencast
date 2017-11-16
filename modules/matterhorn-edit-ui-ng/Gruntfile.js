@@ -47,10 +47,10 @@ module.exports = function (grunt) {
           livereload: '<%= connect.options.livereload %>'
         }
       },
-//      jsTest: {
-//        files: ['test/spec/{,*/}*.js'],
-//        tasks: ['newer:jshint:test', 'newer:jscs:test', 'karma']
-//      },
+      jsTest: {
+        files: ['test/spec/{,*/}*.js'],
+        tasks: ['newer:jshint:test', 'newer:jscs:test', 'karma']
+      },
       sass: {
         files: ['<%= yeoman.app %>/styles/**/*.{scss,sass}'],
         tasks: ['sass:server', 'postcss']
@@ -96,30 +96,27 @@ module.exports = function (grunt) {
               context: '/edit-ng',
               host: 'localhost',
               port: '<%= proxyPort %>',
-              https: false,
-              changeOrigin: true
+              https: false
            },
            {
               context: '/acl-manager',
               host: 'localhost',
               port: '<%= proxyPort %>',
-              https: false,
-              changeOrigin: true
+              https: false
           },
           {
               context: '/i18n',
               host: 'localhost',
               port: '<%= proxyPort %>',
-              https: false,
-              changeOrigin: true
+              https: false
           }]
       },
-//      test: {
-//        options: {
-//          port: 9001,
-//          middleware: staticMiddleware(grunt, appConfig.app)
-//        }
-//      },
+      test: {
+        options: {
+          port: 9001,
+          middleware: staticMiddleware(grunt, appConfig.app)
+        }
+      },
       dist: {
         options: {
           open: true,
@@ -140,12 +137,12 @@ module.exports = function (grunt) {
           'Gruntfile.js',
           '<%= yeoman.app %>/scripts/{,*/}*.js'
         ]
-//      },
-//      test: {
-//        options: {
-//          jshintrc: 'test/.jshintrc'
-//        },
-//        src: ['test/spec/{,*/}*.js']
+      },
+      test: {
+        options: {
+          jshintrc: 'test/.jshintrc'
+        },
+        src: ['test/spec/{,*/}*.js']
       }
     },
 
@@ -161,9 +158,9 @@ module.exports = function (grunt) {
           'Gruntfile.js',
           ['<%= yeoman.app %>/scripts/{,*/}*.js', '!<%= yeoman.app %>/scripts/lib/{,*/}*.js']
         ]
-//      },
-//      test: {
-//        src: ['test/spec/{,*/}*.js']
+      },
+      test: {
+        src: ['test/spec/{,*/}*.js']
       }
     },
 
@@ -216,22 +213,22 @@ module.exports = function (grunt) {
         src: ['<%= yeoman.app %>/index.html', '<%= yeoman.app %>/login.html'],
         ignorePath:  /\.\.\//
       },
-//      test: {
-//        devDependencies: true,
-//        src: '<%= karma.unit.configFile %>',
-//        ignorePath:  /\.\.\//,
-//        fileTypes:{
-//          js: {
-//            block: /(([\s\t]*)\/{2}\s*?bower:\s*?(\S*))(\n|\r|.)*?(\/{2}\s*endbower)/gi,
-//              detect: {
-//                js: /'(.*\.js)'/gi
-//              },
-//              replace: {
-//                js: '\'../{{filePath}}\','
-//              }
-//            }
-//          }
-//      },
+      test: {
+        devDependencies: true,
+        src: '<%= karma.unit.configFile %>',
+        ignorePath:  /\.\.\//,
+        fileTypes:{
+          js: {
+            block: /(([\s\t]*)\/{2}\s*?bower:\s*?(\S*))(\n|\r|.)*?(\/{2}\s*endbower)/gi,
+              detect: {
+                js: /'(.*\.js)'/gi
+              },
+              replace: {
+                js: '\'../{{filePath}}\','
+              }
+            }
+          }
+      },
       sass: {
         src: ['<%= yeoman.app %>/styles/{,*/}*.{scss,sass}'],
         ignorePath: /(\.\.\/){1,2}bower_components\//
@@ -406,22 +403,22 @@ module.exports = function (grunt) {
         'sass',
         'copy:styles'
       ]
-    }
+    },
 
     // Test settings
-//    karma: {
-//      options: {
-//        configFile: 'src/test/resources/karma.conf.js'
-//      },
-//      unit: {
-//        singleRun: true
-//      },
-//      coverage: {
-//        singleRun : true,
-//        reporters : ['dots', 'coverage'],
-//        browsers  : ['PhantomJS']
-//      }
-//    }
+    karma: {
+      options: {
+        configFile: 'src/test/resources/karma.conf.js'
+      },
+      unit: {
+        singleRun: true
+      },
+      coverage: {
+        singleRun : true,
+        reporters : ['dots', 'coverage'],
+        browsers  : ['PhantomJS']
+      }
+    }
   });
 
 
@@ -445,16 +442,16 @@ module.exports = function (grunt) {
     grunt.task.run(['serve:' + target]);
   });
 
-//  grunt.registerTask('test', [
-//    'clean:server',
-//    'wiredep',
-//    'concurrent:test',
-//    'postcss',
-//    'connect:test',
-//    'karma',
-//    'newer:jshint',
-//    'newer:jscs'
-//  ]);
+  grunt.registerTask('test', [
+    'clean:server',
+    'wiredep',
+    'concurrent:test',
+    'postcss',
+    'connect:test',
+    'karma',
+    'newer:jshint',
+    'newer:jscs'
+  ]);
 
   grunt.registerTask('build', [
     'clean:dist',
@@ -477,7 +474,7 @@ module.exports = function (grunt) {
     'build'
   ]);
 
-  grunt.loadNpmTasks('grunt-connect-proxy');
+  grunt.loadNpmTasks('grunt-middleware-proxy');
   grunt.loadNpmTasks('grunt-sass');
   grunt.loadNpmTasks('grunt-postcss');
   grunt.loadNpmTasks('grunt-contrib-watch');
@@ -489,7 +486,7 @@ module.exports = function (grunt) {
     'wiredep',
     'concurrent:server',
     'postcss:server',
-    'configureProxies:proxy',
+    'setupProxies:proxy',
     'connect:proxy',
     'watch'
   ]);
