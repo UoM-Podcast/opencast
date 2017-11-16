@@ -724,5 +724,5 @@ angular.module('editNg.controllers')
                       }
               );
             };
-          }
+            }
         ]);
