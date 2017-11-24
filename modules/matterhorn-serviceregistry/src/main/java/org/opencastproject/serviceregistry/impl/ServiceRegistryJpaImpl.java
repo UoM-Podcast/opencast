@@ -2064,7 +2064,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
     EntityManager em = null;
     try {
       em = emf.createEntityManager();
-      SystemLoad loadByHost = getHostLoads(em, true);
+      SystemLoad loadByHost = getHostLoads(em);
       List<HostRegistration> hostRegistrations = getHostRegistrations();
       List<ServiceRegistration> serviceRegistrations = getServiceRegistrationsByType(serviceType);
       return getServiceRegistrationsByLoad(serviceType, serviceRegistrations, hostRegistrations, loadByHost);
@@ -2077,14 +2077,14 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.serviceregistry.api.ServiceRegistry#getCurrentHostLoads(boolean)
+   * @see org.opencastproject.serviceregistry.api.ServiceRegistry#getCurrentHostLoads()
    */
   @Override
-  public SystemLoad getCurrentHostLoads(boolean activeOnly) {
+  public SystemLoad getCurrentHostLoads() {
     EntityManager em = null;
     try {
       em = emf.createEntityManager();
-      return getHostLoads(em, activeOnly);
+      return getHostLoads(em);
     } finally {
       if (em != null)
         em.close();
@@ -2096,11 +2096,10 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
    *
    * @param em
    *          the entity manager
-   * @param activeOnly
-   *          if true, the map will include only hosts that are online and have non-maintenance mode services
+   *
    * @return the map of hosts to job counts
    */
-  SystemLoad getHostLoads(EntityManager em, boolean activeOnly) {
+  SystemLoad getHostLoads(EntityManager em) {
     final SystemLoad systemLoad = new SystemLoad();
 
     // Find all jobs that are currently running on any given host, or get all of them
@@ -2110,29 +2109,22 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       statuses.add(status.ordinal());
     }
     q.setParameter("statuses", statuses);
+    //Note: This is used in the query to filter out workflow jobs.
+    //These jobs are load balanced by the workflow service directly.
+    q.setParameter("workflow_type", TYPE_WORKFLOW);
 
     // Accumulate the numbers for relevant job statuses per host
     for (Object result : q.getResultList()) {
       Object[] resultArray = (Object[]) result;
-      ServiceRegistrationJpaImpl service = (ServiceRegistrationJpaImpl) resultArray[0];
-
-      // Workflow related jobs are not counting. Workflows are load balanced by the workflow service directly
-      if (TYPE_WORKFLOW.equals(service.getServiceType()))
-        continue;
+      String host = String.valueOf(resultArray[0]);
 
       Status status = Status.values()[(int) resultArray[1]];
       float load = ((Number) resultArray[2]).floatValue();
 
-      if (activeOnly && (service.isInMaintenanceMode() || !service.isOnline())) {
-        continue;
-      }
-
-      // Only queued, running and dispatching jobs are adding to the load, so every other status is discarded
+      // Only queued, and running jobs are adding to the load, so every other status is discarded
       if (status == null || !JOB_STATUSES_INFLUENCING_LOAD_BALANCING.contains(status)) {
         load = 0.0f;
       }
-
-      String host = service.getHost();
 
       // Add the service registration
       NodeLoad serviceLoad;
@@ -2483,7 +2475,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
     Query query = null;
     EntityManager em = null;
-    logger.debug("Try to get the number of jobs who failed on the service {}", serviceRegistration.toString());
+    logger.debug("Calculating count of jobs who failed due to service {}", serviceRegistration.toString());
     try {
       em = emf.createEntityManager();
       query = em.createNamedQuery("Job.count.history.failed");
@@ -2517,7 +2509,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
     Query query = null;
     EntityManager em = null;
-    logger.debug("Try to get the services in WARNING state triggered by this job {} failed", job.toJob().getSignature());
+    logger.debug("Finding services put in WARNING state by job {}", job.toJob().getSignature());
     try {
       em = emf.createEntityManager();
       // TODO: modify the query to avoid to go through the list here
@@ -2895,6 +2887,9 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
      * @param jobsToDispatch list with dispatchable jobs to dispatch
      */
     private void dispatchDispatchableJobs(EntityManager em, List<JpaJob> jobsToDispatch) {
+      //Get the current system load
+      SystemLoad systemLoad = getHostLoads(em);
+
       for (JpaJob job : jobsToDispatch) {
 
         // Remember the job type
@@ -2932,7 +2927,6 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
         // Start dispatching
         try {
-          SystemLoad systemLoad = getHostLoads(em, true);
           List<ServiceRegistration> services = getServiceRegistrations(em);
           List<HostRegistration> hosts = $(getHostRegistrations(em)).filter(filterOutPriorityHosts._2(job.getId()))
                   .toList();
@@ -2976,6 +2970,12 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
           String hostAcceptingJob = null;
           try {
             hostAcceptingJob = dispatchJob(em, job, candidateServices);
+            try {
+              systemLoad.updateNodeLoad(hostAcceptingJob, job.getJobLoad());
+            } catch (NotFoundException e) {
+              logger.debug("Host {} not found in load list, this is a bug.", hostAcceptingJob);
+            }
+
             dispatchPriorityList.remove(job.getId());
           } catch (ServiceUnavailableException e) {
             logger.debug("Jobs of type {} currently cannot be dispatched", job.getOperation());
@@ -3030,18 +3030,19 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
       boolean triedDispatching = false;
 
-      boolean onlyHighestMaxLoadHosts = false;
+      boolean jobLoadExceedsMaximumLoads = false;
       final Float highestMaxLoad = $(services).map(toHostRegistration).map(toMaxLoad).sort(sortFloatValuesDesc).head2();
       if (job.getJobLoad() > highestMaxLoad) {
-        // None of the available hosts is able to accept the job due to less host load
-        onlyHighestMaxLoadHosts = true;
+        // None of the available hosts is able to accept the job because the largest max load value is less than this job's load value
+        jobLoadExceedsMaximumLoads = true;
       }
 
       for (ServiceRegistration registration : services) {
         job.setProcessorServiceRegistration((ServiceRegistrationJpaImpl) registration);
 
         // Skip registration of host with less max load than highest available max load
-        if (onlyHighestMaxLoadHosts
+        // Note: This service registration may or may not live on a node which is set to accept jobs exceeding its max load
+        if (jobLoadExceedsMaximumLoads
                 && job.getProcessorServiceRegistration().getHostRegistration().getMaxLoad() != highestMaxLoad) {
           continue;
         }
