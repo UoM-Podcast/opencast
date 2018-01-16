@@ -103,6 +103,12 @@
      "EVENTS_NOT_UPDATED":  "The event could not be saved",
      "EVENTS_NOT_UPDATED_ID":  "The event {{ id }} could not be saved",
      "EVENTS_NOT_UPDATED_ALL":  "None of the events could be saved",
+     "EVENTS_PROCESSING_ACTION_RESUME": "Processing being resumed...",
+     "EVENTS_PROCESSING_ACTION_NOT_RESUME": "Processing could not be resumed.",
+     "EVENTS_PROCESSING_ACTION_PAUSE": "Processing being paused...",
+     "EVENTS_PROCESSING_ACTION_NOT_PAUSE": "Processing could not be paused.",
+     "EVENTS_PROCESSING_ACTION_STOP": "Processing being stopped...",
+     "EVENTS_PROCESSING_ACTION_NOT_STOP": "Processing could not be stopped.",
      "SERIES_UPDATED_NB":   "{{ number }} series have been successfully updated",
      "SERIES_UPDATED_ALL":   "All series have been successfully updated",
      "SERIES_NOT_UPDATED":  "The series could not be saved",
@@ -760,6 +766,7 @@
            }
           },
           "WORKFLOWS": {
+            "ACTIONS": "Actions",
             "DETAILS": "Details",
             "DESCRIPTION": "",
             "ID": "ID",
@@ -1790,6 +1797,7 @@
    "DASHBOARD":{
        "RUNNING":   "Running",
        "FINISHED":  "Finished",
+       "PAUSED" :   "Paused",
        "FAILED" :   "Failed",
        "FINISHED_WITH_COMMENTS": "Todo",
        "SCHEDULED" : "Scheduled",
