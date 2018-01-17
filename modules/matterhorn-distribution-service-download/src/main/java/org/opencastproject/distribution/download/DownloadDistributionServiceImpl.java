@@ -194,25 +194,25 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
   @Override
   public Job distribute(String channelId, MediaPackage mediapackage, String elementId, boolean checkAvailability)
           throws DistributionException, MediaPackageException {
-    return distribute(channelId, mediapackage, elementId, true, false);
+    return distribute(channelId, mediapackage, elementId, checkAvailability, false);
   }
 
   @Override
   public Job distribute(String channelId, MediaPackage mediapackage, String elementId, boolean checkAvailability, boolean useAlternateDirectory)
           throws DistributionException, MediaPackageException {
-    Set<String> elementIds = new HashSet<String>();
+    Set<String> elementIds = new HashSet<>();
     elementIds.add(elementId);
-    return distribute(channelId, mediapackage, elementIds, checkAvailability, useAlternateDirectory);
+    return distribute(channelId, mediapackage, elementIds, checkAvailability, false, useAlternateDirectory);
   }
 
   @Override
   public Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability)
           throws DistributionException, MediaPackageException {
-    return distribute(channelId, mediapackage, elementIds, checkAvailability, false);
+    return distribute(channelId, mediapackage, elementIds, checkAvailability, false, false);
   }
 
   @Override
-  public Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability,
+  public Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability, boolean preserveReference,
           boolean useAlternateDirectory)
           throws DistributionException, MediaPackageException {
     notNull(mediapackage, "mediapackage");
@@ -223,7 +223,7 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
               JOB_TYPE,
               Operation.Distribute.toString(),
               Arrays.asList(channelId, MediaPackageParser.getAsXml(mediapackage), gson.toJson(elementIds),
-                      Boolean.toString(checkAvailability), Boolean.toString(useAlternateDirectory)), distributeJobLoad);
+                      Boolean.toString(checkAvailability), Boolean.toString(preserveReference), Boolean.toString(useAlternateDirectory)), distributeJobLoad);
     } catch (ServiceRegistryException e) {
       throw new DistributionException("Unable to create a job", e);
     }
@@ -249,6 +249,31 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    */
   public MediaPackageElement[] distributeElements(String channelId, MediaPackage mediapackage, Set<String> elementIds,
           boolean checkAvailability, boolean useAlternateDirectory) throws DistributionException {
+    return distributeElements(channelId, mediapackage, elementIds, checkAvailability, false, useAlternateDirectory);
+  }
+
+  /**
+   * Distribute Mediapackage elements to the download distribution service.
+   *
+   * @param channelId
+   #          The id of the publication channel to be distributed to.
+   * @param mediapackage
+   *          The media package that contains the elements to be distributed.
+   * @param elementIds
+   *          The ids of the elements that should be distributed contained within the media package.
+   * @param checkAvailability
+   *          Check the availability of the distributed element via http.
+   * @param preserveReference
+   *          copy actual Reference to the new distributed element
+   * @param useAlternateDirectory
+   *          Place the files in the configured alternative directory
+   * @return A reference to the MediaPackageElements that have been distributed.
+   * @throws DistributionException
+   *           Thrown if the parent directory of the MediaPackageElement cannot be created, if the MediaPackageElement
+   *           cannot be copied or another unexpected exception occurs.
+   */
+  public MediaPackageElement[] distributeElements(String channelId, MediaPackage mediapackage, Set<String> elementIds,
+          boolean checkAvailability, boolean preserveReference, boolean useAlternateDirectory) throws DistributionException {
     notNull(mediapackage, "mediapackage");
     notNull(elementIds, "elementIds");
     notNull(channelId, "channelId");
@@ -257,7 +282,7 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
     List<MediaPackageElement> distributedElements = new ArrayList<MediaPackageElement>();
 
     for (MediaPackageElement element : elements) {
-      MediaPackageElement distributedElement = distributeElement(channelId, mediapackage, element, checkAvailability, useAlternateDirectory);
+      MediaPackageElement distributedElement = distributeElement(channelId, mediapackage, element, checkAvailability, preserveReference, useAlternateDirectory);
       distributedElements.add(distributedElement);
     }
     return distributedElements.toArray(new MediaPackageElement[distributedElements.size()]);
@@ -274,6 +299,8 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    *          The the element that should be distributed contained within the media package.
    * @param checkAvailability
    *          Check the availability of the distributed element via http.
+   * @param preserveReference
+   *           Copy existing Track-Reference to the new distributed Track
    * @param useAlternateDirectory
    *          Place the files in the configured alternative directory
    * @return A reference to the MediaPackageElement that has been distributed.
@@ -282,7 +309,7 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    *           cannot be copied or another unexpected exception occurs.
    */
   public MediaPackageElement distributeElement(String channelId, MediaPackage mediapackage, MediaPackageElement element,
-          boolean checkAvailability, boolean useAlternateDirectory) throws DistributionException {
+          boolean checkAvailability, boolean preserveReference, boolean useAlternateDirectory) throws DistributionException {
 
     final String mediapackageId = mediapackage.getIdentifier().compact();
     final String elementId = element.getIdentifier();
@@ -325,6 +352,9 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
       MediaPackageElement distributedElement = (MediaPackageElement) element.clone();
       try {
         distributedElement.setURI(getDistributionUri(channelId, mediapackageId, element, useAlternateDirectory));
+        if (preserveReference) {
+          distributedElement.setReference(element.getReference());
+        }
       } catch (URISyntaxException e) {
         throw new DistributionException("Distributed element produces an invalid URI", e);
       }
@@ -489,9 +519,10 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
       switch (op) {
         case Distribute:
           Boolean checkAvailability = Boolean.parseBoolean(arguments.get(3));
-          Boolean useAlternateDirectory = Boolean.parseBoolean(arguments.get(4));
+          Boolean preserveReference = Boolean.parseBoolean(arguments.get(4));
+          Boolean useAlternateDirectory = Boolean.parseBoolean(arguments.get(5));
           MediaPackageElement[] distributedElements = distributeElements(channelId, mediapackage, elementIds,
-                  checkAvailability, useAlternateDirectory);
+                  checkAvailability, preserveReference, useAlternateDirectory);
           return (distributedElements != null)
                   ? MediaPackageElementParser.getArrayAsXml(Arrays.asList(distributedElements)) : null;
         case Retract:
@@ -628,6 +659,8 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
    *          the mediapackage identifier
    * @param element
    *          The mediapackage element being distributed
+   * @param useAlternateDirectory
+   *           Use alternative distribution directory
    * @return The resulting URI after distribution
    * @throws URISyntaxException
    *           if the concrete implementation tries to create a malformed uri
