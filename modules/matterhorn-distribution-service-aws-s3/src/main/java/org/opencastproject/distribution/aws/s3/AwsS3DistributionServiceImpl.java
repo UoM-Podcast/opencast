@@ -208,9 +208,10 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
   }
 
   @Override
-  public Job distribute(String channelId, MediaPackage mediaPackage,  Set<String> elementIds, boolean checkAvailability, boolean ignore)
-          throws DistributionException, MediaPackageException {
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability);
+  public Job distribute(String pubChannelId, MediaPackage mediaPackage, Set<String> downloadIds,
+    boolean checkAvailability, boolean preserveReference, boolean ignore) throws DistributionException, MediaPackageException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  //stub function
   }
   /**
    * {@inheritDoc}
