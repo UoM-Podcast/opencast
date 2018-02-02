@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.workflow.handler.workflow.DublinCoreCatalogWOH" immediate="true">
+  <implementation class="org.opencastproject.workflow.handler.workflow.DublinCoreCatalogWOH" />
+  <property name="service.description" value="DublinCore Catalog Workflow Handler" />
+  <property name="workflow.operation" value="dc-catalog" />
+  <service>
+    <provide interface="org.opencastproject.workflow.api.WorkflowOperationHandler" />
+  </service>
+  <reference name="Workspace"  interface="org.opencastproject.workspace.api.Workspace"
+             policy="static" cardinality="1..1" bind="setWorkspace" />
+  <reference name="DublincoreService"  interface="org.opencastproject.metadata.dublincore.DublinCoreCatalogService"
+               policy="static" cardinality="1..1" bind="setDublincoreService" />
+</scr:component>

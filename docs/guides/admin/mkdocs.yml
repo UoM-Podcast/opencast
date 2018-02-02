@@ -84,6 +84,7 @@ pages:
    - Configure-By-DCTerm: 'workflowoperationhandlers/configure-by-dcterm-woh.md'
    - Copy: 'workflowoperationhandlers/copy-woh.md'
    - Cover Image: 'workflowoperationhandlers/coverimage-woh.md'
+   - DC Catalog: 'workflowoperationhandlers/dc-catalog-woh.md'
    - Defaults: 'workflowoperationhandlers/defaults-woh.md'
    - Editor: 'workflowoperationhandlers/editor-woh.md'
    - Email: 'workflowoperationhandlers/email-woh.md'
