@@ -80,11 +80,8 @@ public class DublinCoreCatalogWOH extends ResumableWorkflowOperationHandlerBase 
   /** Name of the configuration option that provides the target tags we are looking for */
   public static final String TARGET_TAGS_PROPERTY = "target-tags";
 
-  /** episode or series **/
-  private static final String DCCATALOG_PROPERTY = "dccatalog";
-
   /** set (overwrite) the available from date */
-  private static final String SET_AVAILABLE_DATE_PROPERTY = "set-available-date";
+  public static final String SET_AVAILABLE_DATE_PROPERTY = "set-available-date";
 
   /** Name of the configuration option that provides the copy boolean we are looking for */
   public static final String COPY_PROPERTY = "copy";
