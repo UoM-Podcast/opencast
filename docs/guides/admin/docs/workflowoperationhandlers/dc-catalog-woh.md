@@ -28,7 +28,7 @@ available element or modify an existing one, so that any end date is preserved.
       id="dc-catalog"
       fail-on-error="true"
       exception-handler-workflow="error"
-      description="Edit the available ">
+      description="Edit the available from date">
       <configurations>
         <configuration key="source-flavors">dublincore/episode</configuration>
         <configuration key="set-available-date">true</configuration>

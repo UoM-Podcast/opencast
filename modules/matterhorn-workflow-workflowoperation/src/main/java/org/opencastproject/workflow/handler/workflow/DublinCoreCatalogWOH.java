@@ -57,7 +57,7 @@ import java.util.TreeMap;
 
 
 /**
- * Take look in specified catalog for specified term, if the value matches the specified value add the target-tags
+ * Modify the selected source catalogs
  */
 public class DublinCoreCatalogWOH extends ResumableWorkflowOperationHandlerBase {
 
