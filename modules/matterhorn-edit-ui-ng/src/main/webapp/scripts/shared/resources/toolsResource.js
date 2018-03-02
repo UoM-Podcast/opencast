@@ -1,11 +1,13 @@
 angular.module('editNg.resources')
         .factory('ToolsResource', ['$resource', 'JsHelper', function ($resource, JsHelper) {
-            return $resource('/edit-ng/tools/:id/:tool.json', {id: '@id'}, {
+            return $resource('/edit-ng/tools/:session/:id/:tool.json', {id: '@id',session:'@session',tool:'@tool'}, {
               get: {
                 method: 'GET',
                 transformResponse: function (json) {
                   var data = JSON.parse(json);
-
+                  if (data.status === "edited before" || data.status === "locked") {
+                    return data;
+                  }
                   // Create a default segment spanning the entire track
                   if (data.segments.length === 0) {
                     data.segments.push({
@@ -25,7 +27,7 @@ angular.module('editNg.resources')
                       end: data.segments[0].start,
                       deleted: true
                     });
-                  }
+                  };
                   // Fill gap behind the last segment
                   if (data.segments[data.segments.length - 1].end < data.duration) {
                     data.segments.splice(data.segments.length, 0, {
@@ -33,7 +35,7 @@ angular.module('editNg.resources')
                       end: data.duration,
                       deleted: true
                     });
-                  }
+                  };
                   // Fill gaps between segments
                   //dont use angular.forEach here see MH-11169
                   for (var index = 0; index < data.segments.length; index++) {
@@ -57,6 +59,9 @@ angular.module('editNg.resources')
 
                   return data;
                 }
+              },
+              release: {
+                method: 'DELETE'
               },
               save: {
                 method: 'POST',

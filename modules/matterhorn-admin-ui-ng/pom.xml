@@ -417,6 +417,7 @@
                             OSGI-INF/job_endpoint.xml,
                             OSGI-INF/language-service.xml,
                             OSGI-INF/languages_endpoint.xml,
+                            OSGI-INF/mediapackage_lock.xml,
                             OSGI-INF/message-receiver-acl.xml,
                             OSGI-INF/message-receiver-archive.xml,
                             OSGI-INF/message-receiver-comment.xml,

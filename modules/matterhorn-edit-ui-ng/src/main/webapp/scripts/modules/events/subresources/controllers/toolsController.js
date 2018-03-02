@@ -22,9 +22,9 @@
 
 // Controller for all event screens.
 angular.module('editNg.controllers')
-        .controller('ToolsCtrl', ['$scope', '$interval', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService',
-          function ($scope, $interval, $route, $location, $window, ToolsResource, Notifications, EventHelperService) {
-
+        .controller('ToolsCtrl', ['$scope', '$interval', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService','CookiesService',
+          function ($scope, $interval, $route, $location, $window, ToolsResource, Notifications, EventHelperService, CookiesService) {
+            $scope.sessionId = CookiesService.getCookie('JSESSIONID');
             $scope.navigateTo = function (path) {
               // FIMXE When changing tabs, video playback breaks. Using playback
               // controls after a tab change works for audio, but there is no
@@ -66,10 +66,10 @@ angular.module('editNg.controllers')
 
             // TODO Move the following to a VideoCtrl
             $scope.player = {};
-            $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'});
+            $scope.video = ToolsResource.get({id: $scope.id, session:$scope.sessionId, tool: 'editor'});
 
             $scope.autosave = function () {
-              $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
+              $scope.video.$save({id: $scope.id, session:$scope.sessionId, tool: $scope.tab}, function () {
                 Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO', 'video-tools');
               });
             };
@@ -78,7 +78,7 @@ angular.module('editNg.controllers')
             $scope.submitButton = false;
             $scope.save = function () {
               $scope.submitButton = true;
-              $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
+              $scope.video.$save({id: $scope.id, session:$scope.sessionId, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_SAVED', 'video-tools');
                 $scope.navigateTo('events/' + $scope.resource + '/' +
@@ -91,7 +91,7 @@ angular.module('editNg.controllers')
             $scope.submit = function () {
               $scope.submitButton = true;
 
-              $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
+              $scope.video.$submit({id: $scope.id, session:$scope.sessionId, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_PROCESSING', 'video-tools');
                 $scope.navigateTo('events/' + $scope.resource + '/' +
@@ -100,6 +100,9 @@ angular.module('editNg.controllers')
                 $scope.submitButton = false;
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
               });
+            };
+            $window.onbeforeunload = function () {
+              ToolsResource.release({id: $scope.id, session:$scope.sessionId, tool: 'lock'});
             };
           }
         ]);

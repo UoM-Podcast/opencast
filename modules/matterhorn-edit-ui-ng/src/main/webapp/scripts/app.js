@@ -33,6 +33,7 @@ angular.module('editNg', [
     'cfp.hotkeys',
     'ngResource',
     'ngAnimate',
+    'ngCookies',
     'ngMessages',
     'angular-md5',
     'editNg.controllers',

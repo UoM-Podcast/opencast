@@ -18,7 +18,6 @@
  * the License.
  *
  */
-
 package org.opencastproject.adminui.endpoint;
 
 import static com.entwinemedia.fn.Stream.$;
@@ -36,6 +35,7 @@ import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
 import static org.opencastproject.util.data.Tuple.tuple;
 
 import org.opencastproject.adminui.impl.AdminUIConfiguration;
+import org.opencastproject.adminui.impl.MediaPackageLockService;
 import org.opencastproject.adminui.impl.index.AdminUISearchIndex;
 import org.opencastproject.archive.api.Archive;
 import org.opencastproject.archive.api.ArchiveException;
@@ -100,6 +100,7 @@ import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.io.InputStream;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -114,6 +115,7 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -127,12 +129,12 @@ import javax.xml.bind.JAXBException;
 
 @Path("/")
 @RestService(name = "toolsService", title = "Tools API Service",
-  abstractText = "Provides a location for the tools API.",
-  notes = { "This service provides a location for the tools API for the admin UI.",
-            "<strong>Important:</strong> "
-              + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
-              + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
-              + "DO NOT use this for integration of third-party applications.<em>"})
+        abstractText = "Provides a location for the tools API.",
+        notes = {"This service provides a location for the tools API for the admin UI.",
+          "<strong>Important:</strong> "
+          + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
+          + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
+          + "DO NOT use this for integration of third-party applications.<em>"})
 public class ToolsEndpoint implements ManagedService {
   /** The logging facility */
   private static final Logger logger = LoggerFactory.getLogger(ToolsEndpoint.class);
@@ -164,6 +166,7 @@ public class ToolsEndpoint implements ManagedService {
 
   // service references
   private AdminUIConfiguration adminUIConfiguration;
+  private MediaPackageLockService mediaPackageLockService;
   private AdminUISearchIndex searchIndex;
   private Archive<?> archive;
   private HttpMediaPackageElementProvider mpElementProvider;
@@ -177,6 +180,11 @@ public class ToolsEndpoint implements ManagedService {
   /** OSGi DI. */
   void setAdminUIConfiguration(AdminUIConfiguration adminUIConfiguration) {
     this.adminUIConfiguration = adminUIConfiguration;
+  }
+
+  /** OSGi DI. */
+  void setMediaPackageLockService(MediaPackageLockService mediaPackageLockService) {
+    this.mediaPackageLockService = mediaPackageLockService;
   }
 
   /** OSGi DI */
@@ -234,14 +242,16 @@ public class ToolsEndpoint implements ManagedService {
   }
 
   @GET
-  @Path("{mediapackageid}.json")
+  @Path("{sessionid}/{mediapackageid}.json")
   @RestQuery(name = "getAvailableTools", description = "Returns a list of tools which are currently available for the given media package.", returnDescription = "A JSON array with tools identifiers", pathParameters = {
+          @RestParameter(name = "sessionid", description = "The sesion id of the browser", isRequired = true, type = RestParameter.Type.STRING),
           @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
                   @RestResponse(description = "Available tools evaluated", responseCode = HttpServletResponse.SC_OK) })
-  public Response getAvailableTools(@PathParam("mediapackageid") final String mediaPackageId) {
+  public Response getAvailableTools(@PathParam("sessionid") final String sessionId, @PathParam("mediapackageid") final String mediaPackageId) {
     final List<JValue> jTools = new ArrayList<JValue>();
-    if (isEditorAvailable(mediaPackageId))
+    if (isEditorAvailable(mediaPackageId)) {
       jTools.add(v("editor"));
+    }
 
     return RestUtils.okJson(j(f("available", a(jTools))));
   }
@@ -274,19 +284,25 @@ public class ToolsEndpoint implements ManagedService {
   }
 
   @GET
-  @Path("{mediapackageid}/editor.json")
+  @Path("{sessionid}/{mediapackageid}/editor.json")
   @Produces(MediaType.APPLICATION_JSON)
   @RestQuery(name = "getVideoEditor", description = "Returns all the information required to get the editor tool started", returnDescription = "JSON object", pathParameters = {
+          @RestParameter(name = "sessionid", description = "The sesion id of the browser", isRequired = true, type = RestParameter.Type.STRING),
           @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
                   @RestResponse(description = "Media package found", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND) })
-  public Response getVideoEditor(@PathParam("mediapackageid") final String mediaPackageId)
+  public Response getVideoEditor(@PathParam("sessionid") final String sessionId, @PathParam("mediapackageid") final String mediaPackageId)
           throws IndexServiceException, NotFoundException {
-    if (!isEditorAvailable(mediaPackageId))
+    if (!isEditorAvailable(mediaPackageId)) {
       return R.notFound();
-
+    }
     // Select tracks
     final Event event = getEvent(mediaPackageId).get();
+    long lTime = mediaPackageLockService.getMediaPackageLock(event, sessionId);
+    long lockedTime = Math.round(lTime / 60000);
+    if (lockedTime > 0) {
+      return RestUtils.okJson(j(f("locked", v(lockedTime)),f("status", v("locked"))));
+    }
     final MediaPackage mp = index.getEventMediapackage(event).orError(new NotFoundException())
             .get();
     List<MediaPackageElement> previewPublications = getPreviewElementsFromPublication(getInternalPublication(mp));
@@ -315,8 +331,9 @@ public class ToolsEndpoint implements ManagedService {
       }
       jPreviews.add(j(f("uri", v(elementUri.toString()))));
 
-      if (!Type.Track.equals(element.getElementType()))
+      if (!Type.Track.equals(element.getElementType())) {
         continue;
+      }
 
       JObjectWrite jTrack = j(f("id", v(element.getIdentifier())), f("flavor", v(element.getFlavor().getType())));
       // Check if there's a waveform for the current track
@@ -344,7 +361,9 @@ public class ToolsEndpoint implements ManagedService {
       }
 
     }
-
+    if (jPreviews.isEmpty()) {
+      return RestUtils.okJson(j(f("status", v("edited before"))));
+    }
     // Get existing segments
     List<JValue> jSegments = new ArrayList<JValue>();
     for (Tuple<Long, Long> segment : getSegments(mp)) {
@@ -359,6 +378,7 @@ public class ToolsEndpoint implements ManagedService {
 
     return RestUtils.okJson(j(f("title", vN(mp.getTitle())),
             f("date", vN(event.getRecordingStartDate())),
+            f("locked", v(lockedTime)),
             f("series", j(f("id", vN(event.getSeriesId())), f("title", vN(event.getSeriesName())))),
             f("presenters", jsonArrayFromList(event.getPresenters())),
             f("previews", a(jPreviews)), f(TRACKS_KEY, a(jTracks)),
@@ -366,14 +386,61 @@ public class ToolsEndpoint implements ManagedService {
   }
 
   @POST
-  @Path("{mediapackageid}/editor.json")
+  @Path("{sessionid}/{mediapackageid}/lock.json")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "editVideo", description = "Locks a mediapackage for editing", returnDescription = "", pathParameters = {
+    @RestParameter(name = "sessionid", description = "The sesion id of the browser", isRequired = true, type = RestParameter.Type.STRING),
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+    @RestResponse(description = "Editing information saved and processed", responseCode = HttpServletResponse.SC_OK),
+    @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND),
+    @RestResponse(description = "The editing information cannot be parsed", responseCode = HttpServletResponse.SC_BAD_REQUEST)})
+  public Response lockVideo(@PathParam("sessionid") final String sessionId, @PathParam("mediapackageid") final String mediaPackageId,
+          @Context HttpServletRequest request) throws IndexServiceException, NotFoundException, WorkflowDatabaseException {
+    final Opt<Event> optEvent = getEvent(mediaPackageId);
+    if (optEvent.isNone()) {
+      return R.notFound();
+    }
+    long time = mediaPackageLockService.getMediaPackageLock(optEvent.get(),sessionId);
+    return RestUtils.okJson(j(f("time", v(time))));
+  }
+
+  @DELETE
+  @Path("lock.json")
+  @RestQuery(name = "cleanUpLocks", description = "Cleans up mediaPackage Locks", returnDescription = "", reponses = {
+    @RestResponse(description = "MediaPackage lock has been freed", responseCode = HttpServletResponse.SC_OK)})
+  public Response cleanUpLocks(@Context HttpServletRequest request) throws IndexServiceException, NotFoundException, WorkflowDatabaseException {
+    mediaPackageLockService.cleanUp();
+    return R.ok();
+  }
+
+  @DELETE
+  @Path("{sessionid}/{mediapackageid}/lock.json")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "unlockVideo", description = "Frees the mediapackage lock for a video", returnDescription = "", pathParameters = {
+    @RestParameter(name = "sessionid", description = "The sesion id of the browser", isRequired = true, type = RestParameter.Type.STRING),
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+    @RestResponse(description = "MediaPackage lock has been freed", responseCode = HttpServletResponse.SC_OK),
+    @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})
+  public Response unlockVideo(@PathParam("sessionid") final String sessionId, @PathParam("mediapackageid") final String mediaPackageId,
+          @Context HttpServletRequest request) throws IndexServiceException, NotFoundException, WorkflowDatabaseException {
+    final Opt<Event> optEvent = getEvent(mediaPackageId);
+    if (optEvent.isNone()) {
+      return R.notFound();
+    }
+    mediaPackageLockService.releaseMediaPackageLock(optEvent.get(),sessionId);
+    return R.ok();
+  }
+
+  @POST
+  @Path("{sessionid}/{mediapackageid}/editor.json")
   @Consumes(MediaType.APPLICATION_JSON)
   @RestQuery(name = "editVideo", description = "Takes editing information from the client side and processes it", returnDescription = "", pathParameters = {
-          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
+          @RestParameter(name = "sessionid", description = "The sesion id of the browser", isRequired = true, type = RestParameter.Type.STRING),
+          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
                   @RestResponse(description = "Editing information saved and processed", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND),
                   @RestResponse(description = "The editing information cannot be parsed", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
-  public Response editVideo(@PathParam("mediapackageid") final String mediaPackageId,
+  public Response editVideo(@PathParam("sessionid") final String sessionId, @PathParam("mediapackageid") final String mediaPackageId,
           @Context HttpServletRequest request) throws IndexServiceException, NotFoundException, WorkflowDatabaseException {
     String details;
     try (InputStream is = request.getInputStream()) {
@@ -414,13 +481,14 @@ public class ToolsEndpoint implements ManagedService {
       }
 
       if (editingInfo.getPostProcessingWorkflow().isSome()) {
+        mediaPackageLockService.releaseMediaPackageLock(optEvent.get(), sessionId);
         final String workflowId = editingInfo.getPostProcessingWorkflow().get();
         try {
           archive.applyWorkflow(ConfiguredWorkflow.workflow(workflowService.getWorkflowDefinitionById(workflowId)),
-            mpElementProvider.getUriRewriter(), $(mediaPackage.getIdentifier().toString()).toList());
+                  mpElementProvider.getUriRewriter(), $(mediaPackage.getIdentifier().toString()).toList());
         } catch (ArchiveException e) {
           logger.warn("Unable to start workflow '{}' on archived media package '{}': {}",
-            new Object[]{workflowId, mediaPackage, getStackTrace(e)});
+                  new Object[]{workflowId, mediaPackage, getStackTrace(e)});
           return R.serverError();
         } catch (WorkflowDatabaseException e) {
           logger.warn("Unable to load workflow '{}' from workflow service: {}", workflowId, getStackTrace(e));
@@ -467,9 +535,10 @@ public class ToolsEndpoint implements ManagedService {
             return trackId.equals(a.getIdentifier());
           }
         }).head();
-        if (trackOpt.isNone())
+        if (trackOpt.isNone()) {
           throw new IllegalStateException(
                   format("The track '%s' doesn't exist in media package '%s'", trackId, mediaPackage));
+        }
 
         track = trackOpt.get();
       }
@@ -500,20 +569,20 @@ public class ToolsEndpoint implements ManagedService {
    *           if the SMIL catalog cannot be read or not be written to the archive
    */
   MediaPackage addSmilToArchive(MediaPackage mediaPackage, final Smil smil) throws IOException {
-   MediaPackageElementFlavor mediaPackageElementFlavor = adminUIConfiguration.getSmilCatalogFlavor();
-   //set default catalog Id if there is none existing
+    MediaPackageElementFlavor mediaPackageElementFlavor = adminUIConfiguration.getSmilCatalogFlavor();
+    //set default catalog Id if there is none existing
     String catalogId = smil.getId();
     Catalog[] catalogs = mediaPackage.getCatalogs();
 
     //get the first smil/cutting  catalog-ID to overwrite it with new smil info
     for (Catalog p: catalogs) {
-       if (p.getFlavor().matches(mediaPackageElementFlavor)) {
-         logger.debug("Set Idendifier for Smil-Catalog to: " + p.getIdentifier());
-         catalogId = p.getIdentifier();
-       break;
-       }
-     }
-     Catalog catalog = mediaPackage.getCatalog(catalogId);
+      if (p.getFlavor().matches(mediaPackageElementFlavor)) {
+        logger.debug("Set Idendifier for Smil-Catalog to: " + p.getIdentifier());
+        catalogId = p.getIdentifier();
+        break;
+      }
+    }
+    Catalog catalog = mediaPackage.getCatalog(catalogId);
 
     URI smilURI;
     try (InputStream is = IOUtils.toInputStream(smil.toXML(), "UTF-8")) {
@@ -613,8 +682,9 @@ public class ToolsEndpoint implements ManagedService {
     }).filter(new Fn<Attachment, Boolean>() {
       @Override
       public Boolean ap(Attachment att) {
-        if (track.getFlavor() == null || att.getFlavor() == null)
+        if (track.getFlavor() == null || att.getFlavor() == null) {
           return false;
+        }
 
         return track.getFlavor().getType().equals(att.getFlavor().getType())
                 && att.getFlavor().getSubtype().equals(adminUIConfiguration.getWaveformSubtype());
@@ -667,8 +737,9 @@ public class ToolsEndpoint implements ManagedService {
       }
     }
 
-    if (!segments.isEmpty())
+    if (!segments.isEmpty()) {
       return segments;
+    }
 
     // Read from silence detection flavors
     for (Catalog smilCatalog : mediaPackage.getCatalogs(adminUIConfiguration.getSmilSilenceFlavor())) {
@@ -687,8 +758,9 @@ public class ToolsEndpoint implements ManagedService {
     // Check for single segment to ignore
     if (segments.size() == 1) {
       Tuple<Long, Long> singleSegment = segments.get(0);
-      if (singleSegment.getA() == 0 && singleSegment.getB() >= mediaPackage.getDuration())
+      if (singleSegment.getA() == 0 && singleSegment.getB() >= mediaPackage.getDuration()) {
         segments.remove(0);
+      }
     }
 
     return segments;
@@ -799,8 +871,9 @@ public class ToolsEndpoint implements ManagedService {
         final JSONObject jSegment = (JSONObject) segment;
         final Long start = (Long) jSegment.get(START_KEY);
         final Long end = (Long) jSegment.get(END_KEY);
-        if (end < start)
+        if (end < start) {
           throw new IllegalArgumentException("The end date of a segment must be after the start date of the segment");
+        }
         segments.add(Tuple.tuple(start, end));
       }
 

@@ -33,6 +33,7 @@ angular.module('adminNg', [
     'cfp.hotkeys',
     'ngResource',
     'ngAnimate',
+    'ngCookies',
     'ngMessages',
     'angular-md5',
     'adminNg.controllers',

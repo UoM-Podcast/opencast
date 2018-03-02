@@ -31,6 +31,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
@@ -85,6 +86,10 @@ abstract class RemoteRestEndpoint {
     logger.debug("Forwarding request: {} {}", method, url);
 
     switch (method) {
+      case "DELLETE": {
+        httpRequest = new HttpDelete(url);
+        break;
+      }
       case "GET": {
         httpRequest = new HttpGet(url);
         break;
