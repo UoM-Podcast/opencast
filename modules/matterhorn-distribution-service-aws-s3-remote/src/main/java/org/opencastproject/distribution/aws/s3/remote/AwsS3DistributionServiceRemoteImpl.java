@@ -31,6 +31,7 @@ import org.opencastproject.distribution.api.DownloadDistributionService;
 import org.opencastproject.distribution.aws.s3.api.AwsS3DistributionService;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.mediapackage.MediaPackage;
+import org.opencastproject.mediapackage.MediaPackageException;
 import org.opencastproject.mediapackage.MediaPackageParser;
 import org.opencastproject.serviceregistry.api.RemoteBase;
 import org.opencastproject.util.OsgiUtil;
@@ -82,27 +83,22 @@ public class AwsS3DistributionServiceRemoteImpl extends RemoteBase implements Aw
   }
 
   @Override
-  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId) throws DistributionException {
+  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId) throws DistributionException, MediaPackageException {
     return distribute(channelId, mediaPackage, elementId, true);
   }
 
    @Override
-  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability) throws DistributionException {
+  public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability) throws DistributionException, MediaPackageException {
     return distribute(channelId, mediaPackage, elementId, checkAvailability, false);
   }
 
   @Override
   public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability,
           boolean ignore)
-          throws DistributionException {
+          throws DistributionException, MediaPackageException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability, checkAvailability);
-  }
-
-  @Override
-  public Job distribute(String channelId, MediaPackage mediaPackage, Set<String> elementIds, boolean checkAvailability, boolean ignore) throws DistributionException {
-    return distribute(channelId, mediaPackage, elementIds, true);
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false, ignore);
   }
 
   @Override
@@ -168,5 +164,12 @@ public class AwsS3DistributionServiceRemoteImpl extends RemoteBase implements Aw
     throw new DistributionException(format("Unable to restore element '%s' of "
             + "mediapackage '%s' using a remote destribution service proxy", elementId, mediaPackage.getIdentifier()
             .toString()));
+  }
+
+  @Override
+  public Job distribute(String pubChannelId, MediaPackage mediaPackage, Set<String> downloadIds,
+    boolean checkAvailability, boolean preserveReference, boolean ignore) throws DistributionException, MediaPackageException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  //stub function
   }
 }

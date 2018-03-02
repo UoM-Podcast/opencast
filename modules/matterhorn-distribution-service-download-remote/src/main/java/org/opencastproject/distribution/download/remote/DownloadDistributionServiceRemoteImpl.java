@@ -57,6 +57,7 @@ public class DownloadDistributionServiceRemoteImpl extends RemoteBase
   private static final String PARAM_MEDIAPACKAGE = "mediapackage";
   private static final String PARAM_ELEMENT_ID = "elementId";
   private static final String PARAM_CHECK_AVAILABILITY = "checkAvailability";
+  private static final String PARAM_PRESERVE_REFERENCE = "preserveReference";
   private static final String PARAM_USE_ALTERNATE_DIR = "useAlternateDirectory";
 
   private final Gson gson = new Gson();
@@ -94,24 +95,25 @@ public class DownloadDistributionServiceRemoteImpl extends RemoteBase
           throws DistributionException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability, useAlternateDirectory);
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false, useAlternateDirectory);
   }
 
   @Override
   public Job distribute(String channelId, MediaPackage mediaPackage, Set<String> elementIds, boolean checkAvailability)
           throws DistributionException {
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false);
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false, false);
   }
 
   @Override
   public Job distribute(String channelId, final MediaPackage mediaPackage, Set<String> elementIds,
-                        boolean checkAvailability, boolean useAlternateDirectory)
+                        boolean checkAvailability, boolean preserveReference, boolean useAlternateDirectory)
           throws DistributionException {
     logger.info(format("Distributing %s elements to %s@%s", elementIds.size(), channelId, distributionChannel));
     final HttpPost req = post(param(PARAM_CHANNEL_ID, channelId),
                               param(PARAM_MEDIAPACKAGE, MediaPackageParser.getAsXml(mediaPackage)),
                               param(PARAM_ELEMENT_ID, gson.toJson(elementIds)),
                               param(PARAM_CHECK_AVAILABILITY, Boolean.toString(checkAvailability)),
+                              param(PARAM_PRESERVE_REFERENCE, Boolean.toString(preserveReference)),
                               param(PARAM_USE_ALTERNATE_DIR, Boolean.toString(useAlternateDirectory)));
     for (Job job : join(runRequest(req, jobFromHttpResponse))) {
       return job;

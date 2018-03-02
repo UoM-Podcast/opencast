@@ -135,13 +135,14 @@ public class DownloadDistributionRestService extends AbstractJobProducerEndpoint
                              @FormParam("elementId") String elementId,
                              @FormParam("channelId") String channelId,
                              @DefaultValue("true") @FormParam("checkAvailability") boolean checkAvailability,
+                             @DefaultValue("false") @FormParam("preserveReference") boolean preserveReference,
                              @DefaultValue("false") @FormParam("useAlternateDirectory") boolean useAlternateDirectory)
           throws Exception {
     try {
       Gson gson = new Gson();
       Set<String> setElementIds = gson.fromJson(elementId, new TypeToken<Set<String>>() { }.getType());
       final MediaPackage mediapackage = MediaPackageParser.getFromXml(mediaPackageXml);
-      final Job job = service.distribute(channelId, mediapackage, setElementIds, checkAvailability, useAlternateDirectory);
+      final Job job = service.distribute(channelId, mediapackage, setElementIds, checkAvailability, preserveReference, useAlternateDirectory);
       return ok(new JaxbJob(job));
     } catch (IllegalArgumentException e) {
       logger.debug("Unable to distribute element: {}", e.getMessage());

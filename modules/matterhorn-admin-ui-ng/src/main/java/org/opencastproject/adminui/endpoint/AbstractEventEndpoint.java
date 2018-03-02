@@ -41,6 +41,7 @@ import static org.opencastproject.index.service.util.RestUtils.okJson;
 import static org.opencastproject.index.service.util.RestUtils.okJsonList;
 import static org.opencastproject.util.RestUtil.R.badRequest;
 import static org.opencastproject.util.RestUtil.R.conflict;
+import static org.opencastproject.util.RestUtil.R.forbidden;
 import static org.opencastproject.util.RestUtil.R.notFound;
 import static org.opencastproject.util.RestUtil.R.ok;
 import static org.opencastproject.util.RestUtil.R.serverError;
@@ -2151,5 +2152,74 @@ public abstract class AbstractEventEndpoint {
               f("state", vN(recording.get().getState())));
     }
   };
+ @PUT
+  @Path("{eventId}/workflows/{workflowId}/action/{action}")
+  @RestQuery(name = "workflowAction", description = "Resumes current workflow instance if paused due to error.", returnDescription = "", pathParameters = {
+          @RestParameter(name = "eventId", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING),
+          @RestParameter(name = "workflowId", description = "The id of the workflow", isRequired = true, type = RestParameter.Type.STRING),
+          @RestParameter(name = "action", description = "The action to take: PAUSE, RESUME or NONE (abort processing)", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
+                  @RestResponse(responseCode = SC_OK, description = "Workflow resumed."),
+                  @RestResponse(responseCode = SC_NOT_FOUND, description = "No suspended workflow instance found."),
+                  @RestResponse(responseCode = SC_BAD_REQUEST, description = "Invalid action entered."),
+                  @RestResponse(responseCode = SC_UNAUTHORIZED, description = "You do not have permission to resume. Maybe you need to authenticate."),
+                  @RestResponse(responseCode = SC_INTERNAL_SERVER_ERROR, description = "An exception occurred.") })
+  public Response workflowAction(@PathParam("eventId") String id, @PathParam("workflowId") String wfId,
+          @PathParam("action") String action)
+          throws NotFoundException, UnauthorizedException {
+    if (StringUtils.isEmpty(id) || StringUtils.isEmpty(wfId) || StringUtils.isEmpty(action)
+            || (!"PAUSE".equalsIgnoreCase(action)
+                    && !"RESUME".equalsIgnoreCase(action)
+                    && !"STOP".equalsIgnoreCase(action)))
+      return badRequest();
+
+    Map<String, String> props = new HashMap<>();
+
+    try {
+      Opt<Event> optEvent = getIndexService().getEvent(id, getIndex());
+      if (optEvent.isNone())
+        return notFound("Cannot find an event with id '%s'.", id);
+
+      long workflowInstanceId = Long.parseLong(wfId);
+
+      WorkflowService workflowService = getWorkflowService();
+      WorkflowInstance wfInstance = workflowService.getWorkflowById(workflowInstanceId);
+
+      if (!wfInstance.getMediaPackage().getIdentifier().toString().equals(id))
+        return badRequest(String.format("Workflow %s is not associated to event %s", wfId, id));
+
+      switch(action) {
+        case "PAUSE":
+          if (!WorkflowState.RUNNING.equals(wfInstance.getState()))
+            return notFound("Workflow %s is NOT running.", wfId);
+
+          workflowService.suspend(workflowInstanceId);
+          break;
+        case "RESUME":
+          if (!WorkflowState.PAUSED.equals(wfInstance.getState()))
+            return notFound("Workflow %s is NOT paused.", wfId);
+
+          workflowService.resume(workflowInstanceId, props);
+          break;
+        case "STOP":
+          if (!WorkflowState.RUNNING.equals(wfInstance.getState()))
+            return notFound("Workflow %s is NOT running.", wfId);
+
+          workflowService.stop(workflowInstanceId);
+          break;
+        default:
+          return badRequest();
+      }
+
+      return ok();
+    } catch (NotFoundException e) {
+      return notFound("Workflow not found: '%d'.", wfId);
+    } catch (IllegalStateException e) {
+      return notFound("There's no paused workflow associated with event: %s.", id);
+    } catch (UnauthorizedException e) {
+      return forbidden();
+    } catch (Exception e) {
+      return serverError();
+    }
+  }
 
 }

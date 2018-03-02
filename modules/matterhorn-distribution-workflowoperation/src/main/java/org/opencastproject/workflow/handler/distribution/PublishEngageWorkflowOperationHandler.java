@@ -334,7 +334,7 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
       //distribute Elements
       try {
         if (downloadElementIds.size() > 0) {
-          Job job = downloadDistributionService.distribute(CHANNEL_ID, mediaPackage, downloadElementIds, checkAvailability, useAlternateDir);
+          Job job = downloadDistributionService.distribute(CHANNEL_ID, mediaPackage, downloadElementIds, checkAvailability, false, useAlternateDir);
           if (job != null) {
             jobs.add(job);
           }
