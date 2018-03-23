@@ -93,6 +93,7 @@ angular.module('editNg.controllers')
             };
             $scope.submit = function () {
               $scope.submitButton = true;
+
               $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_PROCESSING', 'video-tools');

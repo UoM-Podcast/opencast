@@ -5,6 +5,7 @@ angular.module('adminNg.resources')
             method: 'GET',
             transformResponse: function (json) {
                 var data = JSON.parse(json);
+                
                 if (data.status === "edited before" || data.status === "locked") {
                     return data;
                 }
@@ -82,6 +83,7 @@ angular.module('adminNg.resources')
                     segments: segments,
                     tracks:   JsHelper.map(data.tracks, 'id')
                 };
+
                 if (data.autosave) {
                     response.autosave = data.autosave;
                 }

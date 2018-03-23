@@ -135,7 +135,7 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   @Path("{mediapackageid}/editor.json")
   @Produces(MediaType.APPLICATION_JSON)
   @RestQuery(name = "getVideoEditor", description = "Returns all the information required to get the editor tool started", returnDescription = "JSON object", pathParameters = {
-          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Media package found", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "Media has been edited previously", responseCode =  HttpServletResponse.SC_NO_CONTENT),
     @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})

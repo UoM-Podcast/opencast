@@ -48,9 +48,9 @@ angular.module('adminNg.controllers')
         $scope.resource = $route.current.params.resource;
         $scope.tab      = $route.current.params.tab;
         if ($scope.tab === "editor") {
-            $scope.area   = "segments";
+          $scope.area   = "segments";
         } else {
-            $scope.area   = "metadata";
+          $scope.area   = "metadata";
         }
         $scope.id       = $route.current.params.itemId;
 
@@ -67,7 +67,7 @@ angular.module('adminNg.controllers')
 
         // TODO Move the following to a VideoCtrl
         $scope.player = {};
-        $scope.video = ToolsResource.get({ id: $scope.id, tool: 'editor' }, function () {
+        $scope.video  = ToolsResource.get({ id: $scope.id, tool: 'editor' }, function () {
           if ($scope.video.status === 'locked' ) {
             var mins = $scope.video.locked;
             Notifications.addWithParams('error', 'VIDEO_EDIT_LOCKED_MINS', {minutes : mins});

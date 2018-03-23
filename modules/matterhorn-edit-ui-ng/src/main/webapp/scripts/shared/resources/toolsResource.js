@@ -5,6 +5,7 @@ angular.module('editNg.resources')
                 method: 'GET',
                 transformResponse: function (json) {
                   var data = JSON.parse(json);
+
                   if (data.status === "edited before" || data.status === "locked") {
                     return data;
                   }

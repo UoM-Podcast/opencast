@@ -18,6 +18,7 @@
  * the License.
  *
  */
+
 package org.opencastproject.adminui.endpoint;
 
 import static com.entwinemedia.fn.Stream.$;
@@ -100,7 +101,6 @@ import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.io.InputStream;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -131,10 +131,10 @@ import javax.xml.bind.JAXBException;
 @RestService(name = "toolsService", title = "Tools API Service",
   abstractText = "Provides a location for the tools API.",
   notes = { "This service provides a location for the tools API for the admin UI.",
-          "<strong>Important:</strong> "
-          + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
-          + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
-          + "DO NOT use this for integration of third-party applications.<em>"})
+            "<strong>Important:</strong> "
+            + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
+            + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
+            + "DO NOT use this for integration of third-party applications.<em>"})
 public class ToolsEndpoint implements ManagedService {
   /** The logging facility */
   private static final Logger logger = LoggerFactory.getLogger(ToolsEndpoint.class);
@@ -293,13 +293,12 @@ public class ToolsEndpoint implements ManagedService {
                   @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND) })
   public Response getVideoEditor(@PathParam("mediapackageid") final String mediaPackageId, @Context HttpServletRequest request)
           throws IndexServiceException, NotFoundException {
-    if (!isEditorAvailable(mediaPackageId)) {
+    if (!isEditorAvailable(mediaPackageId))
       return R.notFound();
-    }
-    String sessionId = getSessionId(request);
-     // Select tracks
+
+    // Select tracks
     final Event event = getEvent(mediaPackageId).get();
-    long lTime = mediaPackageLockService.getMediaPackageLock(event, sessionId);
+    long lTime = mediaPackageLockService.getMediaPackageLock(event, getSessionId(request));
     long lockedTime = Math.round(lTime / 60000);
     if (lockedTime > 0) {
       return RestUtils.okJson(j(f("locked", v(lockedTime)),f("status", v("locked"))));
@@ -361,6 +360,7 @@ public class ToolsEndpoint implements ManagedService {
       }
 
     }
+
     if (jPreviews.isEmpty()) {
       return RestUtils.okJson(j(f("status", v("edited before"))));
     }
@@ -426,8 +426,7 @@ public class ToolsEndpoint implements ManagedService {
     if (optEvent.isNone()) {
       return R.notFound();
     }
-    String sessionId = getSessionId(request);
-    mediaPackageLockService.releaseMediaPackageLock(optEvent.get(),sessionId);
+    mediaPackageLockService.releaseMediaPackageLock(optEvent.get(), getSessionId(request));
     return R.ok();
   }
 
@@ -448,7 +447,7 @@ public class ToolsEndpoint implements ManagedService {
       logger.error("Error reading request body: {}", ExceptionUtils.getStackTrace(e));
       return R.serverError();
     }
-    String sessionId = getSessionId(request);
+
     JSONParser parser = new JSONParser();
     EditingInfo editingInfo;
     try {
@@ -483,10 +482,10 @@ public class ToolsEndpoint implements ManagedService {
         final String workflowId = editingInfo.getPostProcessingWorkflow().get();
         try {
           archive.applyWorkflow(ConfiguredWorkflow.workflow(workflowService.getWorkflowDefinitionById(workflowId)),
-                  mpElementProvider.getUriRewriter(), $(mediaPackage.getIdentifier().toString()).toList());
+            mpElementProvider.getUriRewriter(), $(mediaPackage.getIdentifier().toString()).toList());
         } catch (ArchiveException e) {
           logger.warn("Unable to start workflow '{}' on archived media package '{}': {}",
-                  new Object[]{workflowId, mediaPackage, getStackTrace(e)});
+            new Object[]{workflowId, mediaPackage, getStackTrace(e)});
           return R.serverError();
         } catch (WorkflowDatabaseException e) {
           logger.warn("Unable to load workflow '{}' from workflow service: {}", workflowId, getStackTrace(e));
@@ -498,7 +497,7 @@ public class ToolsEndpoint implements ManagedService {
       }
     }
     if (!editingInfo.isAutosave()) {
-      mediaPackageLockService.releaseMediaPackageLock(optEvent.get(), sessionId);
+      mediaPackageLockService.releaseMediaPackageLock(optEvent.get(), getSessionId(request));
     }
     return R.ok();
   }
@@ -575,13 +574,13 @@ public class ToolsEndpoint implements ManagedService {
 
     //get the first smil/cutting  catalog-ID to overwrite it with new smil info
     for (Catalog p: catalogs) {
-      if (p.getFlavor().matches(mediaPackageElementFlavor)) {
-        logger.debug("Set Idendifier for Smil-Catalog to: " + p.getIdentifier());
-        catalogId = p.getIdentifier();
-        break;
-      }
-    }
-    Catalog catalog = mediaPackage.getCatalog(catalogId);
+       if (p.getFlavor().matches(mediaPackageElementFlavor)) {
+         logger.debug("Set Idendifier for Smil-Catalog to: " + p.getIdentifier());
+         catalogId = p.getIdentifier();
+         break;
+       }
+     }
+     Catalog catalog = mediaPackage.getCatalog(catalogId);
 
     URI smilURI;
     try (InputStream is = IOUtils.toInputStream(smil.toXML(), "UTF-8")) {
@@ -757,7 +756,7 @@ public class ToolsEndpoint implements ManagedService {
       Tuple<Long, Long> singleSegment = segments.get(0);
       if (singleSegment.getA() == 0 && singleSegment.getB() >= mediaPackage.getDuration())
         segments.remove(0);
-      }
+    }
 
     return segments;
   }
@@ -886,7 +885,7 @@ public class ToolsEndpoint implements ManagedService {
       for (Object track : jsonTracks) {
         tracks.add((String) track);
       }
-      return new EditingInfo(segments, tracks, Opt.nul((String) obj.get("workflow")),Opt.nul((String) obj.get(AUTOSAVE_KEY)));
+      return new EditingInfo(segments, tracks, Opt.nul((String) obj.get("workflow")), Opt.nul((String) obj.get(AUTOSAVE_KEY)));
     }
 
     /**
