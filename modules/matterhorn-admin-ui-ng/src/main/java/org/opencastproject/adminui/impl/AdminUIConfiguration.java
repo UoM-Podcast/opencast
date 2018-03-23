@@ -44,17 +44,11 @@ public class AdminUIConfiguration implements ManagedService {
   public static final String OPT_SMIL_CATALOG_TAGS = "smil.catalog.tags";
   public static final String OPT_SMIL_SILENCE_FLAVOR = "smil.silence.flavor";
 
-  public static final String OPT_LOCK_TAG_SESSIONID = "session";
-  public static final String OPT_LOCK_TAG_RELEASE = "release";
-
-  public static final String MEDIA_PACKAGE_LOCK = "mplock";
-
   private String previewSubtype = "preview";
   private String waveformSubtype = "waveform";
   private Set<String> smilCatalogTagSet = new HashSet<String>();
   private MediaPackageElementFlavor smilCatalogFlavor = new MediaPackageElementFlavor("smil", "cutting");
   private MediaPackageElementFlavor smilSilenceFlavor = new MediaPackageElementFlavor("*", "silence");
-  private MediaPackageElementFlavor mediaPackageLockFlavor = new MediaPackageElementFlavor("*", "mplock");
 
   public String getPreviewSubtype() {
     return previewSubtype;
@@ -74,10 +68,6 @@ public class AdminUIConfiguration implements ManagedService {
 
   public MediaPackageElementFlavor getSmilSilenceFlavor() {
     return smilSilenceFlavor;
-  }
-
-  public MediaPackageElementFlavor getMediaPackageLockFlavor() {
-    return mediaPackageLockFlavor;
   }
 
   @Override
