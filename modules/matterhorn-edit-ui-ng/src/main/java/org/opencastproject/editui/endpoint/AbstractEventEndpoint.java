@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
@@ -49,6 +50,7 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -120,8 +122,8 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestParameter(name = "eventId", description = "The event id (mediapackage id).", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Returns all the data related to the event general tab as JSON", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND)})
-  public Response getEventGeneralTab(@PathParam("eventId") String id) {
-    return forwardRequest("/admin-ng/event/" + id + "/general.json", "GET", null);
+  public Response getEventGeneralTab(@PathParam("eventId") String id, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/event/" + id + "/general.json", request, null);
   }
 
   @GET
@@ -131,8 +133,8 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Returns all the data related to the event comments tab as JSON", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND)})
-  public Response getEventComments(@PathParam("eventId") String eventId) {
-    return forwardRequest("/admin-ng/event/" + eventId + "/comments", "GET", null);
+  public Response getEventComments(@PathParam("eventId") String eventId, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/event/" + eventId + "/comments", request, null);
   }
 
   @GET
@@ -143,8 +145,8 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestResponse(responseCode = SC_BAD_REQUEST, description = "The required form params were missing in the request."),
     @RestResponse(responseCode = SC_NOT_FOUND, description = "If the event has not been found."),
     @RestResponse(responseCode = SC_OK, description = "The access information ")})
-  public Response getEventParticipation(@PathParam("eventId") String eventId) {
-    return forwardRequest("/admin-ng/event/" + eventId + "/participation.json", "GET", null);
+  public Response getEventParticipation(@PathParam("eventId") String eventId, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/event/" + eventId + "/participation.json", request, null);
   }
 
   @GET
@@ -154,8 +156,8 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Returns all the data related to the event metadata tab as JSON", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND)})
-  public Response getEventMetadata(@PathParam("eventId") String eventId) {
-    return forwardRequest("/admin-ng/event/" + eventId + "/metadata.json", "GET", null);
+  public Response getEventMetadata(@PathParam("eventId") String eventId, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/event/" + eventId + "/metadata.json", request, null);
   }
 
   @PUT
@@ -166,10 +168,10 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestResponse(description = "The metadata have been updated.", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "Could not parse metadata.", responseCode = HttpServletResponse.SC_BAD_REQUEST),
     @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND)}, returnDescription = "No content is returned.")
-  public Response updateEventMetadata(@PathParam("eventId") String id, @FormParam("metadata") String metadataJSON) {
+  public Response updateEventMetadata(@PathParam("eventId") String id, @FormParam("metadata") String metadataJSON, @Context HttpServletRequest request) {
     List<BasicNameValuePair> params = new ArrayList<BasicNameValuePair>();
     params.add(new BasicNameValuePair("metadata", metadataJSON));
-    return forwardRequest("/admin-ng/event/" + id + "/metadata", "PUT", null, params);
+    return forwardRequest("/admin-ng/event/" + id + "/metadata", request, null, params);
   }
 
   @GET
@@ -179,8 +181,8 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Returns the number of assets from each types as JSON", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND)})
-  public Response getAssetList(@PathParam("eventId") String id) {
-    return forwardRequest("/admin-ng/event/" + id + "/asset/assets.json", "GET", null);
+  public Response getAssetList(@PathParam("eventId") String id, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/event/" + id + "/asset/assets.json", request, null);
   }
 
   @GET
@@ -190,8 +192,8 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Returns all the data related to the event workflows tab as JSON", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "No event with this identifier was found.", responseCode = HttpServletResponse.SC_NOT_FOUND)})
-  public Response getEventWorkflows(@PathParam("eventId") String id) {
-    return forwardRequest("/admin-ng/event/" + id + "/workflows.json", "GET", null);
+  public Response getEventWorkflows(@PathParam("eventId") String id, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/event/" + id + "/workflows.json", request, null);
   }
 
   @GET
@@ -203,8 +205,8 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
     @RestResponse(responseCode = SC_BAD_REQUEST, description = "The required form params were missing in the request."),
     @RestResponse(responseCode = SC_NOT_FOUND, description = "If the event has not been found."),
     @RestResponse(responseCode = SC_OK, description = "The access information ")})
-  public Response getEventAccessInformation(@PathParam("eventId") String eventId) {
-    return forwardRequest("/admin-ng/event/" + eventId + "/access.json", "GET", null);
+  public Response getEventAccessInformation(@PathParam("eventId") String eventId, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/event/" + eventId + "/access.json", request, null);
   }
 
 }

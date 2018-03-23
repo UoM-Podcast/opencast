@@ -1,6 +1,6 @@
 angular.module('editNg.resources')
         .factory('ToolsResource', ['$resource', 'JsHelper', function ($resource, JsHelper) {
-            return $resource('/edit-ng/tools/:session/:id/:tool.json', {id: '@id',session:'@session',tool:'@tool'}, {
+            return $resource('/edit-ng/tools/:id/:tool.json', {id: '@id', tool:'@tool'}, {
               get: {
                 method: 'GET',
                 transformResponse: function (json) {
@@ -27,7 +27,7 @@ angular.module('editNg.resources')
                       end: data.segments[0].start,
                       deleted: true
                     });
-                  };
+                  }
                   // Fill gap behind the last segment
                   if (data.segments[data.segments.length - 1].end < data.duration) {
                     data.segments.splice(data.segments.length, 0, {
@@ -35,7 +35,7 @@ angular.module('editNg.resources')
                       end: data.duration,
                       deleted: true
                     });
-                  };
+                  }
                   // Fill gaps between segments
                   //dont use angular.forEach here see MH-11169
                   for (var index = 0; index < data.segments.length; index++) {
@@ -80,6 +80,9 @@ angular.module('editNg.resources')
                     segments: segments,
                     tracks: JsHelper.map(data.tracks, 'id')
                   };
+                  if (data.autosave) {
+                      response.autosave = data.autosave;
+                  }
                   return JSON.stringify(response);
                 }
               },
@@ -100,6 +103,7 @@ angular.module('editNg.resources')
                     segments: segments,
                     tracks: JsHelper.map(data.tracks, 'id')
                   };
+                  response.autosave = "false";
                   response.workflow = 'manchester-after-editing';
                   return JSON.stringify(response);
                 }

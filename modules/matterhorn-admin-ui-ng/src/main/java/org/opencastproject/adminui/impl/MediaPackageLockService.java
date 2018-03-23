@@ -93,12 +93,19 @@ public class MediaPackageLockService implements ManagedService {
   }
 
   public void releaseMediaPackageLock(final Event event, String sessionId) {
-
     logger.debug("unlock mp {}",event.getIdentifier());
     synchronized (mpLock) {
       EditorLock el = mpLock.get(event.getIdentifier());
-      if (el.removable(sessionId)) {
-        mpLock.remove(event.getIdentifier());
+      if (el == null) {
+        for (String eventId : mpLock.keySet()) {
+          if (mpLock.get(eventId).removable(sessionId)) {
+            mpLock.remove(eventId);
+          }
+        }
+      } else {
+        if (el.removable(sessionId)) {
+          mpLock.remove(event.getIdentifier());
+        }
       }
     }
   }
