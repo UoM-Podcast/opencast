@@ -5,8 +5,8 @@ angular.module('adminNg.resources')
             method: 'GET',
             transformResponse: function (json) {
                 var data = JSON.parse(json);
-                
-                if (data.status === "edited before" || data.status === "locked") {
+
+              if (data.status === "edited before" || data.status === "locked") {
                     return data;
                 }
                 // Create a default segment spanning the entire track

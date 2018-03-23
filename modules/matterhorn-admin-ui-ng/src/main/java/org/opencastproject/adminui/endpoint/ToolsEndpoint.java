@@ -132,9 +132,9 @@ import javax.xml.bind.JAXBException;
   abstractText = "Provides a location for the tools API.",
   notes = { "This service provides a location for the tools API for the admin UI.",
             "<strong>Important:</strong> "
-            + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
-            + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
-            + "DO NOT use this for integration of third-party applications.<em>"})
+              + "<em>This service is for exclusive use by the module matterhorn-admin-ui-ng. Its API might change "
+              + "anytime without prior notice. Any dependencies other than the admin UI will be strictly ignored. "
+              + "DO NOT use this for integration of third-party applications.<em>"})
 public class ToolsEndpoint implements ManagedService {
   /** The logging facility */
   private static final Logger logger = LoggerFactory.getLogger(ToolsEndpoint.class);
@@ -434,7 +434,7 @@ public class ToolsEndpoint implements ManagedService {
   @Path("{mediapackageid}/editor.json")
   @Consumes(MediaType.APPLICATION_JSON)
   @RestQuery(name = "editVideo", description = "Takes editing information from the client side and processes it", returnDescription = "", pathParameters = {
-          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+          @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING) }, reponses = {
                   @RestResponse(description = "Editing information saved and processed", responseCode = HttpServletResponse.SC_OK),
                   @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND),
                   @RestResponse(description = "The editing information cannot be parsed", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
@@ -567,8 +567,8 @@ public class ToolsEndpoint implements ManagedService {
    *           if the SMIL catalog cannot be read or not be written to the archive
    */
   MediaPackage addSmilToArchive(MediaPackage mediaPackage, final Smil smil) throws IOException {
-    MediaPackageElementFlavor mediaPackageElementFlavor = adminUIConfiguration.getSmilCatalogFlavor();
-    //set default catalog Id if there is none existing
+   MediaPackageElementFlavor mediaPackageElementFlavor = adminUIConfiguration.getSmilCatalogFlavor();
+   //set default catalog Id if there is none existing
     String catalogId = smil.getId();
     Catalog[] catalogs = mediaPackage.getCatalogs();
 
@@ -577,7 +577,7 @@ public class ToolsEndpoint implements ManagedService {
        if (p.getFlavor().matches(mediaPackageElementFlavor)) {
          logger.debug("Set Idendifier for Smil-Catalog to: " + p.getIdentifier());
          catalogId = p.getIdentifier();
-         break;
+       break;
        }
      }
      Catalog catalog = mediaPackage.getCatalog(catalogId);
