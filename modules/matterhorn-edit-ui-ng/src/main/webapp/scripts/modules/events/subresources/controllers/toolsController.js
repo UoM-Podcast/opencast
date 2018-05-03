@@ -105,7 +105,14 @@ angular.module('editNg.controllers')
               });
             };
             $window.onbeforeunload = function () {
-              ToolsResource.release({id: $scope.id, tool: 'lock'});
+              // Have to delete lock with synch call
+              var request = new XMLHttpRequest();
+              request.open('DELETE', 'tools/' + $scope.id + '/lock.json', false);
+              request.send(null);
+
+              if (request.status === 200) {
+                console.log('lock freed');
+              }
             };
           }
         ]);

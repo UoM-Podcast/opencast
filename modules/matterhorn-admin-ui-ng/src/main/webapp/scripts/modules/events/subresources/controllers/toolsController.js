@@ -22,8 +22,8 @@
 
 // Controller for all event screens.
 angular.module('adminNg.controllers')
-.controller('ToolsCtrl', ['$scope', '$interval', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService',
-    function ($scope, $interval, $route, $location, $window, ToolsResource, Notifications, EventHelperService) {
+.controller('ToolsCtrl', ['$scope', '$interval', '$route', '$location', '$window', 'ToolsResource', 'Notifications', 'EventHelperService', '$q',
+    function ($scope, $interval, $route, $location, $window, ToolsResource, Notifications, EventHelperService, $q) {
 
         $scope.navigateTo = function (path) {
             // FIMXE When changing tabs, video playback breaks. Using playback
@@ -105,7 +105,14 @@ angular.module('adminNg.controllers')
             });
         };
         $window.onbeforeunload = function () {
-            ToolsResource.release({id: $scope.id, tool: 'lock'});
+          // Have to delete lock with synch call
+          var request = new XMLHttpRequest();
+          request.open('DELETE', 'tools/' + $scope.id + '/lock.json', false);
+          request.send(null);
+
+          if (request.status === 200) {
+            console.log('lock freed');
+          }
         };
     }
 ]);
