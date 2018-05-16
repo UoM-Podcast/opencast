@@ -1494,8 +1494,8 @@
      "ZOOM": "Zoom",
      "BUTTONS": {
        "CLOSE":       "Close",
-       "SAVE":        "Save",
-       "PROCESS":     "Save & Continue",
+       "SAVE":        "Save edits ",
+       "PROCESS":     "Publish video",
        "ADD_COMMENT": "Add Comment"
      },
      "TABS": {
