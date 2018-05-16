@@ -4,7 +4,30 @@
 
     <div class="main-view" ng-controller="ToolsCtrl">
       <div ng-controller="VideoEditCtrl">
-        <div class="video-header">
+        <div ng-if="video.status === 'edited before'" >
+          <div class="video-timeline">
+            <div class="timeline-control">
+              <header>
+                <span class="ng-scope">This video has been edited before.</span>
+              </header>
+              <br/>
+              <p>This video has already been published and cannot be edited.</p>
+            </div>
+          </div>
+        </div>
+        <div ng-if="video.status === 'locked' && video.locked > '0'" >
+          <div class="video-timeline">
+            <div class="timeline-control">
+              <header>
+                <span class="ng-scope">This video is currently locked.</span>
+              </header>
+              <br/>
+              <p>This video is currently being edited by somebody else. It will be available in {{video.locked}} minutes</p>
+            </div>
+          </div>
+        </div>
+        <div ng-if="video.status !== 'edited before' && video.locked <= '0'" >
+          <div class="video-header">
             <div class="main-video-details">
                 <h1 class="video-title">{{ video.title }}</h1>
                 <h4 class="video-details"><span class="video-details-date">{{ video.date | localizeDate : 'date' : 'short'}}</span>
@@ -18,8 +41,6 @@
         </div>
         <div ng-if="tab === 'editor' || tab === 'playback'" class="tab-menu">
             <nav class="view-controller">
-<!--                <a ng-class="{active: tab === 'playback'}"
-                    ng-click="openTab('playback')" translate>VIDEO_TOOL.TABS.PLAY</a>-->
                 <a ng-class="{active: tab === 'editor'}"
                     ng-click="openTab('editor')" translate>VIDEO_TOOL.TABS.EDIT</a>
             </nav>
@@ -74,8 +95,6 @@
                             ng-click="openArea('segments')" translate>VIDEO_TOOL.AREAS.SEGMENTS</a>
                         <a ng-class="{active: area === 'metadata'}"
                             ng-click="openArea('metadata')" translate>VIDEO_TOOL.AREAS.METADATA</a>
-<!--                        <a ng-class="{active: area === 'comments'}"
-                            ng-click="openArea('comments')" translate>VIDEO_TOOL.AREAS.COMMENTS</a>-->
                     </nav>
                 </div>
 
@@ -131,7 +150,6 @@
 
             <div class="video-editor-actions-toolbar">
                 <div class="video-nav-controls">
-                    <!--<a class="return-button" ng-click="navigateTo('/cancel.html')" translate>VIDEO_TOOL.BUTTONS.CLOSE</a>-->
                 </div>
 
                 <div class="video-save-panel" ng-if="tab === 'editor' && player.adapter">
@@ -140,6 +158,7 @@
                         <a ng-click="submit()" ng-class="{disabled: submitButton}" class="save-and-close-button" translate="VIDEO_TOOL.BUTTONS.PROCESS"></a>
                     </div>
                 </div>
+              </div>
             </div>
         </div>
     </div>

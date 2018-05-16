@@ -1,11 +1,14 @@
 angular.module('adminNg.resources')
 .factory('ToolsResource', ['$resource', 'JsHelper', function ($resource, JsHelper) {
-    return $resource('/admin-ng/tools/:id/:tool.json', { id: '@id' }, {
+    return $resource('/admin-ng/tools/:id/:tool.json', { id: '@id', tool:'@tool' }, {
         get: {
             method: 'GET',
             transformResponse: function (json) {
                 var data = JSON.parse(json);
 
+              if (data.status === "edited before" || data.status === "locked") {
+                    return data;
+                }
                 // Create a default segment spanning the entire track
                 if (data.segments.length === 0) {
                     data.segments.push({
@@ -58,6 +61,9 @@ angular.module('adminNg.resources')
                 return data;
             }
         },
+        release: {
+            method: 'DELETE'
+        },
         save: {
             method: 'POST',
             transformRequest: function (data) {
@@ -78,6 +84,9 @@ angular.module('adminNg.resources')
                     tracks:   JsHelper.map(data.tracks, 'id')
                 };
 
+                if (data.autosave) {
+                    response.autosave = data.autosave;
+                }
                 if (data.workflow) {
                     response.workflow = data.workflow;
                 }

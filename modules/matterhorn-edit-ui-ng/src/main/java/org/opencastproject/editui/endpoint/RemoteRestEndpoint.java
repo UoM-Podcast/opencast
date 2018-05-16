@@ -31,6 +31,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
@@ -46,6 +47,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
@@ -68,11 +70,11 @@ abstract class RemoteRestEndpoint {
     this.trustedClient = client;
   }
 
-  public Response forwardRequest(String request, String method, String json) {
-    return forwardRequest(request, method, json, null);
+  public Response forwardRequest(String uri, HttpServletRequest request, String json) {
+    return forwardRequest(uri, request, json, null);
   }
 
-  public Response forwardRequest(String request, String method, String json, List<BasicNameValuePair> params) {
+  public Response forwardRequest(String uri, HttpServletRequest request, String json, List<BasicNameValuePair> params) {
     SecurityService secService = getSecurityService();
     Organization org = getSecurityService().getOrganization();
     secService.setUser(SecurityUtil.createSystemUser("admin", org));
@@ -80,11 +82,14 @@ abstract class RemoteRestEndpoint {
     HttpRequestBase httpRequest = null;
     Response response = null;
     String adminHost = org.getProperties().get(MatterhornConstants.ADMIN_URL_ORG_PROPERTY);
-    String url = adminHost + request;
-
-    logger.debug("Forwarding request: {} {}", method, url);
-
-    switch (method) {
+    String url = adminHost + uri;
+    String sessionId = request.getRequestedSessionId();
+    logger.debug("Forwarding request: {} {}", request.getMethod(), url);
+    switch (request.getMethod()) {
+      case "DELLETE": {
+        httpRequest = new HttpDelete(url);
+        break;
+      }
       case "GET": {
         httpRequest = new HttpGet(url);
         break;
@@ -122,6 +127,7 @@ abstract class RemoteRestEndpoint {
       }
     }
     try {
+      httpRequest.addHeader("X-Forwarded-SessionId", sessionId);
       httpResponse = trustedClient.execute(httpRequest);
       int status = httpResponse.getStatusLine().getStatusCode();
       HttpEntity httpEntity = httpResponse.getEntity();

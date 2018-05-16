@@ -44,6 +44,7 @@ import java.util.Dictionary;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -102,8 +103,8 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   @RestQuery(name = "getAvailableTools", description = "Returns a list of tools which are currently available for the given media package.", returnDescription = "A JSON array with tools identifiers", pathParameters = {
     @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Available tools evaluated", responseCode = HttpServletResponse.SC_OK)})
-  public Response getAvailableTools(@PathParam("mediapackageid") final String mediaPackageId) {
-    return forwardRequest("/admin-ng/tools/" + mediaPackageId + ".json", "GET", null);
+  public Response getAvailableTools(@PathParam("mediapackageid") final String mediaPackageId, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/tools/" + mediaPackageId + ".json", request, null);
   }
 
   @GET
@@ -136,9 +137,29 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   @RestQuery(name = "getVideoEditor", description = "Returns all the information required to get the editor tool started", returnDescription = "JSON object", pathParameters = {
     @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Media package found", responseCode = HttpServletResponse.SC_OK),
+    @RestResponse(description = "Media has been edited previously", responseCode =  HttpServletResponse.SC_NO_CONTENT),
     @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})
-  public Response getVideoEditor(@PathParam("mediapackageid") final String mediaPackageId) {
-    return forwardRequest("/admin-ng/tools/" + mediaPackageId + "/editor.json", "GET", null);
+  public Response getVideoEditor(@PathParam("mediapackageid") final String mediaPackageId, @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/tools/" + mediaPackageId + "/editor.json", request, null);
+  }
+
+  @DELETE
+  @Path("lock.json")
+  @RestQuery(name = "cleanUpLocks", description = "Cleans up mediaPackage Locks", returnDescription = "", reponses = {
+    @RestResponse(description = "MediaPackage lock has been freed", responseCode = HttpServletResponse.SC_OK)})
+  public Response cleanUpLocks(@Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/tools/lock.json", request, null);
+  }
+
+  @DELETE
+  @Path("{mediapackageid}/lock.json")
+  @RestQuery(name = "unlockVideo", description = "Frees the mediapackage lock for a video", returnDescription = "", pathParameters = {
+    @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
+    @RestResponse(description = "MediaPackage lock has been freed", responseCode = HttpServletResponse.SC_OK),
+    @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})
+  public Response unlockVideo(@PathParam("mediapackageid") final String mediaPackageId,
+          @Context HttpServletRequest request) {
+    return forwardRequest("/admin-ng/tools/" + mediaPackageId + "/lock.json", request, null);
   }
 
   @POST
@@ -163,6 +184,6 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
       logger.error("Error reading request body: {}", ExceptionUtils.getStackTrace(e));
       return R.serverError();
     }
-    return forwardRequest("/admin-ng/tools/" + mediaPackageId + "/editor.json", "POST", details);
+    return forwardRequest("/admin-ng/tools/" + mediaPackageId + "/editor.json", request, details);
   }
 }
