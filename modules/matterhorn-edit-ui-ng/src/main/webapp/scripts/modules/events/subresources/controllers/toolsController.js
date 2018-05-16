@@ -33,6 +33,7 @@ angular.module('editNg.controllers')
               // The following hack prevents a racing condition between setting
               // the path and a reload by preventing the path change from
               // triggering a render sync before the reload takes place.
+              ToolsResource.release({id: $scope.id, tool: 'lock'});
               var lastRoute, off;
               lastRoute = $route.current;
               off = $scope.$on('$locationChangeSuccess', function () {
@@ -69,6 +70,7 @@ angular.module('editNg.controllers')
             $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'});
 
             $scope.autosave = function () {
+              $scope.video.autosave = true;
               $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
                 Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO', 'video-tools');
               });
@@ -77,6 +79,7 @@ angular.module('editNg.controllers')
 
             $scope.submitButton = false;
             $scope.save = function () {
+              $scope.video.autosave = false;
               $scope.submitButton = true;
               $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
@@ -100,6 +103,16 @@ angular.module('editNg.controllers')
                 $scope.submitButton = false;
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
               });
+            };
+            $window.onbeforeunload = function () {
+              // Have to delete lock with synch call
+              var request = new XMLHttpRequest();
+              request.open('DELETE', 'tools/' + $scope.id + '/lock.json', false);
+              request.send(null);
+
+              if (request.status === 200) {
+                console.log('lock freed');
+              }
             };
           }
         ]);

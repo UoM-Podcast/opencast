@@ -15,6 +15,29 @@
 
     <div class="main-view" ng-controller="ToolsCtrl">
       <div ng-controller="VideoEditCtrl">
+      <div ng-if="video.status === 'edited before'" >
+        <div class="video-timeline">
+          <div class="timeline-control">
+            <header>
+              <span class="ng-scope">This video has been edited before.</span>
+            </header>
+            <br/>
+            <p>This video has already been published and cannot be edited.</p>
+          </div>
+        </div>
+      </div>
+      <div ng-if="video.status === 'locked' && video.locked > '0'" >
+        <div class="video-timeline">
+          <div class="timeline-control">
+            <header>
+              <span class="ng-scope">This video is currently locked.</span>
+            </header>
+            <br/>
+            <p>This video is currently being edited by somebody else. It will be available in {{video.locked}} minutes</p>
+          </div>
+        </div>
+      </div>
+      <div ng-if="video.status !== 'edited before' && video.locked <= '0'" >
         <div class="video-header">
             <div class="main-video-details">
                 <h1 class="video-title">{{ video.title }}</h1>
@@ -190,33 +213,33 @@
 
                 <div ng-if="area === 'segments'">
                   <div class="area-body">
-                      <div class="video-toolbar">
-                          <div class="start-column">
-                              <div class="primary-functions function-buttons">
-                                  <a class="split" ng-click="split()" translate>VIDEO_TOOL.ACTIONS.SPLIT</a>
-                                  <a class="cut" ng-click="cut()" translate>VIDEO_TOOL.ACTIONS.CUT</a>
-                                  <a class="replay" ng-click="replay()" translate>VIDEO_TOOL.ACTIONS.REPLAY_SEGMENT</a>
-                                  <a class="replay-end-of-segment" ng-click="replayEndOfSegment()" translate>VIDEO_TOOL.ACTIONS.REPLAY_END_OF_SEGMENT</a>
-                                  <a class="replay-with-preroll" ng-click="replayPreRoll()" translate>VIDEO_TOOL.ACTIONS.REPLAY_SEGMENT_WITH_PREROLL</a>
-                                  <!--
-                                  <a class="switch-feed" translate>VIDEO_TOOL.ACTIONS.SWITCH_FEED</a>
-                                  -->
-                              </div>
-                          </div>
-                          <div class="end-column">
-                              <div class="destructive-functions function-buttons">
-                                  <a class="clear-segments" ng-click="clearSelectedSegment()" translate>VIDEO_TOOL.ACTIONS.CLEAR_SELECTED_SEGMENT</a>
-                                  <a class="clear-segments" ng-click="clearSegments()" translate>VIDEO_TOOL.ACTIONS.CLEAR_SEGMENTS</a>
-                              </div>
-                          </div>
+                    <div class="video-toolbar">
+                      <div class="start-column">
+                        <div class="primary-functions function-buttons">
+                          <a class="split" ng-click="split()" translate>VIDEO_TOOL.ACTIONS.SPLIT</a>
+                          <a class="cut" ng-click="cut()" translate>VIDEO_TOOL.ACTIONS.CUT</a>
+                          <a class="replay" ng-click="replay()" translate>VIDEO_TOOL.ACTIONS.REPLAY_SEGMENT</a>
+                          <a class="replay-end-of-segment" ng-click="replayEndOfSegment()" translate>VIDEO_TOOL.ACTIONS.REPLAY_END_OF_SEGMENT</a>
+                          <a class="replay-with-preroll" ng-click="replayPreRoll()" translate>VIDEO_TOOL.ACTIONS.REPLAY_SEGMENT_WITH_PREROLL</a>
+                          <!--
+                          <a class="switch-feed" translate>VIDEO_TOOL.ACTIONS.SWITCH_FEED</a>
+                          -->
+                </div>
                       </div>
-                      <div data-admin-ng-segments="" data-video="video" data-player="player"></div>
+                      <div class="end-column">
+                        <div class="destructive-functions function-buttons">
+                          <a class="clear-segments" ng-click="clearSelectedSegment()" translate>VIDEO_TOOL.ACTIONS.CLEAR_SELECTED_SEGMENT</a>
+                          <a class="clear-segments" ng-click="clearSegments()" translate>VIDEO_TOOL.ACTIONS.CLEAR_SEGMENTS</a>
+                        </div>
+                      </div>
+                    </div>
+                    <div data-admin-ng-segments="" data-video="video" data-player="player"></div>
                   </div>
                 </div>
 
-            </div>
+              </div>
 
-            <div class="video-editor-actions-toolbar">
+              <div class="video-editor-actions-toolbar">
                 <div class="video-nav-controls">
                     <a class="return-button" ng-click="navigateTo('/events/events')" translate>VIDEO_TOOL.BUTTONS.CLOSE</a>
                 </div>
@@ -237,6 +260,7 @@
                 </div>
             </div>
         </div>
+      </div>
     </div>
   </div>
 </section>
