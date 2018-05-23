@@ -11,7 +11,7 @@ The following units are currently scheduled to be recorded:
 <#list modules as module>
 * ${module.name}<#if module.description?? && module.description != "">, ${module.description}</#if>
 <#if module.lecturesChanged gt 0>- ${module.lecturesChanged} lectures have changed in the timetable and need to reviewed</#if>
-<#if module.requirementChange>- <#if module.required>This unit requires recording for students registered with DASS<#else>This unit is no longer requires recording for students registered with DASS</#if></#if>
+<#if module.requirementChange>- <#if module.required>This unit requires recording for students registered with DASS<#else>This unit no longer requires recording for students registered with DASS</#if></#if>
 
 </#list>
 
