@@ -82,7 +82,7 @@ angular.module('editNg.resources')
                     tracks: JsHelper.map(data.tracks, 'id')
                   };
                   if (data.autosave) {
-                      response.autosave = data.autosave;
+                    response.autosave = String(data.autosave);
                   }
                   return JSON.stringify(response);
                 }
