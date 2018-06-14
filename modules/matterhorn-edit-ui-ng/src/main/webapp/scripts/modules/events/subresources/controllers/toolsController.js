@@ -71,16 +71,23 @@ angular.module('editNg.controllers')
 
             $scope.autosave = function () {
               $scope.video.autosave = true;
+              $scope.submitButton = true;
               $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
+                $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO', 'video-tools');
+              }, function () {
+                $scope.submitButton = false;
               });
             };
-            $scope.stopTime = $interval($scope.autosave, 1740000);
+            var autosaveDelay = 1740000; // 29 min
+            $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
 
             $scope.submitButton = false;
             $scope.save = function () {
               $scope.video.autosave = false;
+              $interval.cancel($scope.autosaveStop);
               $scope.submitButton = true;
+              
               $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
                 Notifications.add('success', 'VIDEO_CUT_SAVED', 'video-tools');
@@ -88,10 +95,13 @@ angular.module('editNg.controllers')
                       $scope.id + '/tools/saved');
               }, function () {
                 $scope.submitButton = false;
+                $scope.autosaveStop = $interval($scope.autosave, autosaveDelay)
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
               });
             };
             $scope.submit = function () {
+              $scope.video.autosave = false;
+              $interval.cancel($scope.autosaveStop);
               $scope.submitButton = true;
 
               $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
@@ -101,6 +111,7 @@ angular.module('editNg.controllers')
                       $scope.id + '/tools/submitted');
               }, function () {
                 $scope.submitButton = false;
+                $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
               });
             };
