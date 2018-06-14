@@ -165,7 +165,7 @@
     "TASK_CREATED":"The task has been created",
     "TASK_NOT_CREATED":"The task could not be created",
     "VIDEO_CUT_NOT_SAVED":"The editing information could not be saved",
-    "VIDEO_CUT_SAVED":"The editing information has been saved",
+    "VIDEO_CUT_SAVING": "The editing information is being saved…",
     "VIDEO_CUT_SAVED_AUTO":"The editing information has been saved automatically",
     "VIDEO_CUT_PROCESSING":"The video is being processed…",
     "VIDEO_EDITED_BEFORE":"This video has already been published and cannot be edited.",

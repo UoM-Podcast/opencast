@@ -87,15 +87,15 @@ angular.module('editNg.controllers')
               $scope.video.autosave = false;
               $interval.cancel($scope.autosaveStop);
               $scope.submitButton = true;
+              Notifications.add('success', 'VIDEO_CUT_SAVING', 'video-tools');
               
               $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
-                Notifications.add('success', 'VIDEO_CUT_SAVED', 'video-tools');
                 $scope.navigateTo('events/' + $scope.resource + '/' +
                       $scope.id + '/tools/saved');
               }, function () {
                 $scope.submitButton = false;
-                $scope.autosaveStop = $interval($scope.autosave, autosaveDelay)
+                $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
               });
             };
@@ -103,10 +103,10 @@ angular.module('editNg.controllers')
               $scope.video.autosave = false;
               $interval.cancel($scope.autosaveStop);
               $scope.submitButton = true;
+              Notifications.add('success', 'VIDEO_CUT_PROCESSING', 'video-tools');
 
               $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
                 $scope.submitButton = false;
-                Notifications.add('success', 'VIDEO_CUT_PROCESSING', 'video-tools');
                 $scope.navigateTo('events/' + $scope.resource + '/' +
                       $scope.id + '/tools/submitted');
               }, function () {

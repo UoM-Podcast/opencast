@@ -97,14 +97,14 @@ angular.module('adminNg.controllers')
             $scope.video.autosave = false;
             $interval.cancel($scope.autosaveStop);
             $scope.submitButton = true;
+            if ($scope.video.workflow) {
+              Notifications.add('success', 'VIDEO_CUT_PROCESSING');
+            } else {
+              Notifications.add('success', 'VIDEO_CUT_SAVING');
+            }
 
             $scope.video.$save({ id: $scope.id, tool: $scope.tab }, function () {
                 $scope.submitButton = false;
-                if ($scope.video.workflow) {
-                    Notifications.add('success', 'VIDEO_CUT_PROCESSING');
-                } else {
-                    Notifications.add('success', 'VIDEO_CUT_SAVED');
-                }
                 $location.url('/events/' + $scope.resource);
             }, function () {
                 $scope.submitButton = false;
