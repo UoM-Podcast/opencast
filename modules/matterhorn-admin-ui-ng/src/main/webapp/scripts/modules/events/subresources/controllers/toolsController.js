@@ -33,12 +33,12 @@ angular.module('adminNg.controllers')
             // The following hack prevents a racing condition between setting
             // the path and a reload by preventing the path change from
             // triggering a render sync before the reload takes place.
+            ToolsResource.release({id: $scope.id, tool: 'lock'});
             var lastRoute, off;
             lastRoute = $route.current;
             off = $scope.$on('$locationChangeSuccess', function () {
                 $route.current = lastRoute;
                 off();
-                ToolsResource.release({id: $scope.id, tool: 'lock'});
                 $window.location.reload();
             });
             $location.path(path).replace();
@@ -67,7 +67,7 @@ angular.module('adminNg.controllers')
 
         // TODO Move the following to a VideoCtrl
         $scope.player = {};
-        $scope.video  = ToolsResource.get({ id: $scope.id, tool: 'editor' }, function () {
+        $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'}, function () {
           if ($scope.video.status === 'locked' ) {
             var mins = $scope.video.locked;
             Notifications.addWithParams('error', 'VIDEO_EDIT_LOCKED_MINS', {minutes : mins});
@@ -81,26 +81,34 @@ angular.module('adminNg.controllers')
 
         $scope.autosave = function () {
             $scope.video.autosave = true;
+            $scope.submitButton = true;
             $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
-                Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO');
+              $scope.submitButton = false;
+              Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO');
+            }, function () {
+              $scope.submitButton = false;
             });
         };
-        $scope.stopTime = $interval($scope.autosave, 1740000);
+            var autosaveDelay = 1740000; // 29 min
+            $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
 
         $scope.submitButton = false;
         $scope.submit = function () {
             $scope.video.autosave = false;
+            $interval.cancel($scope.autosaveStop);
             $scope.submitButton = true;
+            if ($scope.video.workflow) {
+              Notifications.add('success', 'VIDEO_CUT_PROCESSING');
+            } else {
+              Notifications.add('success', 'VIDEO_CUT_SAVING');
+            }
+
             $scope.video.$save({ id: $scope.id, tool: $scope.tab }, function () {
                 $scope.submitButton = false;
-                if ($scope.video.workflow) {
-                    Notifications.add('success', 'VIDEO_CUT_PROCESSING');
-                } else {
-                    Notifications.add('success', 'VIDEO_CUT_SAVED');
-                }
                 $location.url('/events/' + $scope.resource);
             }, function () {
                 $scope.submitButton = false;
+                $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
                 Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
             });
         };

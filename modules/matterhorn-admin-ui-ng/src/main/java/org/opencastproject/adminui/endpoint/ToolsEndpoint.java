@@ -35,8 +35,8 @@ import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
 import static org.opencastproject.util.data.Tuple.tuple;
 
+import org.opencastproject.adminui.api.MediaPackageLockService;
 import org.opencastproject.adminui.impl.AdminUIConfiguration;
-import org.opencastproject.adminui.impl.MediaPackageLockService;
 import org.opencastproject.adminui.impl.index.AdminUISearchIndex;
 import org.opencastproject.archive.api.Archive;
 import org.opencastproject.archive.api.ArchiveException;
@@ -388,7 +388,7 @@ public class ToolsEndpoint implements ManagedService {
   @POST
   @Path("{mediapackageid}/lock.json")
   @Consumes(MediaType.APPLICATION_JSON)
-  @RestQuery(name = "editVideo", description = "Locks a mediapackage for editing", returnDescription = "", pathParameters = {
+  @RestQuery(name = "editVideo", description = "Locks a media package for editing", returnDescription = "", pathParameters = {
     @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
     @RestResponse(description = "Editing information saved and processed", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND),
@@ -406,8 +406,8 @@ public class ToolsEndpoint implements ManagedService {
 
   @DELETE
   @Path("lock.json")
-  @RestQuery(name = "cleanUpLocks", description = "Cleans up mediaPackage Locks", returnDescription = "", reponses = {
-    @RestResponse(description = "MediaPackage lock has been freed", responseCode = HttpServletResponse.SC_OK)})
+  @RestQuery(name = "cleanUpLocks", description = "Cleans up expired media package locks", returnDescription = "", reponses = {
+    @RestResponse(description = "Media package locks have been freed", responseCode = HttpServletResponse.SC_OK)})
   public Response cleanUpLocks(@Context HttpServletRequest request) throws IndexServiceException, NotFoundException, WorkflowDatabaseException {
     mediaPackageLockService.cleanUp();
     return R.ok();
@@ -416,9 +416,9 @@ public class ToolsEndpoint implements ManagedService {
   @DELETE
   @Path("{mediapackageid}/lock.json")
   @Consumes(MediaType.APPLICATION_JSON)
-  @RestQuery(name = "unlockVideo", description = "Frees the mediapackage lock for a video", returnDescription = "", pathParameters = {
+  @RestQuery(name = "unlockVideo", description = "Frees the media package lock for a video", returnDescription = "", pathParameters = {
     @RestParameter(name = "mediapackageid", description = "The id of the media package", isRequired = true, type = RestParameter.Type.STRING)}, reponses = {
-    @RestResponse(description = "MediaPackage lock has been freed", responseCode = HttpServletResponse.SC_OK),
+    @RestResponse(description = "Media package lock has been freed", responseCode = HttpServletResponse.SC_OK),
     @RestResponse(description = "Media package not found", responseCode = HttpServletResponse.SC_NOT_FOUND)})
   public Response unlockVideo(@PathParam("mediapackageid") final String mediaPackageId,
           @Context HttpServletRequest request) throws IndexServiceException, NotFoundException, WorkflowDatabaseException {

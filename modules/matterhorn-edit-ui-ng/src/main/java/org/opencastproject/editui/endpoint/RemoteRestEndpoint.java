@@ -86,7 +86,7 @@ abstract class RemoteRestEndpoint {
     String sessionId = request.getRequestedSessionId();
     logger.debug("Forwarding request: {} {}", request.getMethod(), url);
     switch (request.getMethod()) {
-      case "DELLETE": {
+      case "DELETE": {
         httpRequest = new HttpDelete(url);
         break;
       }
@@ -102,7 +102,7 @@ abstract class RemoteRestEndpoint {
           try {
             httpPost.setEntity(new UrlEncodedFormEntity(params));
           } catch (UnsupportedEncodingException ex) {
-            logger.error("Can't encode parameters:" + url, ex);
+            logger.error("Can't encode parameters", ex);
           }
         }
         httpRequest = httpPost;
@@ -116,14 +116,15 @@ abstract class RemoteRestEndpoint {
           try {
             httpPut.setEntity(new UrlEncodedFormEntity(params));
           } catch (UnsupportedEncodingException ex) {
-            logger.error("Can't encode parameters:" + url, ex);
+            logger.error("Can't encode parameters", ex);
           }
         }
         httpRequest = httpPut;
         break;
       }
       default: {
-        return response;// do nothing
+        logger.error("Can't handle request method: {}", request.getMethod());
+        return response; // do nothing
       }
     }
     try {
@@ -137,9 +138,9 @@ abstract class RemoteRestEndpoint {
         return Response.status(Status.fromStatusCode(status)).entity(data).type(type).build();
       }
     } catch (TrustedHttpClientException ex) {
-      logger.error("Can't forward Rest Call:" + url, ex);
+      logger.error("Can't forward rest call: {}", url, ex);
     } catch (IOException ex) {
-      logger.error("Can't read Result content:" + url, ex);
+      logger.error("Can't read repsonse content: {}", url, ex);
     } finally {
       trustedClient.close(httpResponse);
     }
