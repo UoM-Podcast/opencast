@@ -67,63 +67,67 @@ angular.module('editNg.controllers')
 
             // TODO Move the following to a VideoCtrl
             $scope.player = {};
-            $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'});
 
-            $scope.autosave = function () {
-              $scope.video.autosave = true;
-              $scope.submitButton = true;
-              $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
-                $scope.submitButton = false;
-                Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO', 'video-tools');
-              }, function () {
-                $scope.submitButton = false;
-              });
-            };
-            var autosaveDelay = 1740000; // 29 min
-            $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
+            // Don't get resources or autosave if edits "saved"
+            if ($scope.tab !== "saved" && $scope.tab !== "submitted") {
+              $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'});
 
-            $scope.submitButton = false;
-            $scope.save = function () {
-              $scope.video.autosave = false;
-              $interval.cancel($scope.autosaveStop);
-              $scope.submitButton = true;
-              Notifications.add('success', 'VIDEO_CUT_SAVING', 'video-tools');
-              
-              $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
-                $scope.submitButton = false;
-                $scope.navigateTo('events/' + $scope.resource + '/' +
-                      $scope.id + '/tools/saved');
-              }, function () {
-                $scope.submitButton = false;
+              if ($scope.video.status !== 'locked') {
+                $scope.autosave = function () {
+                  $scope.video.autosave = true;
+                  $scope.submitButton = true;
+                  $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
+                    $scope.submitButton = false;
+                    Notifications.add('success', 'VIDEO_CUT_SAVED_AUTO', 'video-tools');
+                  }, function () {
+                    $scope.submitButton = false;
+                  });
+                };
+                var autosaveDelay = 1740000; // 29 min
                 $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
-                Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
-              });
-            };
-            $scope.submit = function () {
-              $scope.video.autosave = false;
-              $interval.cancel($scope.autosaveStop);
-              $scope.submitButton = true;
-              Notifications.add('success', 'VIDEO_CUT_PROCESSING', 'video-tools');
-
-              $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
-                $scope.submitButton = false;
-                $scope.navigateTo('events/' + $scope.resource + '/' +
-                      $scope.id + '/tools/submitted');
-              }, function () {
-                $scope.submitButton = false;
-                $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
-                Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
-              });
-            };
-            $window.onbeforeunload = function () {
-              // Have to delete lock with synch call
-              var request = new XMLHttpRequest();
-              request.open('DELETE', 'tools/' + $scope.id + '/lock.json', false);
-              request.send(null);
-
-              if (request.status === 200) {
-                console.log('lock freed');
               }
-            };
+            
+              $scope.submitButton = false;
+              $scope.save = function () {
+                $scope.video.autosave = false;
+                $interval.cancel($scope.autosaveStop);
+                $scope.submitButton = true;
+                Notifications.add('success', 'VIDEO_CUT_SAVING', 'video-tools');
+
+                $scope.video.$save({id: $scope.id, tool: $scope.tab}, function () {
+                  $scope.submitButton = false;
+                  $scope.openTab('saved');
+                }, function () {
+                  $scope.submitButton = false;
+                  $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
+                  Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
+                });
+              };
+              $scope.submit = function () {
+                $scope.video.autosave = false;
+                $interval.cancel($scope.autosaveStop);
+                $scope.submitButton = true;
+                Notifications.add('success', 'VIDEO_CUT_PROCESSING', 'video-tools');
+
+                $scope.video.$submit({id: $scope.id, tool: $scope.tab}, function () {
+                  $scope.submitButton = false;
+                  $scope.openTab('submitted');
+                }, function () {
+                  $scope.submitButton = false;
+                  $scope.autosaveStop = $interval($scope.autosave, autosaveDelay);
+                  Notifications.add('error', 'VIDEO_CUT_NOT_SAVED', 'video-tools');
+                });
+              };
+              $window.onbeforeunload = function () {
+                // Have to delete lock with synch call
+                var request = new XMLHttpRequest();
+                request.open('DELETE', 'tools/' + $scope.id + '/lock.json', false);
+                request.send(null);
+
+                if (request.status === 200) {
+                  console.log('lock freed');
+                }
+              };
+            }
           }
         ]);
