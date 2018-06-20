@@ -5,52 +5,31 @@
     <div class="main-view">
       <div ng-controller="VideoEditCtrl">
         <div ng-if="tab === 'saved'">
-          <div class="video-timeline">
-            <div class="timeline-control">
-              <header>
-                <span class="ng-scope">Thank you for editing your video.</span>
-              </header>
-              <br/>
-              <p>Please note that the podcast has not yet been published - any marked segments have been saved.</p>
-              <br/>
-              <p>You will need to access the editor and press Save & Continue to allow the edited podcast to be published.</p>
-            </div>
+          <div class="modal-alert info">
+            <strong>Edits Saved</strong>
+            <p>Please note that the video has not yet been published - any marked segments have been saved.</p>
+            <p>You will need to access the editor and press "Publish video" to allow the edited video to be published.</p>
           </div>
         </div>
         <div ng-if="tab === 'submitted'">
-          <div class="video-timeline">
-            <div class="timeline-control">
-              <header>
-                <span class="ng-scope">Thank you for editing your video.</span>
-              </header>
-              <br/>
-              <p>The recording will now be processed and published on the Video Portal.</p>
-            </div>
+          <div class="modal-alert info">
+            <strong>Video Submitted for Publication</strong>
+            <p>Thank you for editing your video. The video will now be processed and published on the Video Portal.</p>
           </div>
         </div>
-        <div ng-if="video.status === 'edited before'" >
-          <div class="video-timeline">
-            <div class="timeline-control">
-              <header>
-                <span class="ng-scope">This video has been edited before.</span>
-              </header>
-              <br/>
-              <p>This video has already been published and cannot be edited.</p>
-            </div>
+        <div ng-if="video.status === 'edited before'">
+          <div class="modal-alert warning">
+            <strong>Video Published</strong>
+            <p>This video has already been published and cannot be edited.</p>
           </div>
         </div>
-        <div ng-if="video.status === 'locked' && video.locked > '0'" >
-          <div class="video-timeline">
-            <div class="timeline-control">
-              <header>
-                <span class="ng-scope">This video is currently locked.</span>
-              </header>
-              <br/>
-              <p>This video is currently being edited by somebody else. It will be available in {{video.locked}} minutes</p>
-            </div>
+        <div ng-if="video.status === 'locked' && video.locked > '0'">
+          <div class="modal-alert danger">
+            <strong>Video Locked</strong>
+            <p>This video is currently locked as it is being edited by somebody else. It will become available in {{video.locked}} minutes</p>
           </div>
         </div>
-        <div ng-if="video.status !== 'edited before' && video.locked <= '0'" >
+        <div ng-if="video.status !== 'edited before' && video.locked <= '0'">
           <div class="video-header">
             <div class="main-video-details">
                 <h1 class="video-title">{{ video.title }}</h1>
