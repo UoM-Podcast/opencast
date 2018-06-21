@@ -92,7 +92,7 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
   }
 
   @Override
-  public void store(MediaPackage mediaPackage, String repository) throws OaiPmhDatabaseException {
+  public void store(MediaPackage mediaPackage, String repository, boolean inlineElements) throws OaiPmhDatabaseException {
     int i = 0;
     boolean success = false;
     while (!success && i < 5) {
@@ -107,11 +107,11 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
         if (entity == null) {
           // no entry found, create new entity
           entity = new OaiPmhEntity();
-          updateEntity(entity, mediaPackage, repository);
+          updateEntity(entity, mediaPackage, repository, inlineElements);
           em.persist(entity);
         } else {
           // entry found, update existing
-          updateEntity(entity, mediaPackage, repository);
+          updateEntity(entity, mediaPackage, repository, inlineElements);
           em.merge(entity);
         }
         tx.commit();
@@ -143,7 +143,7 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
   }
 
   private void updateEntity(OaiPmhEntity entity, MediaPackage mediaPackage,
-                            String repository) throws OaiPmhDatabaseException {
+                            String repository, boolean inlineElements) throws OaiPmhDatabaseException {
     entity.setOrganization(getSecurityService().getOrganization().getId());
     entity.setDeleted(false);
     entity.setRepositoryId(repository);
@@ -153,46 +153,48 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
 
     //
     // episode
-    Catalog[] episodeCatalog = mediaPackage.getCatalogs(MediaPackageElements.EPISODE);
-    if (episodeCatalog.length != 0) {
-      entity.setEpisodeDublinCoreXML(toXml(DublinCoreUtil.loadDublinCore(getWorkspace(), episodeCatalog[0])));
-    } else {
-      entity.setEpisodeDublinCoreXML(null);
-    }
-
-    //
-    // series DublinCore and ACL
-    final Opt<String> seriesId = Opt.nul(mediaPackage.getSeries());
-    final Opt<Catalog> seriesDcCatalog = $(mediaPackage.getCatalogs(MediaPackageElements.SERIES)).head();
-    final Opt<Catalog> seriesAclCatalog = $(mediaPackage.getCatalogs(MediaPackageElements.XACML_POLICY_SERIES)).head();
-
-    if (seriesId.isNone()) {
-      entity.setSeries(null);
-    }
-    if (seriesDcCatalog.isNone()) {
-      entity.setSeriesDublinCoreXML(null);
-    }
-    if (seriesAclCatalog.isNone()) {
-      entity.setSeriesAclXML(null);
-    }
-    if (seriesId.isSome()) {
-      // series ID is set
-      final DublinCoreCatalog seriesDc = getSeriesDc(seriesId.get());
-      entity.setSeries(seriesDc.getFirst(DublinCore.PROPERTY_IDENTIFIER));
-      entity.setSeriesDublinCoreXML(toXml(seriesDc));
-      for (final AccessControlList acl : getSeriesAcl(seriesId.get())) {
-        entity.setSeriesAclXML(toXml(mediaPackage, acl));
+    if (inlineElements) {
+      Catalog[] episodeCatalog = mediaPackage.getCatalogs(MediaPackageElements.EPISODE);
+      if (episodeCatalog.length != 0) {
+        entity.setEpisodeDublinCoreXML(toXml(DublinCoreUtil.loadDublinCore(getWorkspace(), episodeCatalog[0])));
+      } else {
+        entity.setEpisodeDublinCoreXML(null);
       }
-    } else {
-      // no series ID, take everything from the media package
-      if (seriesDcCatalog.isSome()) {
-        final DublinCoreCatalog seriesDc = DublinCoreUtil.loadDublinCore(getWorkspace(), seriesDcCatalog.get());
+
+      //
+      // series DublinCore and ACL
+      final Opt<String> seriesId = Opt.nul(mediaPackage.getSeries());
+      final Opt<Catalog> seriesDcCatalog = $(mediaPackage.getCatalogs(MediaPackageElements.SERIES)).head();
+      final Opt<Catalog> seriesAclCatalog = $(mediaPackage.getCatalogs(MediaPackageElements.XACML_POLICY_SERIES)).head();
+
+      if (seriesId.isNone()) {
+        entity.setSeries(null);
+      }
+      if (seriesDcCatalog.isNone()) {
+        entity.setSeriesDublinCoreXML(null);
+      }
+      if (seriesAclCatalog.isNone()) {
+        entity.setSeriesAclXML(null);
+      }
+      if (seriesId.isSome()) {
+        // series ID is set
+        final DublinCoreCatalog seriesDc = getSeriesDc(seriesId.get());
         entity.setSeries(seriesDc.getFirst(DublinCore.PROPERTY_IDENTIFIER));
         entity.setSeriesDublinCoreXML(toXml(seriesDc));
-        // only attach the series ACL if a series catalog is present
-        // assume data inconsistency otherwise
-        if (seriesAclCatalog.isSome()) {
-          entity.setSeriesAclXML(loadAclXml(seriesAclCatalog.get()));
+        for (final AccessControlList acl : getSeriesAcl(seriesId.get())) {
+          entity.setSeriesAclXML(toXml(mediaPackage, acl));
+        }
+      } else {
+        // no series ID, take everything from the media package
+        if (seriesDcCatalog.isSome()) {
+          final DublinCoreCatalog seriesDc = DublinCoreUtil.loadDublinCore(getWorkspace(), seriesDcCatalog.get());
+          entity.setSeries(seriesDc.getFirst(DublinCore.PROPERTY_IDENTIFIER));
+          entity.setSeriesDublinCoreXML(toXml(seriesDc));
+          // only attach the series ACL if a series catalog is present
+          // assume data inconsistency otherwise
+          if (seriesAclCatalog.isSome()) {
+            entity.setSeriesAclXML(loadAclXml(seriesAclCatalog.get()));
+          }
         }
       }
     }

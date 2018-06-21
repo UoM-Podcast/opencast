@@ -243,7 +243,8 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
       }
       mpPublication.add(publication);
       try {
-        persistence.store(mpPublication, repository);
+        boolean inlineElements = !"aws.s3".equalsIgnoreCase(downloadDistributionService.getDistributionType());
+        persistence.store(mpPublication, repository, inlineElements);
         logger.info("Published {} to OAI-PMH repository {}", mpPublication, repository);
       } catch (OaiPmhDatabaseException e) {
         logger.error("Unable to store '{}' to OAI-PMH repository '{}'", mp, repository);
@@ -309,7 +310,7 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
     final List<Job> jobs = new ArrayList<>();
     final String pubChannelId = publicationChannelId(repository);
     try {
-        Job job = downloadDistributionService.distribute(pubChannelId, mediaPackage, downloadIds, checkAvailability, true, useAlternateDirectory);
+        Job job = downloadDistributionService.distribute(pubChannelId, mediaPackage, downloadIds, checkAvailability); //, true, useAlternateDirectory);
         jobs.add(job);
         if (streamingIds.size() > 0) {
           job = streamingDistributionService.distribute(pubChannelId, mediaPackage, streamingIds);

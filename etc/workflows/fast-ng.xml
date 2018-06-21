@@ -251,7 +251,7 @@
         <configuration key="download-flavors">dublincore/*,security/*</configuration>
         <configuration key="download-tags">engage-download</configuration>
         <configuration key="streaming-tags">engage-streaming</configuration>
-        <configuration key="check-availability">true</configuration>
+        <configuration key="check-availability">flase</configuration>
         <configuration key="repository">default</configuration>
         <configuration key="use-alternate-directory">${distributeToAlternate}</configuration>
       </configurations>

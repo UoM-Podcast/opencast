@@ -23,6 +23,7 @@ package org.opencastproject.publication.oaipmh;
 import static org.opencastproject.util.data.Collections.map;
 import static org.opencastproject.util.data.Tuple.tuple;
 
+import org.opencastproject.distribution.api.DownloadDistributionService;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageException;
@@ -68,13 +69,14 @@ public class OaiPmhPublicationServiceTest {
         return mp;
       }
     };
+    service.setDownloadDistributionService(EasyMock.createMock(DownloadDistributionService.class));
 
     mpCapture = new Capture<>();
     final OaiPmhDatabase oaiPmhDatabase = EasyMock.createMock(OaiPmhDatabase.class);
     final SearchResult searchResult = EasyMock.createNiceMock(SearchResult.class);
     try {
       EasyMock.expect(oaiPmhDatabase.search(EasyMock.<Query> anyObject())).andReturn(searchResult).atLeastOnce();
-      oaiPmhDatabase.store(EasyMock.capture(mpCapture), EasyMock.<String> anyObject());
+      oaiPmhDatabase.store(EasyMock.capture(mpCapture), EasyMock.<String> anyObject(), EasyMock.anyBoolean());
       EasyMock.expectLastCall().atLeastOnce();
       oaiPmhDatabase.delete(EasyMock.<String> anyObject(), EasyMock.<String> anyObject());
       EasyMock.expectLastCall().atLeastOnce();

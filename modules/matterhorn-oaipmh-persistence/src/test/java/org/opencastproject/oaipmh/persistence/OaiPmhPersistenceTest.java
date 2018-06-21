@@ -87,18 +87,18 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testAdding() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
   }
 
   @Test
   public void testMerging() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
-    oaiPmhDatabase.store(mp2, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
+    oaiPmhDatabase.store(mp2, REPOSITORY_ID_1, true);
   }
 
   @Test
   public void testDeleting() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
 
     boolean failed = false;
     try {
@@ -117,7 +117,7 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testRetrieving() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
 
     SearchResult search = oaiPmhDatabase.search(query().mediaPackageId(mp1).build());
     Assert.assertEquals(1, search.size());
@@ -134,7 +134,7 @@ public class OaiPmhPersistenceTest {
 
     Date dateBeforeStoring = new Date();
 
-    oaiPmhDatabase.store(mp2, REPOSITORY_ID_2);
+    oaiPmhDatabase.store(mp2, REPOSITORY_ID_2, true);
 
     search = oaiPmhDatabase.search(query().mediaPackageId(mp1).build());
     Assert.assertEquals(2, search.size());
@@ -183,10 +183,10 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testLimitOffset() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
     MediaPackage mp2 = (MediaPackage) mp1.clone();
     mp2.setIdentifier(IdBuilderFactory.newInstance().newIdBuilder().createNew());
-    oaiPmhDatabase.store(mp2, REPOSITORY_ID_2);
+    oaiPmhDatabase.store(mp2, REPOSITORY_ID_2, true);
     SearchResult search = oaiPmhDatabase.search(query().limit(2).build());
     Assert.assertEquals(2, search.size());
 

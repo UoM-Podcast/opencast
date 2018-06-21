@@ -18,7 +18,7 @@
              interface="org.opencastproject.distribution.api.DownloadDistributionService"
              cardinality="1..1"
              policy="static"
-             target="(distribution.channel=download)"
+             target="(distribution.channel=aws.s3)"
              bind="setDistributionService" />
   <reference name="serviceRegistry"
              interface="org.opencastproject.serviceregistry.api.ServiceRegistry"
