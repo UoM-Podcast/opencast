@@ -166,7 +166,7 @@ public final class RepublishOaiPmhWorkflowOperationHandler extends AbstractWorkf
     // Publish the media package to the search index
     try {
       logger.info(format("Updating metadata of media package %s in %s", publishedMp, repository));
-      oaiPmhDb.store(publishedMp, repository);
+      oaiPmhDb.store(publishedMp, repository, !"aws.s3".equalsIgnoreCase(distSvc.getDistributionType()));
       logger.info("Completed update operation on {}", mp.getIdentifier());
       return createResult(mp, Action.CONTINUE);
     } catch (OaiPmhDatabaseException e) {
