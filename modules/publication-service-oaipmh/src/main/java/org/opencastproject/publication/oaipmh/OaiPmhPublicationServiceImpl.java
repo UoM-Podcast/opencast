@@ -282,7 +282,9 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
 
     // publish to oai-pmh
     try {
-      oaiPmhDatabase.store(oaiPmhDistMp, repository);
+      // FIXME: store should use the download service to get metadata elements for inlining
+      boolean inlineElements = !"aws.s3".equalsIgnoreCase(downloadDistributionService.getDistributionType());
+      oaiPmhDatabase.store(oaiPmhDistMp, repository, inlineElements);
     } catch (OaiPmhDatabaseException e) {
       // todo: should we retract the elements from download and streaming here?
       throw new PublicationException(format("Unable to distribute media package %s to OAI-PMH repository %s", mpId, repository), e);
@@ -456,7 +458,8 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
     try {
       logger.debug(format("Updating metadata of media package %s in %s",
               publishedMp.getIdentifier().compact(), repository));
-      oaiPmhDatabase.store(publishedMp, repository);
+      boolean inlineElements = !"aws.s3".equalsIgnoreCase(downloadDistributionService.getDistributionType());
+      oaiPmhDatabase.store(publishedMp, repository, inlineElements);
     } catch (OaiPmhDatabaseException e) {
       throw new PublicationException(format("Media package %s could not be updated",
               publishedMp.getIdentifier().compact()));

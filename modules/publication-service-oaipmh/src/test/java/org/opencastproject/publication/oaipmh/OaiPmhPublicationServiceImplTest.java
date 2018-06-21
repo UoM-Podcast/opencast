@@ -258,7 +258,7 @@ public class OaiPmhPublicationServiceImplTest {
             .andReturn(new SearchResultImpl(0, 0, new ArrayList<>())).once();
     Capture<MediaPackage> storedMpCap = EasyMock.newCapture();
     // capture stored media package
-    oaiDb.store(capture(storedMpCap), eq("default"));
+    oaiDb.store(capture(storedMpCap), eq("default"), true);
     EasyMock.replay(oaiDb);
     service.setOaiPmhDatabase(oaiDb);
 

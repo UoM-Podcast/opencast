@@ -94,19 +94,19 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testAdding() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_2);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_2, true);
   }
 
   @Test
   public void testMerging() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
-    oaiPmhDatabase.store(mp2, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
+    oaiPmhDatabase.store(mp2, REPOSITORY_ID_1, true);
   }
 
   @Test
   public void testDeleting() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
 
     boolean failed = false;
     try {
@@ -125,7 +125,7 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testRetrieving() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
 
     SearchResult search = oaiPmhDatabase.search(query().mediaPackageId(mp1).build());
     Assert.assertEquals(1, search.size());
@@ -149,7 +149,7 @@ public class OaiPmhPersistenceTest {
 
     Date dateBeforeStoring = new Date();
 
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_2);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_2, true);
 
     search = oaiPmhDatabase.search(query().mediaPackageId(mp1).build());
     Assert.assertEquals(2, search.size());
@@ -206,10 +206,10 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testLimitOffset() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
     MediaPackage mp2 = (MediaPackage) mp1.clone();
     mp2.setIdentifier(IdBuilderFactory.newInstance().newIdBuilder().createNew());
-    oaiPmhDatabase.store(mp2, REPOSITORY_ID_2);
+    oaiPmhDatabase.store(mp2, REPOSITORY_ID_2, true);
     SearchResult search = oaiPmhDatabase.search(query().limit(2).build());
     Assert.assertEquals(2, search.size());
 
@@ -224,7 +224,7 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testRemovalOfOrphanedElements() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
     int count = 0;
     for (SearchResultItem searchResultItem : oaiPmhDatabase
             .search(queryRepo(REPOSITORY_ID_1).mediaPackageId(mp1).build()).getItems()) {
@@ -235,7 +235,7 @@ public class OaiPmhPersistenceTest {
     Assert.assertEquals(1, count);
 
     mp1.removeElementById("catalog-1");
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
     count = 0;
     for (SearchResultItem searchResultItem : oaiPmhDatabase
             .search(queryRepo(REPOSITORY_ID_1).mediaPackageId(mp1).build()).getItems()) {
@@ -248,12 +248,12 @@ public class OaiPmhPersistenceTest {
 
   @Test
   public void testModifyElement() throws Exception {
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
 
     MediaPackageElement catalog1 = mp1.getElementById("catalog-1");
     catalog1.setURI(URI.create("foo.xml"));
     catalog1.setChecksum(null);
-    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1);
+    oaiPmhDatabase.store(mp1, REPOSITORY_ID_1, true);
 
     int count = 0;
     for (SearchResultItem searchResultItem : oaiPmhDatabase

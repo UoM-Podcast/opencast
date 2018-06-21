@@ -73,7 +73,7 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
   }
 
   @Override
-  public void store(MediaPackage mediaPackage, String repository) throws OaiPmhDatabaseException {
+  public void store(MediaPackage mediaPackage, String repository, boolean inlineElements) throws OaiPmhDatabaseException {
     int i = 0;
     boolean success = false;
     while (!success && i < 5) {
@@ -88,11 +88,11 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
         if (entity == null) {
           // no entry found, create new entity
           entity = new OaiPmhEntity();
-          updateEntity(entity, mediaPackage, repository);
+          updateEntity(entity, mediaPackage, repository, inlineElements);
           em.persist(entity);
         } else {
           // entry found, update existing
-          updateEntity(entity, mediaPackage, repository);
+          updateEntity(entity, mediaPackage, repository, inlineElements);
           em.merge(entity);
         }
         tx.commit();
@@ -124,7 +124,7 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
   }
 
   public void updateEntity(OaiPmhEntity entity, MediaPackage mediaPackage,
-                            String repository) throws OaiPmhDatabaseException {
+                            String repository, boolean inlineElements) throws OaiPmhDatabaseException {
     entity.setOrganization(getSecurityService().getOrganization().getId());
     entity.setDeleted(false);
     entity.setRepositoryId(repository);
@@ -132,41 +132,43 @@ public abstract class AbstractOaiPmhDatabase implements OaiPmhDatabase {
     entity.setMediaPackageId(mediaPackage.getIdentifier().toString());
     entity.setMediaPackageXML(MediaPackageParser.getAsXml(mediaPackage));
     entity.setSeries(mediaPackage.getSeries());
-    entity.removeAllMediaPackageElements();
 
+    if (inlineElements) {
+      entity.removeAllMediaPackageElements();
 
-    for (MediaPackageElement mpe : mediaPackage.getElements()) {
-      if (mpe.getFlavor() == null) {
-        logger.debug("A flavor must be set on media package elements for publishing");
-        continue;
-      }
+      for (MediaPackageElement mpe : mediaPackage.getElements()) {
+        if (mpe.getFlavor() == null) {
+          logger.debug("A flavor must be set on media package elements for publishing");
+          continue;
+        }
 
-      if (mpe.getElementType() != MediaPackageElement.Type.Catalog
-              && mpe.getElementType() != MediaPackageElement.Type.Attachment) {
-        logger.debug("Only catalog and attachment types are currently supported");
-        continue;
-      }
+        if (mpe.getElementType() != MediaPackageElement.Type.Catalog
+                && mpe.getElementType() != MediaPackageElement.Type.Attachment) {
+          logger.debug("Only catalog and attachment types are currently supported");
+          continue;
+        }
 
-      if (mpe.getMimeType() == null || !mpe.getMimeType().eq(MimeTypes.XML)) {
-        logger.debug("Only media package elements with mime type XML are supported");
-        continue;
-      }
-      String catalogXml = null;
-      try (InputStream in = getWorkspace().read(mpe.getURI())) {
-        catalogXml = IOUtils.toString(in, "UTF-8");
-      } catch (Throwable e) {
-        logger.warn("Unable to load catalog {} from media package {}",
-                mpe.getIdentifier(), mediaPackage.getIdentifier().compact(), e);
-        continue;
-      }
-      if (catalogXml == null || StringUtils.isBlank(catalogXml) || !XmlUtil.parseNs(catalogXml).isRight()) {
-        logger.warn("The catalog {} from media package {} isn't a well formatted XML document",
-                mpe.getIdentifier(), mediaPackage.getIdentifier().compact());
-        continue;
-      }
+        if (mpe.getMimeType() == null || !mpe.getMimeType().eq(MimeTypes.XML)) {
+          logger.debug("Only media package elements with mime type XML are supported");
+          continue;
+        }
+        String catalogXml = null;
+        try (InputStream in = getWorkspace().read(mpe.getURI())) {
+          catalogXml = IOUtils.toString(in, "UTF-8");
+        } catch (Throwable e) {
+          logger.warn("Unable to load catalog {} from media package {}",
+                  mpe.getIdentifier(), mediaPackage.getIdentifier().compact(), e);
+          continue;
+        }
+        if (catalogXml == null || StringUtils.isBlank(catalogXml) || !XmlUtil.parseNs(catalogXml).isRight()) {
+          logger.warn("The catalog {} from media package {} isn't a well formatted XML document",
+                  mpe.getIdentifier(), mediaPackage.getIdentifier().compact());
+          continue;
+        }
 
-      entity.addMediaPackageElement(new OaiPmhElementEntity(
-              mpe.getElementType().name(), mpe.getFlavor().toString(), catalogXml));
+        entity.addMediaPackageElement(new OaiPmhElementEntity(
+                mpe.getElementType().name(), mpe.getFlavor().toString(), catalogXml));
+      }
     }
   }
 
