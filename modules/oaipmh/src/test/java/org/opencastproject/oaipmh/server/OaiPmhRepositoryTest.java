@@ -395,7 +395,7 @@ public class OaiPmhRepositoryTest {
     EasyMock.replay(result);
     return new OaiPmhDatabase() {
       @Override
-      public void store(MediaPackage mediaPackage, String repository) throws OaiPmhDatabaseException {
+      public void store(MediaPackage mediaPackage, String repository, boolean inlineElements) throws OaiPmhDatabaseException {
         // To change body of implemented methods use File | Settings | File Templates.
       }
 

@@ -129,7 +129,7 @@ public abstract class OaiPmhRepository {
   public void addItem(MediaPackage mp) {
     getPersistence().search(queryRepo(getRepositoryId()).build());
     try {
-      getPersistence().store(mp, getRepositoryId());
+      getPersistence().store(mp, getRepositoryId(), true);
     } catch (OaiPmhDatabaseException e) {
       chuck(e);
     }

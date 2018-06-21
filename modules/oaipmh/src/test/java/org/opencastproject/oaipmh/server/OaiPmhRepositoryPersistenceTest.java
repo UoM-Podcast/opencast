@@ -157,11 +157,11 @@ public class OaiPmhRepositoryPersistenceTest {
     // wait 1 second since the repo has a time granularity of seconds
     Thread.sleep(1000);
     final Date ref2 = new Date();
-    repo.getPersistence().store(mp2, REPOSITORY_ID);
+    repo.getPersistence().store(mp2, REPOSITORY_ID, true);
     // wait 1 second since the repo has a time granularity of seconds
     Thread.sleep(1000);
     final Date ref3 = new Date();
-    repo.getPersistence().store(mp3, REPOSITORY_ID);
+    repo.getPersistence().store(mp3, REPOSITORY_ID, true);
     assertThat("List records from time 1 yields all 3 records",
             s(repo.selectVerb(params("ListRecords", null, FORMAT_PREFIX, enc(ref1), null, null))),
             hasXPath("count(//oai20:ListRecords/oai20:record/oai20:header)", NS_CTX, returningANumber(), equalTo(3.0)));
@@ -181,8 +181,8 @@ public class OaiPmhRepositoryPersistenceTest {
     final MediaPackage mp1 = MediaPackageSupport.loadFromClassPath("/mp1.xml");
     final OaiPmhRepository repo = repo(oaiPmhDatabase(), Granularity.SECOND);
     // add the media package to two different repositories
-    repo.getPersistence().store(mp1, repo.getRepositoryId());
-    repo.getPersistence().store(mp1, "ANOTHER_REPO");
+    repo.getPersistence().store(mp1, repo.getRepositoryId(), true);
+    repo.getPersistence().store(mp1, "ANOTHER_REPO", true);
     assertThat(
             "ListMetadataFormat yields error response",
             s(repo.selectVerb(params("ListMetadataFormats", "UNKNOWN_ID", null, null, null, null))),
@@ -296,7 +296,7 @@ public class OaiPmhRepositoryPersistenceTest {
         }
       };
       for (MediaPackage mp : mps)
-        db.store(mp, REPOSITORY_ID);
+        db.store(mp, REPOSITORY_ID, true);
       return db;
     } catch (Exception e) {
       return chuck(e);
