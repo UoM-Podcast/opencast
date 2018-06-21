@@ -255,7 +255,7 @@ public class OaiPmhUpdatedEventHandler {
         }
 
         // Update the OAI-PMH persitence with the modified mediapackage
-        oaiPmhPersistence.store(mp, item.getRepository());
+        oaiPmhPersistence.store(mp, item.getRepository(), !"aws.s3".equalsIgnoreCase(distributionService.getDistributionType()));
       }
     } catch (ServiceRegistryException e) {
       logger.warn(e.getMessage());
