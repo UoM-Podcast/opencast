@@ -362,6 +362,7 @@ public class ToolsEndpoint implements ManagedService {
     }
 
     if (jPreviews.isEmpty()) {
+      mediaPackageLockService.releaseMediaPackageLock(event, getSessionId(request));
       return RestUtils.okJson(j(f("status", v("edited before"))));
     }
     // Get existing segments
