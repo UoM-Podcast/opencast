@@ -497,7 +497,10 @@ public class ToolsEndpoint implements ManagedService {
         }
       }
     }
-    if (!editingInfo.isAutosave()) {
+    if (editingInfo.isAutosave()) {
+      // refresh lock
+      mediaPackageLockService.getMediaPackageLock(optEvent.get(), getSessionId(request));
+    } else {
       mediaPackageLockService.releaseMediaPackageLock(optEvent.get(), getSessionId(request));
     }
     return R.ok();
