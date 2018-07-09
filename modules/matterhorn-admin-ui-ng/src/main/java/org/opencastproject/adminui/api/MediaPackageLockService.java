@@ -30,7 +30,7 @@ public interface MediaPackageLockService {
   /**
    * Minimum duration the media package is locked for.
    */
-  long MIN_LOCK_DURATION = 1800000;
+  long MIN_LOCK_DURATION = 3600000;
 
   /**
    * Try to acquire a lock for the event's media package, if already held
