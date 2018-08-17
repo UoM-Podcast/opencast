@@ -14,20 +14,21 @@ contributed, how they are merged and how releases are done.
 Contributing Code
 -----------------
 
-Opencast sources can be found on [BitBucket](http://bitbucket.org/opencast-community). The easiest way to contribute
-code to the project is by creating a pull request against the project's official repository. More details about the
-structure of this repository are explained later in this guide.
+Opencast sources can be found on [GitHub](https://github.com/opencast) and some of its ancillary projects
+on [BitBucket](https://bitbucket.org/opencast-community/). The easiest way to contribute code to the project
+is by creating a pull request against the project's official repository. More details about the structure
+of this repository are explained later in this guide.
 
-### Jira and BitBucket
+### Jira and GitHub
 
  - Opencast uses [Jira](https://opencast.jira.com) for tracking issues. Each pull request should be accompanied by a
    ticket in Jira. The issue identifier should also be used in the title of the pull request and the commits. E.g.:
    `MH-12345, Fixing Something Somewhere`. Creating a Jira ticket is usually the first step when fixing something.
 
- - Opencast uses [BitBucket](http://bitbucket.org/opencast-community) for code hosting. Please
-   [fork](https://confluence.atlassian.com/bitbucket/forking-a-repository-221449527.html) the official
-   repository on BitBucket to [create pull
-   requests](https://confluence.atlassian.com/bitbucket/work-with-pull-requests-223220593.html) from your repository
+ - Opencast uses [GitHub](https://github.com/opencast) for code hosting.
+   Please [fork](https://help.github.com/articles/fork-a-repo/)
+   the [official repository](https://github.com/opencast/opencast) on GitHub
+   to [create pull requests](https://help.github.com/articles/creating-a-pull-request/) from your repository
    which will show up on the project's list of open pull requests.
 
  - All open pull requests are listed on the [Opencast Pull Request Filter](http://pullrequests.opencast.org). It might
@@ -50,7 +51,7 @@ Opencast distinguishes between bug fix and feature pull requests.
 Before a patch is merged, it needs to be reviewed by a committer. The reviewer makes sure that the patch merges
 without conflicts, that it works as expected and that it does not break anything else.
 
-If the reviewer discovers any kind of issue, he should comment on the pull request in BitBucket, so that the author can
+If the reviewer discovers any kind of issue, he should comment on the pull request in GitHub, so that the author can
 fix the problem.
 
 For more details about the review and merge process, have a look at [Reviewing, Merging and Declining Pull
@@ -132,9 +133,11 @@ during the QA process (such as `1.6.0-beta1`) to mark the code evolution as bug 
 seems to be stable enough to be released, a release candidate (RC) is tagged and tested (`1.6.0-rc1`). New RCs can be
 tagged as long as new issues are found and fixed. When no severe issues are found, the final release is tagged.
 
-During the whole process the release manager will regularly merge back the release branch into `develop` so that bug
-fixes from the release branch will automatically become part of `develop` and the next Opencast version, without having
-to create an additional pull request. This is continued until the release branch for the next version is cut.
+During the whole process the release manager will regularly merge back the release branch into `develop` or, if
+existent, the next active release branch so that bug fixes from the release branch will automatically become part of the
+next Opencast versions and finally `develop`, without having to create additional pull requests. For example, a pull
+request may be merged into `r/3.x`, `r/3.x` will then be merged into `develop` or, if it already exists, `r/4.x` and
+from there into `develop`. That way patches bubble through all newer versions and finally end up in `develop`.
 
 The releases themselves are not part of the release branch. Instead, the release manager branches off, makes the
 necessary changes to the pom files (and possibly the UI) and creates a separately tagged commit.
@@ -145,22 +148,6 @@ if there are enough commits to be put into a maintenance release.
 Even after an Opencast version has been released, more bugs may be found and fixes for them merged into the release
 branch. When the release manager considers that the number or importance of such bug fixes is sufficient, he may decide
 to create a new maintenance release. The version `1.6.1` above is an example of that.
-
-The branching structure for multiple versions does not look much more complicated:
-
-    develop  -----*---------*----*------------------------*------>
-                   \       /    / \                      /
-            r/1.5.x *-----*----*------------*--->       /
-                           \        \        \         /
-                      1.5.0 *        \  1.5.1 *       /
-                                      \              /
-                               r/1.6.x *------------*----->
-                                                     \
-                                                1.6.0 *
-
-As you can see, the same principle, the same structure and the same rules apply. The only noteworthy thing is that,
-after a new release branch is cut, the old release branch will not be merged back into `develop`. This means that when
-a bug fix is relevant to several releases, a different pull request should be created for each of the release branches.
 
 
 Release Process
