@@ -4,7 +4,7 @@ Please read all the following information as it is important.
 
 I am writing to make you aware that the following unit(s) on which you teach have been scheduled to be recorded by the University’s automated lecture capture system; also know as the Podcasting system. If a lecture event is scheduled in an equipped location, the Podcasting system will automatically detect it and schedule it for recording in accordance with the University's Lecture Recording Policy[1]. Further essential information about the use of microphones and avoiding the recording of private conversations can be found on the following website:
 
-http://www.mypodcasts.manchester.ac.uk/essential_information/
+https://www.mypodcasts.manchester.ac.uk/essential_information/
 
 The following units are currently scheduled to be recorded:
 
@@ -30,4 +30,7 @@ https://video.manchester.ac.uk/lectures
 Lastly, if you are the unit coordinator for the above unit(s), please forward this message to all staff teaching on your unit as, in some cases, they may not be always be identified in the timetable system and therefore may not be sent this message directly.
 
 [1] http://documents.manchester.ac.uk/DocuInfo.aspx?DocID=16559
-[2] http://www.mypodcasts.manchester.ac.uk/staff-faqs#collapse3
+[2] https://www.mypodcasts.manchester.ac.uk/staff-faqs#collapse3
+
+Privacy Notice
+https://www.mypodcasts.manchester.ac.uk/privacy-notice/
