@@ -66,6 +66,7 @@ pages:
    - Search Index: 'modules/searchindex.md'
    - Stream Security: 'modules/stream-security.md'
    - Text Extraction: 'modules/textextraction.md'
+   - Transcripts (Google Speech): 'modules/googlespeechtranscripts.md'   
    - Video Editor:
       - Setup: 'modules/videoeditor.setup.md'
       - Architecture: 'modules/videoeditor.architecture.md'
@@ -77,6 +78,7 @@ pages:
    - Analyze Tracks: 'workflowoperationhandlers/analyze-tracks-woh.md'
    - Analyze Audio: 'workflowoperationhandlers/analyzeaudio-woh.md'
    - Archive: 'workflowoperationhandlers/archive-woh.md'
+   - Attach Google Speech Transcription: 'workflowoperationhandlers/attach-google-speech-transcription-woh.md'
    - Cleanup: 'workflowoperationhandlers/cleanup-woh.md'
    - Comment: 'workflowoperationhandlers/comment-woh.md'
    - Compose: 'workflowoperationhandlers/compose-woh.md'
@@ -119,6 +121,7 @@ pages:
    - Segment Video: 'workflowoperationhandlers/segmentvideo-woh.md'
    - Series: 'workflowoperationhandlers/series-woh.md'
    - Silence: 'workflowoperationhandlers/silence-woh.md'
+   - Start Google Speech Transcription: 'workflowoperationhandlers/start-google-speech-transcription-woh.md'
    - Tag: 'workflowoperationhandlers/tag-woh.md'
    - Tag-By-DCTerm: 'workflowoperationhandlers/tag-by-dcterm-woh.md'
    - Theme: 'workflowoperationhandlers/theme-woh.md'

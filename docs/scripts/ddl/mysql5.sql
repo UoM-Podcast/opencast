@@ -930,3 +930,15 @@ CREATE TABLE mh_pm_synchronization_mh_pm_error (
   CONSTRAINT FK_mh_pm_synchronization_mh_pm_error_errors_id FOREIGN KEY (errors_id) REFERENCES mh_pm_error (id) ON DELETE CASCADE,
   CONSTRAINT mhpm_synchronization_mh_pm_errorSynchronization_id FOREIGN KEY (Synchronization_id) REFERENCES mh_pm_synchronization (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE mh_google_speech_transcript_job (
+    id BIGINT(20) NOT NULL,
+    media_package_id VARCHAR(128) NOT NULL,
+    track_id VARCHAR(128) NOT NULL,
+    job_id  VARCHAR(128) NOT NULL,
+    date_created DATETIME NOT NULL,
+    date_completed DATETIME DEFAULT NULL,
+    status VARCHAR(128) DEFAULT NULL,
+    track_duration BIGINT NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
