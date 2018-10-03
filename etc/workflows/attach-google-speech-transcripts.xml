@@ -24,16 +24,16 @@
       </configurations>
     </operation>
 
-    <!-- Re-publish to OAI-PMH -->
 
-    <operation
-      id="republish-oaipmh"
+    <!-- Merge caption/transcript to existing publication and republish -->
+    <operation id="publish-engage" 
+      fail-on-error="true" 
       exception-handler-workflow="ng-partial-error"
-      description="REPUBLISH: Update recording in default OAI-PMH repository">
+      description="Distribute and publish to engage server">
       <configurations>
-        <configuration key="source-flavors">dublincore/*,security/*,captions/*</configuration>
-        <configuration key="repository">default</configuration>
-        <configuration key="merge">true</configuration>
+        <configuration key="download-source-flavors">captions/timedtext</configuration>
+        <configuration key="strategy">merge</configuration>
+        <configuration key="check-availability">true</configuration>
       </configurations>
     </operation>
 
@@ -42,7 +42,7 @@
     <operation
       id="archive"
       fail-on-error="true"
-      exception-handler-workflow="manchester-archive-error"
+      exception-handler-workflow="ng-partial-error"
       description="PUBLISH: Archive">
       <configurations>
         <configuration key="source-tags">archive</configuration>
@@ -54,9 +54,9 @@
 
     <operation
       id="include"
-      description="&lt;&lt;&lt; Cleanup">
+      description="Clean up">
       <configurations>
-        <configuration key="workflow-id">manchester-partial-cleanup</configuration>
+        <configuration key="workflow-id">ng-partial-cleanup</configuration>
       </configurations>
     </operation>
 

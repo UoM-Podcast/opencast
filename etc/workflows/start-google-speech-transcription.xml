@@ -1,0 +1,65 @@
+  <definition xmlns="http://workflow.opencastproject.org">
+
+  <id>start-google-speech-transcription</id>
+  <title>Manchester Start Google Speech Transcription</title>
+  <tags>
+    <tag>archive-ng</tag>
+  </tags>
+  <description/>
+
+  <configuration_panel>
+  <![CDATA[
+    <div id="workflow-configuration">
+      <fieldset>
+        <legend>skip this existing flavor</legend>
+        <div>
+          <label for="skipFlavor">Flavor to skip:</label>
+          <input id="skipFlavor" name="skipFlavor" type="text" maxlength="255" class="configField" style="width: 200px;" value="captions/timedtext"/>
+        </div>
+      </fieldset>
+    </div>
+  ]]>
+ </configuration_panel>
+  <operations>
+
+     <!-- Configuration values -->
+    <operation
+      id="defaults"
+      description="INIT: Applying default values">
+      <configurations>
+        <configuration key="skipFlavor">captions/timedtext</configuration>
+      </configurations>
+    </operation>
+
+   <!--  Encode audio to flac -->
+    <operation
+    id="compose"
+    fail-on-error="true"
+    exception-handler-workflow="ng-partial-error"
+    description="Extract audio for transcript generation">
+   <configurations>
+    <configuration key="source-flavor">presentation/source</configuration>
+    <configuration key="target-flavor">audio/flac</configuration>
+    <configuration key="target-tags">transcript</configuration>
+    <configuration key="encoding-profile">audio-flac</configuration>
+    <configuration key="process-first-match-only">true</configuration>
+   </configurations>
+  </operation> 
+
+<!-- Start Google Speech transcription job -->
+<operation
+  id="start-google-speech-transcription"
+  fail-on-error="true"
+  exception-handler-workflow="ng-partial-error"
+  description="Start Google Speech transcription job">
+  <configurations>
+    <!--  Skip this operation if flavor already exists. Used for cases when mp already has captions. -->
+    <configuration key="skip-if-flavor-exists">${skipFlavor}</configuration>
+    <!-- Audio to be translated, produced in the previous compose operation -->
+    <configuration key="source-tag">transcript</configuration>
+  </configurations>
+</operation>
+
+</operations>
+
+</definition>
