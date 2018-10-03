@@ -1,7 +1,7 @@
   <definition xmlns="http://workflow.opencastproject.org">
 
   <id>start-google-speech-transcription</id>
-  <title>Manchester Start Google Speech Transcription</title>
+  <title>Start Google Speech Transcription</title>
   <tags>
     <tag>archive-ng</tag>
   </tags>
