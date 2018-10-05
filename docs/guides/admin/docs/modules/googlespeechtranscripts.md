@@ -1,5 +1,5 @@
 Transcripts (Automated by Google Speech)
-=====================================
+========================================
 
 Overview
 --------
@@ -7,7 +7,8 @@ Overview
 The GoogleSpeechTranscriptionService invokes the Google Speech-to-Text service via REST API to translate audio to text.
 
 During the execution of an Opencast workflow, an audio file is extracted from one of the presenter videos and sent 
-to the Google Speech-to-Text service. When the results are received, they are converted to the desired caption format and attached to the media package.
+to the Google Speech-to-Text service. When the results are received, they are converted to the desired caption format 
+and attached to the media package.
 
 Workflow 1 runs:
 
@@ -68,7 +69,7 @@ In the top right corner, click the settings icon
 - Make sure the Access token location is set to: 'Authorization header w/ Bearer prefix'
 - Make sure Access type is set to 'Offline'
 - Check "Use your own OAuth credentials" and paste your Client ID and Client Secret.
-- CLose the settings
+- Close the settings
 (screenshot here)
 
 Select the scope of your APIs
@@ -117,7 +118,7 @@ google.speech.language=en-UK
 google.speech.profanity.filter=false
 
 # Workflow to be executed when results are ready to be attached to media package.
-workflow=Manchester-attach-google-speech-transcripts
+workflow=attach-google-speech-transcripts
   
 # Interval the workflow dispatcher runs to start workflows to attach transcripts to the media package
 # after the transcription job is completed.
@@ -153,7 +154,7 @@ Try using the encoding profile suggested in etc/encoding/googlespeech-audio.prop
 Add the following operations to your workflow. We suggest adding them after the media package is
 published so that users can watch videos without having to wait for the transcription to finish, but it
 depends on your use case. The only requirement is to take a snapshot of the media package so that
-the second workflow can retrieve it from the archive to attach the caption/transcripts.  
+the second workflow can retrieve it from the archive to attach the caption/transcripts.
 
 ```xml
 <!-- Extract audio from one of the presenter videos -->
@@ -191,7 +192,7 @@ the second workflow can retrieve it from the archive to attach the caption/trans
 
 ```
 ### Step 6: Create a workflow that will add the generated caption/transcript to the media package and republish it
-A sample one can be found in etc/workflows/Manchester-attach-google-speech-transcripts.xml
+A sample one can be found in etc/workflows/attach-google-speech-transcripts.xml
 
 ```xml
  <!-- Attach caption/transcript -->
