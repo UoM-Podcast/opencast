@@ -1,7 +1,8 @@
-# Start Google speech Transcription
+# Start Google Speech Transcription
+
 ## Description
 
-The Start Google speech Transcription invokes the Google Speech-to-Text service, passing an audio file to be translated to 
+Start Google speech Transcription invokes the Google Speech-to-Text service, passing an audio file to be translated to 
 text.
 
 ## Parameter Table
@@ -14,7 +15,8 @@ text.
 
 **One of source-flavor or source-tag must be specified.**
 
-##Example
+## Example
+
 ```xml
 <!-- Extract audio from video in ogg/opus format -->
 
@@ -49,7 +51,7 @@ text.
 </operation>
 ```
 
-####Encoding profile used in example above
+#### Encoding profile used in example above
 ```
 profile.audio-flac.name = audio-flac
 profile.audio-flac.input = stream
