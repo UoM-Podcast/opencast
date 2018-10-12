@@ -316,8 +316,10 @@ gitHash = os.popen("git log -1 --pretty=format:\"%ad %h\" --date=short|sed s/'[[
 gitHashShort = os.popen("git log -1 --pretty=format:\"%h\"").read()
 
 # Create a recent changelog
-since = datetime.date.today() - datetime.timedelta(days=changelogPeriod)
-gitLog = os.popen('git log --since ' + since.isoformat() + ' --no-merges --pretty="format:%ci %h \"%s\""').read()
+today = datetime.date.today()
+since = today - datetime.timedelta(days=changelogPeriod)
+gitLog = os.popen('git log --since ' + since.isoformat() + ' --no-merges --pretty="format:- %ci %h \"%s\""').read()
+changelog = today.strftime("* %a %b %d %Y") + " MediaTechnologies <podcast-tech@manchester.ac.uk> - " + projectVersion + "\n" + gitLog
 
 # Determine the database schema's build version
 dbSchemaVersion = os.popen("git log -1 --format=\"%ad %h\" --date=short -- " + dbSchemaFile + "|sed s/'[[:space:]]'/-/").read()
@@ -350,7 +352,7 @@ logger.setLevel(logging.DEBUG)
 # Process the spec file and move it to the SPECS directory
 rpmSpecFileTemplate = workspace + "/docs/scripts/rpm/" + specFileName
 rpmSpecFile = rpmSpecDir + "/" + specFileName
-prepareSpecFile(rpmSpecFileTemplate, rpmSpecFile, projectVersion, gitHash, gitLog)
+prepareSpecFile(rpmSpecFileTemplate, rpmSpecFile, projectVersion, gitHash, changelog)
 
 rpmReleaseDir = rpmBuildUserHome + "/" + packageName + "-" + rpmVersion + "-" + gitHash
 rpmLibReleaseDir = rpmReleaseDir + "/lib"

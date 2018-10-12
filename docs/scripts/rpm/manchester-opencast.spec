@@ -122,6 +122,4 @@ if [ "$1" = "0" ]; then
 fi
 
 %changelog
-Recent Commits:
-
 CHANGE_ME_CHANGELOG
