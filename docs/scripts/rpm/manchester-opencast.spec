@@ -122,8 +122,6 @@ if [ "$1" = "0" ]; then
 fi
 
 %changelog
-* Wed Jan 18 2017 James Perrin <james.perrin@manchester.ac.uk> - 2.0
-- Version 2 for Opencast 2.x
-* Thu Sep 20 2012 Jaime Gago <jaime@entwinemedia.com> - 1.0
-- Version 1
+Recent Commits:
 
+CHANGE_ME_CHANGELOG

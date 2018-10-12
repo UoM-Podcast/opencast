@@ -1,3 +1,4 @@
+
 #!/usr/bin/python
 #
 
@@ -11,6 +12,7 @@
 from stat import S_ISREG, ST_CTIME, ST_MODE
 
 import argparse
+import datetime
 import distutils.dir_util as dir_util
 import distutils.file_util as file_util
 import glob
@@ -40,6 +42,9 @@ noCleanup = False
 
 # The number of artifacts to keep in the rpm repository
 rpmHistorySize = 3
+
+# the number of date for which to create Changelog from
+changelogPeriod = 100
 
 # The log level
 logLevel = logging.INFO
@@ -90,7 +95,7 @@ def cleanBuildEnvironment():
 #                    the rpm release
 # -----------------------------------------------------------------------------------
 
-def prepareSpecFile(specTemplate, specFinal, version, release):
+def prepareSpecFile(specTemplate, specFinal, version, release, changelog):
 
     logger.info("Adjusting version and release information in rpm spec file " + specTemplate)
     if not os.path.exists(specTemplate):
@@ -113,7 +118,8 @@ def prepareSpecFile(specTemplate, specFinal, version, release):
     # Make the replacements
     specFinalContents = specFinalContents.replace("CHANGE_ME_VERSION", version.replace("-", "."))
     specFinalContents = specFinalContents.replace("CHANGE_ME_RELEASE", release)
-
+    specFinalContents = specFinalContents.replace("CHANGE_ME_CHANGELOG", changelog)
+    
     logger.info("Moving the updated rpm spec file to " + specFinal)
     # Parse the spec file
     f = open(specFinal, "w")
@@ -309,6 +315,10 @@ pid = os.getpid()
 gitHash = os.popen("git log -1 --pretty=format:\"%ad %h\" --date=short|sed s/'[[:space:]]'/.\"$(git log --oneline|wc -l)\"git/|sed s/-//g").read()
 gitHashShort = os.popen("git log -1 --pretty=format:\"%h\"").read()
 
+# Create a recent changelog
+since = datetime.date.today() - datetime.timedelta(days=changelogPeriod)
+gitLog = os.popen('git log --since ' + since.isoformat() + ' --no-merges --pretty="format:%ci %h \"%s\""').read()
+
 # Determine the database schema's build version
 dbSchemaVersion = os.popen("git log -1 --format=\"%ad %h\" --date=short -- " + dbSchemaFile + "|sed s/'[[:space:]]'/-/").read()
 
@@ -340,7 +350,7 @@ logger.setLevel(logging.DEBUG)
 # Process the spec file and move it to the SPECS directory
 rpmSpecFileTemplate = workspace + "/docs/scripts/rpm/" + specFileName
 rpmSpecFile = rpmSpecDir + "/" + specFileName
-prepareSpecFile(rpmSpecFileTemplate, rpmSpecFile, projectVersion, gitHash)
+prepareSpecFile(rpmSpecFileTemplate, rpmSpecFile, projectVersion, gitHash, gitLog)
 
 rpmReleaseDir = rpmBuildUserHome + "/" + packageName + "-" + rpmVersion + "-" + gitHash
 rpmLibReleaseDir = rpmReleaseDir + "/lib"
