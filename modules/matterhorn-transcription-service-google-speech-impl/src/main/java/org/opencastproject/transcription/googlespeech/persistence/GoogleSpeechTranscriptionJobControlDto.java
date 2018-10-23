@@ -43,7 +43,7 @@ import javax.persistence.TemporalType;
 import javax.xml.bind.annotation.XmlAttribute;
 
 @Entity(name = "TranscriptionJobControl")
-@Table(name = "mh_google_speech_transcript_job")
+@Table(name = "mh_transcription_service_job")
 @NamedQueries({
         @NamedQuery(name = "TranscriptionJobControl.findByMediaPackage", query = "SELECT jc FROM TranscriptionJobControl jc WHERE jc.mediaPackageId = :mediaPackageId ORDER BY jc.dateCreated DESC"),
         @NamedQuery(name = "TranscriptionJobControl.findByJob", query = "SELECT jc FROM TranscriptionJobControl jc WHERE jc.transcriptionJobId = :transcriptionJobId"),
@@ -79,12 +79,15 @@ public class GoogleSpeechTranscriptionJobControlDto {
   @Column(name = "track_duration", nullable = false)
   private long trackDuration;
 
+  @Column(name = "provider_id", nullable = false)
+  private int providerId;
+
   public GoogleSpeechTranscriptionJobControlDto() {
   }
 
   /** Constructor with all fields. */
   public GoogleSpeechTranscriptionJobControlDto(String mediaPackageId, String trackId, String transcriptionJobId, Date dateCreated,
-          Date dateCompleted, String status, long trackDuration) {
+          Date dateCompleted, String status, long trackDuration, int providerId) {
     super();
     this.mediaPackageId = mediaPackageId;
     this.trackId = trackId;
@@ -93,6 +96,7 @@ public class GoogleSpeechTranscriptionJobControlDto {
     this.dateCompleted = dateCompleted;
     this.status = status;
     this.trackDuration = trackDuration;
+    this.providerId = providerId;
   }
 
   /** Convert into business object. */
@@ -103,9 +107,9 @@ public class GoogleSpeechTranscriptionJobControlDto {
 
   /** Store new job control */
   public static GoogleSpeechTranscriptionJobControlDto store(EntityManager em, String mediaPackageId, String trackId,
-          String transcriptionJobId, String jobStatus, long trackDuration) throws GoogleSpeechTranscriptionDatabaseException {
+          String transcriptionJobId, String jobStatus, long trackDuration, int providerId) throws GoogleSpeechTranscriptionDatabaseException {
     GoogleSpeechTranscriptionJobControlDto dto = new GoogleSpeechTranscriptionJobControlDto(mediaPackageId, trackId, transcriptionJobId,
-            new Date(), null, jobStatus, trackDuration);
+            new Date(), null, jobStatus, trackDuration, providerId);
 
     EntityTransaction tx = em.getTransaction();
     try {

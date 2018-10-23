@@ -39,7 +39,7 @@ import java.util.List;
  * Test class for WebVTT format.
  *
  */
-public class WebVttCaptionConveterTest {
+public class WebVttCaptionConverterTest {
 
   private WebVttCaptionConverter format;
   private ByteArrayOutputStream outputStream;

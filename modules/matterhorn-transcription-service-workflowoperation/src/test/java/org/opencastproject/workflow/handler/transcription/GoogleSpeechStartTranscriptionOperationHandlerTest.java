@@ -48,12 +48,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class StartGoogleSpeechTranscriptionOperationHandlerTest {
+public class GoogleSpeechStartTranscriptionOperationHandlerTest {
 
   /**
    * The operation handler to test
    */
-  private StartGoogleSpeechTranscriptionOperationHandler operationHandler;
+  private GoogleSpeechStartTranscriptionOperationHandler operationHandler;
 
   /**
    * The transcription service
@@ -74,7 +74,7 @@ public class StartGoogleSpeechTranscriptionOperationHandlerTest {
     MediaPackageBuilder builder = MediaPackageBuilderFactory.newInstance().newMediaPackageBuilder();
 
     // Media package set up
-    URI mediaPackageURI = StartGoogleSpeechTranscriptionOperationHandlerTest.class.getResource("/mp.xml").toURI();
+    URI mediaPackageURI = GoogleSpeechStartTranscriptionOperationHandlerTest.class.getResource("/mp.xml").toURI();
     mediaPackage = builder.loadFromXml(mediaPackageURI.toURL().openStream());
 
     // Service registry set up
@@ -94,7 +94,7 @@ public class StartGoogleSpeechTranscriptionOperationHandlerTest {
     // Transcription service set up
     service = EasyMock.createStrictMock(TranscriptionService.class);
     capturedTrack = Capture.newInstance();
-    EasyMock.expect(service.startTranscription(EasyMock.anyObject(String.class), EasyMock.capture(capturedTrack)))
+    EasyMock.expect(service.startTranscription(EasyMock.anyObject(String.class), EasyMock.capture(capturedTrack), EasyMock.anyObject(String.class)))
             .andReturn(null);
     EasyMock.replay(service);
 
@@ -110,14 +110,14 @@ public class StartGoogleSpeechTranscriptionOperationHandlerTest {
     workflowInstance.setOperations(operationList);
 
     // Operation handler set up
-    operationHandler = new StartGoogleSpeechTranscriptionOperationHandler();
+    operationHandler = new GoogleSpeechStartTranscriptionOperationHandler();
     operationHandler.setTranscriptionService(service);
     operationHandler.setServiceRegistry(serviceRegistry);
   }
 
   @Test
   public void testStartSelectByFlavor() throws Exception {
-    operation.setConfiguration(StartGoogleSpeechTranscriptionOperationHandler.SOURCE_FLAVOR, "audio/ogg");
+    operation.setConfiguration(GoogleSpeechStartTranscriptionOperationHandler.SOURCE_FLAVOR, "audio/flac");
 
     WorkflowOperationResult result = operationHandler.start(workflowInstance, null);
     Assert.assertEquals(Action.CONTINUE, result.getAction());
@@ -127,7 +127,7 @@ public class StartGoogleSpeechTranscriptionOperationHandlerTest {
 
   @Test
   public void testStartSelectByTag() throws Exception {
-    operation.setConfiguration(StartGoogleSpeechTranscriptionOperationHandler.SOURCE_TAG, "transcript");
+    operation.setConfiguration(GoogleSpeechStartTranscriptionOperationHandler.SOURCE_TAG, "transcript");
 
     WorkflowOperationResult result = operationHandler.start(workflowInstance, null);
     Assert.assertEquals(Action.CONTINUE, result.getAction());
@@ -138,7 +138,7 @@ public class StartGoogleSpeechTranscriptionOperationHandlerTest {
   @Test
   public void testStartSkipFlavor() throws Exception {
     // Make sure operation will be skipped if media package already contains the flavor passed
-    operation.setConfiguration(StartGoogleSpeechTranscriptionOperationHandler.SKIP_IF_FLAVOR_EXISTS, "audio/ogg");
+    operation.setConfiguration(GoogleSpeechStartTranscriptionOperationHandler.SKIP_IF_FLAVOR_EXISTS, "audio/flac");
 
     WorkflowOperationResult result = operationHandler.start(workflowInstance, null);
     Assert.assertEquals(Action.SKIP, result.getAction());
@@ -146,9 +146,9 @@ public class StartGoogleSpeechTranscriptionOperationHandlerTest {
 
   @Test
   public void testStartDontSkipFlavor() throws Exception {
-    operation.setConfiguration(StartGoogleSpeechTranscriptionOperationHandler.SOURCE_TAG, "transcript");
+    operation.setConfiguration(GoogleSpeechStartTranscriptionOperationHandler.SOURCE_TAG, "transcript");
     // Make sure operation will NOT be skipped if media package does NOT contain the flavor passed
-    operation.setConfiguration(StartGoogleSpeechTranscriptionOperationHandler.SKIP_IF_FLAVOR_EXISTS, "captions/timedtext");
+    operation.setConfiguration(GoogleSpeechStartTranscriptionOperationHandler.SKIP_IF_FLAVOR_EXISTS, "captions/timedtext");
 
     WorkflowOperationResult result = operationHandler.start(workflowInstance, null);
     Assert.assertEquals(Action.CONTINUE, result.getAction());

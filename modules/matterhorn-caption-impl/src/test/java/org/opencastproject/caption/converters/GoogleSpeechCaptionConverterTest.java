@@ -56,7 +56,7 @@ public class GoogleSpeechCaptionConverterTest {
   }
 
   private void importCaption() throws Exception {
-    List<Caption> captionList = converter.importCaption(inputStream, "");
+    List<Caption> captionList = converter.importCaption(inputStream, "80");
     Assert.assertEquals(3, captionList.size());
     Caption caption = captionList.get(0);
     String[] text = caption.getCaption();

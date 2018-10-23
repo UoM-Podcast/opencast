@@ -57,9 +57,9 @@ public class GoogleSpeechTranscriptionDatabase {
   }
 
   public GoogleSpeechTranscriptionJobControl storeJobControl(String mpId, String trackId, String jobId, String jobStatus,
-          long trackDuration) throws GoogleSpeechTranscriptionDatabaseException {
+          long trackDuration, int providerId) throws GoogleSpeechTranscriptionDatabaseException {
     GoogleSpeechTranscriptionJobControlDto dto = GoogleSpeechTranscriptionJobControlDto.store(emf.createEntityManager(), mpId, trackId, jobId,
-            jobStatus, trackDuration);
+            jobStatus, trackDuration, providerId);
     if (dto != null)
       return dto.toTranscriptionJobControl();
     return null;

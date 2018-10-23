@@ -44,10 +44,6 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- *
- * @author franck
- */
 public class GoogleSpeechCaptionConverter implements CaptionConverter {
 
   /**
@@ -55,12 +51,21 @@ public class GoogleSpeechCaptionConverter implements CaptionConverter {
    */
   private static final Logger logger = LoggerFactory.getLogger(GoogleSpeechCaptionConverter.class);
 
-  private static final int LINE_SIZE = 80;
+  // Default transcription text line size
+  private static final int LINE_SIZE = 100;
 
   @Override
-  public List<Caption> importCaption(InputStream inputStream, String language) throws CaptionConverterException {
+  public List<Caption> importCaption(InputStream inputStream, String lineSize) throws CaptionConverterException {
     List<Caption> captionList = new ArrayList<Caption>();
     JSONParser jsonParser = new JSONParser();
+    int transcriptionLineSize = 0;
+    try {
+      // No language to specify so define size of a transcripts line
+      transcriptionLineSize = Integer.parseInt(lineSize.trim());
+    } catch (NumberFormatException nfe) {
+      transcriptionLineSize = LINE_SIZE;
+      logger.info("Default transcripts line size {} used", LINE_SIZE);
+    }
 
     try {
       JSONObject outputObj = (JSONObject) jsonParser.parse(new InputStreamReader(inputStream));
@@ -87,7 +92,7 @@ public class GoogleSpeechCaptionConverter implements CaptionConverter {
                       jobId, i);
               continue;
             }
-            // Force a maximum line size of LINE_SIZE + one word
+            // Force a maximum line size of transcriptionLineSize + one word
             String[] words = transcript.split("\\s+");
             StringBuffer line = new StringBuffer();
             int indexFirst = -1;
@@ -98,24 +103,23 @@ public class GoogleSpeechCaptionConverter implements CaptionConverter {
               }
               line.append(words[j]);
               line.append(" ");
-              if (line.length() >= LINE_SIZE || j == words.length - 1) {
+              if (line.length() >= transcriptionLineSize || j == words.length - 1) {
                 indexLast = j;
                 // Create a caption
                 double start = -1;
                 double end = -1;
                 if (indexLast < timestampsArray.size()) {
                   // Get start time of first element
-                  JSONObject wordTsLIst = (JSONObject) timestampsArray.get(indexFirst);
-                  if (wordTsLIst.size() == 3) {
+                  JSONObject wordTSList = (JSONObject) timestampsArray.get(indexFirst);
+                  if (wordTSList.size() == 3) {
                     // Remove 's' at the end
-                    Number startNumber = NumberFormat.getInstance().parse(removeCharacter((wordTsLIst.get("startTime").toString()),'s'));
+                    Number startNumber = NumberFormat.getInstance().parse(removeCharacter((wordTSList.get("startTime").toString()), 's'));
                     start = startNumber.doubleValue();
                   }
                   // Get end time of last element
-                  wordTsLIst = (JSONObject) timestampsArray.get(indexLast);
-                  if (wordTsLIst.size() == 3) {
-                    //end = ((Number) wordTsLIst.get("endTime")).doubleValue();
-                    Number endNumber = NumberFormat.getInstance().parse(removeCharacter((wordTsLIst.get("endTime").toString()),'s'));
+                  wordTSList = (JSONObject) timestampsArray.get(indexLast);
+                  if (wordTSList.size() == 3) {
+                    Number endNumber = NumberFormat.getInstance().parse(removeCharacter((wordTSList.get("endTime").toString()), 's'));
                     end = endNumber.doubleValue();
                   }
                 }
@@ -174,11 +178,11 @@ public class GoogleSpeechCaptionConverter implements CaptionConverter {
     return new TimeImpl(h, m, s, (int) ms);
   }
 
-  public String removeCharacter(String str, char car) {
+  private String removeCharacter(String str, char car) {
     if (str != null && str.length() > 0 && str.charAt(str.length() - 1) == car) {
-        str = str.substring(0, str.length() - 1);
+      str = str.substring(0, str.length() - 1);
     }
     return str;
-}
+  }
 
 }
