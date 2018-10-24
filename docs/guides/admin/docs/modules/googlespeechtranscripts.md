@@ -50,26 +50,34 @@ Configuration
 * Go to _APIs & Service_ **>** _Credentials_
 * Click on the tab _OAuth Consent Screen_
 * Fill in a _Project name_ and Save it. Don't worry about the other fields.
-* [See screenshot](google-speech-authorisation.png)
+
+![Screenshot](google-speech-authorisation.png)
+
 * Go back to Credentials
 * Click the button that says _Create Credentials_ 
 * select _OAuth Client ID_
-* [See screenshot](google-speech-create_oauth-client-id.png)
+
+![Screenshot](google-speech-create_oauth-client-id.png)
+
 * Choose _Web Application_ and give it a name.
 * Add **https://developers.google.com/oauthplayground** in _Authorized redirect URIs_. You will need to use this in the next step to get your refresh token
 * Click _Create_ and take note of your **Client ID** and **Client Secret**
-* [See screenshot](google-speech_create_token.png)
+
+![Screenshot](google-speech_create_token.png)
 
 #### Getting your Refresh Token and Authorization enpdpoint
 * Go to [https://developers.google.com/oauthplayground](https://developers.google.com/oauthplayground) (Make sure you added this URL to your Authorized redirect URIs in the previous step.)
 * In the top right corner, click the settings icon
-* Take note of your _Token endpoint_. It is the token endpoint url needed for the configuration. [See screenshot]()
+* Take note of your _Token endpoint_. It is the token endpoint url needed for the configuration. 
 * Make sure the Access token location is set to **Authorization header w/ Bearer prefix**
 * Make sure Access type is set to *Offline*
 * Make sure Force prompt is set to 'Consent Screen'
 * Check _Use your own OAuth credentials_ 
 * Paste your **Client ID** and **Client Secret** created previously.
-* Close the settings. [See screenshot](google-speech_client-secret.png)
+* Close the settings. 
+
+![Screenshot](google-speech_client-secret.png)
+
 * Select the scope of your APIs
     * Click `Step 1 Select & authorize APIs` tab on the left
     * Find **Cloud Speech API v1** and click on _https://www.googleapis.com/auth/cloud-platform_ to select it.
@@ -78,7 +86,9 @@ Configuration
     * Click _Authorize APIs_, allow access to your account when prompted. There will be a few warning prompts, just proceed.
 (On some browser you may need to click the advanced option before you can proceed to next page)
 * When you get to `step 2 Exchange authorization code for tokens` tab, click _Exchange authorization code for tokens_.
-* [See screenshot](google-speech_genarated-token.png)
+
+![Screenshot](google-speech_genarated-token.png)
+
 * You will need the OAuth Client ID, OAuth Client secret ,the Refresh token and Token endpoint for the configuration file
 
 ### Step 3: Configure GoogleSpeechTranscriptionService
