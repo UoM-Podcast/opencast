@@ -90,8 +90,8 @@ public final class SolrServerFactory {
   public static SolrServer newRemoteInstance(URL url) {
     try {
       CommonsHttpSolrServer server = new CommonsHttpSolrServer(url);
-      server.setSoTimeout(5000);
-      server.setConnectionTimeout(5000);
+      server.setSoTimeout(10000);
+      server.setConnectionTimeout(10000);
       server.setDefaultMaxConnectionsPerHost(100);
       server.setMaxTotalConnections(100);
       server.setFollowRedirects(false); // defaults to false
