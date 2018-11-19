@@ -22,11 +22,8 @@ package org.opencastproject.transcription.googlespeech.persistence;
 
 import java.util.Date;
 
-/**
- *
- * @author franck
- */
 public class GoogleSpeechTranscriptionJobControl {
+
   public enum Status {
     Progress, Canceled, Error, TranscriptionComplete, Closed
   }
@@ -45,9 +42,11 @@ public class GoogleSpeechTranscriptionJobControl {
   private Date dateCompleted;
   // Duration of track
   private long trackDuration;
+  // Transcription provider Id
+  private long providerId;
 
   public GoogleSpeechTranscriptionJobControl(String mediaPackageId, String trackId, String transcriptionJobId, Date dateCreated,
-          Date dateCompleted, String status, long trackDuration) {
+          Date dateCompleted, String status, long trackDuration, long providerId) {
     super();
     this.mediaPackageId = mediaPackageId;
     this.trackId = trackId;
@@ -56,6 +55,7 @@ public class GoogleSpeechTranscriptionJobControl {
     this.dateCompleted = dateCompleted;
     this.status = status;
     this.trackDuration = trackDuration;
+    this.providerId = providerId;
   }
 
   public String getMediaPackageId() {
@@ -112,6 +112,14 @@ public class GoogleSpeechTranscriptionJobControl {
 
   public void setTrackDuration(long trackDuration) {
     this.trackDuration = trackDuration;
+  }
+
+  public long getProviderId() {
+    return providerId;
+  }
+
+  public void setProviderId(long providerId) {
+    this.providerId = providerId;
   }
 
 }

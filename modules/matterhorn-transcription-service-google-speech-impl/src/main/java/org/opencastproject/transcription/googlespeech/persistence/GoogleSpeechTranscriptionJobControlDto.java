@@ -21,6 +21,8 @@
 
 package org.opencastproject.transcription.googlespeech.persistence;
 
+import java.io.Serializable;
+
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
@@ -48,7 +50,7 @@ import javax.xml.bind.annotation.XmlAttribute;
         @NamedQuery(name = "TranscriptionJobControl.findByMediaPackage", query = "SELECT jc FROM TranscriptionJobControl jc WHERE jc.mediaPackageId = :mediaPackageId ORDER BY jc.dateCreated DESC"),
         @NamedQuery(name = "TranscriptionJobControl.findByJob", query = "SELECT jc FROM TranscriptionJobControl jc WHERE jc.transcriptionJobId = :transcriptionJobId"),
         @NamedQuery(name = "TranscriptionJobControl.findByStatus", query = "SELECT jc FROM TranscriptionJobControl jc WHERE jc.status IN :status") })
-public class GoogleSpeechTranscriptionJobControlDto {
+public class GoogleSpeechTranscriptionJobControlDto implements Serializable {
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
   @Column(name = "id", length = 128)
@@ -80,14 +82,14 @@ public class GoogleSpeechTranscriptionJobControlDto {
   private long trackDuration;
 
   @Column(name = "provider_id", nullable = false)
-  private int providerId;
+  private long providerId;
 
   public GoogleSpeechTranscriptionJobControlDto() {
   }
 
   /** Constructor with all fields. */
   public GoogleSpeechTranscriptionJobControlDto(String mediaPackageId, String trackId, String transcriptionJobId, Date dateCreated,
-          Date dateCompleted, String status, long trackDuration, int providerId) {
+          Date dateCompleted, String status, long trackDuration, long providerId) {
     super();
     this.mediaPackageId = mediaPackageId;
     this.trackId = trackId;
@@ -102,12 +104,12 @@ public class GoogleSpeechTranscriptionJobControlDto {
   /** Convert into business object. */
   public GoogleSpeechTranscriptionJobControl toTranscriptionJobControl() {
     return new GoogleSpeechTranscriptionJobControl(mediaPackageId, trackId, transcriptionJobId, dateCreated, dateCompleted, status,
-            trackDuration);
+            trackDuration, providerId);
   }
 
   /** Store new job control */
   public static GoogleSpeechTranscriptionJobControlDto store(EntityManager em, String mediaPackageId, String trackId,
-          String transcriptionJobId, String jobStatus, long trackDuration, int providerId) throws GoogleSpeechTranscriptionDatabaseException {
+          String transcriptionJobId, String jobStatus, long trackDuration, long providerId) throws GoogleSpeechTranscriptionDatabaseException {
     GoogleSpeechTranscriptionJobControlDto dto = new GoogleSpeechTranscriptionJobControlDto(mediaPackageId, trackId, transcriptionJobId,
             new Date(), null, jobStatus, trackDuration, providerId);
 

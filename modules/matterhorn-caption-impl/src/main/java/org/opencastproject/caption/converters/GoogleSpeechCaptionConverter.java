@@ -55,13 +55,13 @@ public class GoogleSpeechCaptionConverter implements CaptionConverter {
   private static final int LINE_SIZE = 100;
 
   @Override
-  public List<Caption> importCaption(InputStream inputStream, String lineSize) throws CaptionConverterException {
+  public List<Caption> importCaption(InputStream inputStream, String languageLineSize) throws CaptionConverterException {
     List<Caption> captionList = new ArrayList<Caption>();
     JSONParser jsonParser = new JSONParser();
     int transcriptionLineSize = 0;
     try {
       // No language to specify so define size of a transcripts line
-      transcriptionLineSize = Integer.parseInt(lineSize.trim());
+      transcriptionLineSize = Integer.parseInt(languageLineSize.trim());
     } catch (NumberFormatException nfe) {
       transcriptionLineSize = LINE_SIZE;
       logger.info("Default transcripts line size {} used", LINE_SIZE);

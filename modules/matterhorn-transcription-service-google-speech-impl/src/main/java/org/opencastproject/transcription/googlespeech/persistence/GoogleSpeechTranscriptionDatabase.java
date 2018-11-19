@@ -18,7 +18,6 @@
  * the License.
  *
  */
-
 package org.opencastproject.transcription.googlespeech.persistence;
 
 import org.osgi.service.component.ComponentContext;
@@ -31,18 +30,28 @@ import java.util.List;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.spi.PersistenceProvider;
 
-
 public class GoogleSpeechTranscriptionDatabase {
-   /** Logging utilities */
+
+  /**
+   * Logging utilities
+   */
   private static final Logger logger = LoggerFactory.getLogger(GoogleSpeechTranscriptionDatabase.class);
 
-  /** Persistence provider set by OSGi */
+  /**
+   * Persistence provider set by OSGi
+   */
   private PersistenceProvider persistenceProvider;
 
-  /** Factory used to create entity managers for transactions */
+  /**
+   * Factory used to create entity managers for transactions
+   */
   protected EntityManagerFactory emf;
 
-  /** OSGi callback. */
+  private final long noProviderId = -1;
+
+  /**
+   * OSGi callback.
+   */
   public void activate(ComponentContext cc) {
     logger.info("Activating persistence manager for transcription service");
   }
@@ -51,17 +60,33 @@ public class GoogleSpeechTranscriptionDatabase {
     this.emf = emf;
   }
 
-  /** OSGi callback to set persistence provider. */
+  /**
+   * OSGi callback to set persistence provider.
+   */
   public void setPersistenceProvider(PersistenceProvider persistenceProvider) {
     this.persistenceProvider = persistenceProvider;
   }
 
   public GoogleSpeechTranscriptionJobControl storeJobControl(String mpId, String trackId, String jobId, String jobStatus,
-          long trackDuration, int providerId) throws GoogleSpeechTranscriptionDatabaseException {
-    GoogleSpeechTranscriptionJobControlDto dto = GoogleSpeechTranscriptionJobControlDto.store(emf.createEntityManager(), mpId, trackId, jobId,
-            jobStatus, trackDuration, providerId);
-    if (dto != null)
-      return dto.toTranscriptionJobControl();
+          long trackDuration, String provider) throws GoogleSpeechTranscriptionDatabaseException {
+    long providerId = getProviderId(provider);
+    if (providerId != noProviderId) {
+      GoogleSpeechTranscriptionJobControlDto dto = GoogleSpeechTranscriptionJobControlDto.store(emf.createEntityManager(), mpId, trackId, jobId,
+              jobStatus, trackDuration, providerId);
+      if (dto != null) {
+        return dto.toTranscriptionJobControl();
+      }
+    }
+    return null;
+  }
+
+  public TranscriptionProviderControl storeProviderControl(String provider) throws GoogleSpeechTranscriptionDatabaseException {
+    TranscriptionProviderControlDto dto = TranscriptionProviderControlDto.storeProvider(emf.createEntityManager(), provider);
+    if (dto != null) {
+      logger.info("Transcription provider '{}' stored", provider);
+      return dto.toTranscriptionProviderControl();
+    }
+    logger.warn("Unable to store transcription provider '{}'", provider);
     return null;
   }
 
@@ -75,8 +100,9 @@ public class GoogleSpeechTranscriptionDatabase {
 
   public GoogleSpeechTranscriptionJobControl findByJob(String jobId) throws GoogleSpeechTranscriptionDatabaseException {
     GoogleSpeechTranscriptionJobControlDto dto = GoogleSpeechTranscriptionJobControlDto.findByJob(emf.createEntityManager(), jobId);
-    if (dto != null)
+    if (dto != null) {
       return dto.toTranscriptionJobControl();
+    }
     return null;
   }
 
@@ -99,4 +125,34 @@ public class GoogleSpeechTranscriptionDatabase {
     return resultList;
   }
 
+  public TranscriptionProviderControl findIdByProvider(String provider) throws GoogleSpeechTranscriptionDatabaseException {
+    TranscriptionProviderControlDto dtoProvider = TranscriptionProviderControlDto.findIdByProvider(emf.createEntityManager(), provider);
+    if (dtoProvider != null) {
+      return dtoProvider.toTranscriptionProviderControl();
+    } else {
+      // store provider and retrieve id
+      TranscriptionProviderControl dto = storeProviderControl(provider);
+      if (dto != null) {
+        dtoProvider = TranscriptionProviderControlDto.findIdByProvider(emf.createEntityManager(), provider);
+        return dtoProvider.toTranscriptionProviderControl();
+      }
+      return null; // not found
+    }
+  }
+
+  public TranscriptionProviderControl findProviderById(Long id) throws GoogleSpeechTranscriptionDatabaseException {
+    TranscriptionProviderControlDto dtoProvider = TranscriptionProviderControlDto.findProviderById(emf.createEntityManager(), id);
+    if (dtoProvider != null) {
+      return dtoProvider.toTranscriptionProviderControl();
+    }
+    return null;
+  }
+
+  private long getProviderId(String provider) throws GoogleSpeechTranscriptionDatabaseException {
+    TranscriptionProviderControl providerInfo = findIdByProvider(provider);
+    if (providerInfo != null) {
+      return providerInfo.getId();
+    }
+    return noProviderId;
+  }
 }

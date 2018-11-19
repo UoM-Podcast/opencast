@@ -932,13 +932,10 @@ CREATE TABLE mh_pm_synchronization_mh_pm_error (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE mh_transcription_service_provider (
-  id SMALLINT NOT NULL,
+  id BIGINT(20) NOT NULL,
   provider VARCHAR(255) NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
--- Insert data
-INSERT INTO mh_transcription_service_provider(id, provider) VALUES(1, 'IBM Watson'),(2, 'Google Speech');
 
 CREATE TABLE mh_transcription_service_job (
   id BIGINT(20) NOT NULL,
@@ -949,7 +946,7 @@ CREATE TABLE mh_transcription_service_job (
   date_completed DATETIME DEFAULT NULL,
   status VARCHAR(128) DEFAULT NULL,
   track_duration BIGINT NOT NULL,
-  provider_id SMALLINT,
+  provider_id BIGINT(20) NOT NULL,
   PRIMARY KEY (id),
   CONSTRAINT FK_mh_transcription_service_job_provider_id FOREIGN KEY (provider_id) REFERENCES mh_transcription_service_provider (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

@@ -121,7 +121,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   private static final String REQUEST_PATH = "/speech:longrunningrecognize";
   private static final String RESULT_PATH = "/operations/";
   private static final String INVALID_TOKEN = "-1";
-  private static final int PROVIDER_ID = 2; // Google Speech
+  private static final String PROVIDER = "Google Speech";
 
   // Global configuration (custom.properties)
   public static final String ADMIN_URL_PROPERTY = "org.opencastproject.admin.ui.url";
@@ -494,7 +494,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
                   jobId));
 
           database.storeJobControl(mpId, track.getIdentifier(), jobId, GoogleSpeechTranscriptionJobControl.Status.Progress.name(),
-                  track.getDuration() == null ? 0 : track.getDuration().longValue(), PROVIDER_ID);
+                  track.getDuration() == null ? 0 : track.getDuration().longValue(), PROVIDER);
           EntityUtils.consume(entity);
           return;
         default:
