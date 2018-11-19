@@ -18,4 +18,5 @@ Documentation for modules included in Opencast.
     - [Setup](videoeditor.setup.md)
     - [Architecture](videoeditor.architecture.md)
 - [Video Segmentation](videosegmentation.md)
+- [Transcripts (Google Speech)](googlespeechtranscripts.md)
 - [YouTube Publication](youtubepublication.md)
