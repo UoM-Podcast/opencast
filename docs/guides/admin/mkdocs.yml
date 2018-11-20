@@ -66,6 +66,7 @@ pages:
    - Search Index: 'modules/searchindex.md'
    - Stream Security: 'modules/stream-security.md'
    - Text Extraction: 'modules/textextraction.md'
+   - Transcripts (Google Speech): 'modules/googlespeechtranscripts.md'   
    - Video Editor:
       - Setup: 'modules/videoeditor.setup.md'
       - Architecture: 'modules/videoeditor.architecture.md'
@@ -94,6 +95,8 @@ pages:
    - Execute Many: 'workflowoperationhandlers/execute-many-woh.md'
    - Export Workflow Properties: 'workflowoperationhandlers/export-wf-properties-woh.md'
    - Extract Text: 'workflowoperationhandlers/extracttext-woh.md'
+   - Google Speech Attach Transcription: 'workflowoperationhandlers/google-speech-attach-transcription-woh.md'
+   - Google Speech Start Transcription: 'workflowoperationhandlers/google-speech-start-transcription-woh.md'
    - HTTP Notify: 'workflowoperationhandlers/httpnotify-woh.md'
    - Image: 'workflowoperationhandlers/image-woh.md'
    - Image to Video: 'workflowoperationhandlers/imagetovideo-woh.md'
