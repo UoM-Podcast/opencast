@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -73,6 +74,24 @@ public class WaveformWorkflowOperationHandler extends AbstractWorkflowOperationH
   /** Target tags configuration property name. */
   private static final String TARGET_TAGS_PROPERTY = "target-tags";
 
+  /** Waveform color configuration property name. */
+  private static final String WAVEFORM_COLOR = "waveform-color";
+
+  /** Waveform height configuration property name. */
+  private static final String WAVEFORM_HEIGHT = "waveform-height";
+
+  /** Waveform scale configuration property name. */
+  private static final String WAVEFORM_SCALE = "waveform-scale";
+
+  /** Waveform with ppm configuration property name. */
+  private static final String WAVEFORM_IMAGE_WIDTH_PPM = "waveform-width-ppm";
+
+  /** Waveform image minimum width configuration property name. */
+  private static final String WAVEFORM_IMAGE_WIDTH_MIN = "waveform-width-min";
+
+  /** Waveform image maximum width configuration property name. */
+  private static final String WAVEFORM_IMAGE_WIDTH_MAX = "waveform-width-max";
+
   /** The configuration options for this handler */
   private static final SortedMap<String, String> CONFIG_OPTIONS;
 
@@ -84,6 +103,12 @@ public class WaveformWorkflowOperationHandler extends AbstractWorkflowOperationH
             + " will be processed.");
     CONFIG_OPTIONS.put(TARGET_FLAVOR_PROPERTY, "The target waveform image flavor.");
     CONFIG_OPTIONS.put(TARGET_TAGS_PROPERTY, "The waveform image (comma separated) target tags.");
+    CONFIG_OPTIONS.put(WAVEFORM_COLOR, "The waveform image color (pipe (|) separated).");
+    CONFIG_OPTIONS.put(WAVEFORM_HEIGHT, "The waveform image height in pixels.");
+    CONFIG_OPTIONS.put(WAVEFORM_SCALE, "The waveform image scale can be lin or log.");
+    CONFIG_OPTIONS.put(WAVEFORM_IMAGE_WIDTH_PPM, "The waveform image width in pixels per minute of video duration.");
+    CONFIG_OPTIONS.put(WAVEFORM_IMAGE_WIDTH_MIN, "The waveform image minimum width in pixels.");
+    CONFIG_OPTIONS.put(WAVEFORM_IMAGE_WIDTH_MAX, "The waveform image maximum width in pixels.");
   }
 
   /** The waveform service. */
@@ -139,6 +164,24 @@ public class WaveformWorkflowOperationHandler extends AbstractWorkflowOperationH
     String targetTagsProperty = StringUtils.trimToNull(
             workflowInstance.getCurrentOperation().getConfiguration(TARGET_TAGS_PROPERTY));
 
+    String waveformColor = StringUtils.trimToNull(
+            workflowInstance.getCurrentOperation().getConfiguration(WAVEFORM_COLOR));
+
+    String waveformHeight = StringUtils.trimToNull(
+            workflowInstance.getCurrentOperation().getConfiguration(WAVEFORM_HEIGHT));
+
+    String waveformScale = StringUtils.trimToNull(
+            workflowInstance.getCurrentOperation().getConfiguration(WAVEFORM_SCALE));
+
+    String waveformWidthPPM = StringUtils.trimToNull(
+            workflowInstance.getCurrentOperation().getConfiguration(WAVEFORM_IMAGE_WIDTH_PPM));
+
+    String waveformWithMin = StringUtils.trimToNull(
+            workflowInstance.getCurrentOperation().getConfiguration(WAVEFORM_IMAGE_WIDTH_MIN));
+
+    String waveformWithMax = StringUtils.trimToNull(
+            workflowInstance.getCurrentOperation().getConfiguration(WAVEFORM_IMAGE_WIDTH_MAX));
+
     TrackSelector trackSelector = new TrackSelector();
     for (String flavor : asList(sourceFlavorProperty)) {
       trackSelector.addFlavor(flavor);
@@ -167,7 +210,27 @@ public class WaveformWorkflowOperationHandler extends AbstractWorkflowOperationH
         logger.info("Create waveform job for track '{}' in mediapackage '{}'",
                 sourceTrack.getIdentifier(), mediaPackage.getIdentifier().compact());
 
-        Job waveformJob = waveformService.createWaveformImage(sourceTrack);
+        HashMap<String, String> filterHash = new HashMap<>();
+        if (waveformColor != null) {
+          filterHash.put("waveformColor", waveformColor);
+        }
+        if (waveformHeight != null) {
+          filterHash.put("waveformImageHeight", waveformHeight);
+        }
+        if (waveformScale != null) {
+          filterHash.put("waveformScale", waveformScale);
+        }
+        if (waveformWidthPPM != null) {
+          filterHash.put("waveformImageWidthPPM", waveformWidthPPM);
+        }
+        if (waveformWithMin != null) {
+          filterHash.put("waveformImageWidthMin", waveformWithMin);
+        }
+        if (waveformWithMax != null) {
+          filterHash.put("waveformImageWidthMax", waveformWithMax);
+        }
+
+        Job waveformJob = waveformService.createWaveformImage(sourceTrack, filterHash);
         waveformJobs.add(waveformJob);
       } catch (MediaPackageException | WaveformServiceException ex) {
         logger.error("Creating waveform extraction job for track '{}' in media package '{}' failed with error {}",
@@ -253,23 +316,23 @@ public class WaveformWorkflowOperationHandler extends AbstractWorkflowOperationH
    */
   private void cleanupWorkspace(List<Job> jobs) {
     for (Job job : jobs) {
-        String jobPayload = job.getPayload();
-        if (StringUtils.isNotEmpty(jobPayload)) {
-          try {
-            MediaPackageElement waveformMpe = MediaPackageElementParser.getFromXml(jobPayload);
-            URI waveformUri = waveformMpe.getURI();
-            workspace.delete(waveformUri);
-          } catch (MediaPackageException ex) {
-            // unexpected job payload
-            logger.error("Can't parse waveform attachment from job {}", job.getId());
-          } catch (NotFoundException ex) {
-            // this is ok, because we want delete the file
-          } catch (IOException ex) {
-            logger.warn("Deleting waveform image file from workspace failed: {}", ex.getMessage());
-            // this is ok, because workspace cleaner will remove old files if they exist
-          }
+      String jobPayload = job.getPayload();
+      if (StringUtils.isNotEmpty(jobPayload)) {
+        try {
+          MediaPackageElement waveformMpe = MediaPackageElementParser.getFromXml(jobPayload);
+          URI waveformUri = waveformMpe.getURI();
+          workspace.delete(waveformUri);
+        } catch (MediaPackageException ex) {
+          // unexpected job payload
+          logger.error("Can't parse waveform attachment from job {}", job.getId());
+        } catch (NotFoundException ex) {
+          // this is ok, because we want delete the file
+        } catch (IOException ex) {
+          logger.warn("Deleting waveform image file from workspace failed: {}", ex.getMessage());
+          // this is ok, because workspace cleaner will remove old files if they exist
         }
       }
+    }
   }
 
   public void setWaveformService(WaveformService waveformService) {
