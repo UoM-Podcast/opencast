@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -86,6 +87,11 @@ public class WaveformServiceRemote extends RemoteBase implements WaveformService
       closeConnection(response);
     }
     throw new WaveformServiceException("Unable to create waveform image from " + sourceTrack + " using a remote service");
+  }
+
+  @Override
+  public Job createWaveformImage(Track sourceTrack,  Map<String, String> filterHash) throws MediaPackageException, WaveformServiceException {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
 }

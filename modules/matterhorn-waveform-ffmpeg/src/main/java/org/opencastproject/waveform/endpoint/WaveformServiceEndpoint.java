@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.FormParam;
@@ -103,7 +104,7 @@ public class WaveformServiceEndpoint extends AbstractJobProducerEndpoint {
         return Response.status(Response.Status.BAD_REQUEST).entity("Track element must be of type track").build();
       }
 
-      HashMap<String, String> filterHash = new HashMap<>();
+      Map<String, String> filterHash = new HashMap<>();
       if (!StringUtils.isBlank(color)) {
         filterHash.put("waveformColor", color);
       }

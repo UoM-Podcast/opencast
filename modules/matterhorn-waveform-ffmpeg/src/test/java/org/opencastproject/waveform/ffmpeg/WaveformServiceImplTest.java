@@ -55,6 +55,7 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Test class for WaveformServiceImpl.
@@ -64,8 +65,8 @@ public class WaveformServiceImplTest {
 
   private static Track audioTrack = null;
   private static Track dummyTrack = null;
-  private static HashMap<String, String> noFilter = new HashMap<>();
-  private static HashMap<String, String> withFilter = new HashMap<>();
+  private static Map<String, String> noFilter = new HashMap<>();
+  private static Map<String, String> withFilter = new HashMap<>();
 
   @BeforeClass
   public static void setUpClass() throws Exception {

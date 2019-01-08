@@ -62,6 +62,7 @@ import java.util.Arrays;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -272,13 +273,18 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * @see org.opencastproject.waveform.api.WaveformService#createWaveformImage(org.opencastproject.mediapackage.Track)
    */
   @Override
-  public Job createWaveformImage(Track sourceTrack, HashMap<String, String> filterHash) throws MediaPackageException, WaveformServiceException {
+  public Job createWaveformImage(Track sourceTrack, Map<String, String> filterHash) throws MediaPackageException, WaveformServiceException {
     try {
       return serviceRegistry.createJob(jobType, Operation.Waveform.toString(),
               Arrays.asList(MediaPackageElementParser.getAsXml(sourceTrack), filterHash.entrySet().toString()), waveformJobLoad);
     } catch (ServiceRegistryException ex) {
       throw new WaveformServiceException("Unable to create waveform job", ex);
     }
+  }
+
+  @Override
+  public Job createWaveformImage(Track sourceTrack) throws MediaPackageException, WaveformServiceException {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
   /**
@@ -297,7 +303,7 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
         case Waveform:
           Track track = (Track) MediaPackageElementParser.getFromXml(arguments.get(0));
           String filter = arguments.get(1);
-          HashMap<String, String> filterMap = convertStringToHashMap(filter);
+          Map<String, String> filterMap = convertStringToHashMap(filter);
           Attachment waveformMpe = extractWaveform(track, filterMap);
           return MediaPackageElementParser.getAsXml(waveformMpe);
         default:
@@ -318,7 +324,7 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * @return waveform image attachment
    * @throws WaveformServiceException if processing fails
    */
-  private Attachment extractWaveform(Track track, HashMap<String, String> filterMap) throws WaveformServiceException {
+  private Attachment extractWaveform(Track track, Map<String, String> filterMap) throws WaveformServiceException {
     if (!track.hasAudio()) {
       throw new WaveformServiceException("Track has no audio");
     }
@@ -424,7 +430,7 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * @param filterMap filter list for waveform image
    * @return ffmpeg filter parameter
    */
-  private String createWaveformFilter(Track track, HashMap<String, String> filterMap) {
+  private String createWaveformFilter(Track track, Map<String, String> filterMap) {
     if (filterMap.containsKey("waveformImageHeight")) {
       waveformImageHeight = Integer.parseInt(filterMap.get("waveformImageHeight"));
     }
@@ -455,7 +461,7 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * @param filterMap filter list for waveform image
    * @return waveform image width
    */
-  private int getWaveformImageWidth(Track track, HashMap<String, String> filterMap) {
+  private int getWaveformImageWidth(Track track, Map<String, String> filterMap) {
     int imageWidth = waveformImageWidthMin;
     if (filterMap.containsKey("waveformImageWidthPPM")) {
       waveformImageWidthPPM = Integer.parseInt(filterMap.get("waveformImageWidthPPM"));
@@ -482,8 +488,8 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * @param filter string to convert to hashmap
    * @return map
    */
-  private HashMap<String, String> convertStringToHashMap(String filter) {
-    HashMap<String, String> map = new HashMap<>();
+  private Map<String, String> convertStringToHashMap(String filter) {
+    Map<String, String> map = new HashMap<>();
     if (filter != null && !filter.isEmpty()) {
       // Remove brackets
       filter = filter.substring(1, (filter.length() - 1));

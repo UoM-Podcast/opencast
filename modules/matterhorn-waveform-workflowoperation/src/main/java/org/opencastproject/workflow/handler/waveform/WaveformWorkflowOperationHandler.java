@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -210,7 +211,7 @@ public class WaveformWorkflowOperationHandler extends AbstractWorkflowOperationH
         logger.info("Create waveform job for track '{}' in mediapackage '{}'",
                 sourceTrack.getIdentifier(), mediaPackage.getIdentifier().compact());
 
-        HashMap<String, String> filterHash = new HashMap<>();
+        Map<String, String> filterHash = new HashMap<>();
         if (waveformColor != null) {
           filterHash.put("waveformColor", waveformColor);
         }
