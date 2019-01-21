@@ -282,11 +282,6 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
     }
   }
 
-  @Override
-  public Job createWaveformImage(Track sourceTrack) throws MediaPackageException, WaveformServiceException {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
   /**
    * {@inheritDoc}
    *

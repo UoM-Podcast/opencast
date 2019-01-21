@@ -34,16 +34,6 @@ public interface WaveformService {
   /** Job type */
   String JOB_TYPE = "org.opencastproject.waveform";
 
-  /**
-   * Takes the given track and returns the job that will create a waveform image.
-   *
-   * @param sourceTrack the track to create waveform image from
-   * @return a job that will create a waveform image
-   * @throws MediaPackageException if the serialization of the given track fails
-   * @throws WaveformServiceException if the job can't be created for any reason
-   */
-  Job createWaveformImage(Track sourceTrack) throws MediaPackageException, WaveformServiceException;
-
 /**
    * Takes the given track and returns the job that will create a waveform image.
    *

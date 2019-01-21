@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-
 /**
  * This is a remote waveform service that will call the waveform service implementation on a remote host.
  */
@@ -61,11 +60,30 @@ public class WaveformServiceRemote extends RemoteBase implements WaveformService
    * @throws WaveformServiceException if the job can't be created for any reason
    */
   @Override
-  public Job createWaveformImage(Track sourceTrack) throws MediaPackageException, WaveformServiceException {
+  public Job createWaveformImage(Track sourceTrack, Map<String, String> filterHash) throws MediaPackageException, WaveformServiceException {
     HttpPost post = new HttpPost("/create");
     try {
       List<BasicNameValuePair> params = new ArrayList<>();
       params.add(new BasicNameValuePair("track", MediaPackageElementParser.getAsXml(sourceTrack)));
+
+      if (filterHash.containsKey("waveformColor")) {
+        params.add(new BasicNameValuePair("color", filterHash.get("waveformColor")));
+      }
+      if (filterHash.containsKey("waveformImageHeight")) {
+        params.add(new BasicNameValuePair("height", filterHash.get("waveformImageHeight")));
+      }
+      if (filterHash.containsKey("waveformScale")) {
+        params.add(new BasicNameValuePair("scale", filterHash.get("waveformScale")));
+      }
+      if (filterHash.containsKey("waveformImageWidthPPM")) {
+        params.add(new BasicNameValuePair("widthPPM", filterHash.get("waveformImageWidthPPM")));
+      }
+      if (filterHash.containsKey("waveformImageWidthMin")) {
+        params.add(new BasicNameValuePair("minWidth", filterHash.get("waveformImageWidthMin")));
+      }
+      if (filterHash.containsKey("waveformImageWidthMax")) {
+        params.add(new BasicNameValuePair("maxWidth", filterHash.get("waveformImageWidthMax")));
+      }
       post.setEntity(new UrlEncodedFormEntity(params));
     } catch (Exception e) {
       throw new WaveformServiceException(e);
@@ -87,11 +105,6 @@ public class WaveformServiceRemote extends RemoteBase implements WaveformService
       closeConnection(response);
     }
     throw new WaveformServiceException("Unable to create waveform image from " + sourceTrack + " using a remote service");
-  }
-
-  @Override
-  public Job createWaveformImage(Track sourceTrack,  Map<String, String> filterHash) throws MediaPackageException, WaveformServiceException {
-    throw new UnsupportedOperationException("Not supported yet.");
   }
 
 }
