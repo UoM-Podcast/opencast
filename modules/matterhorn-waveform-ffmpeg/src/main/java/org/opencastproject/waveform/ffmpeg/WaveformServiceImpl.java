@@ -59,11 +59,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 
 /**
  * This service creates a waveform image from a media file with at least one audio channel.
@@ -273,10 +273,10 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * @see org.opencastproject.waveform.api.WaveformService#createWaveformImage(org.opencastproject.mediapackage.Track)
    */
   @Override
-  public Job createWaveformImage(Track sourceTrack) throws MediaPackageException, WaveformServiceException {
+  public Job createWaveformImage(Track sourceTrack, Map<String, String> filterHash) throws MediaPackageException, WaveformServiceException {
     try {
       return serviceRegistry.createJob(jobType, Operation.Waveform.toString(),
-              Collections.singletonList(MediaPackageElementParser.getAsXml(sourceTrack)), waveformJobLoad);
+              Arrays.asList(MediaPackageElementParser.getAsXml(sourceTrack), filterHash.entrySet().toString()), waveformJobLoad);
     } catch (ServiceRegistryException ex) {
       throw new WaveformServiceException("Unable to create waveform job", ex);
     }
@@ -297,7 +297,9 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
       switch (op) {
         case Waveform:
           Track track = (Track) MediaPackageElementParser.getFromXml(arguments.get(0));
-          Attachment waveformMpe = extractWaveform(track);
+          String filter = arguments.get(1);
+          Map<String, String> filterMap = convertStringToHashMap(filter);
+          Attachment waveformMpe = extractWaveform(track, filterMap);
           return MediaPackageElementParser.getAsXml(waveformMpe);
         default:
           throw new ServiceRegistryException("This service can't handle operations of type '" + op + "'");
@@ -313,10 +315,11 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * Create and run waveform extraction ffmpeg command.
    *
    * @param track source audio/video track with at least one audio channel
+   * @param filterMap filter list for waveform image
    * @return waveform image attachment
    * @throws WaveformServiceException if processing fails
    */
-  private Attachment extractWaveform(Track track) throws WaveformServiceException {
+  private Attachment extractWaveform(Track track, Map<String, String> filterMap) throws WaveformServiceException {
     if (!track.hasAudio()) {
       throw new WaveformServiceException("Track has no audio");
     }
@@ -337,11 +340,11 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
             .concat('-' + track.getIdentifier()).concat("-waveform.png");
 
     // create ffmpeg command
-    String[] command = new String[] {
+    String[] command = new String[]{
       binary,
       "-nostats",
       "-i", mediaFile.getAbsolutePath(),
-      "-lavfi", createWaveformFilter(track),
+      "-lavfi", createWaveformFilter(track, filterMap),
       "-an", "-vn", "-sn", "-y",
       waveformFilePath
     };
@@ -381,8 +384,9 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
       }
     }
 
-    if (exitCode != 0)
+    if (exitCode != 0) {
       throw new WaveformServiceException("The encoder process exited abnormally with exit code " + exitCode);
+    }
 
     // put waveform image into workspace
     FileInputStream waveformFileInputStream = null;
@@ -418,14 +422,24 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * Create an ffmpeg waveform filter with parameters based on input track and service configuration.
    *
    * @param track source audio/video track with at least one audio channel
+   * @param filterMap filter list for waveform image
    * @return ffmpeg filter parameter
    */
-  private String createWaveformFilter(Track track) {
+  private String createWaveformFilter(Track track, Map<String, String> filterMap) {
+    if (filterMap.containsKey("waveformImageHeight")) {
+      waveformImageHeight = Integer.parseInt(filterMap.get("waveformImageHeight"));
+    }
+    if (filterMap.containsKey("waveformScale")) {
+      waveformScale = filterMap.get("waveformScale");
+    }
+    if (filterMap.containsKey("waveformColor")) {
+      waveformColor = StringUtils.split(filterMap.get("waveformColor"), "|");
+    }
     StringBuilder filterBuilder = new StringBuilder("showwavespic=");
     filterBuilder.append("split_channels=");
     filterBuilder.append(waveformSplitChannels ? 1 : 0);
     filterBuilder.append(":s=");
-    filterBuilder.append(getWaveformImageWidth(track));
+    filterBuilder.append(getWaveformImageWidth(track, filterMap));
     filterBuilder.append("x");
     filterBuilder.append(waveformImageHeight);
     filterBuilder.append(":scale=");
@@ -439,10 +453,20 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
    * Return the waveform image width build from input track and service configuration.
    *
    * @param track source audio/video track with at least one audio channel
+   * @param filterMap filter list for waveform image
    * @return waveform image width
    */
-  private int getWaveformImageWidth(Track track) {
+  private int getWaveformImageWidth(Track track, Map<String, String> filterMap) {
     int imageWidth = waveformImageWidthMin;
+    if (filterMap.containsKey("waveformImageWidthPPM")) {
+      waveformImageWidthPPM = Integer.parseInt(filterMap.get("waveformImageWidthPPM"));
+    }
+    if (filterMap.containsKey("waveformImageWidthMin")) {
+      waveformImageWidthMin = Integer.parseInt(filterMap.get("waveformImageWidthMin"));
+    }
+    if (filterMap.containsKey("waveformImageWidthMax")) {
+      waveformImageWidthMax = Integer.parseInt(filterMap.get("waveformImageWidthMax"));
+    }
     if (track.getDuration() > 0) {
       int trackDurationMinutes = (int) TimeUnit.MILLISECONDS.toMinutes(track.getDuration());
       if (waveformImageWidthPPM > 0 && trackDurationMinutes > 0) {
@@ -451,6 +475,30 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
       }
     }
     return imageWidth;
+  }
+
+  /**
+   * Return a hashmap given a string in specific format
+   *
+   * @param filter string to convert to hashmap
+   * @return map
+   */
+  private Map<String, String> convertStringToHashMap(String filter) {
+    Map<String, String> map = new HashMap<>();
+    if (filter != null && !filter.isEmpty()) {
+      // Remove brackets
+      filter = filter.substring(1, (filter.length() - 1));
+      if (filter.length() > 0) {
+        // Split the string to create key-value pairs
+        String[] keyValuePairs = filter.split(",");
+        for (String pair : keyValuePairs) {
+          //split the pairs to get key and value
+          String[] entry = pair.split("=");
+          map.put(entry[0].trim(), entry[1].trim());
+        }
+      }
+    }
+    return map;
   }
 
   @Override

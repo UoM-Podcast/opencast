@@ -36,9 +36,13 @@ import org.opencastproject.util.doc.rest.RestService;
 import org.opencastproject.waveform.api.WaveformService;
 import org.opencastproject.waveform.api.WaveformServiceException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.FormParam;
@@ -65,7 +69,19 @@ public class WaveformServiceEndpoint extends AbstractJobProducerEndpoint {
           returnDescription = "Media package attachment for the generated waveform.",
           restParameters = {
             @RestParameter(name = "track", type = RestParameter.Type.TEXT,
-                    description = "Track with at least one audio channel.", isRequired = true)
+                    description = "Track with at least one audio channel.", isRequired = true),
+            @RestParameter(name = "color", type = RestParameter.Type.STRING, defaultValue = "black",
+                    description = "Waveform image color, see https://www.ffmpeg.org/ffmpeg-all.html#Color .", isRequired = false),
+            @RestParameter(name = "height", type = RestParameter.Type.STRING, defaultValue = "500",
+                    description = "Waveform image height in pixels.", isRequired = false),
+            @RestParameter(name = "minWidth", type = RestParameter.Type.STRING, defaultValue = "5000",
+                    description = "Waveform image minimum width in pixels.", isRequired = false),
+            @RestParameter(name = "maxWidth", type = RestParameter.Type.STRING, defaultValue = "20000",
+                    description = "Waveform image maximum width in pixels.", isRequired = false),
+            @RestParameter(name = "widthPPM", type = RestParameter.Type.STRING, defaultValue = "200",
+                    description = "Waveform image width in pixels per minute of video duration.", isRequired = false),
+            @RestParameter(name = "scale", type = RestParameter.Type.STRING, defaultValue = "lin",
+                    description = "Waveform image scale can be lin or log.", isRequired = false)
           },
           reponses = {
             @RestResponse(description = "Waveform generation job successfully created.",
@@ -74,14 +90,40 @@ public class WaveformServiceEndpoint extends AbstractJobProducerEndpoint {
                     responseCode = HttpServletResponse.SC_BAD_REQUEST),
             @RestResponse(description = "Internal server error.",
                     responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-  })
-  public Response createWaveformImage(@FormParam("track") String track) {
+          })
+  public Response createWaveformImage(@FormParam("track") String track,
+          @FormParam("color") String color,
+          @FormParam("height") String height,
+          @FormParam("minWidth") String minWidth,
+          @FormParam("maxWidth") String maxWidth,
+          @FormParam("widthPPM") String widthPPM,
+          @FormParam("scale") String scale) {
     try {
       MediaPackageElement sourceTrack = MediaPackageElementParser.getFromXml(track);
-      if (!Track.TYPE.equals(sourceTrack.getElementType()))
+      if (!Track.TYPE.equals(sourceTrack.getElementType())) {
         return Response.status(Response.Status.BAD_REQUEST).entity("Track element must be of type track").build();
+      }
 
-      Job job = waveformService.createWaveformImage((Track) sourceTrack);
+      Map<String, String> filterHash = new HashMap<>();
+      if (!StringUtils.isBlank(color)) {
+        filterHash.put("waveformColor", color);
+      }
+      if (!StringUtils.isBlank(height)) {
+        filterHash.put("waveformImageHeight", height);
+      }
+      if (!StringUtils.isBlank(minWidth)) {
+        filterHash.put("waveformImageWidthMin", minWidth);
+      }
+      if (!StringUtils.isBlank(maxWidth)) {
+        filterHash.put("waveformImageWidthMax", maxWidth);
+      }
+      if (!StringUtils.isBlank(widthPPM)) {
+        filterHash.put("waveformImageWidthPPM", widthPPM);
+      }
+      if (!StringUtils.isBlank(scale)) {
+        filterHash.put("waveformScale", scale);
+      }
+      Job job = waveformService.createWaveformImage((Track) sourceTrack, filterHash);
       return Response.ok().entity(new JaxbJob(job)).build();
     } catch (WaveformServiceException ex) {
       logger.error("Creating waveform job for track {} failed: {}", track, ExceptionUtils.getStackTrace(ex));
