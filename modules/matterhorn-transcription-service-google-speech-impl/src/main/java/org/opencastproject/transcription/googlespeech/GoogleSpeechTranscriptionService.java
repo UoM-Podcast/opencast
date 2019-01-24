@@ -85,8 +85,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -117,12 +115,13 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   // Cleans up results files that are older than 7 days
   private static final int DEFAULT_CLEANUP_RESULTS_DAYS = 7;
   private static final boolean DEFAULT_PROFANITY_FILTER = false;
-  private static final String DEFAULT_LANGUAGE = "en_UK";
+  private static final String DEFAULT_LANGUAGE = "en-US";
   private static final String GOOGLE_SPEECH_URL = "https://speech.googleapis.com/v1";
   private static final String GOOGLE_AUTH2_URL = "https://www.googleapis.com/oauth2/v4/token";
   private static final String REQUEST_PATH = "/speech:longrunningrecognize";
   private static final String RESULT_PATH = "/operations/";
-  protected static String invalidToken = "-1"; // Set to protected for unit test
+  private static final String INVALID_TOKEN = "-1";
+  private static final String PROVIDER = "Google Speech";
 
   // Global configuration (custom.properties)
   public static final String ADMIN_URL_PROPERTY = "org.opencastproject.admin.ui.url";
@@ -176,7 +175,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   public static final String GOOGLE_CLOUD_CLIENT_SECRET = "google.cloud.client.secret";
   public static final String GOOGLE_CLOUD_REFRESH_TOKEN = "google.cloud.refresh.token";
   public static final String GOOGLE_CLOUD_BUCKET = "google.cloud.storage.bucket";
-  public static final String GOOGLE_CLOUD_TOKEN_ENDPOINT = "google.cloud.token.enpoint";
+  public static final String GOOGLE_CLOUD_TOKEN_ENDPOINT_URL = "google.cloud.token.endpoint.url";
 
   /**
    * Service configuration values
@@ -193,7 +192,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   private String clientId;
   private String clientSecret;
   private String clientToken;
-  private String accessToken = invalidToken;
+  private String accessToken = INVALID_TOKEN;
   private String tokenEndpoint = GOOGLE_AUTH2_URL;
   private String storageBucket;
   private long tokenExpiryTime = 0;
@@ -218,7 +217,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
         storageBucket = OsgiUtil.getComponentContextProperty(cc, GOOGLE_CLOUD_BUCKET);
 
         // access token endpoint
-        Option<String> tokenOpt = OsgiUtil.getOptCfg(cc.getProperties(), GOOGLE_CLOUD_TOKEN_ENDPOINT);
+        Option<String> tokenOpt = OsgiUtil.getOptCfg(cc.getProperties(), GOOGLE_CLOUD_TOKEN_ENDPOINT_URL);
         if (tokenOpt.isSome()) {
           tokenEndpoint = tokenOpt.get();
           logger.info("Access token endpoint is set to {}", tokenEndpoint);
@@ -335,7 +334,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   }
 
   @Override
-  public Job startTranscription(String mpId, Track track) throws TranscriptionServiceException {
+  public Job startTranscription(String mpId, Track track, String language) throws TranscriptionServiceException {
     if (!enabled) {
       throw new TranscriptionServiceException(
               "This service is disabled. If you want to enable it, please update the service configuration.");
@@ -343,7 +342,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
 
     try {
       return serviceRegistry.createJob(JOB_TYPE, Operation.StartTranscription.name(),
-              Arrays.asList(mpId, MediaPackageElementParser.getAsXml(track)));
+              Arrays.asList(mpId, MediaPackageElementParser.getAsXml(track), language));
     } catch (ServiceRegistryException e) {
       throw new TranscriptionServiceException("Unable to create a job", e);
     } catch (MediaPackageException e) {
@@ -355,13 +354,13 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   public void transcriptionDone(String mpId, Object obj) throws TranscriptionServiceException {
     JSONObject jsonObj = null;
     String jobId = null;
-    String token = "-1";
+    String token = INVALID_TOKEN;
     try {
       token = getRefreshAccessToken();
     } catch (IOException ex) {
       logger.error("Unable to create access token, error: {}", ex.toString());
     }
-    if (token.equals(invalidToken)) {
+    if (token.equals(INVALID_TOKEN)) {
       throw new TranscriptionServiceException("Invalid access token");
     }
     try {
@@ -376,10 +375,8 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
       database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.TranscriptionComplete.name());
 
       // Delete audio file from Google storage
-      // check added for unit test where invalidToken = 1
-      if (("-1").equals(invalidToken)) {
-        deleteStorageFile(mpId, token);
-      }
+      deleteStorageFile(mpId, token);
+
       // Save results in file system if there exist
       if (resultsArray != null) {
         saveResults(jobId, jsonObj);
@@ -428,7 +425,8 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
       case StartTranscription:
         String mpId = arguments.get(0);
         Track track = (Track) MediaPackageElementParser.getFromXml(arguments.get(1));
-        createRecognitionsJob(mpId, track);
+        String languageCode = arguments.get(2);
+        createRecognitionsJob(mpId, track, languageCode);
         break;
       default:
         throw new IllegalStateException("Don't know how to handle operation '" + operation + "'");
@@ -440,17 +438,17 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
    * Asynchronous Requests and Responses call to Google Speech API
    * https://cloud.google.com/speech-to-text/docs/basics
    */
-  void createRecognitionsJob(String mpId, Track track) throws TranscriptionServiceException, IOException {
-    String audioUrl;
-    if (("1").equals(invalidToken)) { // check needed for unit test invalidToken = 1
-      audioUrl = "";
-    } else {
-      audioUrl = uploadAudioFileToGoogleStorage(mpId, track);
+  void createRecognitionsJob(String mpId, Track track, String languageCode) throws TranscriptionServiceException, IOException {
+    // Use default language if not set by workflow
+    if (languageCode == null || languageCode.isEmpty()) {
+      languageCode = language;
     }
+    String audioUrl;
+    audioUrl = uploadAudioFileToGoogleStorage(mpId, track);
     CloseableHttpClient httpClient = makeHttpClient();
     CloseableHttpResponse response = null;
     String token = getRefreshAccessToken();
-    if (token.equals(invalidToken) || audioUrl == null) {
+    if (token.equals(INVALID_TOKEN) || audioUrl == null) {
       throw new TranscriptionServiceException("Could not create recognition job. Audio file or access token invalid");
     }
 
@@ -458,7 +456,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     JSONObject configValues = new JSONObject();
     JSONObject audioValues = new JSONObject();
     JSONObject container = new JSONObject();
-    configValues.put("languageCode", language);
+    configValues.put("languageCode", languageCode);
     configValues.put("enableWordTimeOffsets", true);
     configValues.put("profanityFilter", profanityFilter);
     audioValues.put("uri", audioUrl);
@@ -496,7 +494,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
                   jobId));
 
           database.storeJobControl(mpId, track.getIdentifier(), jobId, GoogleSpeechTranscriptionJobControl.Status.Progress.name(),
-                  track.getDuration() == null ? 0 : track.getDuration().longValue());
+                  track.getDuration() == null ? 0 : track.getDuration().longValue(), PROVIDER);
           EntityUtils.consume(entity);
           return;
         default:
@@ -537,7 +535,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     String mpId = "unknown";
     JSONArray resultsArray = null;
     String token = getRefreshAccessToken();
-    if (token.equals(invalidToken)) {
+    if (token.equals(INVALID_TOKEN)) {
       return false;
     }
     try {
@@ -617,7 +615,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     CloseableHttpClient httpClient = makeHttpClient();
     CloseableHttpResponse response = null;
     String token = getRefreshAccessToken();
-    if (token.equals(invalidToken)) {
+    if (token.equals(INVALID_TOKEN)) {
       logger.warn("Invalid access token");
       return "No results found";
     }
@@ -732,7 +730,6 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
           throws TranscriptionServiceException, IOException {
     CloseableHttpClient httpClient = makeHttpClient();
     CloseableHttpResponse response = null;
-    String token = "-1";
 
     try {
       HttpPost httpPost = new HttpPost(tokenEndpoint + String.format(
@@ -749,11 +746,11 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
           accessToken = (String) jsonObject.get("access_token");
           long duration = (long) jsonObject.get("expires_in"); // Duration in second
           tokenExpiryTime = (System.currentTimeMillis() + (duration * 1000)); // time in millisecond
-          if (!invalidToken.equals(accessToken)) {
+          if (!INVALID_TOKEN.equals(accessToken)) {
             logger.info("Google Cloud Service access token created");
             return accessToken;
           }
-          return token;
+          return INVALID_TOKEN;
         case HttpStatus.SC_BAD_REQUEST: // 400
         case HttpStatus.SC_UNAUTHORIZED: // 401
           String error = (String) jsonObject.get("error");
@@ -770,7 +767,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
       throw e;
     } catch (Exception e) {
       logger.warn("Unable to generate access token for Google Cloud Services");
-      return token;
+      return INVALID_TOKEN;
     } finally {
       try {
         httpClient.close();
@@ -783,18 +780,14 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   }
 
   protected String getRefreshAccessToken() throws TranscriptionServiceException, IOException {
-    if (("-1").equals(invalidToken)) { // check needed to assure no refresh token with unit test
-      // Check that token hasn't expired
-      if ((!invalidToken.equals(accessToken)) && (System.currentTimeMillis() < (tokenExpiryTime - ACCESS_TOKEN_MINIMUN_TIME))) {
-        return accessToken;
-      } else {
-        return refreshAccessToken(clientId, clientSecret, clientToken);
-      }
+    // Check that token hasn't expired
+    if ((!INVALID_TOKEN.equals(accessToken)) && (System.currentTimeMillis() < (tokenExpiryTime - ACCESS_TOKEN_MINIMUN_TIME))) {
+      return accessToken;
     }
-    return "";
+    return refreshAccessToken(clientId, clientSecret, clientToken);
   }
 
-  private String uploadAudioFileToGoogleStorage(String mpId, Track track)
+  protected String uploadAudioFileToGoogleStorage(String mpId, Track track)
           throws TranscriptionServiceException, IOException {
     File audioFile;
     String audioUrl = null;
@@ -806,7 +799,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
       audioFile = workspace.get(track.getURI());
       fileExtension = FilenameUtils.getExtension(audioFile.getName());
       long fileSize = audioFile.length();
-      String contentType = Files.probeContentType(Paths.get(audioFile.getPath())); // TODO there might be a way in OC to easily get mimetype
+      String contentType = track.getMimeType().toString();
       String token = getRefreshAccessToken();
       // Upload file to google cloud storage
       audioRespone = storage.startUpload(httpClientStorage, storageBucket, mpId, fileExtension,
@@ -828,7 +821,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     return resultsArray;
   }
 
-  private void deleteStorageFile(String mpId, String token) throws IOException {
+  protected void deleteStorageFile(String mpId, String token) throws IOException {
     CloseableHttpClient httpClientDel = makeHttpClient();
     GoogleSpeechTranscriptionServiceStorage storage = new GoogleSpeechTranscriptionServiceStorage();
     storage.deleteGoogleStorageFile(httpClientDel, storageBucket, mpId + ".flac", token);
@@ -952,10 +945,8 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
                     // Processing for too long, mark job as canceled and don't check anymore
                     database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.Canceled.name());
                     // Delete file stored on Google storage
-                    if (("-1").equals(invalidToken)) { // this condition is only needed for unit tests
-                      String token = getRefreshAccessToken();
-                      deleteStorageFile(mpId, token);
-                    }
+                    String token = getRefreshAccessToken();
+                    deleteStorageFile(mpId, token);
                     // Send notification email
                     sendEmail("Transcription ERROR", String.format(
                             "Transcription job was in processing state for too long and was marked as canceled (media package %s, job id %s).",

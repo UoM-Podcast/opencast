@@ -1279,8 +1279,7 @@ public class SchedulerServiceImpl extends AbstractIndexProducer implements Sched
     org.joda.time.DateTime end = getCutoffDate(buffer);
 
     org.joda.time.DateTime start = new org.joda.time.DateTime();
-    start.withYear(1999);
-    start.withDayOfYear(1);
+    start = start.withYear(1999).withDayOfYear(1);
 
     logger.info("Starting to look for scheduled recordings that have finished "
             + Log.getHumanReadableTimeString(buffer) + " ago from " + dateTimeFormatter.print(start) + " to "

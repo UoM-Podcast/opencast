@@ -18,7 +18,6 @@
  * the License.
  *
  */
-
 package org.opencastproject.caption.impl;
 
 import static org.opencastproject.util.MimeType.mimeType;
@@ -72,9 +71,10 @@ import java.util.List;
 import javax.activation.FileTypeMap;
 
 /**
- * Implementation of {@link CaptionService}. Uses {@link ComponentContext} to get all registered
- * {@link CaptionConverter}s. Converters are searched based on <code>caption.format</code> property. If there is no
- * match for specified input or output format {@link UnsupportedCaptionFormatException} is thrown.
+ * Implementation of {@link CaptionService}. Uses {@link ComponentContext} to
+ * get all registered {@link CaptionConverter}s. Converters are searched based
+ * on <code>caption.format</code> property. If there is no match for specified
+ * input or output format {@link UnsupportedCaptionFormatException} is thrown.
  *
  */
 public class CaptionServiceImpl extends AbstractJobProducer implements CaptionService, ManagedService {
@@ -86,49 +86,74 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
     super(JOB_TYPE);
   }
 
-  /** Logging utility */
+  /**
+   * Logging utility
+   */
   private static final Logger logger = LoggerFactory.getLogger(CaptionServiceImpl.class);
 
-  /** List of available operations on jobs */
+  /**
+   * List of available operations on jobs
+   */
   private enum Operation {
     Convert, ConvertWithLanguage
   };
 
-  /** The collection name */
+  /**
+   * The collection name
+   */
   public static final String COLLECTION = "captions";
 
-  /** The load introduced on the system by creating a caption job */
+  /**
+   * The load introduced on the system by creating a caption job
+   */
   public static final float DEFAULT_CAPTION_JOB_LOAD = 0.1f;
 
-  /** The key to look for in the service configuration file to override the {@link DEFAULT_CAPTION_JOB_LOAD} */
+  /**
+   * The key to look for in the service configuration file to override the
+   * {@link DEFAULT_CAPTION_JOB_LOAD}
+   */
   public static final String CAPTION_JOB_LOAD_KEY = "job.load.caption";
 
-  /** The load introduced on the system by creating a caption job */
+  /**
+   * The load introduced on the system by creating a caption job
+   */
   private float captionJobLoad = DEFAULT_CAPTION_JOB_LOAD;
 
-  /** Reference to workspace */
+  /**
+   * Reference to workspace
+   */
   protected Workspace workspace;
 
-  /** Reference to remote service manager */
+  /**
+   * Reference to remote service manager
+   */
   protected ServiceRegistry serviceRegistry;
 
-  /** The security service */
+  /**
+   * The security service
+   */
   protected SecurityService securityService = null;
 
-  /** The user directory service */
+  /**
+   * The user directory service
+   */
   protected UserDirectoryService userDirectoryService = null;
 
-  /** The organization directory service */
+  /**
+   * The organization directory service
+   */
   protected OrganizationDirectoryService organizationDirectoryService = null;
 
-  /** Component context needed for retrieving Converter Engines */
+  /**
+   * Component context needed for retrieving Converter Engines
+   */
   protected ComponentContext componentContext = null;
 
   /**
-   * Activate this service implementation via the OSGI service component runtime.
+   * Activate this service implementation via the OSGI service component
+   * runtime.
    *
-   * @param componentContext
-   *          the component context
+   * @param componentContext the component context
    */
   @Override
   public void activate(ComponentContext componentContext) {
@@ -139,20 +164,24 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.caption.api.CaptionService#convert(org.opencastproject.mediapackage.MediaPackageElement,
-   *      java.lang.String, java.lang.String)
+   * @see
+   * org.opencastproject.caption.api.CaptionService#convert(org.opencastproject.mediapackage.MediaPackageElement,
+   * java.lang.String, java.lang.String)
    */
   @Override
   public Job convert(MediaPackageElement input, String inputFormat, String outputFormat)
           throws UnsupportedCaptionFormatException,
           CaptionConverterException, MediaPackageException {
 
-    if (input == null)
+    if (input == null) {
       throw new IllegalArgumentException("Input catalog can't be null");
-    if (StringUtils.isBlank(inputFormat))
+    }
+    if (StringUtils.isBlank(inputFormat)) {
       throw new IllegalArgumentException("Input format is null");
-    if (StringUtils.isBlank(outputFormat))
+    }
+    if (StringUtils.isBlank(outputFormat)) {
       throw new IllegalArgumentException("Output format is null");
+    }
 
     try {
       return serviceRegistry.createJob(JOB_TYPE, Operation.Convert.toString(),
@@ -165,21 +194,26 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.caption.api.CaptionService#convert(org.opencastproject.mediapackage.MediaPackageElement,
-   *      java.lang.String, java.lang.String, java.lang.String)
+   * @see
+   * org.opencastproject.caption.api.CaptionService#convert(org.opencastproject.mediapackage.MediaPackageElement,
+   * java.lang.String, java.lang.String, java.lang.String)
    */
   @Override
   public Job convert(MediaPackageElement input, String inputFormat, String outputFormat, String language)
           throws UnsupportedCaptionFormatException, CaptionConverterException, MediaPackageException {
 
-    if (input == null)
+    if (input == null) {
       throw new IllegalArgumentException("Input catalog can't be null");
-    if (StringUtils.isBlank(inputFormat))
+    }
+    if (StringUtils.isBlank(inputFormat)) {
       throw new IllegalArgumentException("Input format is null");
-    if (StringUtils.isBlank(outputFormat))
+    }
+    if (StringUtils.isBlank(outputFormat)) {
       throw new IllegalArgumentException("Output format is null");
-    if (StringUtils.isBlank(language))
+    }
+    if (StringUtils.isBlank(language)) {
       throw new IllegalArgumentException("Language format is null");
+    }
 
     try {
       return serviceRegistry.createJob(JOB_TYPE, Operation.ConvertWithLanguage.toString(),
@@ -200,12 +234,15 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
     try {
 
       // check parameters
-      if (input == null)
+      if (input == null) {
         throw new IllegalArgumentException("Input element can't be null");
-      if (StringUtils.isBlank(inputFormat))
+      }
+      if (StringUtils.isBlank(inputFormat)) {
         throw new IllegalArgumentException("Input format is null");
-      if (StringUtils.isBlank(outputFormat))
+      }
+      if (StringUtils.isBlank(outputFormat)) {
         throw new IllegalArgumentException("Output format is null");
+      }
 
       // get input file
       File captionsFile;
@@ -245,13 +282,15 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
       MediaPackageElementBuilder elementBuilder = MediaPackageElementBuilderFactory.newInstance().newElementBuilder();
       MediaPackageElement mpe = elementBuilder.elementFromURI(exported, converter.getElementType(),
               new MediaPackageElementFlavor(
-              "captions", outputFormat));
+                      "captions", outputFormat));
       if (mpe.getMimeType() == null) {
         String[] mimetype = FileTypeMap.getDefaultFileTypeMap().getContentType(exported.getPath()).split("/");
         mpe.setMimeType(mimeType(mimetype[0], mimetype[1]));
       }
-      if (language != null)
+      // Don't need to add language tag if it doesn't exist or used for different purpose
+      if (language != null && !isNumeric(language)) {
         mpe.addTag("lang:" + language);
+      }
 
       return mpe;
 
@@ -336,13 +375,13 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   }
 
   /**
-   * Returns specific {@link CaptionConverter}. Registry is searched based on formatName, so in order for
-   * {@link CaptionConverter} to be found, it has to have <code>caption.format</code> property set with
-   * {@link CaptionConverter} format. If none is found, null is returned, if more than one is found then the first
-   * reference is returned.
+   * Returns specific {@link CaptionConverter}. Registry is searched based on
+   * formatName, so in order for {@link CaptionConverter} to be found, it has to
+   * have <code>caption.format</code> property set with {@link CaptionConverter}
+   * format. If none is found, null is returned, if more than one is found then
+   * the first reference is returned.
    *
-   * @param formatName
-   *          name of the caption format
+   * @param formatName name of the caption format
    * @return {@link CaptionConverter} or null if none is found
    */
   protected CaptionConverter getCaptionConverter(String formatName) {
@@ -357,8 +396,9 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
       logger.warn("No caption format available for {}.", formatName);
       return null;
     }
-    if (ref.length > 1)
+    if (ref.length > 1) {
       logger.warn("Multiple references for caption format {}! Returning first service reference.", formatName);
+    }
     CaptionConverter converter = (CaptionConverter) componentContext.getBundleContext().getService(ref[0]);
     return converter;
   }
@@ -366,17 +406,13 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * Imports captions using registered converter engine and specified language.
    *
-   * @param input
-   *          file containing captions
-   * @param inputFormat
-   *          format of imported captions
-   * @param language
-   *          (optional) captions' language
+   * @param input file containing captions
+   * @param inputFormat format of imported captions
+   * @param language (optional) captions' language
    * @return {@link List} of parsed captions
-   * @throws UnsupportedCaptionFormatException
-   *           if there is no registered engine for given format
-   * @throws IllegalCaptionFormatException
-   *           if parser encounters exception
+   * @throws UnsupportedCaptionFormatException if there is no registered engine
+   * for given format
+   * @throws IllegalCaptionFormatException if parser encounters exception
    */
   private List<Caption> importCaptions(File input, String inputFormat, String language)
           throws UnsupportedCaptionFormatException, CaptionConverterException {
@@ -400,22 +436,19 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   }
 
   /**
-   * Exports captions {@link List} to specified format. Extension is added to exported file name. Throws
-   * {@link UnsupportedCaptionFormatException} if format is not supported.
+   * Exports captions {@link List} to specified format. Extension is added to
+   * exported file name. Throws {@link UnsupportedCaptionFormatException} if
+   * format is not supported.
    *
    * @param captions
    *          {@link {@link List} to be exported
-   * @param outputName
-   *          name under which exported captions will be stored
-   * @param outputFormat
-   *          format of exported collection
-   * @param language
-   *          (optional) captions' language
-   * @throws UnsupportedCaptionFormatException
-   *           if there is no registered engine for given format
+   * @param outputName name under which exported captions will be stored
+   * @param outputFormat format of exported collection
+   * @param language (optional) captions' language
+   * @throws UnsupportedCaptionFormatException if there is no registered engine
+   * for given format
    * @return location of converted captions
-   * @throws IOException
-   *           if exception occurs while writing to output stream
+   * @throws IOException if exception occurs while writing to output stream
    */
   private URI exportCaptions(List<Caption> captions, String outputName, String outputFormat, String language)
           throws UnsupportedCaptionFormatException, IOException {
@@ -434,6 +467,15 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
     }
     ByteArrayInputStream in = new ByteArrayInputStream(outputStream.toByteArray());
     return workspace.putInCollection(COLLECTION, outputName + "." + converter.getExtension(), in);
+  }
+
+  private boolean isNumeric(String str) {
+    try {
+      Integer.parseInt(str);
+    } catch (NumberFormatException e) {
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -492,8 +534,7 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * Callback for setting the security service.
    *
-   * @param securityService
-   *          the securityService to set
+   * @param securityService the securityService to set
    */
   public void setSecurityService(SecurityService securityService) {
     this.securityService = securityService;
@@ -502,8 +543,7 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * Callback for setting the user directory service.
    *
-   * @param userDirectoryService
-   *          the userDirectoryService to set
+   * @param userDirectoryService the userDirectoryService to set
    */
   public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
     this.userDirectoryService = userDirectoryService;
@@ -512,8 +552,7 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * Sets a reference to the organization directory service.
    *
-   * @param organizationDirectory
-   *          the organization directory
+   * @param organizationDirectory the organization directory
    */
   public void setOrganizationDirectoryService(OrganizationDirectoryService organizationDirectory) {
     this.organizationDirectoryService = organizationDirectory;
@@ -532,7 +571,8 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.job.api.AbstractJobProducer#getOrganizationDirectoryService()
+   * @see
+   * org.opencastproject.job.api.AbstractJobProducer#getOrganizationDirectoryService()
    */
   @Override
   protected OrganizationDirectoryService getOrganizationDirectoryService() {
@@ -542,7 +582,8 @@ public class CaptionServiceImpl extends AbstractJobProducer implements CaptionSe
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.job.api.AbstractJobProducer#getUserDirectoryService()
+   * @see
+   * org.opencastproject.job.api.AbstractJobProducer#getUserDirectoryService()
    */
   @Override
   protected UserDirectoryService getUserDirectoryService() {

@@ -46,25 +46,41 @@ import java.util.Collection;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class StartGoogleSpeechTranscriptionOperationHandler extends AbstractWorkflowOperationHandler {
-   /** The logging facility */
-  private static final Logger logger = LoggerFactory.getLogger(StartGoogleSpeechTranscriptionOperationHandler.class);
+public class GoogleSpeechStartTranscriptionOperationHandler extends AbstractWorkflowOperationHandler {
 
-  /** Workflow configuration option keys */
+  /**
+   * The logging facility
+   */
+  private static final Logger logger = LoggerFactory.getLogger(GoogleSpeechStartTranscriptionOperationHandler.class);
+
+  /**
+   * Workflow configuration option keys
+   */
   static final String SOURCE_FLAVOR = "source-flavor";
   static final String SOURCE_TAG = "source-tag";
+  static final String LANGUAGE_CODE = "language-code";
   static final String SKIP_IF_FLAVOR_EXISTS = "skip-if-flavor-exists";
 
-  /** The transcription service */
+  /**
+   * The transcription service
+   */
   private TranscriptionService service = null;
 
-  /** The configuration options for this handler */
+  /**
+   * The language code
+   */
+  private String language = null;
+
+  /**
+   * The configuration options for this handler
+   */
   private static final SortedMap<String, String> CONFIG_OPTIONS;
 
   static {
     CONFIG_OPTIONS = new TreeMap<String, String>();
     CONFIG_OPTIONS.put(SOURCE_FLAVOR, "The \"flavor\" of the track to use as audio input");
     CONFIG_OPTIONS.put(SOURCE_TAG, "The \"tag\" of the track to use as audio input");
+    CONFIG_OPTIONS.put(LANGUAGE_CODE, "The \"language code\" to use for the transcription");
     CONFIG_OPTIONS
             .put(SKIP_IF_FLAVOR_EXISTS, "If this \"flavor\" is already in the media package, skip this operation");
   }
@@ -77,7 +93,8 @@ public class StartGoogleSpeechTranscriptionOperationHandler extends AbstractWork
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#getConfigurationOptions()
+   * @see
+   * org.opencastproject.workflow.api.WorkflowOperationHandler#getConfigurationOptions()
    */
   @Override
   public SortedMap<String, String> getConfigurationOptions() {
@@ -87,8 +104,9 @@ public class StartGoogleSpeechTranscriptionOperationHandler extends AbstractWork
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#start(org.opencastproject.workflow.api.WorkflowInstance,
-   *      JobContext)
+   * @see
+   * org.opencastproject.workflow.api.WorkflowOperationHandler#start(org.opencastproject.workflow.api.WorkflowInstance,
+   * JobContext)
    */
   @Override
   public WorkflowOperationResult start(final WorkflowInstance workflowInstance, JobContext context)
@@ -109,6 +127,9 @@ public class StartGoogleSpeechTranscriptionOperationHandler extends AbstractWork
 
     logger.debug("Start transcription for mediapackage {} started", mediaPackage);
 
+    // Get language code if configured
+    String langCode = StringUtils.trimToNull(operation.getConfiguration(LANGUAGE_CODE));
+
     // Check which tags have been configured
     String sourceTagOption = StringUtils.trimToNull(operation.getConfiguration(SOURCE_TAG));
     String sourceFlavorOption = StringUtils.trimToNull(operation.getConfiguration(SOURCE_FLAVOR));
@@ -116,8 +137,9 @@ public class StartGoogleSpeechTranscriptionOperationHandler extends AbstractWork
     AbstractMediaPackageElementSelector<Track> elementSelector = new TrackSelector();
 
     // Make sure either one of tags or flavors are provided
-    if (StringUtils.isBlank(sourceTagOption) && StringUtils.isBlank(sourceFlavorOption))
+    if (StringUtils.isBlank(sourceTagOption) && StringUtils.isBlank(sourceFlavorOption)) {
       throw new WorkflowOperationException("No source tag or flavor have been specified!");
+    }
 
     if (StringUtils.isNotBlank(sourceFlavorOption)) {
       String flavor = StringUtils.trim(sourceFlavorOption);
@@ -127,8 +149,12 @@ public class StartGoogleSpeechTranscriptionOperationHandler extends AbstractWork
         throw new WorkflowOperationException("Source flavor '" + flavor + "' is malformed");
       }
     }
-    if (sourceTagOption != null)
+    if (StringUtils.isNotBlank(langCode)) {
+      language = StringUtils.trim(langCode);
+    }
+    if (sourceTagOption != null) {
       elementSelector.addTag(sourceTagOption);
+    }
 
     Collection<Track> elements = elementSelector.select(mediaPackage, false);
     Job job = null;
@@ -138,7 +164,7 @@ public class StartGoogleSpeechTranscriptionOperationHandler extends AbstractWork
         continue;
       }
       try {
-        job = service.startTranscription(mediaPackage.getIdentifier().compact(), track); // NOTE this is where transcription start
+        job = service.startTranscription(mediaPackage.getIdentifier().compact(), track, language);
         // Only one job per media package
         break;
       } catch (TranscriptionServiceException e) {

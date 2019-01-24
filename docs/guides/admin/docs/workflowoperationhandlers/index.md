@@ -26,7 +26,6 @@ The following table contains the workflow operations that are available in an ou
 |analyze-tracks      |Analyze tracks in media package                                |[Documentation](analyze-tracks-woh.md)|
 |analyze-audio       |Analyze first audio stream                                     |[Documentation](analyzeaudio-woh.md)|
 |archive             |Archive the current state of the mediapackage                  |[Documentation](archive-woh.md)|
-|attach-google-speech-transcription|Attaches automated transcripts to mediapackage   |[Documentation](attach-google-speech-transcription-woh.md)|
 |cleanup             |Cleanup the working file repository                            |[Documentation](cleanup-woh.md)|
 |comment             |Add, resolve or delete a comment                               |[Documentation](comment-woh.md)|
 |compose             |Encode media files using FFmpeg                                |[Documentation](compose-woh.md)|
@@ -44,6 +43,8 @@ The following table contains the workflow operations that are available in an ou
 |execute-many        |Execute a command for each matching element in a MediaPackage  |[Documentation](execute-many-woh.md)
 |export-wf-properties|Export workflow properties                                     |[Documentation](export-wf-properties-woh.md)|
 |extract-text        |Extracting text from presentation segments                     |[Documentation](extracttext-woh.md)|
+|google-speech-attach-transcription|Attaches automated transcripts to mediapackage   |[Documentation](google-speech-attach-transcription-woh.md)|
+|google-speech-start-transcription|Starts automated transcription provided by Google Speech|[Documentation](google-speech-start-transcription-woh.md)|
 |http-notify         |Notifies an HTTP endpoint about the process of the workflow    |[Documentation](httpnotify-woh.md)|
 |image               |Extract images from a video using FFmpeg                       |[Documentation](image-woh.md)|
 |image-to-video      |Create a video track from a source image                       |[Documentation](imagetovideo-woh.md)|
@@ -69,7 +70,6 @@ The following table contains the workflow operations that are available in an ou
 |segmentpreviews     |Extract segment images from a video using FFmpeg               |[Documentation](segmentpreviews-woh.md)|
 |series              |Apply series to the mediapackage                               |[Documentation](series-woh.md)|
 |silence             |Silence detection on audio of the mediapackage                 |[Documentation](silence-woh.md)|
-|start-google-speech-transcription|Starts automated transcription provided by Google Speech|[Documentation](start-google-speech-transcription-woh.md)|
 |tag                 |Modify the tag sets of media package elements                  |[Documentation](tag-woh.md)|
 |tag-by-dcterm       |Modify the tags if dublincore term matches value               |[Documentation](tag-by-dcterm-woh.md)|
 |theme               |Make settings of themes available to processing                |[Documentation](theme-woh.md)|

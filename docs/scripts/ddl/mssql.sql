@@ -918,14 +918,22 @@ CREATE TABLE mh_pm_synchronization_mh_pm_error (
   CONSTRAINT mhpm_synchronization_mh_pm_errorSynchronization_id FOREIGN KEY (Synchronization_id) REFERENCES mh_pm_synchronization (id) ON DELETE CASCADE
 );
 
-CREATE TABLE mh_google_speech_transcript_job (
-    id BIGINT NOT NULL,
-    media_package_id VARCHAR(128) NOT NULL,
-    track_id VARCHAR(128) NOT NULL,
-    job_id  VARCHAR(128) NOT NULL,
-    date_created DATETIME NOT NULL,
-    date_completed DATETIME DEFAULT NULL,
-    status VARCHAR(128) DEFAULT NULL,
-    track_duration BIGINT NOT NULL,
-    PRIMARY KEY (id)
+CREATE TABLE mh_transcription_service_provider (
+  id BIGINT NOT NULL,
+  provider VARCHAR(255) NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE TABLE mh_transcription_service_job (
+  id BIGINT NOT NULL,
+  media_package_id VARCHAR(128) NOT NULL,
+  track_id VARCHAR(128) NOT NULL,
+  job_id  VARCHAR(128) NOT NULL,
+  date_created DATETIME NOT NULL,
+  date_completed DATETIME DEFAULT NULL,
+  status VARCHAR(128) DEFAULT NULL,
+  track_duration BIGINT NOT NULL,
+  provider_id BIGINT NOT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT FK_mh_transcription_service_job_provider_id FOREIGN KEY (provider_id) REFERENCES mh_transcription_service_provider (id) ON DELETE CASCADE
 );

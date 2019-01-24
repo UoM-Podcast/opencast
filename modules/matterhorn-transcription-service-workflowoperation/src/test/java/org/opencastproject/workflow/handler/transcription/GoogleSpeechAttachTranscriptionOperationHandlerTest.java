@@ -54,12 +54,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-public class AttachGoogleSpeechTranscriptionOperationHandlerTest {
+public class GoogleSpeechAttachTranscriptionOperationHandlerTest {
 
   /**
    * The operation handler to test
    */
-  private AttachGoogleSpeechTranscriptionOperationHandler operationHandler;
+  private GoogleSpeechAttachTranscriptionOperationHandler operationHandler;
 
   /**
    * The transcription service
@@ -82,12 +82,12 @@ public class AttachGoogleSpeechTranscriptionOperationHandlerTest {
     MediaPackageBuilder builder = MediaPackageBuilderFactory.newInstance().newMediaPackageBuilder();
 
     // Media package set up
-    URI mediaPackageURI = StartGoogleSpeechTranscriptionOperationHandlerTest.class.getResource("/mp.xml").toURI();
+    URI mediaPackageURI = GoogleSpeechStartTranscriptionOperationHandlerTest.class.getResource("/mp.xml").toURI();
     mediaPackage = builder.loadFromXml(mediaPackageURI.toURL().openStream());
-    URI catalogURI = StartGoogleSpeechTranscriptionOperationHandlerTest.class.getResource("/catalog_mpe.xml").toURI();
+    URI catalogURI = GoogleSpeechStartTranscriptionOperationHandlerTest.class.getResource("/catalog_mpe.xml").toURI();
     String catalogXml = FileUtils.readFileToString(new File(catalogURI));
     Catalog catalog = (Catalog) MediaPackageElementParser.getFromXml(catalogXml);
-    URI attachmentURI = StartGoogleSpeechTranscriptionOperationHandlerTest.class.getResource("/attachment_mpe.xml").toURI();
+    URI attachmentURI = GoogleSpeechStartTranscriptionOperationHandlerTest.class.getResource("/attachment_mpe.xml").toURI();
     String attachmentXml = FileUtils.readFileToString(new File(attachmentURI));
     Attachment attachment = (Attachment) MediaPackageElementParser.getFromXml(attachmentXml);
 
@@ -144,7 +144,7 @@ public class AttachGoogleSpeechTranscriptionOperationHandlerTest {
     workflowInstance.setOperations(operationList);
 
     // Operation handler set up
-    operationHandler = new AttachGoogleSpeechTranscriptionOperationHandler();
+    operationHandler = new GoogleSpeechAttachTranscriptionOperationHandler();
     operationHandler.setTranscriptionService(service);
     operationHandler.setServiceRegistry(serviceRegistry);
     operationHandler.setCaptionService(captionService);
@@ -158,10 +158,10 @@ public class AttachGoogleSpeechTranscriptionOperationHandlerTest {
             EasyMock.anyObject(String.class), EasyMock.anyObject(String.class))).andReturn(job1);
     EasyMock.replay(captionService);
 
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TRANSCRIPTION_JOB_ID, "transcriptionJob");
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TARGET_FLAVOR, "captions/timedtext");
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TARGET_TAG, "tag1,tag2");
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TARGET_CAPTION_FORMAT, "dfxp");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TRANSCRIPTION_JOB_ID, "transcriptionJob");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TARGET_FLAVOR, "captions/timedtext");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TARGET_TAG, "tag1,tag2");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TARGET_CAPTION_FORMAT, "dfxp");
 
     WorkflowOperationResult result = operationHandler.start(workflowInstance, null);
     Assert.assertEquals(Action.CONTINUE, result.getAction());
@@ -183,10 +183,10 @@ public class AttachGoogleSpeechTranscriptionOperationHandlerTest {
             EasyMock.anyObject(String.class), EasyMock.anyObject(String.class))).andReturn(job2);
     EasyMock.replay(captionService);
 
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TRANSCRIPTION_JOB_ID, "transcriptionJob");
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TARGET_FLAVOR, "captions/timedtext");
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TARGET_TAG, "tag1,tag2");
-    operation.setConfiguration(AttachGoogleSpeechTranscriptionOperationHandler.TARGET_CAPTION_FORMAT, "webvtt");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TRANSCRIPTION_JOB_ID, "transcriptionJob");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TARGET_FLAVOR, "captions/timedtext");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TARGET_TAG, "tag1,tag2");
+    operation.setConfiguration(GoogleSpeechAttachTranscriptionOperationHandler.TARGET_CAPTION_FORMAT, "webvtt");
 
     WorkflowOperationResult result = operationHandler.start(workflowInstance, null);
     Assert.assertEquals(Action.CONTINUE, result.getAction());

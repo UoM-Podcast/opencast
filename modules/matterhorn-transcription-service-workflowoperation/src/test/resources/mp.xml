@@ -78,7 +78,7 @@
                 <ns2:resolution>480x270</ns2:resolution>
             </ns2:video>
         </ns2:track>
-        <ns2:track ref="track:4efce592-fce6-4e0b-9e5f-37cb924cf847" type="audio/ogg"
+        <ns2:track ref="track:4efce592-fce6-4e0b-9e5f-37cb924cf847" type="audio/flac"
             id="audioTrack1">
             <ns2:mimetype>audio/ogg</ns2:mimetype>
             <ns2:tags>

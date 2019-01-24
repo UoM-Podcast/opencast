@@ -44,22 +44,32 @@ import org.slf4j.LoggerFactory;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class AttachGoogleSpeechTranscriptionOperationHandler extends AbstractWorkflowOperationHandler {
-  /** The logging facility */
-  private static final Logger logger = LoggerFactory.getLogger(AttachGoogleSpeechTranscriptionOperationHandler.class);
+public class GoogleSpeechAttachTranscriptionOperationHandler extends AbstractWorkflowOperationHandler {
 
-  /** Workflow configuration option keys */
+  /**
+   * The logging facility
+   */
+  private static final Logger logger = LoggerFactory.getLogger(GoogleSpeechAttachTranscriptionOperationHandler.class);
+
+  /**
+   * Workflow configuration option keys
+   */
   static final String TRANSCRIPTION_JOB_ID = "transcription-job-id";
   static final String TARGET_FLAVOR = "target-flavor";
   static final String TARGET_TAG = "target-tag";
   static final String TARGET_CAPTION_FORMAT = "target-caption-format";
+  static final String TRANSCRIPTION_LINE_SIZE = "line-size";
 
-  /** The transcription service */
+  /**
+   * The transcription service
+   */
   private TranscriptionService service = null;
   private Workspace workspace;
   private CaptionService captionService;
 
-  /** The configuration options for this handler */
+  /**
+   * The configuration options for this handler
+   */
   private static final SortedMap<String, String> CONFIG_OPTIONS;
 
   static {
@@ -67,7 +77,8 @@ public class AttachGoogleSpeechTranscriptionOperationHandler extends AbstractWor
     CONFIG_OPTIONS.put(TRANSCRIPTION_JOB_ID, "The job id that identifies the file to be attached");
     CONFIG_OPTIONS.put(TARGET_FLAVOR, "The target \"flavor\" of the transcription file");
     CONFIG_OPTIONS.put(TARGET_TAG, "The target \"tag\" of the transcription file");
-    CONFIG_OPTIONS.put(TARGET_CAPTION_FORMAT, "The target caption format of the transcription file (dfxp, etc)");
+    CONFIG_OPTIONS.put(TARGET_CAPTION_FORMAT, "The target caption format of the transcription file (vtt, dfxp, etc)");
+    CONFIG_OPTIONS.put(TRANSCRIPTION_LINE_SIZE, "Line size of transcription text to display on video");
   }
 
   @Override
@@ -78,7 +89,8 @@ public class AttachGoogleSpeechTranscriptionOperationHandler extends AbstractWor
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#getConfigurationOptions()
+   * @see
+   * org.opencastproject.workflow.api.WorkflowOperationHandler#getConfigurationOptions()
    */
   @Override
   public SortedMap<String, String> getConfigurationOptions() {
@@ -88,8 +100,9 @@ public class AttachGoogleSpeechTranscriptionOperationHandler extends AbstractWor
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#start(org.opencastproject.workflow.api.WorkflowInstance,
-   *      JobContext)
+   * @see
+   * org.opencastproject.workflow.api.WorkflowOperationHandler#start(org.opencastproject.workflow.api.WorkflowInstance,
+   * JobContext)
    */
   @Override
   public WorkflowOperationResult start(final WorkflowInstance workflowInstance, JobContext context)
@@ -101,17 +114,25 @@ public class AttachGoogleSpeechTranscriptionOperationHandler extends AbstractWor
 
     // Get job id.
     String jobId = StringUtils.trimToNull(operation.getConfiguration(TRANSCRIPTION_JOB_ID));
-    if (jobId == null)
+    if (jobId == null) {
       throw new WorkflowOperationException(TRANSCRIPTION_JOB_ID + " missing");
+    }
 
     // Check which tags/flavors have been configured
     String targetTagOption = StringUtils.trimToNull(operation.getConfiguration(TARGET_TAG));
     String targetFlavorOption = StringUtils.trimToNull(operation.getConfiguration(TARGET_FLAVOR));
     // Target flavor is mandatory
-    if (targetFlavorOption == null)
+    if (targetFlavorOption == null) {
       throw new WorkflowOperationException(TARGET_FLAVOR + " missing");
+    }
     MediaPackageElementFlavor flavor = MediaPackageElementFlavor.parseFlavor(targetFlavorOption);
     String captionFormatOption = StringUtils.trimToNull(operation.getConfiguration(TARGET_CAPTION_FORMAT));
+
+    // Get line size if set
+    String lineSize = StringUtils.trimToNull(operation.getConfiguration(TRANSCRIPTION_LINE_SIZE));
+    if (lineSize == null) {
+      lineSize = "100"; // Use default line size
+    }
 
     try {
       // Get transcription file from the service
@@ -120,7 +141,7 @@ public class AttachGoogleSpeechTranscriptionOperationHandler extends AbstractWor
 
       // If caption format passed, convert to desired format
       if (captionFormatOption != null) {
-        Job job = captionService.convert(transcription, "google-speech", captionFormatOption, "en");
+        Job job = captionService.convert(transcription, "google-speech", captionFormatOption, lineSize);
         if (!waitForStatus(job).isSuccess()) {
           throw new WorkflowOperationException("Transcription format conversion job did not complete successfully");
         }
@@ -133,8 +154,9 @@ public class AttachGoogleSpeechTranscriptionOperationHandler extends AbstractWor
       // Add tags
       if (targetTagOption != null) {
         for (String tag : asList(targetTagOption)) {
-          if (StringUtils.trimToNull(tag) != null)
+          if (StringUtils.trimToNull(tag) != null) {
             transcription.addTag(tag);
+          }
         }
       }
 
