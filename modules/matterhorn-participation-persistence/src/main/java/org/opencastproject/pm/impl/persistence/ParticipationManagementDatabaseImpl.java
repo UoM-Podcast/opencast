@@ -1102,6 +1102,31 @@ public class ParticipationManagementDatabaseImpl implements ParticipationManagem
   }
 
   @Override
+  public List<CaptureAgent> findCaptureAgentsByCourse(Course course) throws ParticipationManagementDatabaseException {
+    EntityManager em = null;
+    try {
+      em = emf.createEntityManager();
+      List<CaptureAgent> captureAgents = new ArrayList<CaptureAgent>();
+      Query q = em.createNamedQuery("CaptureAgent.findByCourse");
+      CourseDto courseDto = new CourseDto(course.getCourseId());
+      courseDto.setId(course.getId());
+      q.setParameter("course", courseDto);
+
+      List<CaptureAgentDto> captureAgentDtos = q.getResultList();
+      for (CaptureAgentDto dto : captureAgentDtos) {
+        captureAgents.add(dto.toCaptureAgent());
+      }
+      return captureAgents;
+    } catch (Exception e) {
+      logger.error("Could not get capture agents: {}", ExceptionUtils.getStackTrace(e));
+      throw new ParticipationManagementDatabaseException(e);
+    } finally {
+      if (em != null)
+        em.close();
+    }
+  }
+
+  @Override
   public List<EmailView> findCoursesAsEmailView(EmailStatus emailStatus) throws ParticipationManagementDatabaseException {
     EntityManager em = null;
     try {

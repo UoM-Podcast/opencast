@@ -217,4 +217,6 @@ public interface ParticipationManagementDatabase {
 
   List<Course> findAffectedCoursesByDateRangeAndPerson(long personId, long startTime, long endTime)
           throws ParticipationManagementDatabaseException, NotFoundException;
+
+  List<CaptureAgent> findCaptureAgentsByCourse(Course course) throws ParticipationManagementDatabaseException;
 }

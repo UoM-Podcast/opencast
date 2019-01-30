@@ -66,8 +66,8 @@ public abstract class TemplateType {
     }
 
     public static Module module(String name, String description,
-            int lecturesChanged, boolean required, boolean requirementChange) {
-      return new Module(name, description, lecturesChanged, required, requirementChange);
+            int lecturesChanged, boolean required, boolean requirementChange, boolean cameraAvailable) {
+      return new Module(name, description, lecturesChanged, required, requirementChange, cameraAvailable);
     }
 
     /** Template data for an invitation email template. */
@@ -102,14 +102,16 @@ public abstract class TemplateType {
       private final Number lecturesChanged;
       private final boolean required;
       private final boolean requirementChange;
+      private final boolean cameraAvailable;
 
       public Module(String name, String description,
-              int lecturesChanged, boolean required, boolean requirementChange) {
+              int lecturesChanged, boolean required, boolean requirementChange, boolean cameraAvailable) {
         this.name = name;
         this.description = description;
         this.lecturesChanged = lecturesChanged;
         this.required = required;
         this.requirementChange = requirementChange;
+        this.cameraAvailable = cameraAvailable;
       }
 
       public String getName() {
@@ -120,17 +122,20 @@ public abstract class TemplateType {
         return description;
       }
 
-
       public Number getlecturesChanged() {
         return lecturesChanged;
-    }
+      }
 
       public boolean getRequired() {
         return required;
-  }
+      }
 
       public boolean getRequirementChange() {
         return requirementChange;
+      }
+
+      public boolean getCameraAvailable() {
+        return cameraAvailable;
       }
     }
   }
