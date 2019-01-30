@@ -1184,7 +1184,7 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
         try {
           workflow = workflowService.getWorkflowById(workflowInstanceId.longValue());
         } catch (NotFoundException e) {
-          logger.warn("Failed to find a workflow with id '{}', try to find a matching scheduled event...",
+          logger.info("Unable to find a workflow with id '{}', try to find a matching scheduled event...",
                   workflowInstanceId);
           if (schedulerService != null) {
             try {
