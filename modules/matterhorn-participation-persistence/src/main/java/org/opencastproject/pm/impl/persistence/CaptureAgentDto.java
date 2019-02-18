@@ -46,6 +46,7 @@ import javax.persistence.UniqueConstraint;
 @NamedQueries({
         @NamedQuery(name = "CaptureAgent.findAll", query = "SELECT c FROM CaptureAgent c"),
         @NamedQuery(name = "CaptureAgent.findByAgentId", query = "SELECT c FROM CaptureAgent c WHERE c.mhAgent = :agent"),
+        @NamedQuery(name = "CaptureAgent.findByCourse", query = "SELECT DISTINCT c FROM CaptureAgent c, Recording r WHERE r.captureAgent = c AND r.course = :course"),
         @NamedQuery(name = "CaptureAgent.clear", query = "DELETE FROM CaptureAgent") })
 public class CaptureAgentDto {
 
