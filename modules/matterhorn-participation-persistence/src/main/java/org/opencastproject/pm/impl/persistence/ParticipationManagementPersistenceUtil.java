@@ -745,6 +745,7 @@ public final class ParticipationManagementPersistenceUtil {
     if (personOption.isSome()) {
       dto = personOption.get();
       dto.setName(person.getName());
+      dto.setEmail(person.getEmail()); // update as the casing may have changed
       dto.setPersonTypes(personTypes);
       em.merge(dto);
     } else {
