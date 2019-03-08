@@ -650,7 +650,8 @@ public class ParticipationFeederRunner {
               !EqualsUtil.eqListUnsorted(rec.getParticipation(), db.getParticipation()) ? format("participation %s",
                       biDiff(rec.getParticipation(), db.getParticipation())) : "",
               !equalsCAUpdate(rec.getCaptureAgent(), db.getCaptureAgent()) ? format("capture agent %s -> %s",
-                      db.getCaptureAgent(), rec.getCaptureAgent()) : "").filter(Strings.notBlank).value();
+                      db.getCaptureAgent(), rec.getCaptureAgent()) : "",
+              db.isDeleted() ? "deleted -> undeleted" : "").filter(Strings.notBlank).value();
     }
 
     /** Calculate a bidirectional diff of two lists as a printable string. */
