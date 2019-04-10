@@ -1,6 +1,72 @@
 Opencast 3.x
 ============
 
+Opencast 3.7
+------------
+*Released on Oct 16, 2018*
+
+- [[MH-12982](https://opencast.jira.com/browse/MH-12982)] - 3.0 database upgrade error
+- [[MH-13022](https://opencast.jira.com/browse/MH-13022)] - Fix LTI highly trusted keys being discarded
+- [[MH-13034](https://opencast.jira.com/browse/MH-13034)] - Add lis_person_sourcedid back as LTI source field for the username
+- [[MH-13082](https://opencast.jira.com/browse/MH-13082)] - Fix LTI security vulnerability and refactor LTI and OAuth classes
+- [[MH-13152](https://opencast.jira.com/browse/MH-13152)] - Reduce Workflow Messages, backport of Lars fix for >=r/5.x
+- [[MH-13156](https://opencast.jira.com/browse/MH-13156)] - Set the auth scheme to digest for inter-server communication
+
+
+Opencast 3.6
+------------
+*Released on May 31, 2018*
+
+- [[MH-12910]](https://opencast.jira.com/browse/MH-12910) - When switching between branches with different module naming schemes, the git tree is left unclean sometimes
+- [[MH-12860]](https://opencast.jira.com/browse/MH-12860) - Opencast does not build at DEBUG logging level
+- [[MH-12841]](https://opencast.jira.com/browse/MH-12841) - Opencast is ignoring permissions
+- [[MH-12840]](https://opencast.jira.com/browse/MH-12840) - LTI user provider may allow LMS admins to become Opencast admins
+- [[MH-12830]](https://opencast.jira.com/browse/MH-12830) - Fix mvn site generation
+- [[MH-12743]](https://opencast.jira.com/browse/MH-12743) - OAIPMH-Republish-Operation tries to republish to ASW3
+- [[MH-12441]](https://opencast.jira.com/browse/MH-12441) - Fix multi-server configuration docs and config details
+- [[MH-12091]](https://opencast.jira.com/browse/MH-12091) - Create a Capture Agent digest user with its own role
+
+
+Opencast 3.5
+------------
+*Released on February 6, 2018*
+
+- [[MH-12620]](https://opencast.jira.com/browse/MH-12620) - Document ActiveMQ memory requirements
+- [[MH-12606]](https://opencast.jira.com/browse/MH-12606) - Using "Start Task" with a workflow containing an embedded script in the configuration which somehow modifies the input parameters does not update those values properly
+- [[MH-12582]](https://opencast.jira.com/browse/MH-12582) - Editor WOH should not encode videos unless it is strictly necessary (to save time and resources)
+- [[MH-12495]](https://opencast.jira.com/browse/MH-12495) - Job dispatching with loads needs optimization
+- [[MH-12487]](https://opencast.jira.com/browse/MH-12487) - Add job load settings to the default encoding profles
+- [[MH-12399]](https://opencast.jira.com/browse/MH-12399) - Oaipmh Retract very slow
+
+
+Opencast 3.4
+------------
+*Released on December 4, 2017*
+
+- [[MH-12588]](https://opencast.jira.com/browse/MH-12588) - Stream Security Leaks Secrets
+- [[MH-12587]](https://opencast.jira.com/browse/MH-12587) - ActiveMQ config ships with 3rd party tool enabled by default
+- [[MH-12532]](https://opencast.jira.com/browse/MH-12532) - The bundle `workflow-workflowoperation` creates (and leaves) temporary files in`/tmp`
+- [[MH-12516]](https://opencast.jira.com/browse/MH-12516) - Oversize job acceptance logic is incorrect
+- [[MH-12505]](https://opencast.jira.com/browse/MH-12505) - composer operations need to set job load from profile load when creating jobs
+- [[MH-12501]](https://opencast.jira.com/browse/MH-12501) - Incorrect logging in inbox scanner
+- [[MH-12496]](https://opencast.jira.com/browse/MH-12496) - Feeds point to removed embed player
+- [[MH-12494]](https://opencast.jira.com/browse/MH-12494) - JMX bean unregistration causing stack traces in unit tests
+- [[MH-12478]](https://opencast.jira.com/browse/MH-12478) - Waveform filenames are not unique
+- [[MH-12471]](https://opencast.jira.com/browse/MH-12471) - Workspace Cleaner Minor Fix
+- [[MH-12464]](https://opencast.jira.com/browse/MH-12464) - Job dispatching can be slowed down excessively by host loads query
+- [[MH-12439]](https://opencast.jira.com/browse/MH-12439) - WorkspaceCleaner Should Clean All Files
+- [[MH-12437]](https://opencast.jira.com/browse/MH-12437) - Admin UI ng fails mvn clean install if the node_modules exists
+- [[MH-12435]](https://opencast.jira.com/browse/MH-12435) - Race condition when workspace file deletion removes collection
+- [[MH-12430]](https://opencast.jira.com/browse/MH-12430) - Update Crowdin translations for r/3.x
+- [[MH-12422]](https://opencast.jira.com/browse/MH-12422) - Adjust documentation to new Crowdin Opencast project
+- [[MH-12421]](https://opencast.jira.com/browse/MH-12421) - Job dispatching halts because of http connection hang
+- [[MH-12415]](https://opencast.jira.com/browse/MH-12415) - Improve performance of /api/events?withpublications=true
+- [[MH-12363]](https://opencast.jira.com/browse/MH-12363) - org.json.simple.parser.JSONParser is not thread safe
+- [[MH-12000]](https://opencast.jira.com/browse/MH-12000) - Cross-tenant URL signing
+- [[MH-11361]](https://opencast.jira.com/browse/MH-11361) - date in engage is the creation date, not the recording date
+- [[MH-11042]](https://opencast.jira.com/browse/MH-11042) - Admin UI NG tests fail in +5:30 timezone
+
+
 Opencast 3.3
 ------------
 *Released on September 21, 2017*
@@ -229,6 +295,17 @@ Opencast 3.0
 
 Opencast 2.3.x
 ==============
+
+Opencast 2.3.5
+--------------
+*Released on December 04, 2017*
+
+- [[MH-12588]](https://opencast.jira.com/browse/MH-12588) - Stream Security Leaks Secrets
+- [[MH-12317]](https://opencast.jira.com/browse/MH-12317) - AdminUI create every 5 seconds stats request and may crash on heavy server load
+- [[MH-12269]](https://opencast.jira.com/browse/MH-12269) - Clarify in the documentation the recommendation of setting `dispatchinterval` to 0 applies to non-admin nodes only
+- [[MH-12190]](https://opencast.jira.com/browse/MH-12190) - Script injection in Media Module and Player
+- [[MH-12000]](https://opencast.jira.com/browse/MH-12000) - Cross-tenant URL signing
+- [[MH-11042]](https://opencast.jira.com/browse/MH-11042) - Admin UI NG tests fail in +5:30 timezone
 
 Opencast 2.3.4
 --------------

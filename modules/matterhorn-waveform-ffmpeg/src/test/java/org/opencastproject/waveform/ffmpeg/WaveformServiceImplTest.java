@@ -52,8 +52,10 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Test class for WaveformServiceImpl.
@@ -63,12 +65,20 @@ public class WaveformServiceImplTest {
 
   private static Track audioTrack = null;
   private static Track dummyTrack = null;
+  private static Map<String, String> noFilter = new HashMap<>();
+  private static Map<String, String> withFilter = new HashMap<>();
 
   @BeforeClass
   public static void setUpClass() throws Exception {
     audioTrack = readTrackFromResource("/audio-track.xml");
-    audioTrack.setURI(new URI(WaveformServiceImplTest.class.getResource("/test.mp3").getFile()));
+    audioTrack.setURI(WaveformServiceImplTest.class.getResource("/test.mp3").toURI());
     dummyTrack = readTrackFromResource("/dummy-track.xml");
+    withFilter.put("waveformColor", "red");
+    withFilter.put("waveformScale", "lin");
+    withFilter.put("waveformImageHeight", "1000");
+    withFilter.put("waveformImageWidthPPM", "200");
+    withFilter.put("waveformImageWidthMin", "2000");
+    withFilter.put("waveformImageWidthMax", "5000");
   }
 
   private static Track readTrackFromResource(String resourceName) throws IOException, MediaPackageException {
@@ -134,7 +144,7 @@ public class WaveformServiceImplTest {
 
     WaveformServiceImpl instance = new WaveformServiceImpl();
     instance.setServiceRegistry(serviceRegistry);
-    Job job = instance.createWaveformImage(dummyTrack);
+    Job job = instance.createWaveformImage(dummyTrack, noFilter);
     assertEquals(expectedJob, job);
   }
 
@@ -145,7 +155,7 @@ public class WaveformServiceImplTest {
   public void testProcess() throws Exception {
     Workspace workspace = EasyMock.createNiceMock(Workspace.class);
     EasyMock.expect(workspace.get((URI) EasyMock.anyObject()))
-            .andReturn(new File(audioTrack.getURI().toString()));
+            .andReturn(new File(audioTrack.getURI()));
     Capture filenameCapture = new Capture();
     EasyMock.expect(workspace.putInCollection(
             EasyMock.anyString(), (String) EasyMock.capture(filenameCapture), (InputStream) EasyMock.anyObject()))
@@ -159,12 +169,32 @@ public class WaveformServiceImplTest {
     Job job = new JobImpl(1);
     job.setJobType(WaveformServiceImpl.JOB_TYPE);
     job.setOperation(WaveformServiceImpl.Operation.Waveform.toString());
-    job.setArguments(Arrays.asList(audioTrackXml));
+    job.setArguments(Arrays.asList(audioTrackXml, noFilter.entrySet().toString()));
     String result = instance.process(job);
     assertNotNull(result);
 
     MediaPackageElement waveformAttachment = MediaPackageElementParser.getFromXml(result);
     assertEquals(new URI("waveform.png"), waveformAttachment.getURI());
     assertTrue(filenameCapture.hasCaptured());
+  }
+
+  /**
+   * Test of createWaveformImage method of class WaveformServiceImpl.
+   */
+  @Test
+  public void testGenerateWaveformImageWithFilter() throws Exception {
+    Job expectedJob = new JobImpl(1);
+    ServiceRegistry serviceRegistry = EasyMock.createNiceMock(ServiceRegistry.class);
+    EasyMock.expect(serviceRegistry.createJob(
+            EasyMock.eq(WaveformServiceImpl.JOB_TYPE),
+            EasyMock.eq(WaveformServiceImpl.Operation.Waveform.toString()),
+            (List<String>) EasyMock.anyObject(), EasyMock.anyFloat()))
+            .andReturn(expectedJob);
+    EasyMock.replay(serviceRegistry);
+
+    WaveformServiceImpl instance = new WaveformServiceImpl();
+    instance.setServiceRegistry(serviceRegistry);
+    Job job = instance.createWaveformImage(dummyTrack, withFilter);
+    assertEquals(expectedJob, job);
   }
 }

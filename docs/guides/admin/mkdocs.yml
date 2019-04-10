@@ -1,5 +1,5 @@
 site_name: Opencast - Administration Guide
-repo_url: https://bitbucket.org/opencast-community/opencast/src/develop/docs/guides/admin/docs
+repo_url: https://github.com/opencast/opencast/tree/develop/docs/guides/admin/docs
 
 # Default theme used is readthedocs
 theme: readthedocs
@@ -24,7 +24,8 @@ pages:
    - Installation from Source:
       - Linux: 'installation/source-linux.md'
       - MacOS X: 'installation/source-macosx.md'
-   - Installation from Package (RPM):
+   - Installation from Package:
+      - Debian/Ubuntu: 'installation/debs.md'
       - Fedora: 'installation/rpm-fedora.md'
       - RHEL/CentOS: 'installation/rpm-rhel-sl-centos.md'
    - Installation with Docker:
@@ -65,6 +66,7 @@ pages:
    - Search Index: 'modules/searchindex.md'
    - Stream Security: 'modules/stream-security.md'
    - Text Extraction: 'modules/textextraction.md'
+   - Transcripts (Google Speech): 'modules/googlespeechtranscripts.md'   
    - Video Editor:
       - Setup: 'modules/videoeditor.setup.md'
       - Architecture: 'modules/videoeditor.architecture.md'
@@ -93,6 +95,8 @@ pages:
    - Execute Many: 'workflowoperationhandlers/execute-many-woh.md'
    - Export Workflow Properties: 'workflowoperationhandlers/export-wf-properties-woh.md'
    - Extract Text: 'workflowoperationhandlers/extracttext-woh.md'
+   - Google Speech Attach Transcription: 'workflowoperationhandlers/google-speech-attach-transcription-woh.md'
+   - Google Speech Start Transcription: 'workflowoperationhandlers/google-speech-start-transcription-woh.md'
    - HTTP Notify: 'workflowoperationhandlers/httpnotify-woh.md'
    - Image: 'workflowoperationhandlers/image-woh.md'
    - Image to Video: 'workflowoperationhandlers/imagetovideo-woh.md'

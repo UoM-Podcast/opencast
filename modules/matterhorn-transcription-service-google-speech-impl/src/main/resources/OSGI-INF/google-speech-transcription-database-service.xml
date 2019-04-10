@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+	name="org.opencastproject.transcription.googlespeech.persistence.GoogleSpeechTranscriptionDatabase"
+	immediate="true" activate="activate" >
+	<implementation
+		class="org.opencastproject.transcription.googlespeech.persistence.GoogleSpeechTranscriptionDatabase" />
+	<property name="service.description" value="Google Speech Transcription Persistence" />
+	<service>
+		<provide
+			interface="org.opencastproject.transcription.googlespeech.persistence.GoogleSpeechTranscriptionDatabase" />
+	</service>
+    <reference name="entityManagerFactory" interface="javax.persistence.EntityManagerFactory"
+      target="(osgi.unit.name=org.opencastproject.transcription.googlespeech.persistence)" cardinality="1..1" 
+      policy="static" bind="setEntityManagerFactory" />
+</scr:component>

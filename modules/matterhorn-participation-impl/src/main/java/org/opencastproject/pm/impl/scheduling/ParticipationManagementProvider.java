@@ -208,7 +208,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
               Option<AccessControlList> seriesAccessControl = Option.option(seriesService
                       .getSeriesAccessControl(seriesId));
 
-              logger.debug("Updating series access control for series {} in Matterhorn", seriesId);
+              logger.debug("Updating series access control for series {} in Opencast", seriesId);
               List<AccessControlEntry> accessControlEntries = new ArrayList<AccessControlEntry>();
               for (String key : courseKeys) {
                 accessControlEntries.add(new AccessControlEntry(STUDENT_ROLE_PREFIX.concat(key),
@@ -248,7 +248,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
         }
       }
     } else {
-      logger.info("No course has a related series created in Matterhorn.");
+      logger.info("No course has a related series created in Opencast.");
     }
 
     // Create series for those courses that don't have a series associated
@@ -260,7 +260,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
       }
     }
 
-    logger.info("{} recordings between {} and {} ready to be synchronized with Matterhorn", new Object[] { episodes.size(), from, until });
+    logger.info("{} recordings between {} and {} ready to be synchronized with Opencast", new Object[] { episodes.size(), from, until });
     return new Schedule() {
       @Override
       public List<Tuple<Recording, DublinCoreCatalog>> getEpisodes() {
@@ -283,15 +283,21 @@ public class ParticipationManagementProvider implements ScheduleProvider {
           throws ParticipationManagementSchedulingException {
 
     if (hasToCreateNewSeries) {
-      // Create the new series
       final String seriesId = course.createSeriesId();
       course.setSeriesId(seriesId);
-      logger.info("Creating Matterhorn series {} for course {}", seriesId, course.getCourseId());
-      DublinCoreCatalog dc = toSeriesCatalog(course);
-
+      logger.info("Creating Opencast series {} for course {}", seriesId, course.getCourseId());
+      DublinCoreCatalog seriesCatalog = toSeriesCatalog(course);
+      String md5 = null;
       try {
-        logger.debug("Creating series {} in Matterhorn", seriesId);
-        seriesService.updateSeries(dc);
+        md5 = DigestUtils.md5Hex(seriesCatalog.toXmlString());
+      } catch (IOException e) {
+        logger.error("Error calculating md5 sum from event metadata", e);
+      }
+
+      // Create the new series
+      try {
+        logger.debug("Creating series {} in Opencast", seriesId);
+        seriesService.updateSeries(seriesCatalog);
         seriesService.updateAccessControl(seriesId, createACL(course, seriesService, securityService));
       } catch (SeriesException e) {
         logger.error("Error during series creation : {}", e.getMessage());
@@ -305,17 +311,12 @@ public class ParticipationManagementProvider implements ScheduleProvider {
 
       // Update the course
       try {
-        String md5 = DigestUtils.md5Hex(dc.toXmlString());
-
         logger.debug("Updating course {} with newly created series identifier", seriesId);
-        course.setSeriesId(seriesId);
         course.setFingerprint(Option.some(md5));
         course = participationManagementDB.updateCourse(course);
       } catch (ParticipationManagementDatabaseException e) {
         logger.error("Not able to update course {}: {}", course, e.getMessage());
         throw new ParticipationManagementSchedulingException(e);
-      } catch (IOException e) {
-        logger.error("Error calculating md5 sum from event metadata", e);
       }
 
       // Update the recordings and catalogs
@@ -334,7 +335,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
         // Update catalog
         catalog.set(DublinCore.PROPERTY_IS_PART_OF, seriesId);
       }
-      logger.info("Creation of series {} in Matterhorn finished. All the related {} recordings have been updated",
+      logger.info("Creation of series {} in Opencast finished. All the related {} recordings have been updated",
               seriesId, recordingsWithDC.size());
     } else {
       throw new ParticipationManagementSchedulingException("Course " + course.getCourseId()
@@ -433,7 +434,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
     }
     dc.set(DublinCore.PROPERTY_SOURCE, source);
 
-    logger.info("Dublin Core Catalog {} for course {} created", seriesId, courseId);
+    logger.debug("Dublin Core Catalog {} for course {} created", seriesId, courseId);
     return dc;
   }
 
@@ -524,7 +525,7 @@ public class ParticipationManagementProvider implements ScheduleProvider {
           courseWithMissingSeriesId.put(courseId, recordingsAndCatalogs);
         }
       } else {
-        logger.debug("Recording {} is in course {} which is already represented in Matterhorn",
+        logger.debug("Recording {} is in course {} which is already represented in Opencast",
                 recording.getId().get(), courseId);
         dc.set(DublinCore.PROPERTY_IS_PART_OF, seriesId);
         if (courseWithExistingSeriesId.containsKey(courseId)) {

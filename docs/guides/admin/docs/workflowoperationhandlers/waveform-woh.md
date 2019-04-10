@@ -15,6 +15,12 @@ with at least one audio channel.
 |source-tags    |edit, waveform |Input parameter is the source-tag of the media files for which a waveform should be created. All media, that match source-flavors or source tags will be processed.|EMPTY|
 |target-flavor	|*/waveform	|The output-parameter is target-flavor which should use the *-operator if it was used in the source-flavor too.|EMPTY|
 |target-tags	  |preview	  |The output-parameter is a comma-separated list of tags that will be added to the waveform image media package attachment. |EMPTY|
+|waveform-color	  |black	  |The waveform image color, see https://www.ffmpeg.org/ffmpeg-all.html#Color . |EMPTY|
+|waveform-height	  |500	  |The waveform image height in pixels. |EMPTY|
+|waveform-width-ppm	  |200	  |The waveform image width in pixels per minute of video duration. |EMPTY|
+|waveform-width-min	  |5000	  |The waveform image minimum width in pixels. |EMPTY|
+|waveform-width-max	  |20000  |The waveform image maximum width in pixels. |EMPTY|
+|waveform-scale	  |lin	  |The waveform image scale can be lin or log. |EMPTY|
 
 ## Operation Example
 

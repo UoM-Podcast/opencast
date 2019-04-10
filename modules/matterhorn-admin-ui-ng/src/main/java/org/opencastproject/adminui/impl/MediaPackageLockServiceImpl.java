@@ -20,12 +20,8 @@
  */
 package org.opencastproject.adminui.impl;
 
-import static java.lang.Math.max;
-
 import org.opencastproject.adminui.api.MediaPackageLockService;
 import org.opencastproject.index.service.impl.index.event.Event;
-import org.opencastproject.mediapackage.Publication;
-import org.opencastproject.mediapackage.Track;
 
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
@@ -105,25 +101,14 @@ public class MediaPackageLockServiceImpl implements MediaPackageLockService {
   private final class MediaPackageLock {
     private final String eventId;
     private final String sessionId;
-    private Long duration;
+    private final Long duration;
     private Date dateStamp;
 
     private MediaPackageLock(Event event, String sessionId) {
       this.eventId = event.getIdentifier();
       this.sessionId = sessionId;
       this.dateStamp = new Date();
-      this.duration = event.getDuration();
-
-      if (duration == null) {
-        duration = MIN_LOCK_DURATION;
-        for (Publication pub : event.getPublications()) {
-          for (Track track : pub.getTracks()) {
-            duration = max(duration, (long) track.getDuration());
-          }
-        }
-      } else if (duration < MIN_LOCK_DURATION) {
-        duration = MIN_LOCK_DURATION;
-      }
+      this.duration = MIN_LOCK_DURATION;
     }
 
     boolean holder(String sessionId) {

@@ -677,6 +677,11 @@ public class IngestServiceImplTest {
       return null;
     }
 
+    @Override
+    public boolean cleanupOldFilesFromCollection(String collectionId, long days) throws IOException {
+      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
   }
 }
 

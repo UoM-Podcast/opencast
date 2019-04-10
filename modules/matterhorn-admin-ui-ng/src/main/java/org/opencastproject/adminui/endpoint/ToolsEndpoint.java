@@ -362,6 +362,7 @@ public class ToolsEndpoint implements ManagedService {
     }
 
     if (jPreviews.isEmpty()) {
+      mediaPackageLockService.releaseMediaPackageLock(event, getSessionId(request));
       return RestUtils.okJson(j(f("status", v("edited before"))));
     }
     // Get existing segments
@@ -496,7 +497,10 @@ public class ToolsEndpoint implements ManagedService {
         }
       }
     }
-    if (!editingInfo.isAutosave()) {
+    if (editingInfo.isAutosave()) {
+      // refresh lock
+      mediaPackageLockService.getMediaPackageLock(optEvent.get(), getSessionId(request));
+    } else {
       mediaPackageLockService.releaseMediaPackageLock(optEvent.get(), getSessionId(request));
     }
     return R.ok();

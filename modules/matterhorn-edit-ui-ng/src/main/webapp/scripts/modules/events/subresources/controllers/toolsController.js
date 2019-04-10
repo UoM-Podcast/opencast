@@ -70,8 +70,10 @@ angular.module('editNg.controllers')
 
             // Don't get resources or autosave if edits "saved"
             if ($scope.tab !== "saved" && $scope.tab !== "submitted") {
-              $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'});
-
+              $scope.video = ToolsResource.get({id: $scope.id, tool: 'editor'}, function () {
+              }, function () {
+                  $scope.video = { "status": "edited before" };
+              });
               if ($scope.video.status !== 'locked') {
                 $scope.autosave = function () {
                   $scope.video.autosave = true;

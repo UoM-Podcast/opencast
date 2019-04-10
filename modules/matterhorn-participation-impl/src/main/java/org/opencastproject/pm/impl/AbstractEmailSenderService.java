@@ -35,6 +35,7 @@ import org.opencastproject.messages.Mail;
 import org.opencastproject.messages.MailService;
 import org.opencastproject.messages.MailServiceException;
 import org.opencastproject.messages.TemplateType;
+import org.opencastproject.pm.api.CaptureAgent;
 import org.opencastproject.pm.api.Course;
 import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.EmailSender;
@@ -336,12 +337,27 @@ public abstract class AbstractEmailSenderService implements EmailSender {
       } catch (ParticipationManagementDatabaseException ex) {
        logger.error("Can't get course's unset recordings: {}", ex.getMessage());
       }
+
+      boolean cameraAvailable = false;
+      try {
+        List<CaptureAgent> captureAgents =  getDb().findCaptureAgentsByCourse(course);
+        for (CaptureAgent c: captureAgents) {
+          if (c.getInputs().contains("camera")) {
+            cameraAvailable = true;
+            break;
+          }
+        }
+      } catch (ParticipationManagementDatabaseException ex) {
+       logger.error("Can't get course's capture agents: {}", ex.getMessage());
+      }
+
       return new TemplateType.Invitation.Module(
               course.getName(),
               course.getDescription(),
               lecturesChanged,
               course.getRequirements().contains(Course.REQUIREMENT_RECORD),
-              course.getEmailStatus() == Course.EmailStatus.UNSENT);
+              course.getEmailStatus() == Course.EmailStatus.UNSENT,
+              cameraAvailable);
     }
   };
 

@@ -1,5 +1,5 @@
 site_name: Opencast - Developer Guide
-repo_url: https://bitbucket.org/opencast-community/opencast/src/develop/docs/guides/developer/docs
+repo_url: https://github.com/opencast/opencast/tree/develop/docs/guides/developer/docs
 
 # Default theme used is readthedocs
 theme: readthedocs
@@ -36,6 +36,7 @@ pages:
    - With Docker: 'development-environment-docker.md'
 - Committers: 'committer.md'
 - Licenses and Legal Matters: 'license.md'
+- Governance: 'governance.md'
 - Localization: 'localization.md'
 - Packaging: 'packaging.md'
 - Proposal Log: 'proposal-log.md'
@@ -68,7 +69,7 @@ pages:
 - Infrastructure:
    - Overview: 'infrastructure/index.md'
    - Notes: 'infrastructure/notes.md'
-   - Nexus Maven Repository: 'infrastructure/nexus.md'
+   - Maven Repository: 'infrastructure/maven-repository.md'
 - API:
    - Introduction: 'api/index.md'
    - Usage: 'api/usage.md'

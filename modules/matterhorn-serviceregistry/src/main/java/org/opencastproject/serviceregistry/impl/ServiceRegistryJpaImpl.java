@@ -101,6 +101,7 @@ import java.util.Date;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -246,10 +247,11 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   /** A static list of statuses that influence how load balancing is calculated */
   protected static final List<Status> JOB_STATUSES_INFLUENCING_LOAD_BALANCING;
 
+  protected static Set<Long> jobs = new LinkedHashSet<>();
+
   static {
     JOB_STATUSES_INFLUENCING_LOAD_BALANCING = new ArrayList<Status>();
     JOB_STATUSES_INFLUENCING_LOAD_BALANCING.add(Status.QUEUED);
-    JOB_STATUSES_INFLUENCING_LOAD_BALANCING.add(Status.DISPATCHING);
     JOB_STATUSES_INFLUENCING_LOAD_BALANCING.add(Status.RUNNING);
   }
 
@@ -258,6 +260,9 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
   /** Whether to accept a job whose load exceeds the host’s max load */
   protected Boolean acceptJobLoadsExeedingMaxLoad = true;
+
+  //Get the current system load
+  protected SystemLoad systemLoad = null;
 
   /** OSGi DI */
   void setEntityManagerFactory(EntityManagerFactory emf) {
@@ -344,6 +349,13 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       acceptJobLoadsExeedingMaxLoad = getOptContextProperty(cc, ACCEPT_JOB_LOADS_EXCEEDING_PROPERTY).map(Strings.toBool)
               .getOrElse(DEFAULT_ACCEPT_JOB_LOADS_EXCEEDING);
     }
+
+    systemLoad = getHostLoads(emf.createEntityManager());
+  }
+
+  @Override
+  public float getOwnLoad() {
+    return systemLoad.get(getRegistryHostname()).getLoadFactor();
   }
 
   @Override
@@ -874,6 +886,10 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       em = emf.createEntityManager();
       Job oldJob = getJob(job.getId());
       JpaJob jpaJob = updateInternal(em, job);
+      if (!TYPE_WORKFLOW.equals(job.getJobType()) && job.getJobLoad() > 0.0f
+              && job.getProcessorServiceRegistration() != null && job.getProcessorServiceRegistration().equals(getRegistryHostname())) {
+        processCachedLoadChange(job);
+      }
 
       // All WorkflowService Jobs will be ignored
       if (oldJob.getStatus() != job.getStatus() && !TYPE_WORKFLOW.equals(job.getJobType())) {
@@ -897,6 +913,30 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
     jpaJob.setProcessorServiceRegistration(
             (ServiceRegistrationJpaImpl) getServiceRegistration(job.getJobType(), job.getProcessingHost()));
     return updateJob(jpaJob).toJob();
+  }
+
+  /**
+   * Processes the job load changes for the *local* load cache
+   *
+   * @param job
+   *   The job to apply to the load cache
+   */
+  private void processCachedLoadChange(JpaJob job) {
+    try {
+      if (JOB_STATUSES_INFLUENCING_LOAD_BALANCING.contains(job.getStatus()) && !jobs.contains(job.getId())) {
+        logger.trace("Adding to load cache: Job {}, type {}, status {}", job.getId(), job.getJobType(), job.getStatus());
+        systemLoad.updateNodeLoad(getRegistryHostname(), job.getJobLoad());
+        jobs.add(job.getId());
+      } else if (Status.FINISHED.equals(job.getStatus()) || Status.FAILED.equals(job.getStatus()) || Status.WAITING.equals(job.getStatus())) {
+        logger.trace("Removing from load cache: Job {}, type {}, status {}", job.getId(), job.getJobType(), job.getStatus());
+        systemLoad.updateNodeLoad(getRegistryHostname(), -job.getJobLoad());
+        jobs.remove(job.getId());
+      } else {
+        logger.trace("Ignoring for load cache: Job {}, type {}, status {}", job.getId(), job.getJobType(), job.getStatus());
+      }
+    } catch (NotFoundException e) {
+      logger.error("NotFoundException when searching for node {}, this is a bug", getRegistryHostname());
+    }
   }
 
   protected JpaJob setJobUri(JpaJob job) {
@@ -931,9 +971,12 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
    */
   protected JpaJob updateInternal(EntityManager em, JpaJob job) throws PersistenceException {
     EntityTransaction tx = em.getTransaction();
+    JpaJob originalJob = null;
+    JpaJob fromDb = null;
     try {
       tx.begin();
-      JpaJob fromDb = em.find(JpaJob.class, job.getId());
+      fromDb = em.find(JpaJob.class, job.getId());
+      originalJob = JpaJob.from(fromDb.toJob());
       if (fromDb == null) {
         throw new NoResultException();
       }
@@ -945,10 +988,46 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       setJobUri(job);
       return job;
     } catch (PersistenceException e) {
+      dumpJobs(originalJob, fromDb);
       if (tx.isActive()) {
         tx.rollback();
       }
       throw e;
+    }
+  }
+
+  private void dumpJobs(JpaJob originalJob, JpaJob fromDb) {
+    try {
+      if (originalJob == null) {
+        logger.error("originalJob is null");
+        return;
+      }
+      if (originalJob.getStatus() == null) {
+        logger.error("originalJob.getStatus() is null");
+        return;
+      }
+      if (!originalJob.getStatus().equals(fromDb.getStatus()))
+        logger.error("JPA status mismatch: " + originalJob.getStatus() + " vs " + fromDb.getStatus());
+      if (originalJob.getProcessorServiceRegistration() == null) {
+        logger.error("originalJob.getProcessorServiceRegistration() is null");
+        return;
+      }
+      if (fromDb.getProcessorServiceRegistration() == null) {
+        logger.error("fromDb.getProcessorServiceRegistration() is null");
+        return;
+      }
+      if (!originalJob.getProcessorServiceRegistration().getId().equals(fromDb.getProcessorServiceRegistration().getId()))
+        logger.error("JPA processor service mismatch: " + originalJob.getProcessorServiceRegistration().getId() + " vs " + fromDb.getProcessorServiceRegistration().getId());
+      if (!originalJob.getDateStarted().equals(fromDb.getDateStarted()))
+        logger.error("JPA date started mismatch: " + originalJob.getDateStarted() + " vs " + fromDb.getDateStarted());
+      if (!originalJob.getBlockedJobIds().equals(fromDb.getBlockedJobIds()))
+        logger.error("JPA blocked job ids mismatch: " + originalJob.getBlockedJobIds() + " vs " + fromDb.getBlockedJobIds());
+      if (!originalJob.getBlockingJobId().equals(fromDb.getBlockingJobId()))
+        logger.error("JPA blocking job id mismatch: " + originalJob.getBlockingJobId() + " vs " + fromDb.getBlockingJobId());
+      if (!originalJob.getChildJobsString().equals(fromDb.getChildJobsString()))
+        logger.error("JPA child job id mismatch: " + originalJob.getChildJobsString() + " vs " + fromDb.getChildJobsString());
+    } catch (Exception e) {
+      logger.error("Error logging job state information in dumpJobs()", e);
     }
   }
 
@@ -2414,17 +2493,6 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
                   currentService.getHost());
           currentService.setServiceState(NORMAL);
           updateServiceState(em, currentService);
-        }
-
-        // Services in WARNING state triggered by current job
-        List<ServiceRegistrationJpaImpl> relatedWarningServices = getRelatedWarningServices(job);
-
-        // Sets all related services to error state
-        for (ServiceRegistrationJpaImpl relatedService : relatedWarningServices) {
-          logger.info("State set to ERROR for related service {} on host {}", currentService.getServiceType(),
-                  currentService.getHost());
-          relatedService.setServiceState(ERROR, job.toJob().getSignature());
-          updateServiceState(em, relatedService);
         }
 
       }
