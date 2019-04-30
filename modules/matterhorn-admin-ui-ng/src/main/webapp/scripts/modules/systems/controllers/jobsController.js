@@ -20,6 +20,9 @@ angular.module('adminNg.controllers')
                 name:  'processingHost',
                 label: 'SYSTEMS.JOBS.TABLE.HOST_NAME'
             }, {
+                name:  'processingNode',
+                label: 'SYSTEMS.JOBS.TABLE.NODE_NAME'
+            }, {
                 name:  'submitted',
                 label: 'SYSTEMS.JOBS.TABLE.SUBMITTED'
             }, {

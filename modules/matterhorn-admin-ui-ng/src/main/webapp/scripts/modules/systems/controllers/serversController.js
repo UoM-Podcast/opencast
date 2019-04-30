@@ -12,6 +12,9 @@ angular.module('adminNg.controllers')
                 name:  'hostname',
                 label: 'SYSTEMS.SERVERS.TABLE.HOST_NAME'
             }, {
+                name:  'nodeName',
+                label: 'SYSTEMS.SERVERS.TABLE.NODE_NAME'
+            }, {
                 name:  'cores',
                 label: 'SYSTEMS.SERVERS.TABLE.CORES'
             }, {
