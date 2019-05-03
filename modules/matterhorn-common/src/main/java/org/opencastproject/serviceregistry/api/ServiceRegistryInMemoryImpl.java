@@ -1027,6 +1027,16 @@ public class ServiceRegistryInMemoryImpl implements ServiceRegistry {
   }
 
   @Override
+  public HostRegistration getHostRegistration(String hostname) throws ServiceRegistryException {
+    for (HostRegistration host:  this.getHostRegistrations()) {
+      if (host.getBaseUrl().equalsIgnoreCase(hostname)) {
+        return host;
+      }
+    }
+    throw new ServiceRegistryException(String.format("Host registration for %s not found", hostname));
+  }
+
+  @Override
   public SystemLoad getCurrentHostLoads() {
     SystemLoad systemLoad = new SystemLoad();
 

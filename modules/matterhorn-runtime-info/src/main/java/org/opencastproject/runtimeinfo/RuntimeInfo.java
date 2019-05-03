@@ -28,6 +28,10 @@ import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.Role;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.User;
+import org.opencastproject.serviceregistry.api.HostRegistration;
+import org.opencastproject.serviceregistry.api.ServiceRegistration;
+import org.opencastproject.serviceregistry.api.ServiceRegistry;
+import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 import org.opencastproject.systems.MatterhornConstants;
 import org.opencastproject.userdirectory.UserIdRoleProvider;
 import org.opencastproject.util.UrlSupport;
@@ -50,6 +54,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -85,6 +90,12 @@ public class RuntimeInfo {
   private static final String ADMIN_URL_PROPERTY = "org.opencastproject.admin.ui.url";
   private static final String ENGAGE_URL_PROPERTY = "org.opencastproject.engage.ui.url";
 
+  /* Health Check values */
+  public static final String HEALTH_CHECK_VERSION = "1";
+  public static final String HEALTH_CHECK_STATUS_PASS = "pass";
+  public static final String HEALTH_CHECK_STATUS_WARN = "warn";
+  public static final String HEALTH_CHECK_STATUS_FAIL = "fail";
+
   /**
    * The rest publisher looks for any non-servlet with the 'opencast.service.path' property
    */
@@ -93,6 +104,7 @@ public class RuntimeInfo {
 
   private UserIdRoleProvider userIdRoleProvider;
   private SecurityService securityService;
+  private ServiceRegistry serviceRegistry;
   private BundleContext bundleContext;
   private URL serverUrl;
 
@@ -102,6 +114,10 @@ public class RuntimeInfo {
 
   protected void setSecurityService(SecurityService securityService) {
     this.securityService = securityService;
+  }
+
+  protected void setServiceRegistry(ServiceRegistry serviceRegistry) {
+    this.serviceRegistry = serviceRegistry;
   }
 
   protected ServiceReference[] getRestServiceReferences() throws InvalidSyntaxException {
@@ -116,6 +132,7 @@ public class RuntimeInfo {
     logger.debug("start()");
     this.bundleContext = cc.getBundleContext();
     serverUrl = new URL(bundleContext.getProperty(MatterhornConstants.SERVER_URL_PROPERTY));
+    cc.getBundleContext().getBundle().getVersion();
   }
 
   public void deactivate() {
@@ -221,6 +238,125 @@ public class RuntimeInfo {
     json.put("org", jsonOrg);
 
     return json.toJSONString();
+  }
+
+  @GET
+  @Path("health")
+  @Produces("application/health+json")
+  @RestQuery(name = "health", description = "Opencast node health check. Implements this internet-draft health check api https://inadarei.github.io/rfc-healthcheck",
+          reponses = {
+            @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Node is running normally"),
+            @RestResponse(responseCode = HttpServletResponse.SC_PARTIAL_CONTENT, description = "Node has one or more services in WARN state"),
+            @RestResponse(responseCode = HttpServletResponse.SC_SEE_OTHER, description = "Node has one or more services in ERROR state"),
+            @RestResponse(responseCode = HttpServletResponse.SC_TEMPORARY_REDIRECT, description = "Node is in maintenace mode"),
+            @RestResponse(responseCode = HttpServletResponse.SC_CONFLICT, description = "Node has been disabled"),
+            @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "Node is unresponsive or offline")},
+          returnDescription = "Details of the Opencast node's health status")
+
+  public String getHealth(@Context HttpServletResponse response) {
+    // implements https://inadarei.github.io/rfc-healthcheck
+    // NOTE: this endpoint is not restful at the return codes reflect the state
+    // of this Opencast node not the request.
+    int httpStatus = HttpServletResponse.SC_OK;
+    String status = HEALTH_CHECK_STATUS_PASS; // pass, warn or fail
+    String releaseId = this.bundleContext.getBundle().getVersion().toString();
+    String hostname = serviceRegistry.getRegistryHostname();
+
+    JSONArray notes = new JSONArray();
+    JSONArray serviceStates = new JSONArray();
+    JSONObject checks = new JSONObject();
+
+    try {
+      HostRegistration host = serviceRegistry.getHostRegistration(hostname);
+
+      // check most severe conditions first
+      if (!host.isOnline()) {
+        // NOTE: This is not strictly possible as a node can't test if it's offline
+        status = HEALTH_CHECK_STATUS_FAIL;
+        httpStatus = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
+        notes.add("node is offline");
+      } else if (!host.isActive()) {
+        status = HEALTH_CHECK_STATUS_FAIL;
+        httpStatus = HttpServletResponse.SC_CONFLICT;
+        notes.add("node is disabled");
+      } else if (host.isMaintenanceMode()) {
+        status = HEALTH_CHECK_STATUS_WARN;
+        httpStatus = HttpServletResponse.SC_TEMPORARY_REDIRECT;
+        notes.add("node is in maintenance");
+      } else {
+        // find non normal services
+        try {
+          List<ServiceRegistration> services = serviceRegistry.getServiceRegistrationsByHost(hostname);
+          for (ServiceRegistration service : services) {
+            switch (service.getServiceState()) {
+              case WARNING: {
+                status = HEALTH_CHECK_STATUS_WARN;
+                if (httpStatus < HttpServletResponse.SC_PARTIAL_CONTENT) {
+                  httpStatus = HttpServletResponse.SC_PARTIAL_CONTENT;
+                  notes.add("service(s) in WARN state");
+                }
+                serviceStates.add(getServiceStateAsJson(service));
+                break;
+              }
+              case ERROR: {
+                status = HEALTH_CHECK_STATUS_WARN;
+                if (httpStatus < HttpServletResponse.SC_SEE_OTHER) {
+                  httpStatus = HttpServletResponse.SC_SEE_OTHER;
+                  notes.add("service(s) in ERROR state");
+                }
+                serviceStates.add(getServiceStateAsJson(service));
+                break;
+              }
+              default:
+                break;
+            }
+          }
+        } catch (ServiceRegistryException e) {
+          logger.error("Failed to get services: ", e);
+          status = HEALTH_CHECK_STATUS_FAIL;
+          httpStatus = HttpServletResponse.SC_CONFLICT;
+        }
+      }
+    } catch (ServiceRegistryException e) {
+      status = HEALTH_CHECK_STATUS_FAIL;
+      httpStatus = HttpServletResponse.SC_CONFLICT;
+      notes.add("Can't get host registration!");
+    }
+
+    // format response
+    JSONObject json = new JSONObject();
+    json.put("status", status);
+    json.put("version", HEALTH_CHECK_VERSION);
+    json.put("releaseId", releaseId);
+    json.put("serviceId", hostname);
+    json.put("description", "Opencast node's health status");
+
+    if (!notes.isEmpty()) {
+      json.put("notes", notes);
+    }
+
+    if (!serviceStates.isEmpty()) {
+      checks.put("service:states", serviceStates);
+    }
+
+    if (!checks.isEmpty()) {
+      json.put("checks", checks);
+    }
+
+    response.setStatus(httpStatus);
+    return json.toJSONString();
+  }
+
+  protected JSONObject getServiceStateAsJson(ServiceRegistration service) {
+    JSONObject json = new JSONObject();
+    json.put("componentId", service.getServiceType());
+    json.put("observedValue", service.getServiceState().toString());
+    json.put("changed", service.getStateChanged().toString());
+    JSONObject links = new JSONObject();
+    links.put("path", service.getPath());
+    json.put("links", links);
+
+    return json;
   }
 
   @SuppressWarnings("unchecked")
