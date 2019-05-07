@@ -331,7 +331,7 @@ public class ServerEndpoint {
       Boolean vOnline = (Boolean) server.get(KEY_ONLINE);
       Boolean vMaintenance = (Boolean) server.get(KEY_MAINTENANCE);
       String vHostname = (String) server.get(KEY_HOSTNAME);
-      String vNodeName = (String) server.get(KEY_NODE_NAME);
+      String vNodeName = server.get(KEY_NODE_NAME) == null ? "" : (String) server.get(KEY_NODE_NAME);
       Integer vCores = (Integer) server.get(KEY_CORES);
       Integer vRunning = (Integer) server.get(KEY_RUNNING);
       Integer vQueued = (Integer) server.get(KEY_QUEUED);
