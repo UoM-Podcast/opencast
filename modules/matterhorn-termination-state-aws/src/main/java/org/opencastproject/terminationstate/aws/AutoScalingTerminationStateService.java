@@ -247,7 +247,10 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       super.setState(state);
 
       if (getState() != TerminationState.NONE) {
-        logger.info("");
+        // As this might also be called via Endpoint terminate polling if required
+        if (lifecyclePolling) {
+          stopPollingLifeCycleHook();
+        }
         startPollingTerminationState();
       }
     }
@@ -263,9 +266,11 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       trigger.setName(SCHEDULE_LIFECYCLE_POLLING_TRIGGER);
       scheduler.scheduleJob(job, trigger);
       scheduler.start();
+      logger.info("Started polling for Lifecycle State change");
     } catch (org.quartz.SchedulerException e) {
       throw new RuntimeException(e);
-    }  }
+    }
+  }
 
   private void stopPollingLifeCycleHook() {
     try {
@@ -284,13 +289,13 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       DescribeAutoScalingInstancesResult result = parent.autoScaling.describeAutoScalingInstances(request);
       List<AutoScalingInstanceDetails> instances = result.getAutoScalingInstances();
 
-      if (instances.size() > 1) {
+      if (!instances.isEmpty()) {
         AutoScalingInstanceDetails autoScalingInstance = instances.get(0);
 
         if ("Terminating:Wait".equalsIgnoreCase(autoScalingInstance.getLifecycleState())) {
           logger.info("Lifecycle state changed to Terminating:Wait");
-          parent.setState(TerminationState.WAIT);
           parent.stopPollingLifeCycleHook();
+          parent.setState(TerminationState.WAIT);
         } else {
           logger.debug("Lifecycle state is {}", autoScalingInstance.getLifecycleState());
         }
@@ -308,6 +313,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       trigger.setName(SCHEDULE_LIFECYCLE_HEARTBEAT_TRIGGER);
       scheduler.scheduleJob(job, trigger);
       scheduler.start();
+      logger.info("Started emitting heartbeat until jobs are complete");
     } catch (org.quartz.SchedulerException e) {
       throw new RuntimeException(e);
     }
@@ -329,8 +335,9 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       if (parent.readyToTerminate()) {
         // signal AWS node is ready to terminate
         CompleteLifecycleActionRequest request = new CompleteLifecycleActionRequest()
-                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
+                .withLifecycleActionResult("CONTINUE")
                 .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
+                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
                 .withInstanceId(parent.instanceId);
         CompleteLifecycleActionResult result = parent.autoScaling.completeLifecycleAction(request);
         logger.info("No jobs running, sent complete Lifecycle action");
@@ -340,8 +347,8 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       } else if (parent.getState() == TerminationState.WAIT) {
         // emit heart beat
         RecordLifecycleActionHeartbeatRequest request = new RecordLifecycleActionHeartbeatRequest()
-                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
                 .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
+                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
                 .withInstanceId(parent.instanceId);
         RecordLifecycleActionHeartbeatResult result = parent.autoScaling.recordLifecycleActionHeartbeat(request);
         logger.info("Jobs still running, sent Lifecycle heartbeat");
@@ -351,7 +358,9 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
 
   void deactivate() {
     try {
-      this.scheduler.shutdown();
+      if (scheduler != null) {
+        this.scheduler.shutdown();
+      }
     } catch (SchedulerException e) {
       logger.error("Failed to stop scheduler", e);
     }
