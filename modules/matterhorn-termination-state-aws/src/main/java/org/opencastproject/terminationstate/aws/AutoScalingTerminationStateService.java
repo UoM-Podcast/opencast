@@ -1,0 +1,360 @@
+/**
+ * Licensed to The Apereo Foundation under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ *
+ * The Apereo Foundation licenses this file to you under the Educational
+ * Community License, Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of the License
+ * at:
+ *
+ *   http://opensource.org/licenses/ecl2.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ *
+ */
+package org.opencastproject.terminationstate.aws;
+
+import org.opencastproject.terminationstate.api.AbstractJobTerminationStateService;
+import org.opencastproject.util.Log;
+import org.opencastproject.util.OsgiUtil;
+import org.opencastproject.util.data.Option;
+
+import com.amazonaws.SdkClientException;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.services.autoscaling.AmazonAutoScaling;
+import com.amazonaws.services.autoscaling.AmazonAutoScalingClientBuilder;
+import com.amazonaws.services.autoscaling.model.AutoScalingGroup;
+import com.amazonaws.services.autoscaling.model.AutoScalingInstanceDetails;
+import com.amazonaws.services.autoscaling.model.CompleteLifecycleActionRequest;
+import com.amazonaws.services.autoscaling.model.CompleteLifecycleActionResult;
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingGroupsRequest;
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingGroupsResult;
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingInstancesRequest;
+import com.amazonaws.services.autoscaling.model.DescribeAutoScalingInstancesResult;
+import com.amazonaws.services.autoscaling.model.DescribeLifecycleHooksRequest;
+import com.amazonaws.services.autoscaling.model.DescribeLifecycleHooksResult;
+import com.amazonaws.services.autoscaling.model.LifecycleHook;
+import com.amazonaws.services.autoscaling.model.RecordLifecycleActionHeartbeatRequest;
+import com.amazonaws.services.autoscaling.model.RecordLifecycleActionHeartbeatResult;
+import com.amazonaws.util.EC2MetadataUtils;
+
+import org.osgi.service.cm.ConfigurationException;
+import org.osgi.service.cm.ManagedService;
+import org.osgi.service.component.ComponentContext;
+import org.quartz.Job;
+import org.quartz.JobDetail;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerUtils;
+import org.quartz.impl.StdSchedulerFactory;
+import org.slf4j.LoggerFactory;
+
+import java.util.Dictionary;
+import java.util.List;
+
+public final class AutoScalingTerminationStateService extends AbstractJobTerminationStateService implements ManagedService {
+  private static final Log logger = new Log(LoggerFactory.getLogger(AutoScalingTerminationStateService.class));
+
+  private static final String CONFIG_BASE = "";
+  private static final String CONFIG_ENABLED = CONFIG_BASE + "enabled";
+  private static final String CONFIG_LIFECYCLE_POLLING_ENABLED = "CONFIG_BASE" + "lifecycle.polling.enabled";
+  private static final String CONFIG_LIFECYCLE_POLLING_PERIOD = CONFIG_BASE + "lifecycle.polling.period";
+  private static final String CONFIG_LIFECYCLE_HEARTBEAT_PERIOD = CONFIG_BASE + "lifecycle.heartbeat.period";
+  private static final String CONFIG_AWS_ACCESS_KEY_ID = CONFIG_BASE + "access.id";
+  private static final String CONFIG_AWS_SECRET_ACCESS_KEY = CONFIG_BASE + "access.secret";
+
+  private static final boolean DEFAULT_ENABLED = false;
+  private static final boolean DEFAULT_LIFECYCLE_POLLING_ENABLED = true;
+  private static final int DEFAULT_LIFECYCLE_POLLING_PERIOD = 300; //secs
+  private static final int DEFAULT_LIFECYCLE_HEARTBEAT_PERIOD = 300; // secs
+
+  private static final String SCHEDULE_GROUP = AbstractJobTerminationStateService.class.getSimpleName();
+  private static final String SCHEDULE_LIFECYCLE_POLLING_JOB = "PollLifeCycle";
+  private static final String SCHEDULE_LIFECYCLE_HEARTBEAT_JOB = "PollTerminationState";
+  private static final String SCHEDULE_LIFECYCLE_POLLING_TRIGGER = "TriggerPollLifeCycle";
+  private static final String SCHEDULE_LIFECYCLE_HEARTBEAT_TRIGGER = "TriggerHeartbeat";
+  private static final String SCHEDULE_JOB_PARAM_PARENT = "parent";
+  private Scheduler scheduler;
+
+  private String instanceId;
+  private AWSCredentialsProvider credentials;
+  private AmazonAutoScaling autoScaling;
+  private AutoScalingGroup autoScalingGroup;
+  private LifecycleHook lifeCycleHook;
+
+  // config
+  /* This service must be explicitly enabled */
+  private boolean enabled = DEFAULT_ENABLED;
+  private boolean lifecyclePolling = DEFAULT_LIFECYCLE_POLLING_ENABLED;
+  private int lifecyclePollingPeriod = DEFAULT_LIFECYCLE_POLLING_PERIOD;
+  private int lifecycleHeartbeatPeriod = DEFAULT_LIFECYCLE_HEARTBEAT_PERIOD;
+  private Option<String> accessKeyIdOpt = Option.none();
+  private Option<String> accessKeySecretOpt = Option.none();
+
+  protected void activate(ComponentContext componentContext) {
+    try {
+      configure(componentContext.getProperties());
+    } catch (ConfigurationException e) {
+      logger.error("Unable to read configuration, using defaults", e.getMessage());
+    }
+
+    if (!enabled) {
+      logger.info("Service is disabled by configuration");
+      return;
+    }
+
+    if (accessKeyIdOpt.isNone() && accessKeySecretOpt.isNone()) {
+      credentials = new DefaultAWSCredentialsProviderChain();
+    } else {
+      credentials = new AWSStaticCredentialsProvider(
+              new BasicAWSCredentials(accessKeyIdOpt.get(), accessKeySecretOpt.get()));
+    }
+
+    try {
+      instanceId = EC2MetadataUtils.getInstanceId();
+      logger.debug("Instance Id is {}", instanceId);
+      autoScaling = AmazonAutoScalingClientBuilder.standard()
+              .withRegion(EC2MetadataUtils.getEC2InstanceRegion())
+              .withCredentials(credentials).build();
+      logger.debug("Created AutoScalingClient {}", autoScaling.toString());
+    } catch (SdkClientException e) {
+      logger.warn("Unable to contact AWS metadata endpoint, Is this node running in AWS EC2?");
+      return;
+    }
+
+    String autoScalingGroupName = getAutoScalingGroupName();
+    logger.debug("Auto scaling group name : {}", autoScalingGroupName);
+
+    if (autoScalingGroupName == null) {
+      logger.error("AWS Instance {} is not part of an auto scaling group. Polling will be disabled", instanceId);
+      lifecyclePolling = false;
+      return;
+    }
+
+    autoScalingGroup = getAutoScalingGroup(autoScalingGroupName);
+
+    if (autoScalingGroup == null) {
+      logger.error("Unable to get Auto Scaling Group {}. Polling will be disabled", autoScalingGroupName);
+      lifecyclePolling = false;
+      return;
+    }
+
+    lifeCycleHook = getLifecycleHook(autoScalingGroupName);
+
+    if (lifeCycleHook == null) {
+      logger.error("Auto scaling group {} does not have a termination stage hook. Polling will be disabled",
+              autoScalingGroupName);
+      lifecyclePolling = false;
+      return;
+    } else if (lifecycleHeartbeatPeriod > lifeCycleHook.getHeartbeatTimeout()) {
+      logger.warn("Lifecycle Heartbeat Period {} is greater than LifecycleHook's HearbeatTimeout {}",
+              lifecycleHeartbeatPeriod, lifeCycleHook.getHeartbeatTimeout());
+      // action?
+    }
+
+    try {
+      scheduler = new StdSchedulerFactory().getScheduler();
+    } catch (SchedulerException e) {
+      logger.error("Cannot create quartz scheduler", e.getMessage());
+    }
+
+    if (lifecyclePolling && lifecyclePollingPeriod > 0) {
+      startPollingLifeCycleHook();
+    }
+  }
+
+  String getAutoScalingGroupName() {
+    DescribeAutoScalingInstancesRequest request = new DescribeAutoScalingInstancesRequest().withInstanceIds(instanceId);
+    DescribeAutoScalingInstancesResult result = autoScaling.describeAutoScalingInstances(request);
+    List<AutoScalingInstanceDetails> instances = result.getAutoScalingInstances();
+    logger.debug("Found {} autoscaling instances", instances.size());
+
+    if (!instances.isEmpty()) {
+      AutoScalingInstanceDetails autoScalingInstance = instances.get(0);
+      return autoScalingInstance.getAutoScalingGroupName();
+    }
+    return null;
+  }
+
+  AutoScalingGroup getAutoScalingGroup(String autoScalingGroupName) {
+    DescribeAutoScalingGroupsRequest request = new DescribeAutoScalingGroupsRequest()
+            .withAutoScalingGroupNames(autoScalingGroupName);
+    DescribeAutoScalingGroupsResult result = autoScaling.describeAutoScalingGroups(request);
+
+    List<AutoScalingGroup> groups = result.getAutoScalingGroups();
+
+    if (!groups.isEmpty()) {
+      AutoScalingGroup group = groups.get(0);
+      return group;
+    }
+
+    return null;
+  }
+
+  LifecycleHook getLifecycleHook(String autoScalingGroupName) {
+    DescribeLifecycleHooksRequest request = new DescribeLifecycleHooksRequest()
+            .withAutoScalingGroupName(autoScalingGroupName);
+    DescribeLifecycleHooksResult result = autoScaling.describeLifecycleHooks(request);
+
+    for (LifecycleHook hook : result.getLifecycleHooks()) {
+      if ("autoscaling:EC2_INSTANCE_TERMINATING".equalsIgnoreCase(hook.getLifecycleTransition())) {
+        return hook;
+      }
+    }
+
+    return null;
+  }
+
+  @Override
+  public void updated(Dictionary<String, ?> config) throws ConfigurationException {
+    configure(config);
+
+    // if enabled = false stop polling / service
+    // if polling = false stop polling
+    // if polling = true or polling period changed update it
+    if (!lifecyclePolling || !enabled) {
+      stopPollingLifeCycleHook();
+    } else if (lifecyclePolling && lifecyclePollingPeriod > 0) {
+      stopPollingLifeCycleHook();
+      startPollingLifeCycleHook();
+    }
+  }
+
+  private void configure(Dictionary<String, ?> config) throws ConfigurationException {
+    this.enabled = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_ENABLED).getOrElse(DEFAULT_ENABLED);
+    this.lifecyclePolling = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_LIFECYCLE_POLLING_ENABLED).getOrElse(DEFAULT_LIFECYCLE_POLLING_ENABLED);
+    this.lifecyclePollingPeriod = OsgiUtil.getOptCfgAsInt(config, CONFIG_LIFECYCLE_POLLING_PERIOD).getOrElse(DEFAULT_LIFECYCLE_POLLING_PERIOD);
+    this.lifecycleHeartbeatPeriod = OsgiUtil.getOptCfgAsInt(config, CONFIG_LIFECYCLE_HEARTBEAT_PERIOD).getOrElse(DEFAULT_LIFECYCLE_HEARTBEAT_PERIOD);
+    this.accessKeyIdOpt = OsgiUtil.getOptCfg(config, CONFIG_AWS_ACCESS_KEY_ID);
+    this.accessKeySecretOpt = OsgiUtil.getOptCfg(config, CONFIG_AWS_SECRET_ACCESS_KEY);
+  }
+
+  @Override
+  public void setState(TerminationState state) {
+    if (enabled) {
+      super.setState(state);
+
+      if (getState() != TerminationState.NONE) {
+        logger.info("");
+        startPollingTerminationState();
+      }
+    }
+  }
+
+  private void startPollingLifeCycleHook() {
+    try {
+      // create and set the job. To actually run it call schedule(..)
+      final JobDetail job = new JobDetail(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_POLLING_JOB, CheckLifeCycleState.class);
+      job.getJobDataMap().put(SCHEDULE_JOB_PARAM_PARENT, this);
+      final Trigger trigger = TriggerUtils.makeSecondlyTrigger(lifecyclePollingPeriod);
+      trigger.setGroup(SCHEDULE_GROUP);
+      trigger.setName(SCHEDULE_LIFECYCLE_POLLING_TRIGGER);
+      scheduler.scheduleJob(job, trigger);
+      scheduler.start();
+    } catch (org.quartz.SchedulerException e) {
+      throw new RuntimeException(e);
+    }  }
+
+  private void stopPollingLifeCycleHook() {
+    try {
+      scheduler.deleteJob(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_POLLING_JOB);
+    } catch (SchedulerException e) {
+      // ignore
+    }
+  }
+
+  public static class CheckLifeCycleState implements Job {
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+      AutoScalingTerminationStateService parent = (AutoScalingTerminationStateService) context.getJobDetail().getJobDataMap().get(SCHEDULE_JOB_PARAM_PARENT);
+
+      DescribeAutoScalingInstancesRequest request = new DescribeAutoScalingInstancesRequest().withInstanceIds(parent.instanceId);
+      DescribeAutoScalingInstancesResult result = parent.autoScaling.describeAutoScalingInstances(request);
+      List<AutoScalingInstanceDetails> instances = result.getAutoScalingInstances();
+
+      if (instances.size() > 1) {
+        AutoScalingInstanceDetails autoScalingInstance = instances.get(0);
+
+        if ("Terminating:Wait".equalsIgnoreCase(autoScalingInstance.getLifecycleState())) {
+          logger.info("Lifecycle state changed to Terminating:Wait");
+          parent.setState(TerminationState.WAIT);
+          parent.stopPollingLifeCycleHook();
+        } else {
+          logger.debug("Lifecycle state is {}", autoScalingInstance.getLifecycleState());
+        }
+      }
+    }
+  }
+
+  private void startPollingTerminationState() {
+    try {
+      // create and set the job. To actually run it call schedule(..)
+      final JobDetail job = new JobDetail(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_HEARTBEAT_JOB, CheckTerminationState.class);
+      job.getJobDataMap().put(SCHEDULE_JOB_PARAM_PARENT, this);
+      final Trigger trigger = TriggerUtils.makeSecondlyTrigger(lifecycleHeartbeatPeriod);
+      trigger.setGroup(SCHEDULE_GROUP);
+      trigger.setName(SCHEDULE_LIFECYCLE_HEARTBEAT_TRIGGER);
+      scheduler.scheduleJob(job, trigger);
+      scheduler.start();
+    } catch (org.quartz.SchedulerException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void stopPollingTerminationState() {
+    try {
+      scheduler.deleteJob(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_HEARTBEAT_JOB);
+    } catch (SchedulerException e) {
+      // ignore
+    }
+  }
+
+  public static class CheckTerminationState implements Job {
+    @Override
+    public void execute(JobExecutionContext context) throws JobExecutionException {
+      AutoScalingTerminationStateService parent = (AutoScalingTerminationStateService) context.getJobDetail().getJobDataMap().get(SCHEDULE_JOB_PARAM_PARENT);
+
+      if (parent.readyToTerminate()) {
+        // signal AWS node is ready to terminate
+        CompleteLifecycleActionRequest request = new CompleteLifecycleActionRequest()
+                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
+                .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
+                .withInstanceId(parent.instanceId);
+        CompleteLifecycleActionResult result = parent.autoScaling.completeLifecycleAction(request);
+        logger.info("No jobs running, sent complete Lifecycle action");
+
+        // stop monitoring
+        parent.stopPollingTerminationState();
+      } else if (parent.getState() == TerminationState.WAIT) {
+        // emit heart beat
+        RecordLifecycleActionHeartbeatRequest request = new RecordLifecycleActionHeartbeatRequest()
+                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
+                .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
+                .withInstanceId(parent.instanceId);
+        RecordLifecycleActionHeartbeatResult result = parent.autoScaling.recordLifecycleActionHeartbeat(request);
+        logger.info("Jobs still running, sent Lifecycle heartbeat");
+      }
+    }
+  }
+
+  void deactivate() {
+    try {
+      this.scheduler.shutdown();
+    } catch (SchedulerException e) {
+      logger.error("Failed to stop scheduler", e);
+    }
+  }
+}
+
