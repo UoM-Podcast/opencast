@@ -20,6 +20,7 @@
  */
 package org.opencastproject.terminationstate.api;
 
+import org.opencastproject.job.api.Job;
 import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 import org.opencastproject.util.Log;
@@ -44,6 +45,7 @@ public abstract class AbstractJobTerminationStateService implements TerminationS
   @Override
   public void setState(TerminationState state) {
     this.state = state;
+    logger.info("Termination state set to {}", state.toString());
   }
 
   /**
@@ -59,13 +61,14 @@ public abstract class AbstractJobTerminationStateService implements TerminationS
    * @return number jobs
    */
   protected long countJobs() {
+    String host = "";
     long nJobs = 0;
 
     try {
-      String host = serviceRegistry.getRegistryHostname();
-      nJobs = serviceRegistry.countByHost(null, host, null);
+      host = serviceRegistry.getRegistryHostname();
+      nJobs = serviceRegistry.countByHost(null, host, Job.Status.RUNNING);
     } catch (ServiceRegistryException ex) {
-      logger.error(null, ex);
+      logger.error("Cannot count jobs running on {}", host, ex);
     }
 
     return nJobs;
@@ -94,5 +97,9 @@ public abstract class AbstractJobTerminationStateService implements TerminationS
    */
   public void setServiceRegistry(ServiceRegistry service) {
     this.serviceRegistry = service;
+  }
+
+  protected ServiceRegistry getServiceRegistry() {
+    return serviceRegistry;
   }
 }

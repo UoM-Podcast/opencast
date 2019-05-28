@@ -20,12 +20,15 @@
  */
 package org.opencastproject.terminationstate.aws;
 
+import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 import org.opencastproject.terminationstate.api.AbstractJobTerminationStateService;
 import org.opencastproject.util.Log;
+import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.data.Option;
 
-import com.amazonaws.SdkClientException;
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -125,43 +128,53 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     try {
       instanceId = EC2MetadataUtils.getInstanceId();
       logger.debug("Instance Id is {}", instanceId);
-      autoScaling = AmazonAutoScalingClientBuilder.standard()
-              .withRegion(EC2MetadataUtils.getEC2InstanceRegion())
-              .withCredentials(credentials).build();
-      logger.debug("Created AutoScalingClient {}", autoScaling.toString());
-    } catch (SdkClientException e) {
+
+    } catch (AmazonServiceException e) {
       logger.warn("Unable to contact AWS metadata endpoint, Is this node running in AWS EC2?");
       return;
     }
 
-    String autoScalingGroupName = getAutoScalingGroupName();
-    logger.debug("Auto scaling group name : {}", autoScalingGroupName);
+    try {
+      autoScaling = AmazonAutoScalingClientBuilder.standard()
+              .withRegion(EC2MetadataUtils.getEC2InstanceRegion())
+              .withCredentials(credentials).build();
+      logger.debug("Created AutoScalingClient {}", autoScaling.toString());
 
-    if (autoScalingGroupName == null) {
-      logger.error("AWS Instance {} is not part of an auto scaling group. Polling will be disabled", instanceId);
-      lifecyclePolling = false;
-      return;
-    }
+      String autoScalingGroupName = getAutoScalingGroupName();
+      logger.debug("Auto scaling group name : {}", autoScalingGroupName);
 
-    autoScalingGroup = getAutoScalingGroup(autoScalingGroupName);
+      if (autoScalingGroupName == null) {
+        logger.error("AWS Instance {} is not part of an auto scaling group. Polling will be disabled", instanceId);
+        stop();
+        return;
+      }
 
-    if (autoScalingGroup == null) {
-      logger.error("Unable to get Auto Scaling Group {}. Polling will be disabled", autoScalingGroupName);
-      lifecyclePolling = false;
-      return;
-    }
+      autoScalingGroup = getAutoScalingGroup(autoScalingGroupName);
 
-    lifeCycleHook = getLifecycleHook(autoScalingGroupName);
+      if (autoScalingGroup == null) {
+        logger.error("Unable to get Auto Scaling Group {}. Polling will be disabled", autoScalingGroupName);
+        stop();
+        return;
+      }
 
-    if (lifeCycleHook == null) {
-      logger.error("Auto scaling group {} does not have a termination stage hook. Polling will be disabled",
-              autoScalingGroupName);
-      lifecyclePolling = false;
-      return;
-    } else if (lifecycleHeartbeatPeriod > lifeCycleHook.getHeartbeatTimeout()) {
-      logger.warn("Lifecycle Heartbeat Period {} is greater than LifecycleHook's HearbeatTimeout {}",
-              lifecycleHeartbeatPeriod, lifeCycleHook.getHeartbeatTimeout());
-      // action?
+      lifeCycleHook = getLifecycleHook(autoScalingGroupName);
+
+      if (lifeCycleHook == null) {
+        logger.error("Auto scaling group {} does not have a termination stage hook. Polling will be disabled",
+                autoScalingGroupName);
+        stop();
+        return;
+      } else if (lifecycleHeartbeatPeriod > lifeCycleHook.getHeartbeatTimeout()) {
+        logger.warn("Lifecycle Heartbeat Period {} is greater than LifecycleHook's HearbeatTimeout {}",
+                lifecycleHeartbeatPeriod, lifeCycleHook.getHeartbeatTimeout());
+        // action?
+      }
+    } catch (AmazonServiceException e) {
+      logger.error("EC2 Autoscaling returned an error", e);
+      stop();
+    } catch (AmazonClientException e) {
+      logger.error("AWS client can't communicate with EC2 Autoscaling", e);
+      stop();
     }
 
     try {
@@ -251,6 +264,14 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
         if (lifecyclePolling) {
           stopPollingLifeCycleHook();
         }
+
+        // stop accepting new jobs
+        try {
+          String host = getServiceRegistry().getRegistryHostname();
+          getServiceRegistry().setMaintenanceStatus(host, true);
+        } catch (ServiceRegistryException | NotFoundException e) {
+          logger.error("Cannot put this host into maintenance", e);
+        }
         startPollingTerminationState();
       }
     }
@@ -281,23 +302,25 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   }
 
   public static class CheckLifeCycleState implements Job {
+
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
       AutoScalingTerminationStateService parent = (AutoScalingTerminationStateService) context.getJobDetail().getJobDataMap().get(SCHEDULE_JOB_PARAM_PARENT);
+      if (parent.autoScaling != null) {
+        DescribeAutoScalingInstancesRequest request = new DescribeAutoScalingInstancesRequest().withInstanceIds(parent.instanceId);
+        DescribeAutoScalingInstancesResult result = parent.autoScaling.describeAutoScalingInstances(request);
+        List<AutoScalingInstanceDetails> instances = result.getAutoScalingInstances();
 
-      DescribeAutoScalingInstancesRequest request = new DescribeAutoScalingInstancesRequest().withInstanceIds(parent.instanceId);
-      DescribeAutoScalingInstancesResult result = parent.autoScaling.describeAutoScalingInstances(request);
-      List<AutoScalingInstanceDetails> instances = result.getAutoScalingInstances();
+        if (!instances.isEmpty()) {
+          AutoScalingInstanceDetails autoScalingInstance = instances.get(0);
 
-      if (!instances.isEmpty()) {
-        AutoScalingInstanceDetails autoScalingInstance = instances.get(0);
-
-        if ("Terminating:Wait".equalsIgnoreCase(autoScalingInstance.getLifecycleState())) {
-          logger.info("Lifecycle state changed to Terminating:Wait");
-          parent.stopPollingLifeCycleHook();
-          parent.setState(TerminationState.WAIT);
-        } else {
-          logger.debug("Lifecycle state is {}", autoScalingInstance.getLifecycleState());
+          if ("Terminating:Wait".equalsIgnoreCase(autoScalingInstance.getLifecycleState())) {
+            logger.info("Lifecycle state changed to Terminating:Wait");
+            parent.stopPollingLifeCycleHook();
+            parent.setState(TerminationState.WAIT);
+          } else {
+            logger.debug("Lifecycle state is {}", autoScalingInstance.getLifecycleState());
+          }
         }
       }
     }
@@ -328,35 +351,51 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   }
 
   public static class CheckTerminationState implements Job {
+
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
       AutoScalingTerminationStateService parent = (AutoScalingTerminationStateService) context.getJobDetail().getJobDataMap().get(SCHEDULE_JOB_PARAM_PARENT);
 
       if (parent.readyToTerminate()) {
         // signal AWS node is ready to terminate
-        CompleteLifecycleActionRequest request = new CompleteLifecycleActionRequest()
-                .withLifecycleActionResult("CONTINUE")
-                .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
-                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
-                .withInstanceId(parent.instanceId);
-        CompleteLifecycleActionResult result = parent.autoScaling.completeLifecycleAction(request);
-        logger.info("No jobs running, sent complete Lifecycle action");
+        logger.debug("No jobs running, trying to complete Lifecycle action");
+        if (parent.autoScaling != null) {
+          CompleteLifecycleActionRequest request = new CompleteLifecycleActionRequest()
+                  .withLifecycleActionResult("CONTINUE")
+                  .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
+                  .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
+                  .withInstanceId(parent.instanceId);
+          CompleteLifecycleActionResult result = parent.autoScaling.completeLifecycleAction(request);
+          logger.info("No jobs running, sent complete Lifecycle action");
+        }
 
         // stop monitoring
         parent.stopPollingTerminationState();
       } else if (parent.getState() == TerminationState.WAIT) {
         // emit heart beat
-        RecordLifecycleActionHeartbeatRequest request = new RecordLifecycleActionHeartbeatRequest()
-                .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
-                .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
-                .withInstanceId(parent.instanceId);
-        RecordLifecycleActionHeartbeatResult result = parent.autoScaling.recordLifecycleActionHeartbeat(request);
-        logger.info("Jobs still running, sent Lifecycle heartbeat");
+        logger.debug("Jobs still running, trying to send Lifecycle heartbeat");
+        if (parent.autoScaling != null) {
+          RecordLifecycleActionHeartbeatRequest request = new RecordLifecycleActionHeartbeatRequest()
+                  .withAutoScalingGroupName(parent.autoScalingGroup.getAutoScalingGroupName())
+                  .withLifecycleHookName(parent.lifeCycleHook.getLifecycleHookName())
+                  .withInstanceId(parent.instanceId);
+          RecordLifecycleActionHeartbeatResult result = parent.autoScaling.recordLifecycleActionHeartbeat(request);
+          logger.info("Jobs still running, sent Lifecycle heartbeat");
+        }
       }
     }
   }
 
-  void deactivate() {
+  /**
+   * Stop scheduled jobs and free resources
+   */
+  void stop() {
+    lifecyclePolling = false;
+    if (autoScaling != null) {
+      autoScaling.shutdown();
+      autoScaling = null;
+    }
+
     try {
       if (scheduler != null) {
         this.scheduler.shutdown();
@@ -365,5 +404,11 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       logger.error("Failed to stop scheduler", e);
     }
   }
-}
 
+  /**
+   * OSGI deactivate callback
+   */
+  void deactivate() {
+    stop();
+  }
+}
