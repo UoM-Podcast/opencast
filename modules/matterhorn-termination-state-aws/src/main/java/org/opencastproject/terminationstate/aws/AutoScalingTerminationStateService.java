@@ -70,24 +70,23 @@ import java.util.List;
 public final class AutoScalingTerminationStateService extends AbstractJobTerminationStateService implements ManagedService {
   private static final Log logger = new Log(LoggerFactory.getLogger(AutoScalingTerminationStateService.class));
 
-  private static final String CONFIG_BASE = "";
-  private static final String CONFIG_ENABLED = CONFIG_BASE + "enabled";
-  private static final String CONFIG_LIFECYCLE_POLLING_ENABLED = "CONFIG_BASE" + "lifecycle.polling.enabled";
-  private static final String CONFIG_LIFECYCLE_POLLING_PERIOD = CONFIG_BASE + "lifecycle.polling.period";
-  private static final String CONFIG_LIFECYCLE_HEARTBEAT_PERIOD = CONFIG_BASE + "lifecycle.heartbeat.period";
-  private static final String CONFIG_AWS_ACCESS_KEY_ID = CONFIG_BASE + "access.id";
-  private static final String CONFIG_AWS_SECRET_ACCESS_KEY = CONFIG_BASE + "access.secret";
+  public static final String CONFIG_ENABLED = "enabled";
+  public static final String CONFIG_LIFECYCLE_POLLING_ENABLED = "CONFIG_BASE" + "lifecycle.polling.enabled";
+  public static final String CONFIG_LIFECYCLE_POLLING_PERIOD = "lifecycle.polling.period";
+  public static final String CONFIG_LIFECYCLE_HEARTBEAT_PERIOD = "lifecycle.heartbeat.period";
+  public static final String CONFIG_AWS_ACCESS_KEY_ID = "access.id";
+  public static final String CONFIG_AWS_SECRET_ACCESS_KEY = "access.secret";
 
   private static final boolean DEFAULT_ENABLED = false;
   private static final boolean DEFAULT_LIFECYCLE_POLLING_ENABLED = true;
   private static final int DEFAULT_LIFECYCLE_POLLING_PERIOD = 300; //secs
   private static final int DEFAULT_LIFECYCLE_HEARTBEAT_PERIOD = 300; // secs
 
-  private static final String SCHEDULE_GROUP = AbstractJobTerminationStateService.class.getSimpleName();
+  protected static final String SCHEDULE_GROUP = AbstractJobTerminationStateService.class.getSimpleName();
   private static final String SCHEDULE_LIFECYCLE_POLLING_JOB = "PollLifeCycle";
   private static final String SCHEDULE_LIFECYCLE_HEARTBEAT_JOB = "PollTerminationState";
-  private static final String SCHEDULE_LIFECYCLE_POLLING_TRIGGER = "TriggerPollLifeCycle";
-  private static final String SCHEDULE_LIFECYCLE_HEARTBEAT_TRIGGER = "TriggerHeartbeat";
+  protected static final String SCHEDULE_LIFECYCLE_POLLING_TRIGGER = "TriggerPollLifeCycle";
+  protected static final String SCHEDULE_LIFECYCLE_HEARTBEAT_TRIGGER = "TriggerHeartbeat";
   private static final String SCHEDULE_JOB_PARAM_PARENT = "parent";
   private Scheduler scheduler;
 
@@ -125,12 +124,11 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
               new BasicAWSCredentials(accessKeyIdOpt.get(), accessKeySecretOpt.get()));
     }
 
-    try {
-      instanceId = EC2MetadataUtils.getInstanceId();
-      logger.debug("Instance Id is {}", instanceId);
+    instanceId = EC2MetadataUtils.getInstanceId();
+    logger.debug("Instance Id is {}", instanceId);
 
-    } catch (AmazonServiceException e) {
-      logger.warn("Unable to contact AWS metadata endpoint, Is this node running in AWS EC2?");
+    if (instanceId == null) {
+      logger.error("Unable to contact AWS metadata endpoint, Is this node running in AWS EC2?");
       return;
     }
 
@@ -188,7 +186,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     }
   }
 
-  String getAutoScalingGroupName() {
+  private String getAutoScalingGroupName() {
     DescribeAutoScalingInstancesRequest request = new DescribeAutoScalingInstancesRequest().withInstanceIds(instanceId);
     DescribeAutoScalingInstancesResult result = autoScaling.describeAutoScalingInstances(request);
     List<AutoScalingInstanceDetails> instances = result.getAutoScalingInstances();
@@ -201,7 +199,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     return null;
   }
 
-  AutoScalingGroup getAutoScalingGroup(String autoScalingGroupName) {
+  private AutoScalingGroup getAutoScalingGroup(String autoScalingGroupName) {
     DescribeAutoScalingGroupsRequest request = new DescribeAutoScalingGroupsRequest()
             .withAutoScalingGroupNames(autoScalingGroupName);
     DescribeAutoScalingGroupsResult result = autoScaling.describeAutoScalingGroups(request);
@@ -216,7 +214,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     return null;
   }
 
-  LifecycleHook getLifecycleHook(String autoScalingGroupName) {
+  private LifecycleHook getLifecycleHook(String autoScalingGroupName) {
     DescribeLifecycleHooksRequest request = new DescribeLifecycleHooksRequest()
             .withAutoScalingGroupName(autoScalingGroupName);
     DescribeLifecycleHooksResult result = autoScaling.describeLifecycleHooks(request);
@@ -231,8 +229,11 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   }
 
   @Override
-  public void updated(Dictionary<String, ?> config) throws ConfigurationException {
-    configure(config);
+  public void updated(Dictionary config) throws ConfigurationException {
+    logger.debug("Updated called");
+    if (config != null) {
+      configure(config);
+    }
 
     // if enabled = false stop polling / service
     // if polling = false stop polling
@@ -245,7 +246,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     }
   }
 
-  private void configure(Dictionary<String, ?> config) throws ConfigurationException {
+  private void configure(Dictionary config) throws ConfigurationException {
     this.enabled = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_ENABLED).getOrElse(DEFAULT_ENABLED);
     this.lifecyclePolling = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_LIFECYCLE_POLLING_ENABLED).getOrElse(DEFAULT_LIFECYCLE_POLLING_ENABLED);
     this.lifecyclePollingPeriod = OsgiUtil.getOptCfgAsInt(config, CONFIG_LIFECYCLE_POLLING_PERIOD).getOrElse(DEFAULT_LIFECYCLE_POLLING_PERIOD);
@@ -277,7 +278,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     }
   }
 
-  private void startPollingLifeCycleHook() {
+  protected void startPollingLifeCycleHook() {
     try {
       // create and set the job. To actually run it call schedule(..)
       final JobDetail job = new JobDetail(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_POLLING_JOB, CheckLifeCycleState.class);
@@ -287,13 +288,13 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       trigger.setName(SCHEDULE_LIFECYCLE_POLLING_TRIGGER);
       scheduler.scheduleJob(job, trigger);
       scheduler.start();
-      logger.info("Started polling for Lifecycle State change");
+      logger.info("Started polling for Lifecycle state change");
     } catch (org.quartz.SchedulerException e) {
       throw new RuntimeException(e);
     }
   }
 
-  private void stopPollingLifeCycleHook() {
+  protected void stopPollingLifeCycleHook() {
     try {
       scheduler.deleteJob(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_POLLING_JOB);
     } catch (SchedulerException e) {
@@ -326,7 +327,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     }
   }
 
-  private void startPollingTerminationState() {
+  protected void startPollingTerminationState() {
     try {
       // create and set the job. To actually run it call schedule(..)
       final JobDetail job = new JobDetail(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_HEARTBEAT_JOB, CheckTerminationState.class);
@@ -342,7 +343,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     }
   }
 
-  private void stopPollingTerminationState() {
+  protected void stopPollingTerminationState() {
     try {
       scheduler.deleteJob(SCHEDULE_GROUP, SCHEDULE_LIFECYCLE_HEARTBEAT_JOB);
     } catch (SchedulerException e) {
@@ -389,7 +390,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   /**
    * Stop scheduled jobs and free resources
    */
-  void stop() {
+  private void stop() {
     lifecyclePolling = false;
     if (autoScaling != null) {
       autoScaling.shutdown();
@@ -408,7 +409,25 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   /**
    * OSGI deactivate callback
    */
-  void deactivate() {
+  public void deactivate() {
     stop();
+  }
+
+  /** Methods below are used by my test class */
+
+  protected void setAutoScaling(AmazonAutoScaling autoScaling) {
+    this.autoScaling = autoScaling;
+  }
+
+  protected void setAutoScalingGroup(AutoScalingGroup autoScalingGroup) {
+    this.autoScalingGroup = autoScalingGroup;
+  }
+
+  protected void setLifecycleHook(LifecycleHook lifecycleHook) {
+    this.lifeCycleHook = lifecycleHook;
+  }
+
+  protected void setScheduler(Scheduler scheduler) {
+    this.scheduler = scheduler;
   }
 }

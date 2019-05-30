@@ -68,7 +68,7 @@ public class AutoScalingTerminationStateRestService implements TerminationStateR
       json.put("state", state);
       return Response.ok(json.toJSONString()).build();
     } else {
-      logger.error("TerminationStateSerice is not available");
+      logger.error("TerminationStateService is not available");
       return Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
     }
   }
