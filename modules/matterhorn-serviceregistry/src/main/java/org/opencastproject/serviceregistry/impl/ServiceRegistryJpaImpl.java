@@ -1944,7 +1944,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
     Query query;
     try {
       em = emf.createEntityManager();
-      if (serviceType != null && serviceType.isEmpty()) {
+      if (serviceType != null && !serviceType.isEmpty()) {
         query = em.createNamedQuery("Job.countByHost");
         query.setParameter("serviceType", serviceType);
       } else {
