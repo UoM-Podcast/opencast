@@ -114,12 +114,12 @@ public class AutoScalingTerminationStateServiceTest {
     config.put(AutoScalingTerminationStateService.CONFIG_ENABLED, "true");
     config.put(AutoScalingTerminationStateService.CONFIG_LIFECYCLE_POLLING_PERIOD, "2");
     config.put(AutoScalingTerminationStateService.CONFIG_LIFECYCLE_HEARTBEAT_PERIOD, "2");
-    service.updated(config);
+    service.configure(config);
   }
 
   @Test
   public void testLifeCyclePolling() throws Exception {
-    // updated() will call service.startPollingLifeCycleHook();
+    service.startPollingLifeCycleHook();
     String[] trigger = scheduler.getTriggerNames(AutoScalingTerminationStateService.SCHEDULE_GROUP);
     Assert.assertEquals(1, trigger.length);
     Assert.assertEquals(AutoScalingTerminationStateService.SCHEDULE_LIFECYCLE_POLLING_TRIGGER, trigger[0]);

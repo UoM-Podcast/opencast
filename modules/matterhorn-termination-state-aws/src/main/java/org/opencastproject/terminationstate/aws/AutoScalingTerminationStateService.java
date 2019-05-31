@@ -51,7 +51,6 @@ import com.amazonaws.services.autoscaling.model.RecordLifecycleActionHeartbeatRe
 import com.amazonaws.util.EC2MetadataUtils;
 
 import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.cm.ManagedService;
 import org.osgi.service.component.ComponentContext;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -67,11 +66,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Dictionary;
 import java.util.List;
 
-public final class AutoScalingTerminationStateService extends AbstractJobTerminationStateService implements ManagedService {
+public final class AutoScalingTerminationStateService extends AbstractJobTerminationStateService {
   private static final Log logger = new Log(LoggerFactory.getLogger(AutoScalingTerminationStateService.class));
 
   public static final String CONFIG_ENABLED = "enabled";
-  public static final String CONFIG_LIFECYCLE_POLLING_ENABLED = "CONFIG_BASE" + "lifecycle.polling.enabled";
+  public static final String CONFIG_LIFECYCLE_POLLING_ENABLED = "lifecycle.polling.enabled";
   public static final String CONFIG_LIFECYCLE_POLLING_PERIOD = "lifecycle.polling.period";
   public static final String CONFIG_LIFECYCLE_HEARTBEAT_PERIOD = "lifecycle.heartbeat.period";
   public static final String CONFIG_AWS_ACCESS_KEY_ID = "access.id";
@@ -88,7 +87,6 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   protected static final String SCHEDULE_LIFECYCLE_POLLING_TRIGGER = "TriggerPollLifeCycle";
   protected static final String SCHEDULE_LIFECYCLE_HEARTBEAT_TRIGGER = "TriggerHeartbeat";
   private static final String SCHEDULE_JOB_PARAM_PARENT = "parent";
-  private Scheduler scheduler;
 
   private String instanceId;
   private AWSCredentialsProvider credentials;
@@ -96,8 +94,9 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   private AutoScalingGroup autoScalingGroup;
   private LifecycleHook lifeCycleHook;
 
-  // config
-  /* This service must be explicitly enabled */
+  private Scheduler scheduler;
+
+  // This service must be explicitly enabled
   private boolean enabled = DEFAULT_ENABLED;
   private boolean lifecyclePolling = DEFAULT_LIFECYCLE_POLLING_ENABLED;
   private int lifecyclePollingPeriod = DEFAULT_LIFECYCLE_POLLING_PERIOD;
@@ -165,7 +164,6 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
       } else if (lifecycleHeartbeatPeriod > lifeCycleHook.getHeartbeatTimeout()) {
         logger.warn("Lifecycle Heartbeat Period {} is greater than LifecycleHook's HearbeatTimeout {}",
                 lifecycleHeartbeatPeriod, lifeCycleHook.getHeartbeatTimeout());
-        // action?
       }
     } catch (AmazonServiceException e) {
       logger.error("EC2 Autoscaling returned an error", e);
@@ -228,25 +226,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     return null;
   }
 
-  @Override
-  public void updated(Dictionary config) throws ConfigurationException {
-    logger.debug("Updated called");
-    if (config != null) {
-      configure(config);
-    }
-
-    // if enabled = false stop polling / service
-    // if polling = false stop polling
-    // if polling = true or polling period changed update it
-    if (!lifecyclePolling || !enabled) {
-      stopPollingLifeCycleHook();
-    } else if (lifecyclePolling && lifecyclePollingPeriod > 0) {
-      stopPollingLifeCycleHook();
-      startPollingLifeCycleHook();
-    }
-  }
-
-  private void configure(Dictionary config) throws ConfigurationException {
+  protected void configure(Dictionary config) throws ConfigurationException {
     this.enabled = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_ENABLED).getOrElse(DEFAULT_ENABLED);
     this.lifecyclePolling = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_LIFECYCLE_POLLING_ENABLED).getOrElse(DEFAULT_LIFECYCLE_POLLING_ENABLED);
     this.lifecyclePollingPeriod = OsgiUtil.getOptCfgAsInt(config, CONFIG_LIFECYCLE_POLLING_PERIOD).getOrElse(DEFAULT_LIFECYCLE_POLLING_PERIOD);
