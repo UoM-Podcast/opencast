@@ -69,15 +69,15 @@ import java.util.List;
 public final class AutoScalingTerminationStateService extends AbstractJobTerminationStateService {
   private static final Log logger = new Log(LoggerFactory.getLogger(AutoScalingTerminationStateService.class));
 
-  public static final String CONFIG_ENABLED = "enabled";
-  public static final String CONFIG_LIFECYCLE_POLLING_ENABLED = "lifecycle.polling.enabled";
+  public static final String CONFIG_ENABLE = "enable";
+  public static final String CONFIG_LIFECYCLE_POLLING_ENABLE = "lifecycle.polling.enable";
   public static final String CONFIG_LIFECYCLE_POLLING_PERIOD = "lifecycle.polling.period";
   public static final String CONFIG_LIFECYCLE_HEARTBEAT_PERIOD = "lifecycle.heartbeat.period";
   public static final String CONFIG_AWS_ACCESS_KEY_ID = "access.id";
   public static final String CONFIG_AWS_SECRET_ACCESS_KEY = "access.secret";
 
-  private static final boolean DEFAULT_ENABLED = false;
-  private static final boolean DEFAULT_LIFECYCLE_POLLING_ENABLED = true;
+  private static final boolean DEFAULT_ENABLE = false;
+  private static final boolean DEFAULT_LIFECYCLE_POLLING_ENABLE = true;
   private static final int DEFAULT_LIFECYCLE_POLLING_PERIOD = 300; //secs
   private static final int DEFAULT_LIFECYCLE_HEARTBEAT_PERIOD = 300; // secs
 
@@ -97,8 +97,8 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   private Scheduler scheduler;
 
   // This service must be explicitly enabled
-  private boolean enabled = DEFAULT_ENABLED;
-  private boolean lifecyclePolling = DEFAULT_LIFECYCLE_POLLING_ENABLED;
+  private boolean enabled = DEFAULT_ENABLE;
+  private boolean lifecyclePolling = DEFAULT_LIFECYCLE_POLLING_ENABLE;
   private int lifecyclePollingPeriod = DEFAULT_LIFECYCLE_POLLING_PERIOD;
   private int lifecycleHeartbeatPeriod = DEFAULT_LIFECYCLE_HEARTBEAT_PERIOD;
   private Option<String> accessKeyIdOpt = Option.none();
@@ -227,8 +227,8 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
   }
 
   protected void configure(Dictionary config) throws ConfigurationException {
-    this.enabled = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_ENABLED).getOrElse(DEFAULT_ENABLED);
-    this.lifecyclePolling = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_LIFECYCLE_POLLING_ENABLED).getOrElse(DEFAULT_LIFECYCLE_POLLING_ENABLED);
+    this.enabled = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_ENABLE).getOrElse(DEFAULT_ENABLE);
+    this.lifecyclePolling = OsgiUtil.getOptCfgAsBoolean(config, CONFIG_LIFECYCLE_POLLING_ENABLE).getOrElse(DEFAULT_LIFECYCLE_POLLING_ENABLE);
     this.lifecyclePollingPeriod = OsgiUtil.getOptCfgAsInt(config, CONFIG_LIFECYCLE_POLLING_PERIOD).getOrElse(DEFAULT_LIFECYCLE_POLLING_PERIOD);
     this.lifecycleHeartbeatPeriod = OsgiUtil.getOptCfgAsInt(config, CONFIG_LIFECYCLE_HEARTBEAT_PERIOD).getOrElse(DEFAULT_LIFECYCLE_HEARTBEAT_PERIOD);
     this.accessKeyIdOpt = OsgiUtil.getOptCfg(config, CONFIG_AWS_ACCESS_KEY_ID);
