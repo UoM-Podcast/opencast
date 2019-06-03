@@ -20,6 +20,7 @@
  */
 package org.opencastproject.terminationstate.endpoint.aws;
 
+import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static javax.servlet.http.HttpServletResponse.SC_SERVICE_UNAVAILABLE;
@@ -27,6 +28,8 @@ import static javax.servlet.http.HttpServletResponse.SC_SERVICE_UNAVAILABLE;
 import org.opencastproject.terminationstate.api.TerminationStateService;
 import org.opencastproject.terminationstate.endpoint.api.TerminationStateRestService;
 import org.opencastproject.util.Log;
+import org.opencastproject.util.doc.rest.RestParameter;
+import org.opencastproject.util.doc.rest.RestParameter.Type;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
@@ -34,20 +37,29 @@ import org.opencastproject.util.doc.rest.RestService;
 import org.json.simple.JSONObject;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.DELETE;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 @Path("/")
-@RestService(name = "terminationstateservice", title = "Termination State Service: AWS Auto Scalomg",
-        abstractText = "This service responds to notifications that the underlying server may be terminating."
-                + " It stops the node accepting further jobs and can inform when those jobs have completed are"
-                + " the node is ready to be terminated.",
-        notes  = {"It does not actually shut down the node."})
+@RestService(name = "terminationstateservice", title = "Termination State Service: AWS Auto Scaling",
+        abstractText = "This service responds to notifications from an AWS AutoScaling Group that the underlying EC2 instance is terminating."
+                + " When put into a termination 'wait' state, it stops the node accepting further jobs,"
+                + " and will inform AWS AutoScaling, once any running jobs complete, that the instance can be terminated."
+                + " NOTE: The service does not actually shut down the node or instance.",
+        notes = {
+        "All paths above are relative to the REST endpoint base (something like http://your.server/termination/aws/autoscaling)",
+        "If the service is down or not working it will return a status 503, this means the the underlying service is "
+                + "not working and is either restarting or has failed",
+        "A status code 500 means a general failure has occurred which is not recoverable and was not anticipated. In "
+                + "other words, there is a bug! You should file an error report with your server logs from the time when the "
+                + "error occurred: <a href=\"https://opencast.jira.com\">Opencast Issue Tracker</a>" })
 public class AutoScalingTerminationStateRestService implements TerminationStateRestService {
+
   private static final Log logger = new Log(LoggerFactory.getLogger(AutoScalingTerminationStateRestService.class));
 
   private TerminationStateService service;
@@ -56,7 +68,7 @@ public class AutoScalingTerminationStateRestService implements TerminationStateR
   @GET
   @Path("/state")
   @Produces(MediaType.APPLICATION_JSON)
-  @RestQuery(name = "stateasjson", description = "Returns the Termination State as JSON", returnDescription = "A JSON representation of the termination state.",
+  @RestQuery(name = "stateasjson", description = "Returns the Termination State as JSON.  Possible termination states are none, wait and ready.", returnDescription = "A JSON representation of the termination state.",
           reponses = {
             @RestResponse(responseCode = SC_OK, description = "A JSON representation of the termination state."),
             @RestResponse(responseCode = SC_SERVICE_UNAVAILABLE, description = "The AWS Autoscaling Termination State Service is disabled or unavailable")
@@ -74,20 +86,29 @@ public class AutoScalingTerminationStateRestService implements TerminationStateR
   }
 
   @Override
-  @DELETE
+  @PUT
   @Path("/state")
-  @RestQuery(name = "terminate", description = "Instruct the node to prepare for termination", returnDescription = "Whether the termination state was set successfully",
+  @RestQuery(name = "setstate", description = "Set the termination state. The only permissable value to write to the state is 'wait'", returnDescription = "Whether the termination state was set successfully",
+          restParameters = {
+            @RestParameter(name = "state", type = Type.STRING, defaultValue = "wait", description = "The termination state, the only valid value is 'wait'", isRequired = false)
+          },
           reponses = {
             @RestResponse(responseCode = SC_NO_CONTENT, description = "The node is preparing to terminate"),
+            @RestResponse(responseCode = SC_BAD_REQUEST, description = "The state was not 'wait'"),
             @RestResponse(responseCode = SC_SERVICE_UNAVAILABLE, description = "The AWS Autoscaling Termination State Service is disabled or unavailable"),
           })
-  public Response terminate() {
+  public Response setState(@FormParam("state") String state) {
     if (service != null) {
-      service.setState(TerminationStateService.TerminationState.WAIT);
+      if ("wait".equalsIgnoreCase(state)) {
+        service.setState(TerminationStateService.TerminationState.WAIT);
 
-      // check is state has changed (ie service is working)
-      if (service.getState() != TerminationStateService.TerminationState.NONE) {
-        return Response.noContent().build();
+        // check is state has changed (ie service is working)
+        if (service.getState() != TerminationStateService.TerminationState.NONE) {
+          return Response.noContent().build();
+        }
+      } else {
+        logger.error("state must be 'wait'");
+        return Response.status(Response.Status.BAD_REQUEST).build();
       }
     }
 
@@ -95,6 +116,10 @@ public class AutoScalingTerminationStateRestService implements TerminationStateR
     return Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
   }
 
+  /**
+   OSGI injection callback
+   @param service termination state service instance
+  */
   public void setService(TerminationStateService service) {
     this.service = service;
   }

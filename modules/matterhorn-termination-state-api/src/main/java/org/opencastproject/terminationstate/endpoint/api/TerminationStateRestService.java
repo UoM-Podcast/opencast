@@ -25,5 +25,5 @@ import javax.ws.rs.core.Response;
 public interface TerminationStateRestService {
   Response getState();
 
-  Response terminate();
+  Response setState(String state);
 }
