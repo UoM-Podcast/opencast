@@ -245,21 +245,48 @@ public class RuntimeInfo {
   @Produces("application/health+json")
   @RestQuery(name = "health", description = "Opencast node health check. Implements this internet-draft health check api https://inadarei.github.io/rfc-healthcheck",
           reponses = {
-            @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Node is running normally"),
-            @RestResponse(responseCode = HttpServletResponse.SC_PARTIAL_CONTENT, description = "Node has one or more services in WARN state"),
-            @RestResponse(responseCode = HttpServletResponse.SC_SEE_OTHER, description = "Node has one or more services in ERROR state"),
-            @RestResponse(responseCode = HttpServletResponse.SC_TEMPORARY_REDIRECT, description = "Node is in maintenace mode"),
-            @RestResponse(responseCode = HttpServletResponse.SC_CONFLICT, description = "Node has been disabled"),
-            @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "Node is unresponsive or offline")},
+            @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Node is running, check reponse for details"),
+            @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "Node is offline or unresponsive, check response for details")},
           returnDescription = "Details of the Opencast node's health status")
 
   public String getHealth(@Context HttpServletResponse response) {
-    // implements https://inadarei.github.io/rfc-healthcheck
-    // NOTE: this endpoint is not restful at the return codes reflect the state
-    // of this Opencast node not the request.
-    int httpStatus = HttpServletResponse.SC_OK;
+    /* Response implements https://inadarei.github.io/rfc-healthcheck
+     * Example reponse
+    {
+        "description" : "Opencast node's health status",
+        "releaseId" : "TEST",
+        "checks" : {
+           "service:states" : [
+              {
+                 "observedValue" : "WARNING",
+                 "links" : {
+                    "path" : "service1"
+                 },
+                 "changed" : "Tue Jun 04 11:15:27 BST 2019",
+                 "componentId" : "service1"
+              },
+              {
+                 "changed" : "Tue Jun 04 11:15:27 BST 2019",
+                 "links" : {
+                    "path" : "service2"
+                 },
+                 "observedValue" : "ERROR",
+                 "componentId" : "service2"
+              }
+           ]
+        },
+        "notes" : [
+           "service(s) in WARN state",
+           "service(s) in ERROR state"
+        ],
+        "status" : "warn",
+        "serviceId" : "http://localhost",
+        "version" : "1"
+    }
+     */
     String status = HEALTH_CHECK_STATUS_PASS; // pass, warn or fail
-    String releaseId = this.bundleContext.getBundle().getVersion().toString();
+    // Conditional workaround for unit tests
+    String releaseId = this.bundleContext != null ? this.bundleContext.getBundle().getVersion().toString() : "TEST";
     String hostname = serviceRegistry.getRegistryHostname();
 
     JSONArray notes = new JSONArray();
@@ -273,15 +300,12 @@ public class RuntimeInfo {
       if (!host.isOnline()) {
         // NOTE: This is not strictly possible as a node can't test if it's offline
         status = HEALTH_CHECK_STATUS_FAIL;
-        httpStatus = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
         notes.add("node is offline");
       } else if (!host.isActive()) {
         status = HEALTH_CHECK_STATUS_FAIL;
-        httpStatus = HttpServletResponse.SC_CONFLICT;
         notes.add("node is disabled");
       } else if (host.isMaintenanceMode()) {
-        status = HEALTH_CHECK_STATUS_WARN;
-        httpStatus = HttpServletResponse.SC_TEMPORARY_REDIRECT;
+        status = HEALTH_CHECK_STATUS_FAIL;
         notes.add("node is in maintenance");
       } else {
         // find non normal services
@@ -291,19 +315,13 @@ public class RuntimeInfo {
             switch (service.getServiceState()) {
               case WARNING: {
                 status = HEALTH_CHECK_STATUS_WARN;
-                if (httpStatus < HttpServletResponse.SC_PARTIAL_CONTENT) {
-                  httpStatus = HttpServletResponse.SC_PARTIAL_CONTENT;
-                  notes.add("service(s) in WARN state");
-                }
+                notes.add("service(s) in WARN state");
                 serviceStates.add(getServiceStateAsJson(service));
                 break;
               }
               case ERROR: {
                 status = HEALTH_CHECK_STATUS_WARN;
-                if (httpStatus < HttpServletResponse.SC_SEE_OTHER) {
-                  httpStatus = HttpServletResponse.SC_SEE_OTHER;
-                  notes.add("service(s) in ERROR state");
-                }
+                notes.add("service(s) in ERROR state");
                 serviceStates.add(getServiceStateAsJson(service));
                 break;
               }
@@ -314,13 +332,13 @@ public class RuntimeInfo {
         } catch (ServiceRegistryException e) {
           logger.error("Failed to get services: ", e);
           status = HEALTH_CHECK_STATUS_FAIL;
-          httpStatus = HttpServletResponse.SC_CONFLICT;
+          notes.add("Internal health check error!");
         }
       }
     } catch (ServiceRegistryException e) {
+      logger.error("Failed to get host registration: ", e);
       status = HEALTH_CHECK_STATUS_FAIL;
-      httpStatus = HttpServletResponse.SC_CONFLICT;
-      notes.add("Can't get host registration!");
+      notes.add("Internal health check error!");
     }
 
     // format response
@@ -343,7 +361,12 @@ public class RuntimeInfo {
       json.put("checks", checks);
     }
 
-    response.setStatus(httpStatus);
+    if (HEALTH_CHECK_STATUS_FAIL.equalsIgnoreCase(status)) {
+      response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+    } else {
+      response.setStatus(HttpServletResponse.SC_OK);
+    }
+
     return json.toJSONString();
   }
 
