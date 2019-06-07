@@ -132,7 +132,6 @@ public class RuntimeInfo {
     logger.debug("start()");
     this.bundleContext = cc.getBundleContext();
     serverUrl = new URL(bundleContext.getProperty(MatterhornConstants.SERVER_URL_PROPERTY));
-    cc.getBundleContext().getBundle().getVersion();
   }
 
   public void deactivate() {
