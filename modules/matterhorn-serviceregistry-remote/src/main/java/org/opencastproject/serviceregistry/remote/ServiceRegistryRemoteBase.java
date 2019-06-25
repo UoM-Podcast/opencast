@@ -686,6 +686,11 @@ public abstract class ServiceRegistryRemoteBase implements ServiceRegistry {
   }
 
   @Override
+  public HostRegistration getHostRegistration(String hostname) throws ServiceRegistryException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
   public List<ServiceStatistics> getServiceStatistics() throws ServiceRegistryException {
     final HttpGet get = get("statistics.xml");
     HttpResponse response = null;
