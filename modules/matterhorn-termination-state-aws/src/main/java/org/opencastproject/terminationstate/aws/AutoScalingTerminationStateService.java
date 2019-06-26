@@ -393,11 +393,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     stop();
   }
 
-<<<<<<< Updated upstream
-  /** Methods below are used by my test class */
-=======
   /** Methods below are used by test class */
->>>>>>> Stashed changes
 
   protected void setAutoScaling(AmazonAutoScaling autoScaling) {
     this.autoScaling = autoScaling;
