@@ -111,5 +111,4 @@ public final class ServiceRegistryRemoteImpl extends ServiceRegistryRemoteBase {
   public void setIncidentService(IncidentService incidentService) {
     this.incidentService = incidentService;
   }
-
 }

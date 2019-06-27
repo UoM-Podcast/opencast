@@ -215,6 +215,9 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   /** This host's base URL */
   protected String hostName;
 
+  /** This host's descriptive node name eg admin, worker01 */
+  protected String nodeName;
+
   /** The base URL for job URLs */
   protected String jobHost;
 
@@ -311,6 +314,12 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
     // Register this host
     try {
+      if (cc == null || StringUtils.isBlank(cc.getBundleContext().getProperty(MatterhornConstants.NODE_NAME_PROPERTY))) {
+        nodeName = hostName;
+      } else {
+        nodeName = cc.getBundleContext().getProperty(MatterhornConstants.NODE_NAME_PROPERTY);
+      }
+
       float maxLoad = Runtime.getRuntime().availableProcessors();
       if (cc != null && StringUtils.isNotBlank(cc.getBundleContext().getProperty(OPT_MAXLOAD))) {
         try {
@@ -328,7 +337,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       long maxMemory = Runtime.getRuntime().maxMemory();
       int cores = Runtime.getRuntime().availableProcessors();
 
-      registerHost(hostName, address, maxMemory, cores, maxLoad);
+      registerHost(hostName, address, nodeName, maxMemory, cores, maxLoad);
     } catch (Exception e) {
       throw new IllegalStateException("Unable to register host " + hostName + " in the service registry", e);
     }
@@ -1161,7 +1170,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
    * @see org.opencastproject.serviceregistry.api.ServiceRegistry#registerHost(String, String, long, int, float)
    */
   @Override
-  public void registerHost(String host, String address, long memory, int cores, float maxLoad)
+  public void registerHost(String host, String address, String nodeName, long memory, int cores, float maxLoad)
           throws ServiceRegistryException {
     EntityManager em = null;
     EntityTransaction tx = null;
@@ -1172,7 +1181,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       // Find the existing registrations for this host and if it exists, update it
       HostRegistrationJpaImpl hostRegistration = fetchHostRegistration(em, host);
       if (hostRegistration == null) {
-        hostRegistration = new HostRegistrationJpaImpl(host, address, memory, cores, maxLoad, true, false);
+        hostRegistration = new HostRegistrationJpaImpl(host, address, nodeName, memory, cores, maxLoad, true, false);
         em.persist(hostRegistration);
       } else {
         hostRegistration.setIpAddress(address);
@@ -1669,6 +1678,22 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   @SuppressWarnings("unchecked")
   protected List<HostRegistration> getHostRegistrations(EntityManager em) {
     return em.createNamedQuery("HostRegistration.getAll").getResultList();
+  }
+
+  @Override
+    public HostRegistration getHostRegistration(String hostname) throws ServiceRegistryException {
+    EntityManager em = null;
+    try {
+      em = emf.createEntityManager();
+      return getHostRegistration(em, hostname);
+    } finally {
+      if (em != null)
+        em.close();
+    }
+  }
+
+  protected HostRegistration getHostRegistration(EntityManager em, String hostname) {
+    return (HostRegistration) em.createNamedQuery("HostRegistration.byHostName").setParameter("host", hostname).getSingleResult();
   }
 
   /**

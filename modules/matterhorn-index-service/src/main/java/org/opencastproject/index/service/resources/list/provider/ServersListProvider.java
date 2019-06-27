@@ -50,6 +50,8 @@ public class ServersListProvider implements ResourceListProvider {
   private static final String PROVIDER_PREFIX = "SERVERS";
   /** Hostname list name. */
   public static final String LIST_HOSTNAME = PROVIDER_PREFIX + ".HOSTNAME";
+  /** NodeName list name. */
+  public static final String LIST_NODE_NAME = PROVIDER_PREFIX + ".NODE_NAME";
   /** Status list name. */
   public static final String LIST_STATUS = PROVIDER_PREFIX + ".STATUS";
 
@@ -70,7 +72,7 @@ public class ServersListProvider implements ResourceListProvider {
 
   /** The names of the different list available through this provider. */
   private static final String[] NAMES = {
-    PROVIDER_PREFIX, LIST_HOSTNAME, LIST_STATUS,
+    PROVIDER_PREFIX, LIST_HOSTNAME, LIST_NODE_NAME, LIST_STATUS,
   };
 
   /** Service registry instance. */
@@ -101,6 +103,7 @@ public class ServersListProvider implements ResourceListProvider {
     }
 
     Option<String> fHostname = serversQuery.getHostname();
+    Option<String> fNodeName = serversQuery.getNodeName();
     Option<String> fStatus = serversQuery.getStatus();
 
     List<HostRegistration> allServers;
@@ -114,8 +117,12 @@ public class ServersListProvider implements ResourceListProvider {
       boolean vOnline = server.isOnline();
       boolean vMaintenance = server.isMaintenanceMode();
       String vHostname = server.getBaseUrl();
+      String vNodeName = server.getNodeName();
 
       if (fHostname.isSome() && !StringUtils.equalsIgnoreCase(StringUtils.trimToEmpty(fHostname.get()), vHostname))
+        continue;
+
+      if (fNodeName.isSome() && !StringUtils.equalsIgnoreCase(StringUtils.trimToEmpty(fNodeName.get()), vNodeName))
         continue;
 
       if (fStatus.isSome()) {
@@ -135,6 +142,9 @@ public class ServersListProvider implements ResourceListProvider {
       }
 
       switch (listName) {
+        case LIST_NODE_NAME:
+          list.put(vNodeName, vNodeName);
+          break;
         case LIST_HOSTNAME:
         default:
           list.put(vHostname, vHostname);
