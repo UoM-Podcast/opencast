@@ -175,7 +175,7 @@ public class JobEndpoint {
     if (query.getFreeText().isSome())
       fFreeText = StringUtils.trimToNull(query.getFreeText().get());
 
-    List<JobExtended> jobs = new ArrayList<>();
+    List<JobExtended> jobsEx = new ArrayList<>();
     try {
       String vNodeName;
       Optional<HostRegistration> server;
@@ -213,7 +213,7 @@ public class JobEndpoint {
               && !StringUtils.equalsIgnoreCase(Long.toString(job.getId()), fFreeText)
               && (job.getRootJobId() != null && !StringUtils.equalsIgnoreCase(Long.toString(job.getRootJobId()), fFreeText)))
           continue;
-        jobs.add(new JobExtended(job, vNodeName));
+        jobsEx.add(new JobExtended(job, vNodeName));
       }
     } catch (ServiceRegistryException ex) {
       logger.error("Failed to retrieve jobs list from service registry.", ex);
@@ -236,13 +236,13 @@ public class JobEndpoint {
     }
 
     JobComparator comparator = new JobComparator(sortKey, ascending);
-    Collections.sort(jobs, comparator);
+    Collections.sort(jobsEx, comparator);
     List<JValue> json = getJobsAsJSON(new SmartIterator(
             query.getLimit().getOrElse(0),
             query.getOffset().getOrElse(0))
-            .applyLimitAndOffset(jobs));
+            .applyLimitAndOffset(jobsEx));
 
-    return RestUtils.okJsonList(json, offset, limit, jobs.size());
+    return RestUtils.okJsonList(json, offset, limit, jobsEx.size());
   }
 
   @GET
@@ -380,9 +380,9 @@ public class JobEndpoint {
     }
   }
 
-  public List<JValue> getJobsAsJSON(List<JobExtended> jobs) {
+  public List<JValue> getJobsAsJSON(List<JobExtended> jobsEx) {
     List<JValue> jsonList = new ArrayList<JValue>();
-    for (JobExtended jobEx : jobs) {
+    for (JobExtended jobEx : jobsEx) {
       Job job = jobEx.getJob();
       long id = job.getId();
       String jobType = job.getJobType();
