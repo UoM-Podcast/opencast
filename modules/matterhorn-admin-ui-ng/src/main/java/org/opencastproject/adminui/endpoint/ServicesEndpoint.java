@@ -224,8 +224,8 @@ public class ServicesEndpoint {
     }
 
     /**
-     * Returns service host name.
-     * @return service host name
+     * Returns service node name.
+     * @return service node name
      */
     public String getNodeName() {
       return server.isPresent() ? server.get().getNodeName() : "";
