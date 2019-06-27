@@ -181,7 +181,7 @@ public abstract class ServiceRegistryRemoteBase implements ServiceRegistry {
    * @see org.opencastproject.serviceregistry.api.ServiceRegistry#registerHost(String, String, long, int, float)
    */
   @Override
-  public void registerHost(String host, String address, long memory, int cores, float maxLoad)
+  public void registerHost(String host, String address, String nodeName, long memory, int cores, float maxLoad)
           throws ServiceRegistryException {
     final HttpPost post = post("registerhost");
     try {
