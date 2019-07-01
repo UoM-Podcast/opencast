@@ -663,7 +663,9 @@ public class ParticipationFeederRunner {
     }
 
     private static boolean equalsCAUpdate(CaptureAgent agent, CaptureAgent db) {
-      return agent == null && db == null || agent != null && eq(agent.getRoom(), db.getRoom());
+      return agent == null && db == null || agent != null
+              && eq(agent.getRoom(), db.getRoom())
+              && eq(agent.getInputs(), db.getInputs());
     }
 
     private static boolean equalsCourseUpdate(Option<Course> course, Option<Course> db) {
