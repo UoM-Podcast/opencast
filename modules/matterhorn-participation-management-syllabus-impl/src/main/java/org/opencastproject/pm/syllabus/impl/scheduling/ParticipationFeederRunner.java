@@ -663,20 +663,23 @@ public class ParticipationFeederRunner {
     }
 
     private static boolean equalsCAUpdate(CaptureAgent agent, CaptureAgent db) {
-      return agent == null && db == null || agent != null
-              && eq(agent.getRoom(), db.getRoom())
-              && eq(agent.getInputs(), db.getInputs());
+      if (agent == null && db == null) {
+        return true;
+      } else if (agent != null && db != null) {
+        return eq(agent.getRoom(), db.getRoom()) && eq(agent.getInputs(), db.getInputs());
+      } else {
+        return false;
+      }
     }
 
     private static boolean equalsCourseUpdate(Option<Course> course, Option<Course> db) {
       if (course.isNone() && db.isNone()) {
         return true;
       } else if (course.isSome() && db.isSome()) {
-        boolean courseId = course.get().getCourseId().equals(db.get().getCourseId());
-        boolean name = EqualsUtil.eq(course.get().getName(), course.get().getName());
-        boolean description = EqualsUtil.eq(course.get().getDescription(), course.get().getDescription());
-        boolean externalCourseKey = EqualsUtil.eq(course.get().getExternalCourseKey(), course.get()
-                .getExternalCourseKey());
+        boolean courseId = eq(course.get().getCourseId(), db.get().getCourseId());
+        boolean name = eq(course.get().getName(), db.get().getName());
+        boolean description = eq(course.get().getDescription(), db.get().getDescription());
+        boolean externalCourseKey = eq(course.get().getExternalCourseKey(), db.get().getExternalCourseKey());
         return courseId && name && description && externalCourseKey;
       } else {
         return false;
