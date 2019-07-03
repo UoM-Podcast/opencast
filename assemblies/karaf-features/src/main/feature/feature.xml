@@ -303,6 +303,8 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-series-service-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-silencedetection-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-sox-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-termination-state-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-termination-state-aws/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-textanalyzer-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-videoeditor-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-videosegmenter-remote/${project.version}</bundle>
@@ -527,6 +529,8 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-ingest-service-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-runtime-info-ui/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-series-service-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-termination-state-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-termination-state-aws/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-workflow-service-remote/${project.version}</bundle>
     <!-- Fixes MH-11263 - add LTI dependency to the kernel bundle for shared opencast.httpcontext -->
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-lti/${project.version}</bundle>
@@ -557,6 +561,8 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-smil-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-sox-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-sox-impl/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-termination-state-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-termination-state-aws/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-textanalyzer-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-textanalyzer-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-textextractor-tesseract/${project.version}</bundle>
