@@ -188,6 +188,8 @@
     <module>modules/matterhorn-static</module>
     <module>modules/matterhorn-static-file-service-api</module>
     <module>modules/matterhorn-static-file-service-impl</module>
+    <module>modules/matterhorn-termination-state-api</module>
+    <module>modules/matterhorn-termination-state-aws</module>
     <module>modules/matterhorn-textanalyzer-api</module>
     <module>modules/matterhorn-textanalyzer-impl</module>
     <module>modules/matterhorn-textanalyzer-remote</module>

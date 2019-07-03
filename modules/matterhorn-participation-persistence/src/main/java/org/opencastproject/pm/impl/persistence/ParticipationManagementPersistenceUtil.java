@@ -181,6 +181,7 @@ public final class ParticipationManagementPersistenceUtil {
     CaptureAgentDto dto;
     if (captureAgentOption.isSome()) {
       dto = captureAgentOption.get();
+      dto.setInputs(captureAgent.getInputs());
       em.merge(dto);
     } else {
       RoomDto room = mergeRoom(captureAgent.getRoom(), em);
