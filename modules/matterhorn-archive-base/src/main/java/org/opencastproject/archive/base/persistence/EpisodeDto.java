@@ -29,11 +29,14 @@ import static org.opencastproject.util.persistence.PersistenceUtil.runSingleResu
 
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.mediapackage.MediaPackageParser;
+import org.opencastproject.metadata.dublincore.DublinCoreXmlFormat;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AccessControlParser;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.persistence.PersistenceUtil;
+
+import java.io.ByteArrayInputStream;
 
 import java.util.Date;
 import java.util.List;
@@ -85,6 +88,10 @@ public final class EpisodeDto {
   private String accessControl;
 
   @Lob
+  @Column(name = "dublincore_xml", length = 65535, nullable = false)
+  private String dublinCoreXml;
+
+  @Lob
   @Column(name = "mediapackage_xml", length = 65535, nullable = false)
   private String mediaPackageXml;
 
@@ -98,6 +105,8 @@ public final class EpisodeDto {
       dto.modificationDate = episode.getModificationDate();
       dto.accessControl = AccessControlParser.toXml(episode.getAcl());
       dto.mediaPackageXml = MediaPackageParser.getAsXml(episode.getMediaPackage());
+      ByteArrayInputStream in = new ByteArrayInputStream(MediaPackageParser.getAsXml(episode.getMediaPackage()).getBytes());
+      dto.dublinCoreXml = episode.getDublinCore().toXmlString();
       return dto;
     } catch (Exception e) {
       return chuck(e);
@@ -106,7 +115,7 @@ public final class EpisodeDto {
 
   public Episode toEpisode() {
     try {
-      return new Episode(MediaPackageParser.getFromXml(mediaPackageXml), getVersion(), organization, getAcl(),
+      return new Episode(MediaPackageParser.getFromXml(mediaPackageXml), DublinCoreXmlFormat.read(dublinCoreXml), getVersion(), organization, getAcl(),
               modificationDate, deleted);
     } catch (Exception e) {
       return chuck(e);
@@ -144,6 +153,10 @@ public final class EpisodeDto {
 
   public Date getModificationDate() {
     return modificationDate;
+  }
+
+  public String getDublinCoreXml() {
+    return dublinCoreXml;
   }
 
   public void setModificationDate(Date modificationDate) {

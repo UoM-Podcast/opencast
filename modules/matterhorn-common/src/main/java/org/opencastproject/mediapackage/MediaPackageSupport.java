@@ -470,7 +470,7 @@ public final class MediaPackageSupport {
             });
   }
 
-  /**
+    /**
    * Function to extract the ID of a media package.
    *
    * @deprecated use {@link Fn#getId}

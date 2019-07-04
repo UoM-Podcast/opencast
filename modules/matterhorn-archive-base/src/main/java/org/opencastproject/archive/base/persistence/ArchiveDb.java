@@ -23,6 +23,7 @@ package org.opencastproject.archive.base.persistence;
 
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.PartialMediaPackage;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.util.data.Option;
 
@@ -109,6 +110,8 @@ public interface ArchiveDb {
    *
    * @param pmp
    *         the media package to store
+   * @param dublinCore
+   *         the dublinCore of the media package
    * @param acl
    *         the acl of the media package
    * @param now
@@ -119,6 +122,7 @@ public interface ArchiveDb {
    *         if an error occurs
    */
   void storeEpisode(PartialMediaPackage pmp,
+                    DublinCoreCatalog dublinCore,
                     AccessControlList acl,
                     Date now,
                     Version version) throws ArchiveDbException;

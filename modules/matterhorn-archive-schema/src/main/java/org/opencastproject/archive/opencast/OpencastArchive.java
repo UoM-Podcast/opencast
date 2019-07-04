@@ -35,6 +35,7 @@ import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElements;
 import org.opencastproject.message.broker.api.MessageReceiver;
 import org.opencastproject.message.broker.api.MessageSender;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AuthorizationService;
 import org.opencastproject.security.api.OrganizationDirectoryService;
@@ -72,19 +73,19 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   }
 
   @Override
-  protected void index(MediaPackage mp, AccessControlList acl, Date timestamp, Version version) {
+  protected void index(MediaPackage mp, DublinCoreCatalog dc, AccessControlList acl, Date timestamp, Version version) {
     try {
-      solrIndex.add(mp, acl, timestamp, version);
+      solrIndex.add(mp, dc, acl, timestamp, version);
     } catch (SolrServerException e) {
       throw new ArchiveException(e);
     }
   }
 
   @Override
-  protected void index(MediaPackage mediaPackage, AccessControlList acl, Version version, boolean deleted,
+  protected void index(MediaPackage mediaPackage, DublinCoreCatalog dc, AccessControlList acl, Version version, boolean deleted,
           Date modificationDate, boolean latestVersion) {
     try {
-      solrIndex.add(mediaPackage, acl, version, deleted, modificationDate, latestVersion);
+      solrIndex.add(mediaPackage, dc, acl, version, deleted, modificationDate, latestVersion);
     } catch (SolrServerException e) {
       throw new ArchiveException(e);
     }

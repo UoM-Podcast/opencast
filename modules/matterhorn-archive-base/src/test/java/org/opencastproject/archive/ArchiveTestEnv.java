@@ -439,12 +439,12 @@ public final class ArchiveTestEnv {
     }
 
     @Override
-    protected void index(MediaPackage mp, AccessControlList acl, Date timestamp, Version version) {
+    protected void index(MediaPackage mp, DublinCoreCatalog dc, AccessControlList acl, Date timestamp, Version version) {
       // does no work for this mock
     }
 
     @Override
-    protected void index(MediaPackage mediaPackage, AccessControlList acl, Version version, boolean deleted,
+    protected void index(MediaPackage mediaPackage, DublinCoreCatalog dc, AccessControlList acl, Version version, boolean deleted,
             Date modificationDate, boolean latestVersion) {
       // does no work for this mock
     }

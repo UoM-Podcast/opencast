@@ -68,6 +68,8 @@ import org.opencastproject.message.broker.api.archive.ArchiveItem;
 import org.opencastproject.message.broker.api.index.AbstractIndexProducer;
 import org.opencastproject.message.broker.api.index.IndexRecreateObject;
 import org.opencastproject.message.broker.api.index.IndexRecreateObject.Service;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
+import org.opencastproject.metadata.dublincore.DublinCoreUtil;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AccessControlUtil;
 import org.opencastproject.security.api.AuthorizationService;
@@ -170,9 +172,9 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     this.messageReceiver = messageReceiver;
   }
 
-  protected abstract void index(MediaPackage mp, AccessControlList acl, Date timestamp, Version version);
+  protected abstract void index(MediaPackage mp, DublinCoreCatalog dc, AccessControlList acl, Date timestamp, Version version);
 
-  protected abstract void index(MediaPackage mediaPackage, AccessControlList acl, Version version, boolean deleted,
+  protected abstract void index(MediaPackage mediaPackage, DublinCoreCatalog dc, AccessControlList acl, Version version, boolean deleted,
           Date modificationDate, boolean latestVersion);
 
   protected abstract boolean indexDelete(String mediaPackageId, Date timestamp);
@@ -238,11 +240,15 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
      * StaticMetadataService which in turn uses the workspace to download them. If the URL is already a URN this does
      * not work.
      */
-    index(mp, acl, now, version);
+    DublinCoreCatalog dc = null;
+    for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, mp)) {
+      dc = a;
+    }
+    index(mp, dc, acl, now, version);
     // store mediapackage in db
     try {
       rewriteAssetsForArchival(pmp, version);
-      persistence.storeEpisode(pmp, acl, now, version);
+      persistence.storeEpisode(pmp, dc, acl, now, version);
     } catch (ArchiveDbException e) {
       logger.error("Could not store episode {}: {}", mpId, e);
       throw new ArchiveException(e);
@@ -484,7 +490,15 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
           // mediapackage URIs need to be rewritten to concrete URLs for indexation to work
           final PartialMediaPackage pmp = mkPartial(episode.getMediaPackage());
           rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
-          index(pmp.getMediaPackage(), episode.getAcl(), episode.getVersion(), episode.isDeleted(),
+          DublinCoreCatalog dc = episode.getDublinCore();
+          if (null == dc) {
+            for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
+              dc = a;
+            }
+            persistence.storeEpisode(mkPartial(episode.getMediaPackage()), dc, episode.getAcl(), episode.getModificationDate(), episode.getVersion());
+
+          }
+          index(pmp.getMediaPackage(), dc, episode.getAcl(), episode.getVersion(), episode.isDeleted(),
                   episode.getModificationDate(), isLatestVersion);
         } catch (Exception e) {
           logger.error(

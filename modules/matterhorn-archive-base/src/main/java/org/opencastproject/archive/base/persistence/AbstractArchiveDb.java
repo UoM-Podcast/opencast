@@ -34,6 +34,7 @@ import static org.opencastproject.util.data.functions.Misc.chuck;
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.PartialMediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.util.NotFoundException;
@@ -188,7 +189,7 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
   }
 
  @Override
-  public void storeEpisode(final PartialMediaPackage pmp, final AccessControlList acl, final Date now, final Version version)
+  public void storeEpisode(final PartialMediaPackage pmp, final DublinCoreCatalog dublinCore, final AccessControlList acl, final Date now, final Version version)
           throws ArchiveDbException {
     final String orgId = getSecurityService().getOrganization().getId();
     tx(new Effect<EntityManager>() {
@@ -196,6 +197,7 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
       public void run(EntityManager em) {
         // Create new episode entity
         final EpisodeDto episodeDto = EpisodeDto.create(new Episode(pmp.getMediaPackage(),
+                                                                    dublinCore,
                                                                     version,
                                                                     orgId,
                                                                     acl,

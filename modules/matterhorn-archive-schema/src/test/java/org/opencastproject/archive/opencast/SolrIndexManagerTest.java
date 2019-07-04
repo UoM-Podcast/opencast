@@ -27,6 +27,8 @@ import static org.opencastproject.util.data.functions.Misc.chuck;
 import org.opencastproject.archive.opencast.solr.SolrIndexManager;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.metadata.api.StaticMetadataService;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
+import org.opencastproject.metadata.dublincore.DublinCores;
 import org.opencastproject.metadata.dublincore.StaticMetadataServiceDublinCoreImpl;
 import org.opencastproject.metadata.mpeg7.Mpeg7CatalogService;
 import org.opencastproject.security.api.AccessControlList;
@@ -38,8 +40,11 @@ import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.User;
 import org.opencastproject.series.api.SeriesService;
 import org.opencastproject.solr.SolrServerFactory;
+import org.opencastproject.util.IoSupport;
 import org.opencastproject.util.data.VCell;
 import org.opencastproject.workspace.api.Workspace;
+
+import com.entwinemedia.fn.Fn;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.solr.client.solrj.SolrServer;
@@ -52,7 +57,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Date;
@@ -140,11 +147,11 @@ public class SolrIndexManagerTest {
   @Test
   public void testDefaultDelete10Versions() throws Exception {
     final MediaPackage mpSimple = loadFromClassPath("/manifest-simple.xml");
-
+    final DublinCoreCatalog dc = loadDC(IoSupport.classPathResourceAsFile("/dublincore.xml").get());
     int moreThan10 = 13;
     // create more than 10 versions of mpSimple
     for (int i = 0; i < moreThan10; i++) {
-      solrIndex.add(mpSimple, acl, new Date(), org.opencastproject.archive.api.Version.version(i));
+      solrIndex.add(mpSimple, dc, acl, new Date(), org.opencastproject.archive.api.Version.version(i));
     }
     {
       // Setting limit to 0 skips over setting the result limit and uses the default 10
@@ -160,11 +167,12 @@ public class SolrIndexManagerTest {
   @Test
   public void testBigRowLimitDeleteAllVersions() throws Exception {
     final MediaPackage mpSimple = loadFromClassPath("/manifest-simple.xml");
+    final DublinCoreCatalog dc = loadDC(IoSupport.classPathResourceAsFile("/dublincore.xml").get());
 
     int moreThan10 = 13;
     // create more than 10 versions of mpSimple
     for (int i = 0; i < moreThan10; i++) {
-      solrIndex.add(mpSimple, acl, new Date(), org.opencastproject.archive.api.Version.version(i));
+      solrIndex.add(mpSimple, dc, acl, new Date(), org.opencastproject.archive.api.Version.version(i));
     }
     {
       // Default uses the new big limit (max int)
@@ -175,4 +183,15 @@ public class SolrIndexManagerTest {
       Assert.assertFalse("No more have been deleted, all were deleted the first time", isDeleted);
     }
   }
+
+  private DublinCoreCatalog loadDC(File catalog) throws Exception {
+  return IoSupport.withResource(
+        new FileInputStream(catalog),
+        new Fn<InputStream, DublinCoreCatalog>() {
+          @Override public DublinCoreCatalog ap(InputStream in) {
+            return DublinCores.read(in);
+          }
+        });
+  }
+
 }
