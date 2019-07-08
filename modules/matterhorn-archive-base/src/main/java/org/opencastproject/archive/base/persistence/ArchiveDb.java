@@ -127,5 +127,21 @@ public interface ArchiveDb {
                     Date now,
                     Version version) throws ArchiveDbException;
 
+  /**
+   * Updates the Dublin Core of a media package
+   *
+   * @param mediaPackageId
+   *         the media package id to select
+   * @param version
+   *         the Version of the media package
+   * @param dublinCoreXml
+   *         the dublinCore of the media package
+   * @return <code>true</code> if the DublincoreXml has been inserted in the database
+   * @throws ArchiveDbException
+   *         if an error occurs
+   */
+  boolean updateEpisodeDC(String mediaPackageId, Version version, String dublinCoreXml)
+    throws ArchiveDbException;
+
   Option<Asset> findAssetByChecksum(String checksum) throws ArchiveDbException;
 }

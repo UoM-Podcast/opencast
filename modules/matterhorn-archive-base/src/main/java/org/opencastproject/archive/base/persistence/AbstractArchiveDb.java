@@ -140,7 +140,6 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
             VersionClaimDto.update(em, mpId, claimed);
             return claimed;
           }
-
           @Override
           public Version none() {
             em.persist(VersionClaimDto.create(mpId, FIRST));
@@ -188,7 +187,7 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
     });
   }
 
- @Override
+  @Override
   public void storeEpisode(final PartialMediaPackage pmp, final DublinCoreCatalog dublinCore, final AccessControlList acl, final Date now, final Version version)
           throws ArchiveDbException {
     final String orgId = getSecurityService().getOrganization().getId();
@@ -214,6 +213,19 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
         }
       }
     });
+  }
+
+  @Override
+  public boolean updateEpisodeDC(final String mediaPackageId, final Version version, final String dublinCoreXml)
+          throws ArchiveDbException {
+    final String orgId = getSecurityService().getOrganization().getId();
+    return tx(new Function<EntityManager, Boolean>() {
+      @Override
+      public Boolean apply(EntityManager em) {
+        return EpisodeDto.updateEpisodeDC(em, mediaPackageId, version, dublinCoreXml);
+      }
+    });
+
   }
 
   @Override

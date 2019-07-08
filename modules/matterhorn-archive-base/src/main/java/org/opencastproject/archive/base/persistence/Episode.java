@@ -36,7 +36,7 @@ public final class Episode {
   private final Date modificationDate;
   private final AccessControlList acl;
   private final MediaPackage mediaPackage;
-  private final DublinCoreCatalog dc;
+  private DublinCoreCatalog dc;
 
   public Episode(MediaPackage mediaPackage, DublinCoreCatalog dc, Version version, String organization, AccessControlList acl,
           Date modificationDate, boolean deleted) {
@@ -76,4 +76,9 @@ public final class Episode {
   public DublinCoreCatalog getDublinCore() {
     return dc;
   }
+
+  public void setDublinCore(DublinCoreCatalog dc) {
+      this.dc = dc;
+  }
+
 }

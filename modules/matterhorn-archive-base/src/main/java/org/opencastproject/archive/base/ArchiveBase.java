@@ -491,12 +491,11 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
           final PartialMediaPackage pmp = mkPartial(episode.getMediaPackage());
           rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
           DublinCoreCatalog dc = episode.getDublinCore();
-          if (null == dc) {
+          if (null == dc.getRootTag()) {
             for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
               dc = a;
             }
-            persistence.storeEpisode(mkPartial(episode.getMediaPackage()), dc, episode.getAcl(), episode.getModificationDate(), episode.getVersion());
-
+            persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
           }
           index(pmp.getMediaPackage(), dc, episode.getAcl(), episode.getVersion(), episode.isDeleted(),
                   episode.getModificationDate(), isLatestVersion);
