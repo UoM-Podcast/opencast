@@ -1048,7 +1048,6 @@ public class SolrIndexManager {
               @Override
               public Collection<StaticMetadata> apply(StaticMetadataService s) {
                 StaticMetadata md = null;
-//                logger.info("Class: " + s.getClass().getSimpleName());
                 if (s.getClass().getSimpleName().equals("StaticMetadataServiceMediaPackageImpl")) {
                   md = s.getMetadata(mp);
                 }

@@ -126,7 +126,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-
 /** Base implementation of the archive abstracting over search and index. */
 public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexProducer implements Archive<RS> {
   /** Log facility */
@@ -215,6 +214,53 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
 
     } catch (ExecutionException e) {
       throw new ArchiveException("Couldn't get mediapackage lock: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void repopulateDB() throws ArchiveException {
+    Iterator<Episode> episodes;
+    try {
+      episodes = persistence.getAllEpisodes();
+    } catch (ArchiveDbException e) {
+      logger.error("Unable to load the archive entries: {}", e);
+      throw new ServiceException(e.getMessage());
+    }
+    int errors = 0;
+    int rewritten = 0;
+    int total = 0;
+    int unchanged = 0;
+    while (episodes.hasNext()) {
+      final Episode episode = episodes.next();
+      total++;
+      try {
+        final Organization organization = orgDir.getOrganization(episode.getOrganization());
+        secSvc.setOrganization(organization);
+        secSvc.setUser(SecurityUtil.createSystemUser(systemUserName, organization));
+        // mediapackage URIs need to be rewritten to concrete URLs for indexation to work
+        final PartialMediaPackage pmp = mkPartial(episode.getMediaPackage());
+        rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
+        DublinCoreCatalog dc = episode.getDublinCore();
+        if (null == dc.getRootTag()) {
+          for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
+            dc = a;
+          }
+          persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
+          rewritten++;
+        } else {
+          unchanged++;
+        }
+      } catch (NotFoundException | IOException | ArchiveDbException e) {
+        errors++;
+        logger.error("updateEpisodeDC through an exception: {} ", e);
+      } finally {
+        secSvc.setOrganization(null);
+        secSvc.setUser(null);
+      }
+    }
+    logger.info("updateEpisodeDC finished {} episodes, {} unchanged, {} updated, {} failed.", total, unchanged, rewritten, errors);
+    if (errors != 0) {
+      throw new ArchiveException("repopulateDB finished whith " + errors + " errors");
     }
   }
 

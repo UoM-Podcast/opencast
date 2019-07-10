@@ -26,6 +26,7 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static org.opencastproject.util.MimeTypeUtil.suffix;
 import static org.opencastproject.util.RestUtil.R.noContent;
 import static org.opencastproject.util.RestUtil.R.notFound;
+import static org.opencastproject.util.RestUtil.R.ok;
 import static org.opencastproject.util.RestUtil.R.serverError;
 import static org.opencastproject.util.UrlSupport.uri;
 import static org.opencastproject.util.data.Monadics.mlist;
@@ -139,6 +140,21 @@ public abstract class ArchiveRestEndpointBase<RS extends ResultSet> implements H
       @Override public Response apply() {
         getArchive().add(mediaPackage);
         return noContent();
+      }
+    });
+  }
+
+  @POST
+  @Path("repopulateDB")
+  @RestQuery(name = "repopulateDB",
+             description = "Adds the episode Dublincore to the archive Database to allow reindexing without accessing the filesystem.",
+             reponses = { @RestResponse(description = "OK if repopulation has started", responseCode = HttpServletResponse.SC_OK) },
+             returnDescription = "OK if repopulation has started.")
+  public Response repopulateDB() {
+    return handleException(new Function0<Response>() {
+      @Override public Response apply() {
+        getArchive().repopulateDB();
+        return ok();
       }
     });
   }
