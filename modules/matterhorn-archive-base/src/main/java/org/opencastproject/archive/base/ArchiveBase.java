@@ -230,23 +230,37 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     int rewritten = 0;
     int total = 0;
     int unchanged = 0;
+    Map<String, Version> maps = new HashMap<String, Version>();
     while (episodes.hasNext()) {
       final Episode episode = episodes.next();
       total++;
       try {
-        final Organization organization = orgDir.getOrganization(episode.getOrganization());
-        secSvc.setOrganization(organization);
-        secSvc.setUser(SecurityUtil.createSystemUser(systemUserName, organization));
-        // mediapackage URIs need to be rewritten to concrete URLs for indexation to work
-        final PartialMediaPackage pmp = mkPartial(episode.getMediaPackage());
-        rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
-        DublinCoreCatalog dc = episode.getDublinCore();
-        if (null == dc.getRootTag()) {
-          for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
-            dc = dcc;
+        String episodeId = episode.getMediaPackage().getIdentifier().toString();
+        Version latestVersion = maps.get(episodeId);
+        if (latestVersion == null) {
+          Option<Episode> latestEpisode = persistence.getLatestEpisode(episodeId);
+          if (latestEpisode.isNone())
+            throw new ArchiveException("Latest episode from existing episode identifier " + episodeId + " not found!");
+          latestVersion = latestEpisode.get().getVersion();
+          maps.put(episodeId, latestVersion);
+        }
+        if (episode.getVersion().equals(latestVersion)) {
+          final Organization organization = orgDir.getOrganization(episode.getOrganization());
+          secSvc.setOrganization(organization);
+          secSvc.setUser(SecurityUtil.createSystemUser(systemUserName, organization));
+          // mediapackage URIs need to be rewritten to concrete URLs for indexation to work
+          final PartialMediaPackage pmp = mkPartial(episode.getMediaPackage());
+          rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
+          DublinCoreCatalog dc = episode.getDublinCore();
+          if (null == dc.getRootTag()) {
+            for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
+              dc = dcc;
+            }
+            persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
+            rewritten++;
+          } else {
+            unchanged++;
           }
-          persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
-          rewritten++;
         } else {
           unchanged++;
         }
