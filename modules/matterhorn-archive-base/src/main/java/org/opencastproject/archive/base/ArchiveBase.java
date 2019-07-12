@@ -218,7 +218,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
   }
 
   @Override
-  public void repopulateDB() throws ArchiveException {
+  public void updateDublincore() throws ArchiveException {
     Iterator<Episode> episodes;
     try {
       episodes = persistence.getAllEpisodes();
@@ -242,8 +242,8 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
         rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
         DublinCoreCatalog dc = episode.getDublinCore();
         if (null == dc.getRootTag()) {
-          for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
-            dc = a;
+          for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
+            dc = dcc;
           }
           persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
           rewritten++;
@@ -287,8 +287,8 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
      * not work.
      */
     DublinCoreCatalog dc = null;
-    for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, mp)) {
-      dc = a;
+    for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, mp)) {
+      dc = dcc;
     }
     index(mp, dc, acl, now, version);
     // store mediapackage in db

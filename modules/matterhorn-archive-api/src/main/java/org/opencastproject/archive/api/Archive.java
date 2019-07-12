@@ -60,7 +60,7 @@ public interface Archive<RS extends ResultSet> {
    */
   void add(MediaPackage mediaPackage) throws ArchiveException;
 
-  void repopulateDB() throws ArchiveException;
+  void updateDublincore() throws ArchiveException;
 
   /**
    * Removes the media package identified by <code>mediaPackageId</code> from the archive.

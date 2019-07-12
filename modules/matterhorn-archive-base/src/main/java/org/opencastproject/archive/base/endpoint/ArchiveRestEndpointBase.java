@@ -81,6 +81,7 @@ import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -144,16 +145,16 @@ public abstract class ArchiveRestEndpointBase<RS extends ResultSet> implements H
     });
   }
 
-  @POST
-  @Path("repopulateDB")
-  @RestQuery(name = "repopulateDB",
+  @PUT
+  @Path("dublincore/all")
+  @RestQuery(name = "updateDublincore",
              description = "Adds the episode Dublincore to the archive Database to allow reindexing without accessing the filesystem.",
              reponses = { @RestResponse(description = "OK if repopulation has started", responseCode = HttpServletResponse.SC_OK) },
              returnDescription = "OK if repopulation has started.")
-  public Response repopulateDB() {
+  public Response updateDublincore() {
     return handleException(new Function0<Response>() {
       @Override public Response apply() {
-        getArchive().repopulateDB();
+        getArchive().updateDublincore();
         return ok();
       }
     });
