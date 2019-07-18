@@ -198,6 +198,7 @@ public abstract class AbstractEmailSenderService implements EmailSender {
         List<EmailAddress> to = new ArrayList<EmailAddress>();
         List<EmailAddress> cc = new ArrayList<EmailAddress>();
         to.add(getRecipient(staffMember));
+        String emailMimeType = "text/html";
 
         // FIXME: UoM hack to CC sender (podcast-service)
         if (true) {
@@ -205,7 +206,7 @@ public abstract class AbstractEmailSenderService implements EmailSender {
         }
         sendMail(new Mail(message.getSignature().getSender(), message.getSignature().getReplyTo(), to,
                 Option.option(cc),
-                message.getTemplate().getSubject(), body));
+                message.getTemplate().getSubject(), body, emailMimeType));
         emailState = EmailStatus.SENT;
       } catch (Exception e) {
         emailState = EmailStatus.FAILED;

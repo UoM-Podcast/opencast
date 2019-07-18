@@ -730,7 +730,12 @@ public class MailService {
 
     EmailAddress from = mail.getSender();
     msg.setFrom(new InternetAddress(from.getAddress(), from.getName(), "UTF-8"));
+
     // body
+    if (StringUtils.isNotBlank(mail.getMimeType())) {
+      msg.setContent(mail.getBody(), mail.getMimeType()); // email with html format
+      return msg;
+    }
     msg.setText(mail.getBody(), "UTF-8");
     return msg;
   }
