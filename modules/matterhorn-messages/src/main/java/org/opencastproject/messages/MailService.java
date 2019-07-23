@@ -733,7 +733,7 @@ public class MailService {
 
     // body
     if (StringUtils.isNotBlank(mail.getMimeType())) {
-      msg.setContent(mail.getBody(), mail.getMimeType()); // email with html format
+      msg.setContent(mail.getBody(), mail.getMimeType());
       return msg;
     }
     msg.setText(mail.getBody(), "UTF-8");
