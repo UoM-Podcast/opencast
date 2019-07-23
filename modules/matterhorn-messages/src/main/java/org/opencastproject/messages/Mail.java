@@ -39,15 +39,17 @@ public final class Mail {
   private final Option<List<EmailAddress>> copiedRecipients;
   private final String subject;
   private final String body;
+  private final String mimeType;
 
   public Mail(EmailAddress sender, Option<EmailAddress> replyTo, List<EmailAddress> recipients, Option<List<EmailAddress>> copiedRecipients, String subject,
-          String body) {
+          String body, String mimetype) {
     this.sender = sender;
     this.replyTo = replyTo;
     this.recipients = recipients;
     this.copiedRecipients = copiedRecipients;
     this.subject = subject;
     this.body = body;
+    this.mimeType = mimetype;
   }
 
   public EmailAddress getSender() {
@@ -72,6 +74,10 @@ public final class Mail {
 
   public String getSubject() {
     return subject;
+  }
+
+  public String getMimeType() {
+    return mimeType;
   }
 
   @Override
