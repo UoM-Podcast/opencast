@@ -233,6 +233,8 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     Map<String, Version> maps = new HashMap<String, Version>();
     while (episodes.hasNext()) {
       final Episode episode = episodes.next();
+      if (episode.isDeleted())
+        continue;
       total++;
       try {
         String episodeId = episode.getMediaPackage().getIdentifier().toString();
