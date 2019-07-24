@@ -23,6 +23,7 @@ package org.opencastproject.archive.base.persistence;
 
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.PartialMediaPackage;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.util.data.Option;
 
@@ -109,6 +110,8 @@ public interface ArchiveDb {
    *
    * @param pmp
    *         the media package to store
+   * @param dublinCore
+   *         the dublinCore of the media package
    * @param acl
    *         the acl of the media package
    * @param now
@@ -119,9 +122,26 @@ public interface ArchiveDb {
    *         if an error occurs
    */
   void storeEpisode(PartialMediaPackage pmp,
+                    DublinCoreCatalog dublinCore,
                     AccessControlList acl,
                     Date now,
                     Version version) throws ArchiveDbException;
+
+  /**
+   * Updates the Dublin Core of a media package
+   *
+   * @param mediaPackageId
+   *         the media package id to select
+   * @param version
+   *         the Version of the media package
+   * @param dublinCoreXml
+   *         the dublinCore of the media package
+   * @return <code>true</code> if the DublincoreXml has been inserted in the database
+   * @throws ArchiveDbException
+   *         if an error occurs
+   */
+  boolean updateEpisodeDC(String mediaPackageId, Version version, String dublinCoreXml)
+    throws ArchiveDbException;
 
   Option<Asset> findAssetByChecksum(String checksum) throws ArchiveDbException;
 }

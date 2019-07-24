@@ -37,6 +37,8 @@ import org.opencastproject.archive.base.persistence.ArchiveDb;
 import org.opencastproject.archive.base.persistence.Episode;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
+import org.opencastproject.metadata.dublincore.DublinCores;
 import org.opencastproject.security.api.AccessControlEntry;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.DefaultOrganization;
@@ -103,7 +105,9 @@ public class ArchiveDbTest {
   public void testAdding() throws Exception {
     Date modificationDate = new Date();
     final MediaPackage mediaPackage = loadFromClassPath("/manifest-simple.xml");
-    episodeDatabase.storeEpisode(mkPartial(mediaPackage), accessControlList, modificationDate, version(1L));
+    final DublinCoreCatalog dublinCore = DublinCores.read(getClass().getResourceAsStream("/dublincore.xml"));
+
+    episodeDatabase.storeEpisode(mkPartial(mediaPackage),dublinCore, accessControlList, modificationDate, version(1L));
 
     Iterator<Episode> allEpisodes = episodeDatabase.getAllEpisodes();
     while (allEpisodes.hasNext()) {
@@ -124,22 +128,24 @@ public class ArchiveDbTest {
   @Test
   public void testVersionAdding() throws Exception {
     final MediaPackage mp1 = loadFromClassPath("/manifest-simple.xml");
+    final DublinCoreCatalog dublinCore = DublinCores.read(getClass().getResourceAsStream("/dublincore.xml"));
     final MediaPackage mp2 = copy(mp1);
     rewriteAssetsForArchival(mkPartial(mp1), version(1L));
-    episodeDatabase.storeEpisode(mkPartial(mp1), accessControlList, new Date(), version(1L));
+    episodeDatabase.storeEpisode(mkPartial(mp1), dublinCore, accessControlList, new Date(), version(1L));
     assertEquals(some(true), episodeDatabase.isLatestVersion(mp1.getIdentifier().toString(), version(1L)));
     rewriteAssetsForArchival(mkPartial(mp2), version(2L));
-    episodeDatabase.storeEpisode(mkPartial(mp2), accessControlList, new Date(), version(2L));
+    episodeDatabase.storeEpisode(mkPartial(mp2), dublinCore, accessControlList, new Date(), version(2L));
     assertEquals(some(false), episodeDatabase.isLatestVersion(mp2.getIdentifier().toString(), version(1L)));
   }
 
   @Test
   public void testDeleting() throws Exception {
     final MediaPackage mediaPackage = loadFromClassPath("/manifest-simple.xml");
+    final DublinCoreCatalog dublinCore = DublinCores.read(getClass().getResourceAsStream("/dublincore.xml"));
     assertTrue("Media package is supposed to have elements", mediaPackage.getElements().length > 0);
     final Checksum checksum = mediaPackage.getElements()[0].getChecksum();
     assertNotNull("Media package elements are supposed to have checksums", checksum);
-    episodeDatabase.storeEpisode(mkPartial(mediaPackage), accessControlList, new Date(), version(1L));
+    episodeDatabase.storeEpisode(mkPartial(mediaPackage), dublinCore, accessControlList, new Date(), version(1L));
     assertTrue("There should be one asset with checksum " + checksum,
             episodeDatabase.findAssetByChecksum(checksum.toString()).isSome());
     Date deletionDate = new Date();
@@ -152,7 +158,8 @@ public class ArchiveDbTest {
   @Test
   public void testRetrieving() throws Exception {
     final MediaPackage mediaPackage = loadFromClassPath("/manifest-simple.xml");
-    episodeDatabase.storeEpisode(mkPartial(mediaPackage), accessControlList, new Date(), version(1L));
+    final DublinCoreCatalog dublinCore = DublinCores.read(getClass().getResourceAsStream("/dublincore.xml"));
+    episodeDatabase.storeEpisode(mkPartial(mediaPackage), dublinCore, accessControlList, new Date(), version(1L));
 
     assertTrue(episodeDatabase.getEpisode(mediaPackage.getIdentifier().toString(), version(0L)).isNone());
     assertTrue(episodeDatabase.getEpisode(mediaPackage.getIdentifier().toString(), version(1L)).isSome());
@@ -173,14 +180,15 @@ public class ArchiveDbTest {
   @Test
   public void testAsset() throws Exception {
     final MediaPackage mediaPackage = loadFromClassPath("/manifest-simple.xml");
-    episodeDatabase.storeEpisode(mkPartial(mediaPackage), accessControlList, new Date(), version(1L));
+    final DublinCoreCatalog dublinCore = DublinCores.read(getClass().getResourceAsStream("/dublincore.xml"));
+    episodeDatabase.storeEpisode(mkPartial(mediaPackage), dublinCore, accessControlList, new Date(), version(1L));
     final MediaPackageElement mpe = mediaPackage.getElements()[0];
     assertTrue(episodeDatabase.findAssetByChecksum(mpe.getChecksum().toString()).isSome());
     assertEquals(mpe.getChecksum().toString(), episodeDatabase.findAssetByChecksum(mpe.getChecksum().toString()).get()
             .getChecksum());
-    episodeDatabase.storeEpisode(mkPartial(mediaPackage), accessControlList, new Date(), version(2L));
+    episodeDatabase.storeEpisode(mkPartial(mediaPackage), dublinCore, accessControlList, new Date(), version(2L));
     assertTrue(episodeDatabase.findAssetByChecksum(mpe.getChecksum().toString()).isSome());
-    episodeDatabase.storeEpisode(mkPartial(mediaPackage), accessControlList, new Date(), version(3L));
+    episodeDatabase.storeEpisode(mkPartial(mediaPackage), dublinCore, accessControlList, new Date(), version(3L));
     assertTrue(episodeDatabase.findAssetByChecksum(mpe.getChecksum().toString()).isSome());
   }
 

@@ -48,7 +48,6 @@ import org.opencastproject.metadata.api.util.Interval;
 import org.opencastproject.metadata.dublincore.DCMIPeriod;
 import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
-import org.opencastproject.metadata.dublincore.DublinCoreUtil;
 import org.opencastproject.metadata.dublincore.DublinCoreValue;
 import org.opencastproject.metadata.dublincore.EncodingSchemeUtils;
 import org.opencastproject.metadata.dublincore.Temporal;
@@ -358,10 +357,10 @@ public class SolrIndexManager {
    * @throws SolrServerException
    *           if an errors occurs while talking to solr
    */
-  public void add(MediaPackage sourceMediaPackage, AccessControlList acl, Date now, Version version)
+  public void add(MediaPackage sourceMediaPackage, DublinCoreCatalog dc, AccessControlList acl, Date now, Version version)
           throws SolrServerException {
     try {
-      final SolrInputDocument episodeDocument = createEpisodeInputDocument(sourceMediaPackage, acl, version, false);
+      final SolrInputDocument episodeDocument = createEpisodeInputDocument(sourceMediaPackage, dc, acl, version, false);
       Schema.setOcTimestamp(episodeDocument, now);
       Schema.setOcLatestVersion(episodeDocument, true);
       Schema.setOcDeleted(episodeDocument, false);
@@ -400,10 +399,10 @@ public class SolrIndexManager {
    * @throws SolrServerException
    *           if an errors occurs while talking to solr
    */
-  public void add(MediaPackage sourceMediaPackage, AccessControlList acl, Version version, boolean deleted,
+  public void add(MediaPackage sourceMediaPackage, DublinCoreCatalog dc, AccessControlList acl, Version version, boolean deleted,
           Date modificationDate, boolean isLatestVersion) throws SolrServerException {
     try {
-      final SolrInputDocument episodeDocument = createEpisodeInputDocument(sourceMediaPackage, acl, version, deleted);
+      final SolrInputDocument episodeDocument = createEpisodeInputDocument(sourceMediaPackage, dc, acl, version, deleted);
       Schema.setOcTimestamp(episodeDocument, modificationDate);
       Schema.setOcLatestVersion(episodeDocument, isLatestVersion);
       Schema.setOcDeleted(episodeDocument, deleted);
@@ -434,7 +433,7 @@ public class SolrIndexManager {
    * @throws MediaPackageException
    *           if serialization of the media package fails
    */
-  private SolrInputDocument createEpisodeInputDocument(final MediaPackage mediaPackage, AccessControlList acl,
+  private SolrInputDocument createEpisodeInputDocument(final MediaPackage mediaPackage, DublinCoreCatalog episodeDC, AccessControlList acl,
           final Version version, boolean deleted) throws MediaPackageException, IOException {
     final SolrInputDocument doc = new SolrInputDocument();
     final String mediaPackageId = mediaPackage.getIdentifier().toString();
@@ -452,6 +451,7 @@ public class SolrIndexManager {
     Schema.setOcElementtags(doc, tags(mediaPackage));
     Schema.setOcElementflavors(doc, flavors(mediaPackage));
     Schema.setOcVersion(doc, version);
+    Schema.setDublinCore(doc, episodeDC);
 
     // Add cover
     Attachment[] cover = mediaPackage.getAttachments(MediaPackageElements.MEDIAPACKAGE_COVER_FLAVOR);
@@ -473,11 +473,6 @@ public class SolrIndexManager {
       // episode fields
       for (StaticMetadata md : getMetadata(metadataSvcs.get(), mediaPackage)) {
         addEpisodeMetadata(doc, md);
-      }
-
-      // episode dublincore
-      for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, mediaPackage)) {
-        Schema.setDublinCore(doc, a);
       }
 
       // mpeg7 fields
@@ -1052,7 +1047,10 @@ public class SolrIndexManager {
             new Function<StaticMetadataService, Collection<StaticMetadata>>() {
               @Override
               public Collection<StaticMetadata> apply(StaticMetadataService s) {
-                StaticMetadata md = s.getMetadata(mp);
+                StaticMetadata md = null;
+                if (s.getClass().getSimpleName().equals("StaticMetadataServiceMediaPackageImpl")) {
+                  md = s.getMetadata(mp);
+                }
                 return md != null ? list(md) : Collections.EMPTY_LIST;
               }
             });

@@ -23,6 +23,7 @@ package org.opencastproject.archive.base.persistence;
 
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.mediapackage.MediaPackage;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.security.api.AccessControlList;
 
 import java.util.Date;
@@ -35,8 +36,9 @@ public final class Episode {
   private final Date modificationDate;
   private final AccessControlList acl;
   private final MediaPackage mediaPackage;
+  private DublinCoreCatalog dc;
 
-  public Episode(MediaPackage mediaPackage, Version version, String organization, AccessControlList acl,
+  public Episode(MediaPackage mediaPackage, DublinCoreCatalog dc, Version version, String organization, AccessControlList acl,
           Date modificationDate, boolean deleted) {
     this.version = version;
     this.organization = organization;
@@ -44,6 +46,7 @@ public final class Episode {
     this.modificationDate = modificationDate;
     this.acl = acl;
     this.mediaPackage = mediaPackage;
+    this.dc = dc;
   }
 
   public Version getVersion() {
@@ -69,4 +72,13 @@ public final class Episode {
   public MediaPackage getMediaPackage() {
     return mediaPackage;
   }
+
+  public DublinCoreCatalog getDublinCore() {
+    return dc;
+  }
+
+  public void setDublinCore(DublinCoreCatalog dc) {
+      this.dc = dc;
+  }
+
 }
