@@ -363,7 +363,7 @@ public class EmailPane extends CustomComponent {
     // Create an ad-hoc version of the templates as we are reading it from the
     // class path every time
     MessageTemplate tmpl = new MessageTemplate("invitation", user,
-            "Lecture capture opt-out reminder - please ensure that your lecture recording options are correctly set",
+            "Podcasting - set your lecture recording preferences",
             body).createAdHocCopy();
     return new Message(creator, tmpl, msgSign);
   }
