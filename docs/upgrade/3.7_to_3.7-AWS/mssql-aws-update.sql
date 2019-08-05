@@ -1,3 +1,3 @@
-ALTER TABLE mh_host_registration ADD COLUMN node_name VARCHAR(255) AFTER host;
+ALTER TABLE mh_host_registration ADD node_name VARCHAR(255);
 
-ALTER TABLE mh_archive_episode ADD COLUMN dublincore_xml VARCHAR(MAX) AFTER access_control;
+ALTER TABLE mh_archive_episode ADD dublincore_xml VARCHAR(MAX);
