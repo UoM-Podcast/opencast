@@ -841,6 +841,10 @@ public final class Schema {
     }
   }
 
+  public static void setDublinCoreXml(SolrInputDocument doc, String dcXml) {
+    doc.setField(DUBLINCORE, dcXml);
+  }
+
   public static void setSeriesDublinCore(SolrInputDocument doc, DublinCoreCatalog dc) {
     try {
       doc.setField(DUBLINCORE_SERIES, dc.toXmlString());

@@ -351,6 +351,7 @@ CREATE TABLE mh_archive_episode (
   organization VARCHAR(128) NOT NULL DEFAULT '',
   deleted TINYINT(1) NOT NULL DEFAULT '0',
   access_control MEDIUMTEXT,
+  dublincore_xml MEDIUMTEXT,
   mediapackage_xml MEDIUMTEXT,
   modification_date DATETIME DEFAULT NULL,
   PRIMARY KEY (id,version,organization),

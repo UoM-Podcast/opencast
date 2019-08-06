@@ -68,6 +68,8 @@ import org.opencastproject.message.broker.api.archive.ArchiveItem;
 import org.opencastproject.message.broker.api.index.AbstractIndexProducer;
 import org.opencastproject.message.broker.api.index.IndexRecreateObject;
 import org.opencastproject.message.broker.api.index.IndexRecreateObject.Service;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
+import org.opencastproject.metadata.dublincore.DublinCoreUtil;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AccessControlUtil;
 import org.opencastproject.security.api.AuthorizationService;
@@ -124,7 +126,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-
 /** Base implementation of the archive abstracting over search and index. */
 public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexProducer implements Archive<RS> {
   /** Log facility */
@@ -170,9 +171,9 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     this.messageReceiver = messageReceiver;
   }
 
-  protected abstract void index(MediaPackage mp, AccessControlList acl, Date timestamp, Version version);
+  protected abstract void index(MediaPackage mp, DublinCoreCatalog dc, AccessControlList acl, Date timestamp, Version version);
 
-  protected abstract void index(MediaPackage mediaPackage, AccessControlList acl, Version version, boolean deleted,
+  protected abstract void index(MediaPackage mediaPackage, DublinCoreCatalog dc, AccessControlList acl, Version version, boolean deleted,
           Date modificationDate, boolean latestVersion);
 
   protected abstract boolean indexDelete(String mediaPackageId, Date timestamp);
@@ -216,6 +217,69 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     }
   }
 
+  @Override
+  public void updateDublincore() throws ArchiveException {
+    Iterator<Episode> episodes;
+    try {
+      episodes = persistence.getAllEpisodes();
+    } catch (ArchiveDbException e) {
+      logger.error("Unable to load the archive entries: {}", e);
+      throw new ServiceException(e.getMessage());
+    }
+    int errors = 0;
+    int rewritten = 0;
+    int total = 0;
+    int unchanged = 0;
+    Map<String, Version> maps = new HashMap<String, Version>();
+    while (episodes.hasNext()) {
+      final Episode episode = episodes.next();
+      if (episode.isDeleted())
+        continue;
+      total++;
+      try {
+        String episodeId = episode.getMediaPackage().getIdentifier().toString();
+        Version latestVersion = maps.get(episodeId);
+        if (latestVersion == null) {
+          Option<Episode> latestEpisode = persistence.getLatestEpisode(episodeId);
+          if (latestEpisode.isNone())
+            throw new ArchiveException("Latest episode from existing episode identifier " + episodeId + " not found!");
+          latestVersion = latestEpisode.get().getVersion();
+          maps.put(episodeId, latestVersion);
+        }
+        if (episode.getVersion().equals(latestVersion)) {
+          final Organization organization = orgDir.getOrganization(episode.getOrganization());
+          secSvc.setOrganization(organization);
+          secSvc.setUser(SecurityUtil.createSystemUser(systemUserName, organization));
+          // mediapackage URIs need to be rewritten to concrete URLs for indexation to work
+          final PartialMediaPackage pmp = mkPartial(episode.getMediaPackage());
+          rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
+          DublinCoreCatalog dc = episode.getDublinCore();
+          if (null == dc.getRootTag()) {
+            for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
+              dc = dcc;
+            }
+            persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
+            rewritten++;
+          } else {
+            unchanged++;
+          }
+        } else {
+          unchanged++;
+        }
+      } catch (NotFoundException | IOException | ArchiveDbException e) {
+        errors++;
+        logger.error("updateEpisodeDC through an exception: {} ", e);
+      } finally {
+        secSvc.setOrganization(null);
+        secSvc.setUser(null);
+      }
+    }
+    logger.info("updateEpisodeDC finished {} episodes, {} unchanged, {} updated, {} failed.", total, unchanged, rewritten, errors);
+    if (errors != 0) {
+      throw new ArchiveException("repopulateDB finished whith " + errors + " errors");
+    }
+  }
+
   // todo make archiving transactional
 
   /** Mutates mp and its elements, so make sure to work on a copy. */
@@ -238,11 +302,15 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
      * StaticMetadataService which in turn uses the workspace to download them. If the URL is already a URN this does
      * not work.
      */
-    index(mp, acl, now, version);
+    DublinCoreCatalog dc = null;
+    for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, mp)) {
+      dc = dcc;
+    }
+    index(mp, dc, acl, now, version);
     // store mediapackage in db
     try {
       rewriteAssetsForArchival(pmp, version);
-      persistence.storeEpisode(pmp, acl, now, version);
+      persistence.storeEpisode(pmp, dc, acl, now, version);
     } catch (ArchiveDbException e) {
       logger.error("Could not store episode {}: {}", mpId, e);
       throw new ArchiveException(e);
@@ -484,7 +552,14 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
           // mediapackage URIs need to be rewritten to concrete URLs for indexation to work
           final PartialMediaPackage pmp = mkPartial(episode.getMediaPackage());
           rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
-          index(pmp.getMediaPackage(), episode.getAcl(), episode.getVersion(), episode.isDeleted(),
+          DublinCoreCatalog dc = episode.getDublinCore();
+          if (null == dc.getRootTag()) {
+            for (DublinCoreCatalog a : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
+              dc = a;
+            }
+            persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
+          }
+          index(pmp.getMediaPackage(), dc, episode.getAcl(), episode.getVersion(), episode.isDeleted(),
                   episode.getModificationDate(), isLatestVersion);
         } catch (Exception e) {
           logger.error(

@@ -26,14 +26,20 @@ import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.data.Tuple.tuple;
 import static org.opencastproject.util.data.functions.Functions.chuck;
 import static org.opencastproject.util.persistence.PersistenceUtil.runSingleResultQuery;
+import static org.opencastproject.util.persistence.PersistenceUtil.runUpdate;
 
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.mediapackage.MediaPackageParser;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
+import org.opencastproject.metadata.dublincore.DublinCoreXmlFormat;
+import org.opencastproject.metadata.dublincore.DublinCores;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AccessControlParser;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.persistence.PersistenceUtil;
+
+import java.io.ByteArrayInputStream;
 
 import java.util.Date;
 import java.util.List;
@@ -60,7 +66,10 @@ import javax.persistence.TemporalType;
         @NamedQuery(name = "Episode.findLatestById", query = "SELECT e FROM Episode e WHERE e.mediaPackageId = :mediaPackageId "
                 + "AND e.version = (SELECT MAX(e2.version) FROM Episode e2 WHERE e2.mediaPackageId = :mediaPackageId)"),
         @NamedQuery(name = "Episode.findLatestVersion", query = "SELECT MAX(a.version) FROM Episode a WHERE a.mediaPackageId = :mediaPackageId "),
-        @NamedQuery(name = "Episode.findAllById", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mediaPackageId") })
+        @NamedQuery(name = "Episode.findAllById", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mediaPackageId"),
+        @NamedQuery(name = "Episode.updateDublinCoreXML", query = "UPDATE Episode e SET e.dublinCoreXml = :dublinCoreXml WHERE e.mediaPackageId = :mediaPackageId AND e.version = :version")
+})
+
 public final class EpisodeDto {
   @Id
   @Column(name = "id", length = 128)
@@ -85,6 +94,10 @@ public final class EpisodeDto {
   private String accessControl;
 
   @Lob
+  @Column(name = "dublincore_xml", length = 65535, nullable = true)
+  private String dublinCoreXml;
+
+  @Lob
   @Column(name = "mediapackage_xml", length = 65535, nullable = false)
   private String mediaPackageXml;
 
@@ -98,6 +111,8 @@ public final class EpisodeDto {
       dto.modificationDate = episode.getModificationDate();
       dto.accessControl = AccessControlParser.toXml(episode.getAcl());
       dto.mediaPackageXml = MediaPackageParser.getAsXml(episode.getMediaPackage());
+      ByteArrayInputStream in = new ByteArrayInputStream(MediaPackageParser.getAsXml(episode.getMediaPackage()).getBytes());
+      dto.dublinCoreXml = episode.getDublinCore().toXmlString();
       return dto;
     } catch (Exception e) {
       return chuck(e);
@@ -106,7 +121,11 @@ public final class EpisodeDto {
 
   public Episode toEpisode() {
     try {
-      return new Episode(MediaPackageParser.getFromXml(mediaPackageXml), getVersion(), organization, getAcl(),
+      DublinCoreCatalog dc = DublinCores.mkSimple();
+      if (null != dublinCoreXml) {
+          dc = DublinCoreXmlFormat.read(dublinCoreXml);
+      }
+      return new Episode(MediaPackageParser.getFromXml(mediaPackageXml), dc, getVersion(), organization, getAcl(),
               modificationDate, deleted);
     } catch (Exception e) {
       return chuck(e);
@@ -146,6 +165,10 @@ public final class EpisodeDto {
     return modificationDate;
   }
 
+  public String getDublinCoreXml() {
+    return dublinCoreXml;
+  }
+
   public void setModificationDate(Date modificationDate) {
     this.modificationDate = modificationDate;
   }
@@ -177,5 +200,13 @@ public final class EpisodeDto {
 
   public static List<EpisodeDto> findAll(EntityManager em) {
     return PersistenceUtil.findAll(em, "Episode.findAll");
+  }
+
+  /** Update Episode adding DublinCore XML into the Database */
+  public static Boolean updateEpisodeDC(EntityManager em, String mediaPackageId, Version version, String dublinCoreXml) {
+    return runUpdate(em,"Episode.updateDublinCoreXML",
+          tuple("mediaPackageId", mediaPackageId),
+          tuple("version", version.value()),
+          tuple("dublinCoreXml", dublinCoreXml));
   }
 }

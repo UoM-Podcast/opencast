@@ -34,6 +34,7 @@ import static org.opencastproject.util.data.functions.Misc.chuck;
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.PartialMediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.util.NotFoundException;
@@ -139,7 +140,6 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
             VersionClaimDto.update(em, mpId, claimed);
             return claimed;
           }
-
           @Override
           public Version none() {
             em.persist(VersionClaimDto.create(mpId, FIRST));
@@ -187,8 +187,8 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
     });
   }
 
- @Override
-  public void storeEpisode(final PartialMediaPackage pmp, final AccessControlList acl, final Date now, final Version version)
+  @Override
+  public void storeEpisode(final PartialMediaPackage pmp, final DublinCoreCatalog dublinCore, final AccessControlList acl, final Date now, final Version version)
           throws ArchiveDbException {
     final String orgId = getSecurityService().getOrganization().getId();
     tx(new Effect<EntityManager>() {
@@ -196,6 +196,7 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
       public void run(EntityManager em) {
         // Create new episode entity
         final EpisodeDto episodeDto = EpisodeDto.create(new Episode(pmp.getMediaPackage(),
+                                                                    dublinCore,
                                                                     version,
                                                                     orgId,
                                                                     acl,
@@ -212,6 +213,19 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
         }
       }
     });
+  }
+
+  @Override
+  public boolean updateEpisodeDC(final String mediaPackageId, final Version version, final String dublinCoreXml)
+          throws ArchiveDbException {
+    final String orgId = getSecurityService().getOrganization().getId();
+    return tx(new Function<EntityManager, Boolean>() {
+      @Override
+      public Boolean apply(EntityManager em) {
+        return EpisodeDto.updateEpisodeDC(em, mediaPackageId, version, dublinCoreXml);
+      }
+    });
+
   }
 
   @Override
