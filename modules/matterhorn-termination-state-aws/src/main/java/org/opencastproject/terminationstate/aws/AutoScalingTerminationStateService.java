@@ -46,6 +46,7 @@ import com.amazonaws.services.autoscaling.model.DescribeAutoScalingInstancesResu
 import com.amazonaws.services.autoscaling.model.DescribeLifecycleHooksRequest;
 import com.amazonaws.services.autoscaling.model.DescribeLifecycleHooksResult;
 import com.amazonaws.services.autoscaling.model.LifecycleHook;
+import com.amazonaws.services.autoscaling.model.LifecycleState;
 import com.amazonaws.services.autoscaling.model.RecordLifecycleActionHeartbeatRequest;
 import com.amazonaws.services.autoscaling.model.RecordLifecycleActionHeartbeatResult;
 import com.amazonaws.util.EC2MetadataUtils;
@@ -68,6 +69,9 @@ import java.util.List;
 
 public final class AutoScalingTerminationStateService extends AbstractJobTerminationStateService {
   private static final Log logger = new Log(LoggerFactory.getLogger(AutoScalingTerminationStateService.class));
+
+  // AWS String Constants
+  private static final String AUTOSCALING_INSTANCE_TERMINATING = "autoscaling:EC2_INSTANCE_TERMINATING";
 
   public static final String CONFIG_ENABLE = "enable";
   public static final String CONFIG_LIFECYCLE_POLLING_ENABLE = "lifecycle.polling.enable";
@@ -162,15 +166,17 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
         stop();
         return;
       } else if (lifecycleHeartbeatPeriod > lifeCycleHook.getHeartbeatTimeout()) {
-        logger.warn("Lifecycle Heartbeat Period {} is greater than LifecycleHook's HearbeatTimeout {}",
+        logger.warn("Lifecycle Heartbeat Period {} is greater than LifecycleHook's HeartbeatTimeout {}, see https://docs.aws.amazon.com/autoscaling/ec2/userguide/lifecycle-hooks.html",
                 lifecycleHeartbeatPeriod, lifeCycleHook.getHeartbeatTimeout());
       }
     } catch (AmazonServiceException e) {
       logger.error("EC2 Autoscaling returned an error", e);
       stop();
+      return;
     } catch (AmazonClientException e) {
       logger.error("AWS client can't communicate with EC2 Autoscaling", e);
       stop();
+      return;
     }
 
     try {
@@ -218,7 +224,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     DescribeLifecycleHooksResult result = autoScaling.describeLifecycleHooks(request);
 
     for (LifecycleHook hook : result.getLifecycleHooks()) {
-      if ("autoscaling:EC2_INSTANCE_TERMINATING".equalsIgnoreCase(hook.getLifecycleTransition())) {
+      if (AUTOSCALING_INSTANCE_TERMINATING.equalsIgnoreCase(hook.getLifecycleTransition())) {
         return hook;
       }
     }
@@ -295,7 +301,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
         if (!instances.isEmpty()) {
           AutoScalingInstanceDetails autoScalingInstance = instances.get(0);
 
-          if ("Terminating:Wait".equalsIgnoreCase(autoScalingInstance.getLifecycleState())) {
+          if (LifecycleState.TerminatingWait.toString().equalsIgnoreCase(autoScalingInstance.getLifecycleState())) {
             logger.info("Lifecycle state changed to Terminating:Wait");
             parent.stopPollingLifeCycleHook();
             parent.setState(TerminationState.WAIT);

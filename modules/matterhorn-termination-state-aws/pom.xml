@@ -108,14 +108,9 @@
           <instructions>
             <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
             <Build-Number>${buildNumber}</Build-Number>
-            <!--Import-Package>
-              com.amazonaws,
-              com.amazonaws.auth.*,
-              com.amazonaws.regions.*,
-              com.amazonaws.services.autoscaling.*,
-              com.amazonaws.services.ec2.*,
+            <Import-Package>
               *;resolution:=optional
-            </Import-Package-->
+            </Import-Package>
             <Service-Component>
               OSGI-INF/termination-state-service-aws.xml,
               OSGI-INF/termination-state-rest-service-aws.xml
