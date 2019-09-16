@@ -230,6 +230,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     int rewritten = 0;
     int total = 0;
     int unchanged = 0;
+    int notFound = 0;
     Map<String, Version> maps = new HashMap<String, Version>();
     while (episodes.hasNext()) {
       final Episode episode = episodes.next();
@@ -255,7 +256,14 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
           rewriteAssetUris(uriRewriter.curry(episode.getVersion()), pmp);
           DublinCoreCatalog dc = episode.getDublinCore();
           if (null == dc.getRootTag()) {
-            for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage())) {
+            Option<DublinCoreCatalog> dcco = Option.none();
+            try {
+              dcco = DublinCoreUtil.loadEpisodeDublinCore(workspace, episode.getMediaPackage());
+            } catch (Exception e) {
+              notFound++;
+              continue;
+            }
+            for (DublinCoreCatalog dcc : dcco) {
               dc = dcc;
             }
             persistence.updateEpisodeDC(episode.getMediaPackage().getIdentifier().toString(), episode.getVersion(), dc.toXmlString());
@@ -266,7 +274,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
         } else {
           unchanged++;
         }
-      } catch (NotFoundException | IOException | ArchiveDbException e) {
+      } catch (Exception e) {
         errors++;
         logger.error("updateEpisodeDC through an exception: {} ", e);
       } finally {
@@ -274,10 +282,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
         secSvc.setUser(null);
       }
     }
-    logger.info("updateEpisodeDC finished {} episodes, {} unchanged, {} updated, {} failed.", total, unchanged, rewritten, errors);
-    if (errors != 0) {
-      throw new ArchiveException("repopulateDB finished whith " + errors + " errors");
-    }
+    logger.info("updateEpisodeDC finished {} episodes, {} unchanged, {} updated, {} not found, {} failed.", total, unchanged, rewritten, notFound, errors);
   }
 
   // todo make archiving transactional
