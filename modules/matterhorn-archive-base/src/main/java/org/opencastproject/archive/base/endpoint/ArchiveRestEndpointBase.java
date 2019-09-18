@@ -49,6 +49,7 @@ import org.opencastproject.archive.base.QueryBuilder;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageImpl;
+import org.opencastproject.rest.AbstractJobProducerEndpoint;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.util.MimeType;
 import org.opencastproject.util.MimeTypeUtil;
@@ -103,7 +104,7 @@ import javax.ws.rs.core.Response;
                              + "<a href=\"http://opencast.jira.com\">Opencast Issue Tracker</a>"
              },
              abstractText = "This service indexes and queries available (distributed) episodes.")
-public abstract class ArchiveRestEndpointBase<RS extends ResultSet> implements HttpMediaPackageElementProvider {
+public abstract class ArchiveRestEndpointBase<RS extends ResultSet> extends AbstractJobProducerEndpoint implements HttpMediaPackageElementProvider {
 
   private static final Logger logger = LoggerFactory.getLogger(ArchiveRestEndpointBase.class);
 

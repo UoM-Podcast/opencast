@@ -210,7 +210,8 @@
             </Import-Package>
             <Service-Component>
               OSGI-INF/archive.xml,
-              OSGI-INF/archive-rest.xml
+              OSGI-INF/archive-rest.xml,
+              OSGI-INF/archive-jobproducer.xml
             </Service-Component>
             <Meta-Persistence>
               META-INF/persistence.xml

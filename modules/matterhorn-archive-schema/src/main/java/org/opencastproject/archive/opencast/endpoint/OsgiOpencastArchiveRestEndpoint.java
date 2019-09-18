@@ -26,8 +26,11 @@ import static org.opencastproject.util.OsgiUtil.getContextProperty;
 
 import org.opencastproject.archive.api.HttpMediaPackageElementProvider;
 import org.opencastproject.archive.opencast.OpencastArchive;
+import org.opencastproject.archive.opencast.OpencastArchiveJobProducer;
+import org.opencastproject.job.api.JobProducer;
 import org.opencastproject.kernel.rest.RestEndpoint;
 import org.opencastproject.security.api.SecurityService;
+import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.util.osgi.SimpleServicePublisher;
 import org.opencastproject.workflow.api.WorkflowService;
 
@@ -42,6 +45,8 @@ import javax.ws.rs.Path;
 public final class OsgiOpencastArchiveRestEndpoint extends AbstractOpencastArchiveRestEndpoint implements RestEndpoint {
   private static final Logger logger = LoggerFactory.getLogger(OsgiOpencastArchiveRestEndpoint.class);
 
+  private OpencastArchiveJobProducer oajp = null;
+  private ServiceRegistry serviceRegistry = null;
   private OpencastArchive archive;
   private WorkflowService workflowService;
   private SecurityService securityService;
@@ -97,5 +102,26 @@ public final class OsgiOpencastArchiveRestEndpoint extends AbstractOpencastArchi
   /** OSGi DI callback. */
   public void setSecurityService(SecurityService securityService) {
     this.securityService = securityService;
+  }
+
+  public void setJobProducer(OpencastArchiveJobProducer producer) {
+    oajp = producer;
+    oajp.setUriRewriter(getUriRewriter());
+  }
+
+  public void setServiceRegistry(ServiceRegistry serviceRegistry) {
+    this.serviceRegistry = serviceRegistry;
+  }
+  public ServiceRegistry getServiceRegistry() {
+    return this.serviceRegistry;
+  }
+
+  public JobProducer getService() {
+    return this.oajp;
+  }
+
+  @Override
+  public OpencastArchiveJobProducer getJobProducer() {
+    return this.oajp;
   }
 }
