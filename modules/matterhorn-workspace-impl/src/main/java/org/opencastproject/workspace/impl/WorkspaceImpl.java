@@ -36,6 +36,7 @@ import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.data.Prelude.sleep;
 import static org.opencastproject.util.data.Tuple.tuple;
 
+import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.util.FileSupport;
 import org.opencastproject.util.HttpUtil;
@@ -74,6 +75,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Date;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -124,6 +127,8 @@ public final class WorkspaceImpl implements Workspace {
 
   private TrustedHttpClient trustedHttpClient;
 
+  private SecurityService securityService = null;
+
   private WorkingFileRepository wfr = null;
   private String wfrRoot = null;
   private String wfrUrl = null;
@@ -131,6 +136,9 @@ public final class WorkspaceImpl implements Workspace {
   private CopyOnWriteArraySet<String> staticCollections = new CopyOnWriteArraySet<String>();
 
   private boolean waitForResourceFlag = false;
+
+  /** the asset manager directory if locally available */
+  private String archivePath = null;
 
   private WorkspaceCleaner workspaceCleaner = null;
 
@@ -273,6 +281,8 @@ public final class WorkspaceImpl implements Workspace {
     staticCollections.add("videosegments");
     staticCollections.add("waveform");
 
+    // Check if we can read from the archive locally to avoid downloading files via HTTP
+    archivePath = ArchivePathUtils.getArchivePath(cc);
   }
 
   /** Callback from OSGi on service deactivation. */
@@ -310,6 +320,15 @@ public final class WorkspaceImpl implements Workspace {
         }
       }
     }
+
+    // Check if we can get the files directly from the archive
+    final File asset = ArchivePathUtils.getLocalFile(archivePath, securityService.getOrganization().getId(), uri);
+    if (asset != null) {
+      logger.debug("Copy local file {} from asset manager to workspace", asset);
+      Files.copy(asset.toPath(), inWs.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      return new File(inWs.getAbsolutePath());
+    }
+
     // do HTTP transfer
     return locked(inWs, downloadIfNecessary(uri));
   }
@@ -847,6 +866,10 @@ public final class WorkspaceImpl implements Workspace {
 
   public void setTrustedHttpClient(TrustedHttpClient trustedHttpClient) {
     this.trustedHttpClient = trustedHttpClient;
+  }
+
+  public void setSecurityService(SecurityService securityService) {
+    this.securityService = securityService;
   }
 
   private static final long TIMEOUT = 2L * 60L * 1000L;
