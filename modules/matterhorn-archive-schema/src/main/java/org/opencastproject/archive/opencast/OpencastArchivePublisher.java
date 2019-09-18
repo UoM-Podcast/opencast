@@ -33,6 +33,7 @@ import org.opencastproject.archive.base.jmx.ElementStoreBean;
 import org.opencastproject.archive.base.persistence.AbstractArchiveDb;
 import org.opencastproject.archive.base.persistence.ArchiveDb;
 import org.opencastproject.archive.base.storage.ElementStore;
+import org.opencastproject.archive.base.storage.RemoteElementStore;
 import org.opencastproject.archive.opencast.solr.SolrIndexManager;
 import org.opencastproject.archive.opencast.solr.SolrRequester;
 import org.opencastproject.message.broker.api.MessageReceiver;
@@ -73,6 +74,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.management.ObjectInstance;
@@ -110,6 +112,7 @@ public class OpencastArchivePublisher extends SimpleServicePublisher {
   private EntityManagerFactory emf;
   private MessageSender messageSender;
   private MessageReceiver messageReceiver;
+  private List<RemoteElementStore> remotes = new LinkedList<RemoteElementStore>();
 
   public synchronized void setHttpMediaPackageElementProvider(
           HttpMediaPackageElementProvider httpMediaPackageElementProvider) {
@@ -171,6 +174,22 @@ public class OpencastArchivePublisher extends SimpleServicePublisher {
     this.elementStore = elementStore;
   }
 
+  public synchronized void addRemoteElementStore(RemoteElementStore elementStore) {
+    if (null != archive) {
+      archive.addRemoteElementStore(elementStore);
+    } else {
+      remotes.add(elementStore);
+    }
+  }
+
+  public synchronized void removeRemoteElementStore(RemoteElementStore elementStore) {
+    if (null != archive) {
+      archive.removeRemoteElementStore(elementStore);
+    } else {
+      logger.warn("Unable to remove remote store of type {} because delegate is null!", elementStore.getStoreType());
+    }
+  }
+
   public void setMessageSender(MessageSender messageSender) {
     this.messageSender = messageSender;
   }
@@ -180,7 +199,7 @@ public class OpencastArchivePublisher extends SimpleServicePublisher {
   }
 
   @Override
-  public ServiceReg registerService(Dictionary properties, final ComponentContext cc) throws ConfigurationException {
+  public synchronized ServiceReg registerService(Dictionary properties, final ComponentContext cc) throws ConfigurationException {
     final String solrServerUrlConfig = StringUtils.trimToNull(cc.getBundleContext().getProperty(CONFIG_SOLR_URL));
     final SolrServer solrServer = new Function0<SolrServer>() {
       @Override
@@ -226,6 +245,11 @@ public class OpencastArchivePublisher extends SimpleServicePublisher {
             serviceRegistry, workflowService, workspace, persistence, elementStore, systemUserName, messageSender,
             messageReceiver);
     archive.activate();
+    for (RemoteElementStore e : remotes) {
+      archive.addRemoteElementStore(e);
+    }
+    remotes.clear();
+
 
     // the JMX file system element store bean
     final ElementStoreBean elementStoreBean = new ElementStoreBean(elementStore);

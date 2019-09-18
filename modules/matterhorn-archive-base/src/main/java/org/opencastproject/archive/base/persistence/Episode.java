@@ -37,9 +37,10 @@ public final class Episode {
   private final AccessControlList acl;
   private final MediaPackage mediaPackage;
   private DublinCoreCatalog dc;
+  private final String storeId;
 
   public Episode(MediaPackage mediaPackage, DublinCoreCatalog dc, Version version, String organization, AccessControlList acl,
-          Date modificationDate, boolean deleted) {
+          Date modificationDate, boolean deleted, String storeId) {
     this.version = version;
     this.organization = organization;
     this.deleted = deleted;
@@ -47,6 +48,7 @@ public final class Episode {
     this.acl = acl;
     this.mediaPackage = mediaPackage;
     this.dc = dc;
+    this.storeId = storeId;
   }
 
   public Version getVersion() {
@@ -71,6 +73,15 @@ public final class Episode {
 
   public MediaPackage getMediaPackage() {
     return mediaPackage;
+  }
+
+  public String getStoreId() {
+    return storeId;
+  }
+
+  @Override
+  public String toString() {
+    return mediaPackage.getIdentifier().toString() + "@" + version.toString();
   }
 
   public DublinCoreCatalog getDublinCore() {

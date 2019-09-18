@@ -67,6 +67,9 @@ import javax.persistence.TemporalType;
                 + "AND e.version = (SELECT MAX(e2.version) FROM Episode e2 WHERE e2.mediaPackageId = :mediaPackageId)"),
         @NamedQuery(name = "Episode.findLatestVersion", query = "SELECT MAX(a.version) FROM Episode a WHERE a.mediaPackageId = :mediaPackageId "),
         @NamedQuery(name = "Episode.findAllById", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mediaPackageId"),
+        @NamedQuery(name = "Episode.findByIdAndDate", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mpId AND e.modificationDate >= :start AND e.modificationDate <= :end AND e.deleted=false"),
+        @NamedQuery(name = "Episode.findByDate", query = "SELECT e FROM Episode e WHERE e.modificationDate >= :start AND e.modificationDate <= :end AND e.deleted=false"),
+        @NamedQuery(name = "Episode.setStorageId", query = "UPDATE Episode e SET e.storageId=:storageId WHERE e.mediaPackageId=:mediaPackageId AND e.version=:version"),
         @NamedQuery(name = "Episode.updateDublinCoreXML", query = "UPDATE Episode e SET e.dublinCoreXml = :dublinCoreXml WHERE e.mediaPackageId = :mediaPackageId AND e.version = :version")
 })
 
@@ -101,6 +104,9 @@ public final class EpisodeDto {
   @Column(name = "mediapackage_xml", length = 65535, nullable = false)
   private String mediaPackageXml;
 
+  @Column(name = "storage_id", nullable = false)
+  private String storageId;
+
   public static EpisodeDto create(Episode episode) {
     try {
       final EpisodeDto dto = new EpisodeDto();
@@ -113,6 +119,7 @@ public final class EpisodeDto {
       dto.mediaPackageXml = MediaPackageParser.getAsXml(episode.getMediaPackage());
       ByteArrayInputStream in = new ByteArrayInputStream(MediaPackageParser.getAsXml(episode.getMediaPackage()).getBytes());
       dto.dublinCoreXml = episode.getDublinCore().toXmlString();
+      dto.storageId = episode.getStoreId();
       return dto;
     } catch (Exception e) {
       return chuck(e);
@@ -126,7 +133,7 @@ public final class EpisodeDto {
           dc = DublinCoreXmlFormat.read(dublinCoreXml);
       }
       return new Episode(MediaPackageParser.getFromXml(mediaPackageXml), dc, getVersion(), organization, getAcl(),
-              modificationDate, deleted);
+              modificationDate, deleted, storageId);
     } catch (Exception e) {
       return chuck(e);
     }
@@ -208,5 +215,17 @@ public final class EpisodeDto {
           tuple("mediaPackageId", mediaPackageId),
           tuple("version", version.value()),
           tuple("dublinCoreXml", dublinCoreXml));
+  }
+
+  public static List<EpisodeDto> findAllByDate(EntityManager em, Date start, Date end) {
+    return PersistenceUtil.findAll(em, "Episode.findByDate", tuple("start", start), tuple("end", end));
+  }
+
+  public static List<EpisodeDto> findAllByIdAndDate(EntityManager em, String mediapackageId, Date start, Date end) {
+    return PersistenceUtil.findAll(em, "Episode.findByIdAndDate", tuple("mpId", mediapackageId), tuple("start", start), tuple("end", end));
+  }
+
+  public static boolean setStorageId(EntityManager em, String mediaPackageId, Version version, String storeId) {
+    return PersistenceUtil.runUpdate(em, "Episode.setStorageId", tuple("mediaPackageId", mediaPackageId), tuple("version", version.value()), tuple("storageId", storeId));
   }
 }

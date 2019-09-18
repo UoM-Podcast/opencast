@@ -35,6 +35,8 @@
     cardinality="1..1" policy="static" bind="setWorkflowService" />
   <reference name="elementStore" interface="org.opencastproject.archive.base.storage.ElementStore"
     cardinality="1..1" policy="static" bind="setElementStore" />
+  <reference name="remoteElementStores" interface="org.opencastproject.archive.base.storage.RemoteElementStore"
+    cardinality="0..n" policy="dynamic" bind="addRemoteElementStore" unbind="removeRemoteElementStore"/>
   <reference name="httpMediaPackageElementProvider" interface="org.opencastproject.archive.api.HttpMediaPackageElementProvider"
     cardinality="0..1" policy="dynamic" bind="setHttpMediaPackageElementProvider" unbind="unsetHttpMediaPackageElementProvider"/>
   <reference name="message-broker-receiver" interface="org.opencastproject.message.broker.api.MessageReceiver"

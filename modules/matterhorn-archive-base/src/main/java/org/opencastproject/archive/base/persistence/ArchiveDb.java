@@ -29,6 +29,7 @@ import org.opencastproject.util.data.Option;
 
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 
 /** API that defines persistent storage of episodes. */
 public interface ArchiveDb {
@@ -118,6 +119,8 @@ public interface ArchiveDb {
    *         the store date
    * @param version
    *         the new version from the archive
+   * @param storeId
+   *         the id of the store where the episode currently resides
    * @throws ArchiveDbException
    *         if an error occurs
    */
@@ -125,7 +128,8 @@ public interface ArchiveDb {
                     DublinCoreCatalog dublinCore,
                     AccessControlList acl,
                     Date now,
-                    Version version) throws ArchiveDbException;
+                    Version version,
+                    String storeId) throws ArchiveDbException;
 
   /**
    * Updates the Dublin Core of a media package
@@ -143,5 +147,80 @@ public interface ArchiveDb {
   boolean updateEpisodeDC(String mediaPackageId, Version version, String dublinCoreXml)
     throws ArchiveDbException;
 
+  /**
+   * Find an asset by its checksum
+   *
+   * @param checksum
+   *          the checksum of the asset
+   * @return
+   *          an Option containing the asset.  Maybe.
+   * @throws ArchiveDbException
+   */
   Option<Asset> findAssetByChecksum(String checksum) throws ArchiveDbException;
+
+  /**
+   * Find an asset by its checksum and store
+   *
+   * @param checksum
+   *          the checksum of the asset
+   * @param storeId
+   *          the id of the store to search
+   * @return
+   *          an Option containing the asset.  Maybe.
+   * @throws ArchiveDbException
+   */
+  Option<Asset> findAssetByChecksumAndStore(String checksum, String storeId) throws ArchiveDbException;
+
+  /**
+   * Set the storage location for an episode
+   *
+   * @param mediaPackageId
+   *          the mediapackage id to modify
+   * @param version
+   *          the version of the mediapackaeg to modify
+   * @param targetStoreId
+   *          the id of the store where the episode should be stored
+   * @return
+   *          true if the update succeeded (or is a noop), false otherwise
+   */
+  boolean setStorageLocation(String mediaPackageId, Version version, String targetStoreId);
+
+  /**
+   * Return a list of all versions for an episode.
+   *
+   * @param mediaPackageId
+   *          the mediapackage id to select
+   * @return
+   *          the (potentially empty) list of versions for that episode
+   * @throws ArchiveDbException
+   */
+  List<Episode> getEpisode(String mediaPackageId) throws ArchiveDbException;
+
+  /**
+   * Return a list of all versions and episodes archived between the start and end dates
+   *
+   * @param start
+   *          the start date for the window
+   * @param end
+   *          the end date for the window
+   * @return
+   *          the (potentially empty) list of versions and episodes
+   * @throws ArchiveDbException
+   */
+  List<Episode> getEpisodes(Date start, Date end) throws ArchiveDbException;
+
+  /**
+   * Return a list of all versions and episodes archived between the start and end dates
+   *
+   * @param mediaPackageId
+   *          the mediapackage id to select
+   * @param start
+   *          the start date for the window
+   * @param end
+   *          the end date for the window
+   * @return
+   *          the (potentially empty) list of versions and episodes
+   * @throws ArchiveDbException
+   */
+  List<Episode> getEpisodes(String mediaPackageId, Date start, Date end) throws ArchiveDbException;
 }

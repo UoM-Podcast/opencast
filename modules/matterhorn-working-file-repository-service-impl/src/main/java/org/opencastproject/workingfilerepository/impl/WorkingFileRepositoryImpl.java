@@ -346,7 +346,7 @@ public class WorkingFileRepositoryImpl implements WorkingFileRepository, PathMap
       for (File fileToDelete : filesToDelete) {
         if (!fileToDelete.equals(f) && !fileToDelete.equals(md5File)) {
           logger.trace("delete {}", fileToDelete.getAbsolutePath());
-          if (!fileToDelete.delete()) {
+          if (fileToDelete.exists() && !fileToDelete.delete()) {
             throw new IllegalStateException("Unable to delete file: " + fileToDelete.getAbsolutePath());
           }
         }

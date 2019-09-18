@@ -19,36 +19,9 @@
  *
  */
 
-package org.opencastproject.archive.base.persistence;
+package org.opencastproject.archive.base.storage;
 
-import org.opencastproject.archive.base.StoragePath;
-
-import java.net.URI;
-
-public final class Asset {
-  private final URI uri;
-  private final StoragePath storagePath;
-  private final String checksum;
-  private final String storeId;
-
-  public Asset(URI uri, StoragePath storagePath, String checksum, String storeId) {
-    this.uri = uri;
-    this.storagePath = storagePath;
-    this.checksum = checksum;
-    this.storeId = storeId;
-  }
-
-  public URI getUri() {
-    return uri;
-  }
-
-  public StoragePath getStoragePath() {
-    return storagePath;
-  }
-
-  public String getChecksum() {
-    return checksum;
-  }
-
-  public String getStoreId() { return storeId; }
+public interface RemoteElementStore extends ElementStore {
+  //Defines the root directory to be used for any caching done by a remote element store.  Caches should live as directories under this directory.
+  String ELEMENT_STORE_CACHE_ROOT = "org.opencastproject.archive.storage.cache.rootdir";
 }
