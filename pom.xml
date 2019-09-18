@@ -51,6 +51,7 @@
     <module>modules/matterhorn-archive-base</module>
     <module>modules/matterhorn-archive-schema</module>
     <module>modules/matterhorn-archive-storage-fs</module>
+    <module>modules/matterhorn-archive-storage-aws</module>
     <module>modules/matterhorn-archive-workflowoperation</module>
     <module>modules/matterhorn-authorization-manager</module>
     <module>modules/matterhorn-authorization-xacml</module>

@@ -183,6 +183,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-schema/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-fs/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-aws/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-authorization-manager/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-caption-api/${project.version}</bundle>
@@ -319,6 +320,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-schema/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-fs/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-aws/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-authorization-manager/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-caption-api/${project.version}</bundle>
@@ -419,6 +421,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-schema/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-fs/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-aws/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-authorization-manager/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-caption-api/${project.version}</bundle>
@@ -585,6 +588,7 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-schema/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-fs/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-storage-aws/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-authorization-manager/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-caption-api/${project.version}</bundle>
