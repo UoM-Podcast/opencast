@@ -276,7 +276,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
         }
       } catch (Exception e) {
         errors++;
-        logger.error("updateEpisodeDC through an exception: {} ", e);
+        logger.error("updateEpisodeDC threw an exception: {} ", e);
       } finally {
         secSvc.setOrganization(null);
         secSvc.setUser(null);
