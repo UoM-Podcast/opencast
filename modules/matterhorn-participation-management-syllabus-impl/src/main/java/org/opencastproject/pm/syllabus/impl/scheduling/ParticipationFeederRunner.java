@@ -46,7 +46,9 @@ import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseExc
 import org.opencastproject.pm.api.persistence.RecordingQuery;
 import org.opencastproject.pm.api.scheduling.SnapCountService;
 import org.opencastproject.pm.api.util.RequirementManager;
-import org.opencastproject.pm.syllabus.api.SyllabusService;
+import org.opencastproject.pm.syllabus.api.SyllabusCaptureFilter;
+import org.opencastproject.pm.syllabus.api.SyllabusData;
+import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.api.VActivity;
 import org.opencastproject.pm.syllabus.api.VActivityDateTime;
 import org.opencastproject.pm.syllabus.api.VActivityLocation;
@@ -109,7 +111,7 @@ public class ParticipationFeederRunner {
   private static final String TRIGGER_GROUP = "mh-participation-feeder";
   private static final String JOB_PARAM_PARENT = "parent";
 
-  private final SyllabusService syllabusService;
+  private final SyllabusDataService syllabusDataService;
   private final ParticipationManagementDatabase persistence;
   private final RequirementManager requirementManager;
   private final Cell<Option<SecurityContext>> secCtx;
@@ -118,9 +120,10 @@ public class ParticipationFeederRunner {
 
   private final Scheduler scheduler;
 
-  public ParticipationFeederRunner(SyllabusService syllabusService, ParticipationManagementDatabase persistence,
+  public ParticipationFeederRunner(SyllabusDataService syllabusDataService, ParticipationManagementDatabase persistence,
           RequirementManager requirementManager, Cell<Option<SecurityContext>> secCtx) {
-    this.syllabusService = syllabusService;
+
+    this.syllabusDataService = syllabusDataService;
     this.persistence = persistence;
     this.requirementManager = requirementManager;
     this.secCtx = secCtx;
@@ -304,8 +307,7 @@ public class ParticipationFeederRunner {
 
     /** Run the harvest Verification. */
     private void verifyHarvest(final Synchronization synchronization, final ParticipationFeederRunner parent) {
-      final SyllabusService syl = parent.syllabusService;
-      final SyllabusData data = SyllabusData.fetch(syl);
+      final SyllabusData data = parent.syllabusDataService.fetch();
       final Map<String, Set<Room>> buildingMap = new HashMap<String, Set<Room>>();
       final Set<Long> treatedRecordings = new HashSet<Long>();
       final ModuleFinder moduleFinder = new ModuleFinder(data.getModule(), data.getActivityParent(), data.getActivity());
@@ -325,8 +327,8 @@ public class ParticipationFeederRunner {
     private void harvest(final Synchronization synchronization, final ParticipationFeederRunner parent) {
       logger.info("Start harvesting from Syllabus+");
 
-      final SyllabusService syllabus = parent.syllabusService;
-      final SyllabusData data = SyllabusData.fetch(syllabus);
+      final SyllabusData data = parent.syllabusDataService.fetch();
+      final SyllabusCaptureFilter syllabusCaptureFilter = parent.syllabusDataService.getSyllabusCaptureFilter();
       final Map<String, Set<Room>> buildingMap = new HashMap<>();
       final Set<Long> treatedRecordings = new HashSet<>();
       final ModuleFinder moduleFinder = new ModuleFinder(data.getModule(), data.getActivityParent(), data.getActivity());
@@ -334,7 +336,7 @@ public class ParticipationFeederRunner {
       Option<SchedulingSource> schedulingSource;
 
       final Map<String, String> locationSuitabilityInputs = new HashMap<>();
-      for (Map.Entry<String, Map<String, String>> caPropsEntry : syllabus.getCaptureRooms().entrySet()) {
+      for (Map.Entry<String, Map<String, String>> caPropsEntry : syllabusCaptureFilter.getCaptureRooms().entrySet()) {
         Map<String, String> properties = caPropsEntry.getValue();
         locationSuitabilityInputs.put(properties.get("id"), properties.get("inputs"));
       }
@@ -354,7 +356,7 @@ public class ParticipationFeederRunner {
         // fetch matching V_ACTIVITY_DATETIME entities
         final String firstActivityId = activityPartition.get(0).getId();
         final String lastActivityId = activityPartition.get(activityPartition.size() - 1).getId();
-        final List<VActivityDateTime> activityDateTimeList = fetch(syllabus, firstActivityId, lastActivityId, 4);
+        final List<VActivityDateTime> activityDateTimeList = fetch(parent.syllabusDataService, firstActivityId, lastActivityId, 4);
         logger.debug("# activityDateTime from " + firstActivityId + " to " + lastActivityId + " "
                 + activityDateTimeList.size());
 
@@ -370,7 +372,7 @@ public class ParticipationFeederRunner {
         // iterate activity partition
         for (final VActivity activity : activityPartition) {
           final String aId = activity.getId();
-          if (!syllabus.isCaptureActivityType(activity)) {
+          if (!syllabusCaptureFilter.isCaptureActivityType(activity)) {
             continue;
           }
           logger.info(format("********** Handling activity %s", aId));
@@ -616,9 +618,9 @@ public class ParticipationFeederRunner {
     }
 
     /** Fetch a partition from the VActivityDateTime table. */
-    private List<VActivityDateTime> fetch(SyllabusService syl, String firstActivityId, String lastActivityId,
+    private List<VActivityDateTime> fetch(SyllabusDataService syllabus, String firstActivityId, String lastActivityId,
             int retries) {
-      final List<VActivityDateTime> r = syl.findActivityDateTimeByRange(firstActivityId, lastActivityId);
+      final List<VActivityDateTime> r = syllabus.findActivityDateTimeByRange(firstActivityId, lastActivityId);
       if (r.size() > 0) {
         return r;
       } else {
@@ -628,7 +630,7 @@ public class ParticipationFeederRunner {
             Thread.sleep(1000);
           } catch (InterruptedException ignore) {
           }
-          return fetch(syl, firstActivityId, lastActivityId, retries - 1);
+          return fetch(syllabus, firstActivityId, lastActivityId, retries - 1);
         } else {
           return r;
         }

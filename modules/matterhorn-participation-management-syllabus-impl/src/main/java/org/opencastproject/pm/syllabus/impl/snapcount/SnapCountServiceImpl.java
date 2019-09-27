@@ -36,7 +36,7 @@ import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseExc
 import org.opencastproject.pm.api.scheduling.ScheduleFeederService;
 import org.opencastproject.pm.api.scheduling.SnapCountService;
 import org.opencastproject.pm.api.util.RequirementManager;
-import org.opencastproject.pm.syllabus.api.SyllabusService;
+import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.impl.scheduling.DassRequirementManager;
 import org.opencastproject.pm.syllabus.impl.scheduling.HarvestStats;
 import org.opencastproject.pm.syllabus.impl.scheduling.ParticipationFeederRunner;
@@ -66,7 +66,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   /** Log facility */
   private static final Logger logger = LoggerFactory.getLogger(SnapCountService.class);
 
-  private SyllabusService syllabusService;
+  private SyllabusDataService syllabusDataService;
   private ParticipationManagementDatabase participationDatabase;
   private SecurityService securityService;
   private ScheduleFeederService matterhornSyncService;
@@ -80,8 +80,8 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   private EmailSender emailSenderService;
 
  /** OSGi container callback. */
-  public void setSyllabusService(SyllabusService syllabusService) {
-    this.syllabusService = syllabusService;
+  public void setSyllabusDataService(SyllabusDataService syllabusDataService) {
+    this.syllabusDataService = syllabusDataService;
   }
 
   /** OSGi container callback. */
@@ -129,7 +129,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
     logger.info("Start participation management orchestrator");
     systemUser = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
     requirementManager = new DassRequirementManager(requirementService, participationDatabase);
-    pmRunner = new ParticipationFeederRunner(syllabusService, participationDatabase, requirementManager, secCtx);
+    pmRunner = new ParticipationFeederRunner(syllabusDataService, participationDatabase, requirementManager, secCtx);
   }
 
   /** OSGi container callback. */

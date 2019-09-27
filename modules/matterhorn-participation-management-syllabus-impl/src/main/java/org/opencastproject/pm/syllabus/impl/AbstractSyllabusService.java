@@ -55,11 +55,8 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.persistence.EntityManager;
 
@@ -72,9 +69,6 @@ public abstract class AbstractSyllabusService implements SyllabusService {
   protected abstract void closePenv();
 
   private final String sqlFindAllOccurrence;
-
-  private final Map<String, Map<String, String>> captureRooms = new HashMap<>();
-  private final Map<String, Map<String, String>> captureActivityTypes = new HashMap<>();
 
   protected AbstractSyllabusService() {
     sqlFindAllOccurrence = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-all-occurrence.sql"),
@@ -325,73 +319,6 @@ public abstract class AbstractSyllabusService implements SyllabusService {
     } else {
       return null;
     }
-  }
-
-  @Override
-  public List<String> getCaptureRoomTypeIDs() {
-    List<String> locIds = new ArrayList<>();
-    for (Map<String, String> location : captureRooms.values()) {
-      String locId = location.get("id");
-      if (null != locId) {
-        locIds.add(locId);
-      }
-    }
-    return locIds;
-  }
-
-  @Override
-  public List<String> getCaptureActivityTypeIDs() {
-    List<String> activityIds = new ArrayList<>();
-    for (Map<String, String> activity : captureActivityTypes.values()) {
-      String acId = activity.get("id");
-      if (null != acId) {
-        activityIds.add(acId);
-      }
-    }
-    return activityIds;
-  }
-
-  @Override
-  public Map<String, Map<String, String>>getCaptureRooms() {
-    return captureRooms;
-  }
-
-  @Override
-  public Map<String, Map<String, String>>getCaptureActivityTypes() {
-    return captureActivityTypes;
-  }
-
-  @Override
-  public boolean isCaptureActivityType(VActivity activity) {
-    if (getCaptureActivityTypeIDs().contains(ACTIVITY_TYPE_ANY)) {
-        return true;
-    }
-    return getCaptureActivityTypeIDs().contains(activity.getActivityTypeId());
-  }
-
-  @Override
-  public boolean hasCaptureAgent(VLocationSuitability suitability) {
-    return getCaptureRoomTypeIDs().contains(suitability.getSuitabilityId());
-  }
-
-  @Override
-  public void addCaptureRoomProperty(final String captureRoom, String property, String value) {
-    Map<String, String> loc = captureRooms.get(captureRoom);
-    if (null == loc) {
-      loc = new HashMap<>();
-      captureRooms.put(captureRoom, loc);
-    }
-    loc.put(property, value);
-  }
-
-  @Override
-  public void addCaptureActivityTypeProperty(final String activityType, String property, String value) {
-    Map<String, String> type = captureActivityTypes.get(activityType);
-    if (null == type) {
-      type = new HashMap<>();
-      captureActivityTypes.put(activityType, type);
-    }
-    type.put(property, value);
   }
 
   // could by solved with JPA @javax.persistence.SqlResultSetMapping also

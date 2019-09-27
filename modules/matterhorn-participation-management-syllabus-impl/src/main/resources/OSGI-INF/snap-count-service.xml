@@ -11,11 +11,11 @@
     <provide interface="org.opencastproject.pm.api.scheduling.SnapCountService" />
     <provide interface="org.osgi.service.cm.ManagedService" />
   </service>
-  <reference name="syllabus"
-             interface="org.opencastproject.pm.syllabus.api.SyllabusService"
+  <reference name="syllabusData"
+             interface="org.opencastproject.pm.syllabus.api.SyllabusDataService"
              cardinality="1..1"
              policy="static"
-             bind="setSyllabusService" />
+             bind="setSyllabusDataService" />
   <reference name="participationDatabase"
              interface="org.opencastproject.pm.api.persistence.ParticipationManagementDatabase"
              cardinality="1..1"
@@ -42,7 +42,7 @@
              interface="org.opencastproject.security.api.OrganizationDirectoryService"
              cardinality="1..1"
              policy="static"
-             bind="setOrganizationDirectoryService" />  
+             bind="setOrganizationDirectoryService" />
   <reference name="requirement"
              interface="org.opencastproject.requirement.api.RequirementService"
              cardinality="0..1"

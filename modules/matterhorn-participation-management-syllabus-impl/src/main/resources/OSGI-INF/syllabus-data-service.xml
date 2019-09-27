@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.syllabus.impl.SyllabusDataService"
+               immediate="true"
+               activate="activate"
+               deactivate="deactivate">
+  <implementation class="org.opencastproject.pm.syllabus.impl.SyllabusDataServiceImpl" />
+  <property name="service.pid" value="org.opencastproject.pm.syllabus.impl.SyllabusDataService" />
+  <property name="service.description" value="Syllabus+ data harvester" />
+  <service>
+    <provide interface="org.osgi.service.cm.ManagedService" />
+    <provide interface="org.opencastproject.pm.syllabus.api.SyllabusDataService" />
+  </service>
+  <reference name="syllabus"
+             interface="org.opencastproject.pm.syllabus.api.SyllabusService"
+             cardinality="0..1"
+             policy="dynamic"
+             bind="setSyllabusService" />
+</scr:component>

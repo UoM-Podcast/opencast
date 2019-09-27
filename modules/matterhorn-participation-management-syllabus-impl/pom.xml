@@ -174,7 +174,7 @@
             </Import-Package>
             <Export-Package>
               org.opencastproject.pm.syllabus.impl;version=${project.version},
-              org.opencastproject.pm.syllabus.impl.snapcount;version=${project.version}, 
+              org.opencastproject.pm.syllabus.impl.snapcount;version=${project.version},
               org.opencastproject.pm.syllabus.impl.scheduling;version=${project.version}
             </Export-Package>
             <Embed-Dependency>
@@ -188,7 +188,8 @@
               OSGI-INF/participation-feeder-service.xml,
               OSGI-INF/snap-count-service.xml,
               OSGI-INF/dass-service.xml,
-              OSGI-INF/syllabus-service.xml
+              OSGI-INF/syllabus-service.xml,
+              OSGI-INF/syllabus-data-service.xml
             </Service-Component>
             <Meta-Persistence>
               META-INF/persistence.xml
