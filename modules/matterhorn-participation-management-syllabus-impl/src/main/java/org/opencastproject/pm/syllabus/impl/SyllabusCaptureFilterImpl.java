@@ -21,17 +21,32 @@
 package org.opencastproject.pm.syllabus.impl;
 
 import static org.opencastproject.pm.syllabus.api.SyllabusService.ACTIVITY_TYPE_ANY;
+import static org.opencastproject.util.OsgiUtil.getCfg;
+import static org.opencastproject.util.OsgiUtil.getOptCfg;
 
 import org.opencastproject.pm.syllabus.api.SyllabusCaptureFilter;
 import org.opencastproject.pm.syllabus.api.VActivity;
 import org.opencastproject.pm.syllabus.api.VLocationSuitability;
+import org.opencastproject.util.data.Option;
+
+import org.osgi.service.cm.ConfigurationException;
 
 import java.util.ArrayList;
+import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 public class SyllabusCaptureFilterImpl implements SyllabusCaptureFilter {
+  // filter properties
+  private static final String CAPTURE_ROOMS_PROPERTY = "capture.rooms";
+  private static final String CAPTURE_ROOM_PROPERTY = "capture.room";
+  private static final String[] CAPTURE_ROOM_PROPS = {"name", "id", "inputs"};
+
+  private static final String CAPTURE_TYPES_PROPERTY = "capture.types";
+  private static final String CAPTURE_TYPE_PROPERTY = "capture.type";
+  private static final String[] CAPTURE_TYPE_PROPS = {"name", "id"};
 
   // Data to filter S+
   private final Map<String, Map<String, String>> captureRooms = new HashMap<>();
@@ -101,4 +116,31 @@ public class SyllabusCaptureFilterImpl implements SyllabusCaptureFilter {
     return getCaptureRoomTypeIDs().contains(suitability.getSuitabilityId());
   }
 
+  @Override
+  public void updateProperties(Dictionary properties) throws ConfigurationException {
+    final String rooms = getCfg(properties, CAPTURE_ROOMS_PROPERTY);
+
+    for (String room : rooms.split(",")) {
+      for (String prop : CAPTURE_ROOM_PROPS) {
+        Option<String> value = getOptCfg(properties, CAPTURE_ROOM_PROPERTY + "." + room.trim() + "." + prop);
+        if (value.isSome()) {
+          addCaptureRoomProperty(room.trim(), prop, value.get());
+        }
+      }
+    }
+    final Option<String> typesOption = getOptCfg(properties, CAPTURE_TYPES_PROPERTY);
+    if (typesOption.isSome()) {
+      String types = typesOption.get();
+      for (String type : types.split(",")) {
+        for (String prop : CAPTURE_TYPE_PROPS) {
+          Option<String> value = getOptCfg(properties, CAPTURE_TYPE_PROPERTY + "." + type.trim() + "." + prop);
+          if (value.isSome()) {
+            addCaptureActivityTypeProperty(type.trim(), prop, value.get());
+          }
+        }
+      }
+    } else {
+      addCaptureActivityTypeProperty("ANY", "id", ACTIVITY_TYPE_ANY);
+    }
+  }
 }

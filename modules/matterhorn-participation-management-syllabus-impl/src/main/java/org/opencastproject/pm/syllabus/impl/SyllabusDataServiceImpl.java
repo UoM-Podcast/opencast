@@ -20,8 +20,6 @@
  */
 package org.opencastproject.pm.syllabus.impl;
 
-import static org.opencastproject.pm.syllabus.api.SyllabusService.ACTIVITY_TYPE_ANY;
-import static org.opencastproject.util.OsgiUtil.getCfg;
 import static org.opencastproject.util.OsgiUtil.getOptCfg;
 import static org.opencastproject.util.OsgiUtil.getOptCfgAsBoolean;
 
@@ -53,18 +51,9 @@ import java.util.Dictionary;
 import java.util.List;
 
 public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataService {
-
+  // service config properties
   private static final String LOCAL_PROPERTY = "local";
   private static final String REMOTE_URL_PROPERTY = "url";
-
-  // room filter paramaters
-  private static final String CAPTURE_ROOMS_PROPERTY = "capture.rooms";
-  private static final String CAPTURE_ROOM_PROPERTY = "capture.room";
-  private static final String[] CAPTURE_ROOM_PROPS = {"name", "id", "inputs"};
-
-  private static final String CAPTURE_TYPES_PROPERTY = "capture.types";
-  private static final String CAPTURE_TYPE_PROPERTY = "capture.type";
-  private static final String[] CAPTURE_TYPE_PROPS = {"name", "id"};
 
   private SyllabusCaptureFilter syllabusCaptureFilter;
 
@@ -104,35 +93,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       }
     }
 
-
-    setParticipationProperties(properties);
-  }
-
-  public void setParticipationProperties(Dictionary properties) throws ConfigurationException {
-    final String rooms = getCfg(properties, CAPTURE_ROOMS_PROPERTY);
-
-    for (String room : rooms.split(",")) {
-      for (String prop : CAPTURE_ROOM_PROPS) {
-        Option<String> value = getOptCfg(properties, CAPTURE_ROOM_PROPERTY + "." + room.trim() + "." + prop);
-        if (value.isSome()) {
-          syllabusCaptureFilter.addCaptureRoomProperty(room.trim(), prop, value.get());
-        }
-      }
-    }
-    final Option<String> typesOption = getOptCfg(properties, CAPTURE_TYPES_PROPERTY);
-    if (typesOption.isSome()) {
-      String types = typesOption.get();
-      for (String type : types.split(",")) {
-        for (String prop : CAPTURE_TYPE_PROPS) {
-          Option<String> value = getOptCfg(properties, CAPTURE_TYPE_PROPERTY + "." + type.trim() + "." + prop);
-          if (value.isSome()) {
-            syllabusCaptureFilter.addCaptureActivityTypeProperty(type.trim(), prop, value.get());
-          }
-        }
-      }
-    } else {
-      syllabusCaptureFilter.addCaptureActivityTypeProperty("ANY", "id", ACTIVITY_TYPE_ANY);
-    }
+    syllabusCaptureFilter.updateProperties(properties);
   }
 
   @Override
@@ -264,10 +225,6 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   @Override
   public SyllabusCaptureFilter getSyllabusCaptureFilter() {
     return syllabusCaptureFilter;
-  }
-
-  public void setRemoteServiceURL(URL remoteServiceURL) {
-    this.remoteServiceURL = remoteServiceURL;
   }
 
   /** OSGi container callback. */

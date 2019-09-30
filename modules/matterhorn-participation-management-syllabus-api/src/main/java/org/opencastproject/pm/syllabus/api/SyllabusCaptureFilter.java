@@ -20,6 +20,9 @@
  */
 package org.opencastproject.pm.syllabus.api;
 
+import org.osgi.service.cm.ConfigurationException;
+
+import java.util.Dictionary;
 import java.util.List;
 import java.util.Map;
 
@@ -38,5 +41,7 @@ public interface SyllabusCaptureFilter {
   boolean isCaptureActivityType(VActivity activity);
 
   boolean hasCaptureAgent(VLocationSuitability suitability);
+
+  void updateProperties(Dictionary properties) throws ConfigurationException;
 }
 
