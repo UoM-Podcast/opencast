@@ -31,6 +31,7 @@ import org.opencastproject.util.data.functions.Strings;
 
 import org.joda.time.DateTime;
 
+import java.io.Serializable;
 import java.util.Date;
 
 import javax.persistence.Entity;
@@ -47,7 +48,7 @@ import javax.persistence.TemporalType;
         @NamedQuery(name = "VModule.findAllSince", query = "select a from VModule a where a.lastChanged > :since"),
         @NamedQuery(name = "VModule.findAll", query = "select a from VModule a"),
         @NamedQuery(name = "VModule.getByCourseKey", query = "select a from VModule a where a.userText4 = :courseKey") })
-public final class VModuleDto {
+public final class VModuleDto implements Serializable {
   @Id
   private String id;
   private String name;

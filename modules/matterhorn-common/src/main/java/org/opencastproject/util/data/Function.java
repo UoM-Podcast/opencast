@@ -30,6 +30,8 @@ import org.opencastproject.util.data.functions.Functions;
 
 import com.entwinemedia.fn.Fn;
 
+import java.io.Serializable;
+
 /**
  * Function of arity 1.
  *
@@ -40,7 +42,7 @@ import com.entwinemedia.fn.Fn;
  *
  * @see X
  */
-public abstract class Function<A, B> {
+public abstract class Function<A, B> implements Serializable {
   /** Apply function to <code>a</code>. */
   public abstract B apply(A a);
 

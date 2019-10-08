@@ -29,12 +29,14 @@ import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.api.SyllabusService;
 import org.opencastproject.pm.syllabus.api.VActivityDateTime;
 import org.opencastproject.pm.syllabus.api.VModule;
+import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.util.data.Option;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClients;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.osgi.service.component.ComponentContext;
@@ -55,9 +57,9 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   private static final String LOCAL_PROPERTY = "local";
   private static final String REMOTE_URL_PROPERTY = "url";
 
-  private SyllabusCaptureFilter syllabusCaptureFilter;
+  protected SyllabusCaptureFilter syllabusCaptureFilter;
 
-  private static final Logger logger = LoggerFactory.getLogger(SyllabusDataServiceImpl.class);
+  protected static Logger logger = LoggerFactory.getLogger(SyllabusDataServiceImpl.class);
 
   // is SyllabusService (S+ database) local or remote
   private Boolean local = true;
@@ -65,16 +67,28 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   // Must be valid is local == true
   private SyllabusService syllabusService;
 
+  // Keep our own copy of this unchanging value;
+  private String sourceDescription = null;
+
+  // Handle remote connections securely
+  protected TrustedHttpClient client = null;
+
   // URI of the base remote SyllabusEntityService. eg https://example.com/syllabus
   // Must be valid is local == false
   private URL remoteServiceURL;
 
   // Remote connection when local == false
-  private HttpClient httpClient;
+  private HttpClient httpClient =  HttpClients.createDefault();;
 
   public void activate(final ComponentContext cc) {
-    logger.info("Start Syllabus Data Service");
+    logger.info("Activating {}", this.getClass().getName());
     syllabusCaptureFilter = new SyllabusCaptureFilterImpl();
+    httpClient = HttpClients.createDefault();
+    try {
+      updated(cc.getProperties());
+    } catch (ConfigurationException e) {
+      logger.debug("Couldn't read properties");
+    }
   }
 
   @Override
@@ -82,12 +96,13 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     Option<Boolean> bvalue = getOptCfgAsBoolean(properties, LOCAL_PROPERTY);
     if (bvalue.isSome()) {
       local = bvalue.get();
+      logger.info("Setting service to {} mode", local ? "local" : "remote");
     }
 
     Option<String> value = getOptCfg(properties, REMOTE_URL_PROPERTY);
     if (value.isSome()) {
       try {
-       remoteServiceURL = new URL(value.get());
+        remoteServiceURL = new URL(value.get());
       } catch (MalformedURLException e) {
         logger.error("Remote URL is invalid: ", e);
       }
@@ -98,95 +113,60 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
 
   @Override
   public SyllabusData fetch() {
+    final SyllabusData data;
+
     if (local) {
       if (syllabusService != null) {
-        return fetchLocal();
+        data = new SyllabusDataImpl();
+        data.fetch(syllabusService, syllabusCaptureFilter);
       } else {
         logger.error("Can't fetch data as no local SyllabusService");
-
+        return null;
       }
+    } else {
+      logger.debug("Requesting all syllabus data");
+
+      String url = remoteServiceURL.toString();
+      data = getResponseAsObject(url);
     }
-    return null;
+
+    return data;
   }
 
   @Override
   public SyllabusData fetchModules() {
+    final SyllabusData data;
+
     if (local) {
       if (syllabusService != null) {
-        return fetchModulesLocal();
+        data = new SyllabusDataImpl();
+        data.fetchModules(syllabusService);
       } else {
         logger.error("Can't fetch data as no local SyllabusService");
-
+        return null;
       }
+    } else {
+      logger.debug("Requesting syllabus module data");
+
+      String url = remoteServiceURL.toString() + "?subset=modules";
+      data = getResponseAsObject(url);
     }
-    return null;
-  }
-
-  private SyllabusData fetchLocal() {
-    SyllabusData data = new SyllabusDataImpl();
-    data.fetch(syllabusService, syllabusCaptureFilter);
-
-    return data;
-  }
-
-  private SyllabusData fetchModulesLocal() {
-    SyllabusData data = new SyllabusDataImpl();
-    data.fetchModules(syllabusService);
-
-    return data;
-  }
-
-  private SyllabusData fetchRemote() {
-    String url = remoteServiceURL.toString();
-
-    logger.debug("Requesting all syllabus data");
-
-    HttpResponse response = null;
-    try {
-      HttpGet get = new HttpGet(url);
-      response = httpClient.execute(get);
-      if (response != null) {
-        final SyllabusData data;
-        final HttpEntity entity = response.getEntity();
-
-        if (entity != null) {
-          try (InputStream stream = entity.getContent()) {
-            ObjectInputStream objStream = new ObjectInputStream(stream);
-            data = (SyllabusData) objStream.readObject();
-            return data;
-          } catch (IOException e) {
-            logger.error("Can't reading object stream:", e);
-            return null;
-          } catch (ClassNotFoundException ee) {
-            logger.error(ee.getMessage());
-            return null;
-          }
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Can't connect to remote SyllabusEntityService");
-    }
-
-    return null;
-  }
-
-  public SyllabusData fetchModulesRemote() {
-    String url = remoteServiceURL.toString() + "/modules";
-    final SyllabusData data = null;
-    logger.debug("Requesting syllabus module data");
 
     return data;
   }
 
   @Override
   public String getSourceDescription() {
-    if (local && syllabusService != null) {
-      return syllabusService.getSourceDescription();
-    } else {
-      // do remote thing
-      logger.error("getModuleByCourseKey remote not implemented");
-      return null;
+    if (sourceDescription == null || sourceDescription.isEmpty()) {
+      if (local && syllabusService != null) {
+         sourceDescription = syllabusService.getSourceDescription();
+      } else {
+        String url = remoteServiceURL.toString() + "/description";
+        sourceDescription = getResponseAsObject(url);
+      }
     }
+
+    return sourceDescription;
   }
 
   @Override
@@ -194,9 +174,10 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.getModuleByCourseKey(courseKey);
     } else {
-      // do remote thing
-      logger.error("getModuleByCourseKey remote not implemented");
-      return null;
+      String url = remoteServiceURL.toString() + "/modules?coursekey=" + courseKey;
+      final VModule module = getResponseAsObject(url);
+
+      return module;
     }
   }
 
@@ -205,9 +186,10 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findModuleActivityIdsByCourseKey(courseKey);
     } else {
-      // do remote thing
-      logger.error("getModuleByCourseKey remote not implemented");
-      return null;
+      String url = remoteServiceURL.toString() + "/modules/activites/ids?coursekey=" + courseKey;
+      final List<String> activityIds = getResponseAsObject(url);
+
+      return activityIds;
     }
   }
 
@@ -216,9 +198,12 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findActivityDateTimeByRange(startActivityId, endActivityId);
     } else {
-      // do remote thing
-      logger.error("getModuleByCourseKey remote not implemented");
-      return null;
+      String url = remoteServiceURL.toString() + "/activites/datetime"
+              + "?startid=" + startActivityId
+              + "&endid=" + endActivityId;
+      final List<VActivityDateTime> datetimes = getResponseAsObject(url);
+
+      return datetimes;
     }
   }
 
@@ -227,8 +212,48 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     return syllabusCaptureFilter;
   }
 
-  /** OSGi container callback. */
+  private <T> T getResponseAsObject(String url) {
+    try {
+      HttpGet get = new HttpGet(url);
+      HttpResponse response = client.execute(get);
+      T object = null;
+      if (response != null && response.getStatusLine().getStatusCode() == 200) {
+        final HttpEntity entity = response.getEntity();
+
+        if (entity != null) {
+          try (InputStream stream = entity.getContent()) {
+            ObjectInputStream objStream = new ObjectInputStream(stream);
+            object = (T) objStream.readObject();
+            return object;
+          } catch (IOException e) {
+            logger.error("Can't read object stream:", e);
+            return null;
+          } catch (ClassNotFoundException ee) {
+            logger.error("Class not found: {}", ee.getMessage());
+            return object;
+          }
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Can't connect to remote SyllabusDataService");
+    }
+    return null;
+  }
+
+  /**
+   * OSGi container callback.
+   * @param syllabusService
+   */
   public void setSyllabusService(SyllabusService syllabusService) {
     this.syllabusService = syllabusService;
+  }
+
+  /**
+   * Sets the trusted http client
+   *
+   * @param client
+   */
+  public void setTrustedHttpClient(TrustedHttpClient client) {
+    this.client = client;
   }
 }

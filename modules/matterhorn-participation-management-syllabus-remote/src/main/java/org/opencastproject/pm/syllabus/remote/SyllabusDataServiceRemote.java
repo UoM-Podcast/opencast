@@ -18,15 +18,21 @@
  * the License.
  *
  */
+package org.opencastproject.pm.syllabus.remote;
 
-package org.opencastproject.pm.syllabus.api;
+import org.opencastproject.pm.syllabus.impl.SyllabusDataServiceImpl;
 
-import org.joda.time.DateTime;
+import org.osgi.service.component.ComponentContext;
+import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
 
-/** Properties common to all Syllabus+ views. */
-public interface SyllabusView extends Serializable {
-  /** Return the time this entity was last modified. */
-  DateTime getLastChanged();
+// TEST convience class to allow the remote version of SyllabusDataServiceImpl to be run
+// in the same node
+public class SyllabusDataServiceRemote extends SyllabusDataServiceImpl {
+
+  @Override
+  public void activate(final ComponentContext cc) {
+    logger = LoggerFactory.getLogger(SyllabusDataServiceRemote.class);
+    super.activate(cc);
+  }
 }

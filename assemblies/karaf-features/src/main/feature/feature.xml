@@ -159,6 +159,9 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-impl/${project.version}</bundle>
+    <!-- FIXME: This is a temporary addition -->
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-remote/${project.version}</bundle>
+    <!-- -->
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-admin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-admin-vaadin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-api/${project.version}</bundle>
@@ -680,7 +683,7 @@
   <feature name="opencast-presentation">
     <feature start-level="80">opencast-core</feature>
     <feature start-level="82">opencast-participation-management-teacher</feature>
-        
+
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-annotation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-acl/${project.version}</bundle>

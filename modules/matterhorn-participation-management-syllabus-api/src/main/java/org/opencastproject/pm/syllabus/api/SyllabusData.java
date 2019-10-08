@@ -22,11 +22,12 @@ package org.opencastproject.pm.syllabus.api;
 
 import com.google.common.collect.Multimap;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
 /** This data type holds data fetched from the S+ database together with some helper functions. */
-public abstract class SyllabusData {
+public abstract class SyllabusData implements Serializable {
 
   // Data from S+
   private List<List<VActivity>> activityPartitioned;
