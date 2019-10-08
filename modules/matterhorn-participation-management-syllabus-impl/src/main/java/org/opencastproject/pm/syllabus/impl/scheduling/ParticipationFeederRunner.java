@@ -90,6 +90,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -380,8 +381,8 @@ public class ParticipationFeederRunner {
             logger.info(format("ActivityDateTime does not contain entry for activity %s. Skipping...", aId));
             continue;
           }
-          if (data.getActivityLocation().get(aId).isEmpty()) {
-            logger.info(format("ActivityLocationMap does not contain entry for activity %s. Skipping...", aId));
+          if (((Collection<VActivityLocation>)data.getActivityLocation().get(aId)) == null) {
+            logger.info(format("ActivityLocation does not contain entry for activity %s. Skipping...", aId));
             continue;
           }
           final List<VActivity> activityHierarchy = moduleFinder.collectUntilModule(activity);
@@ -408,7 +409,7 @@ public class ParticipationFeederRunner {
           course.setSchedulingSource(schedulingSource);
 
           // iterate locations
-          for (final VActivityLocation activityLocation : data.getActivityLocation().get(aId)) {
+          for (final VActivityLocation activityLocation : (Collection<VActivityLocation>)data.getActivityLocation().get(aId)) {
             final VLocation location = data.getLocation().get(activityLocation.getLocationId());
             if (location == null) {
               logInconsistency("location", activityLocation.getLocationId());
@@ -693,7 +694,12 @@ public class ParticipationFeederRunner {
     return mlist(activities).bind(new Function<VActivity, Iterable<VActivityStaff>>() {
       @Override
       public Iterable<VActivityStaff> apply(VActivity a) {
-        return data.getActivityStaff().get(a.getId());
+        List<VActivityStaff> staff = (List<VActivityStaff>)data.getActivityStaff().get(a.getId());
+        if (staff != null) {
+          return staff;
+        }
+
+        return new ArrayList<>();
       }
     }).bind(new Function<VActivityStaff, Iterable<VStaff>>() {
       @Override

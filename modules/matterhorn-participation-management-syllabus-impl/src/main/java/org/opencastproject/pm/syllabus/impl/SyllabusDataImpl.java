@@ -32,7 +32,6 @@ import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VStaffF;
 import static org.opencastproject.pm.syllabus.impl.scheduling.AccessorFunctions.VZonesF;
 import static org.opencastproject.util.data.Collections.asMap;
-import static org.opencastproject.util.data.Collections.groupBy;
 import static org.opencastproject.util.data.Collections.grouped;
 import static org.opencastproject.util.data.Monadics.mlist;
 
@@ -46,12 +45,11 @@ import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Tuple;
 import org.opencastproject.util.data.functions.Functions;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
+import org.apache.commons.collections.MultiHashMap;
+import org.apache.commons.collections.MultiMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -70,7 +68,7 @@ public class SyllabusDataImpl extends SyllabusData {
     fetchModules(syllabus);
 
     // location id and suitability id, filtered by capture agent room type ids
-    this.setLocation(mapById(syllabus.findLocations(), VLocationF.getId, "location"));
+    this.setLocation(mapById(syllabus.findLocations(), VLocationF.getId));
     Map<String, String> locationSuitability = new HashMap<>();
     {
       List<VLocationSuitability> caLocations = new ArrayList<>();
@@ -84,12 +82,12 @@ public class SyllabusDataImpl extends SyllabusData {
     logger.debug("# locations featuring capture agents " + locationSuitability.size());
 
     this.setActivityLocation(multimapById(syllabus.findActivityLocation(),
-            VActivityLocationF.getActivityId, "activityLocation"));
-    this.setZones(mapById(syllabus.findZones(), VZonesF.getId, "zones"));
-    this.setStaff(mapById(syllabus.findStaff(), VStaffF.getId, "staff"));
+            VActivityLocationF.getActivityId));
+    this.setZones(mapById(syllabus.findZones(), VZonesF.getId));
+    this.setStaff(mapById(syllabus.findStaff(), VStaffF.getId));
     this.setActivityStaff(multimapById(syllabus.findActivityStaff(),
-            VActivityStaffF.getActivityId, "activityStaff"));
-    this.setDepartment(mapById(syllabus.findDepartment(), VDepartmentF.getId, "department"));
+            VActivityStaffF.getActivityId));
+    this.setDepartment(mapById(syllabus.findDepartment(), VDepartmentF.getId));
     this.setSourceDescription(syllabus.getSourceDescription());
   }
 
@@ -118,18 +116,21 @@ public class SyllabusDataImpl extends SyllabusData {
             mlist(this.getActivityPartitioned()).bind(Functions.<List<VActivity>>identity()).value(),
             AccessorFunctions.VActivityF.getId));
     this.setActivityParent(multimapById(syllabus.findActivityParents(),
-            VActivityParentsF.getActivityId, "activityParent"));
-    this.setModule(mapById(syllabus.findModules(), VModuleF.getId, "module"));
+            VActivityParentsF.getActivityId));
+    this.setModule(mapById(syllabus.findModules(), VModuleF.getId));
   }
 
-  private static <A> Map<String, A> mapById(List<A> as, Function<A, String> id, String name) {
-    logger.debug("# " + name + " " + as.size());
+  private static <A> Map<String, A> mapById(List<A> as, Function<A, String> id) {
     return asMap(as, id);
   }
 
-  private static <A> Multimap<String, A> multimapById(List<A> as, Function<A, String> id, String name) {
-    logger.debug("# " + name + " " + as.size());
-    return groupBy(ArrayListMultimap.<String, A>create(), as, id);
+  private static <A> MultiMap multimapById(List<A> values, Function<A, String> id) {
+    MultiMap map = new MultiHashMap();
+    for (A value : values) {
+      final String key = id.apply(value);
+      map.put(key, value);
+    }
+    return map;
   }
 
   public static <K, V, X> Map<K, V> makeMap(Map<K, V> map,

@@ -20,7 +20,7 @@
  */
 package org.opencastproject.pm.syllabus.api;
 
-import com.google.common.collect.Multimap;
+import org.apache.commons.collections.MultiMap;
 
 import java.io.Serializable;
 import java.util.List;
@@ -36,11 +36,13 @@ public abstract class SyllabusData implements Serializable {
   // location id and suitability id, filtered by capture agent room type ids
   private Map<String, String> locationSuitability;
 
-  private Multimap<String, VActivityLocation> activityLocation;
-  private Multimap<String, VActivityParents> activityParent;
+  // MAT-329, Guava Multimap won't deserialize due to ClassLoader issues
+  // Apache Commons Collection 3.2.2 doesn't use generic
+  private MultiMap activityLocation; //<String, VActivityLocation>
+  private MultiMap activityParent; //<String, VActivityParents>
   private Map<String, VZones> zones;
   private Map<String, VStaff> staff;
-  private Multimap<String, VActivityStaff> activityStaff;
+  private MultiMap activityStaff; // <String, VActivityStaff>
   private Map<String, VDepartment> department;
   private Map<String, VModule> module;
   private String sourceDescription;
@@ -61,12 +63,16 @@ public abstract class SyllabusData implements Serializable {
     this.locationSuitability = locationSuitability;
   }
 
-  public void setActivityLocation(Multimap<String, VActivityLocation> activityLocation) {
+  public void setActivityLocation(MultiMap activityLocation) {
     this.activityLocation = activityLocation;
   }
 
-  public void setActivityParent(Multimap<String, VActivityParents> activityParent) {
+  public void setActivityParent(MultiMap activityParent) {
     this.activityParent = activityParent;
+  }
+
+  public void setActivityStaff(MultiMap activityStaff) {
+    this.activityStaff = activityStaff;
   }
 
   public void setZones(Map<String, VZones> zones) {
@@ -77,9 +83,6 @@ public abstract class SyllabusData implements Serializable {
     this.staff = staff;
   }
 
-  public void setActivityStaff(Multimap<String, VActivityStaff> activityStaff) {
-    this.activityStaff = activityStaff;
-  }
 
   public void setDepartment(Map<String, VDepartment> department) {
     this.department = department;
@@ -105,12 +108,16 @@ public abstract class SyllabusData implements Serializable {
     return location;
   }
 
-  public Multimap<String, VActivityLocation> getActivityLocation() {
+  public MultiMap getActivityLocation() {
     return activityLocation;
   }
 
-  public Multimap<String, VActivityParents> getActivityParent() {
+  public MultiMap getActivityParent() {
     return activityParent;
+  }
+
+  public MultiMap getActivityStaff() {
+    return activityStaff;
   }
 
   public Map<String, VZones> getZones() {
@@ -119,10 +126,6 @@ public abstract class SyllabusData implements Serializable {
 
   public Map<String, VStaff> getStaff() {
     return staff;
-  }
-
-  public Multimap<String, VActivityStaff> getActivityStaff() {
-    return activityStaff;
   }
 
   public Map<String, VDepartment> getDepartment() {
