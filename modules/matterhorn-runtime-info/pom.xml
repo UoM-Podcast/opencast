@@ -55,6 +55,11 @@
     </dependency>
     <!-- Testing -->
     <dependency>
+      <groupId>org.opencastproject</groupId>
+      <artifactId>matterhorn-common-jpa-impl</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>
