@@ -43,7 +43,7 @@ import javax.persistence.TemporalType;
 import javax.xml.bind.annotation.XmlAttribute;
 
 @Entity(name = "AwsAssetMapping")
-@Table(name = "oc_aws_asset_mapping")
+@Table(name = "mh_aws_asset_mapping")
 @NamedQueries({
         // These exclude deleted mappings!
         @NamedQuery(name = "AwsAssetMapping.findActiveMapping", query = "SELECT m FROM AwsAssetMapping m WHERE m.organizationId = :organizationId AND m.mediaPackageId = :mediaPackageId AND m.mediaPackageElementId = :mediaPackageElementId AND m.version = :version AND m.deletionDate IS NULL"),
