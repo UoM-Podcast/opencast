@@ -376,7 +376,7 @@ CREATE INDEX IX_mh_archive_version_claim_last_claimed on mh_archive_version_clai
 
 CREATE TABLE mh_aws_asset_mapping (
 	id BIGINT(20) NOT NULL PRIMARY KEY,
-	deletion_date TIMESTAMP,
+	deletion_date DATETIME DEFAULT NULL,
 	media_package_element VARCHAR(128) NOT NULL,
 	media_package VARCHAR(128) NOT NULL,
 	object_key VARCHAR(1024) NOT NULL,

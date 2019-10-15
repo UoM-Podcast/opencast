@@ -9,7 +9,7 @@ ALTER TABLE mh_archive_asset ADD COLUMN storage_id VARCHAR(255) NOT NULL;
 
 CREATE TABLE mh_aws_asset_mapping (
 	id BIGINT(20) NOT NULL PRIMARY KEY,
-	deletion_date TIMESTAMP,
+	deletion_date DATETIME DEFAULT NULL,
 	media_package_element VARCHAR(128) NOT NULL,
 	media_package VARCHAR(128) NOT NULL,
 	object_key VARCHAR(1024) NOT NULL,
