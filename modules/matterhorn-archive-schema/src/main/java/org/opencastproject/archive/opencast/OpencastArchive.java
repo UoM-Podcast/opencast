@@ -413,9 +413,9 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
             //If it's not the local store
             if (localElementStore.getStoreType() != currentStoreId) {
               ElementStore currentStore = getElementStore(currentStoreId).getOrElseNull();
-              //Get a handle on the file and put it in the workspace
+              //Get a handle on the found asset's file and put it in the workspace
               //NB: FileSystemElementStore assumes that anything you put() into it is already in the workspace...
-              Option<InputStream> stream = currentStore.get(storagePath);
+              Option<InputStream> stream = currentStore.get(a.getStoragePath());
               String filename = e.getURI().toURL().getFile();
               filename = filename.substring(filename.lastIndexOf('/') + 1);
               //Stash it in the workspace
