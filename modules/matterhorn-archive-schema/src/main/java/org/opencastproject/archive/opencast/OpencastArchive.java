@@ -61,6 +61,7 @@ import org.opencastproject.security.api.OrganizationDirectoryService;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.util.MimeType;
+import org.opencastproject.util.MimeTypeUtil;
 import org.opencastproject.util.MimeTypes;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.data.Function;
@@ -249,7 +250,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       findAssetByChecksumAndMediaPackageId(e.getChecksum().toString(), mpId).fold(new Option.EMatch<StoragePath>() {
         @Override
         public void esome(final StoragePath found) {
-          final String currentStoreId = getEpisodeStorageLocation(new Version(version.value() - 1), mpId).getOrElse(new Function0<String>() {
+          final String currentStoreId = getEpisodeStorageLocation(lastVersion, mpId).getOrElse(new Function0<String>() {
             @Override
             public String apply() {
               throw new ArchiveException(format("Error finding storage location for %s@%s", mpId, version.value() - 1));
@@ -258,7 +259,10 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
           if (!isLocalStore(currentStoreId)) {
             try {
               //Note that we're copying the *previous* version here
-              copyElementsToStore(pmp, orgId, lastVersion, localElementStore);
+              Option<Episode> lastVersionEpisode = getLatestEpisodeById(mpId);
+              final PartialMediaPackage lastVersionMP = mkPartial(lastVersionEpisode.get().getMediaPackage());
+
+              copyElementsToStore(lastVersionMP, orgId, lastVersion, localElementStore);
               getPersistence().setStorageLocation(mpId, lastVersion, localElementStore.getStoreType());
             } catch (IOException ex) {
               throw new ArchiveException(ex);
@@ -406,6 +410,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         }
       } else {
         try {
+          URI elementUri = e.getURI();
           //Get where the asset is currently stored, if it exists.  This asset is null in the case of *new* assets being added for the first time
           Asset a = getPersistence().findAssetByChecksumAndMediaPackageId(e.getChecksum().toString(), mpId).getOrElseNull();
           if (null != a) {
@@ -416,16 +421,22 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
               //Get a handle on the found asset's file and put it in the workspace
               //NB: FileSystemElementStore assumes that anything you put() into it is already in the workspace...
               Option<InputStream> stream = currentStore.get(a.getStoragePath());
-              String filename = e.getURI().toURL().getFile();
-              filename = filename.substring(filename.lastIndexOf('/') + 1);
+              //Archived in remote store create appropiate workspace uri
+              //FIXME: is there functionality to do this better?
+              String filename;
+              if (StringUtils.contains(e.getFlavor().getSubtype(), "xacml+series")) {
+                filename = "xacml." + Option.option(e.getMimeType()).bind(MimeTypeUtil.suffix).getOrElse("unknown");
+              } else {
+                filename = e.getElementType().toString().toLowerCase() + "." + Option.option(e.getMimeType()).bind(MimeTypeUtil.suffix).getOrElse("unknown");
+              }
               //Stash it in the workspace
-              getWorkspace().put(mpId, e.getIdentifier(), filename, stream.get());
+              elementUri = getWorkspace().put(mpId, e.getIdentifier(), filename, stream.get());
             }
           }
           final Option<Long> size = e.getSize() > 0 ? Option.some(e.getSize()) : Option.<Long>none();
           final Option<MimeType> mimetype = e.getMimeType() != null ? Option.some(e.getMimeType()) : Option.<MimeType>none();
           //Push it to the target store
-          store.put(storagePath, Source.source(e.getURI(), size, mimetype));
+          store.put(storagePath, Source.source(elementUri, size, mimetype));
         } catch (MalformedURLException | ArchiveDbException ex) {
           throw new ArchiveException(ex);
         }
@@ -546,7 +557,6 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return Option.none();
     }
   }
-
   public Option<String> getEpisodeStorageLocation(Version version, String mediaPackageId) {
     try {
       Option<Episode> result = getPersistence().getEpisode(mediaPackageId, version);
@@ -577,7 +587,6 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return Option.none(Episode.class);
     }
   }
-
   public List<Episode> getEpisodesByDate(Date start, Date end) {
     try {
       return getPersistence().getEpisodes(start, end);
