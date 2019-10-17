@@ -171,6 +171,19 @@ public interface ArchiveDb {
    */
   Option<Asset> findAssetByChecksumAndStore(String checksum, String storeId) throws ArchiveDbException;
 
+    /**
+   * Find an asset by its checksum and mediapackage id
+   *
+   * @param checksum
+   *          the checksum of the asset
+   * @param mpId
+   *          the mediapackage id to search
+   * @return
+   *          an Option containing the asset.  Maybe.
+   * @throws ArchiveDbException
+   */
+  Option<Asset> findAssetByChecksumAndMediaPackageId(String checksum, String mpId) throws ArchiveDbException;
+
   /**
    * Set the storage location for an episode
    *

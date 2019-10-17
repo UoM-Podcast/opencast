@@ -50,6 +50,7 @@ import javax.persistence.Table;
 @NamedQueries({
         @NamedQuery(name = "Asset.findByUri", query = "SELECT a FROM Asset a WHERE a.uri = :uri"),
         @NamedQuery(name = "Asset.findByChecksum", query = "SELECT a FROM Asset a WHERE a.checksum = :checksum order by a.version DESC"),
+        @NamedQuery(name = "Asset.findByChecksumAndMediaPackageId", query = "SELECT a FROM Asset a WHERE a.mediaPackageId = :mediapackage AND a.checksum = :checksum order by a.version DESC"),
         @NamedQuery(name = "Asset.findByChecksumAndStore", query = "SELECT a FROM Asset a WHERE a.checksum = :checksum AND a.storageId = :storeId order by a.version DESC"),
         @NamedQuery(name = "Asset.deleteByMediaPackageId", query = "DELETE FROM Asset a WHERE a.mediaPackageId = :mpId"),
         @NamedQuery(name = "Asset.setStorageId", query = "UPDATE Asset a SET a.storageId = :storeId WHERE a.mediaPackageId = :mpId AND a.version = :version")})
@@ -121,6 +122,15 @@ public final class AssetDto {
     return new Function<EntityManager, Option<AssetDto>>() {
       @Override public Option<AssetDto> apply(EntityManager em) {
         return runFirstResultQuery(em, "Asset.findByChecksumAndStore", tuple("checksum", checksum), tuple("storeId", storeId));
+      }
+    };
+  }
+
+  /** Find an arbitrary asset having the same checksum. */
+  public static Function<EntityManager, Option<AssetDto>> findOneByChecksumAndMediaPackageId(final String checksum, final String mpId) {
+    return new Function<EntityManager, Option<AssetDto>>() {
+      @Override public Option<AssetDto> apply(EntityManager em) {
+        return runFirstResultQuery(em, "Asset.findByChecksumAndMediaPackageId", tuple("mediapackage", mpId), tuple("checksum", checksum));
       }
     };
   }

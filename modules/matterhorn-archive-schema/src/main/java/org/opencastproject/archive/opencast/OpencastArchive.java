@@ -246,7 +246,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       logger.info(format("Archiving %s %s %s", e.getFlavor(), e.getMimeType(), e.getURI()));
       final StoragePath storagePath = spath(orgId, mpId, version, e.getIdentifier());
       final Version lastVersion = new Version(version.value() - 1);
-      findAssetInVersions(e.getIdentifier(), e.getChecksum().toString()).fold(new Option.EMatch<StoragePath>() {
+      findAssetByChecksumAndMediaPackageId(e.getChecksum().toString(), mpId).fold(new Option.EMatch<StoragePath>() {
         @Override
         public void esome(final StoragePath found) {
           final String currentStoreId = getEpisodeStorageLocation(new Version(version.value() - 1), mpId).getOrElse(new Function0<String>() {
@@ -406,12 +406,12 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         }
       } else {
         try {
-          //Get where the file is currently stored, if it exists.  This asset is null in the case of *new* assets being added for the first time
-          Asset a = getPersistence().findAssetByChecksum(e.getChecksum().toString()).getOrElseNull();
+          //Get where the asset is currently stored, if it exists.  This asset is null in the case of *new* assets being added for the first time
+          Asset a = getPersistence().findAssetByChecksumAndMediaPackageId(e.getChecksum().toString(), mpId).getOrElseNull();
           if (null != a) {
             String currentStoreId = a.getStoreId();
-            //If it's not the local store
-            if (localElementStore.getStoreType() != currentStoreId) {
+            // If it's not the local store
+            if (!isLocalStore(currentStoreId)) {
               ElementStore currentStore = getElementStore(currentStoreId).getOrElseNull();
               //Get a handle on the found asset's file and put it in the workspace
               //NB: FileSystemElementStore assumes that anything you put() into it is already in the workspace...
@@ -532,6 +532,21 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
     }
   }
 
+  /** Check if element <code>e</code> is already part of the history and in a specific store */
+  private Option<StoragePath> findAssetByChecksumAndMediaPackageId(final String checksum, final String mpId) {
+    try {
+      return getPersistence().findAssetByChecksumAndMediaPackageId(checksum, mpId).map(new Function<Asset, StoragePath>() {
+        @Override
+        public StoragePath apply(Asset dto) {
+          return dto.getStoragePath();
+        }
+      });
+    } catch (ArchiveDbException e) {
+      logger.error("Error finding " + checksum + " in mediapackage " + mpId, e);
+      return Option.none();
+    }
+  }
+
   public Option<String> getEpisodeStorageLocation(Version version, String mediaPackageId) {
     try {
       Option<Episode> result = getPersistence().getEpisode(mediaPackageId, version);
@@ -551,6 +566,15 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
     } catch (ArchiveDbException e) {
       logger.error("Error finding " + mediapackageId, e);
       return new LinkedList<Episode>();
+    }
+  }
+
+  public Option<Episode> getLatestEpisodeById(String mediapackageId) {
+    try {
+      return getPersistence().getLatestEpisode(mediapackageId);
+    } catch (ArchiveDbException e) {
+      logger.error("Error finding " + mediapackageId, e);
+      return Option.none(Episode.class);
     }
   }
 

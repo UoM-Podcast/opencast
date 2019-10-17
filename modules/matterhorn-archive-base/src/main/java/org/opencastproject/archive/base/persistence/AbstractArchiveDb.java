@@ -284,6 +284,11 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
     return tx(AssetDto.findOneByChecksumAndStore(checksum, storeId)).map(AssetDto.toAsset);
   }
 
+  @Override
+  public Option<Asset> findAssetByChecksumAndMediaPackageId(String checksum, final String mpId) throws ArchiveDbException {
+    return tx(AssetDto.findOneByChecksumAndMediaPackageId(checksum, mpId)).map(AssetDto.toAsset);
+  }
+
   public boolean setStorageLocation(final String mpId, final Version version, final String targetStoreId) {
     return tx(new Function<EntityManager, Boolean>() {
       @Override
