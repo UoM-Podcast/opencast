@@ -31,6 +31,7 @@
              cardinality="1..1"
              policy="static"
              bind="setOrganizationDirectoryService" />
+  <!-- MAT-329, If testing remote requirements on dev/AllinOne target="(opencast.service.local=false)" -->
   <reference name="requirement"
              interface="org.opencastproject.requirement.api.RequirementService"
              cardinality="1..1"

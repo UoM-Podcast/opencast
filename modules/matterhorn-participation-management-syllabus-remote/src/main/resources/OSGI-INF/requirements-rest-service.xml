@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.syllabus.remote.scheduling.endpoint.RequirementsRestService"
+               immediate="true">
+  <implementation class="org.opencastproject.pm.syllabus.remote.scheduling.endpoint.RequirementsRestService" />
+  <property name="service.description" value="Syllabus+ data harvester REST Endpoint" />
+  <property name="opencast.service.type" value="org.opencastproject.pm" />
+  <property name="opencast.service.path" value="/requirements" />
+  <property name="opencast.service.jobproducer" value="false" />
+  <service>
+    <provide interface="org.opencastproject.pm.syllabus.remote.scheduling.endpoint.RequirementsRestService" />
+  </service>
+  <reference name="requirement"
+           interface="org.opencastproject.requirement.api.RequirementService"
+           target="(opencast.service.local=true)"
+           cardinality="0..n"
+           policy="dynamic"
+           bind="addRequirementService"/>
+</scr:component>

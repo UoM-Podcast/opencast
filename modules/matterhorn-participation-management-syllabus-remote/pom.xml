@@ -27,11 +27,6 @@
     </dependency>
     <dependency>
       <groupId>org.opencastproject</groupId>
-      <artifactId>matterhorn-requirement-dass</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.opencastproject</groupId>
       <artifactId>matterhorn-participation-api</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -129,7 +124,11 @@
               org.opencastproject.pm.syllabus.remote.endpoint;version=${project.version}
             </Export-Package>
             <Service-Component>
+              <!--MAT-329, MAT-334, uncomment remote services if testing on AllinOne node
+              OSGI-INF/dass-service-remote.xml,
               OSGI-INF/syllabus-data-service-remote.xml,
+              -->
+              OSGI-INF/requirements-rest-service.xml,
               OSGI-INF/syllabus-data-rest-service.xml
             </Service-Component>
           </instructions>
