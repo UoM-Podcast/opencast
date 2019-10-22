@@ -64,6 +64,11 @@ public class AbstractDassRequirementServiceTest {
       public ComboPooledDataSource getDataSource() {
         return pooledDataSource;
       }
+
+      @Override
+      public String getProviderName() {
+        return "dass";
+      }
     };
   }
 

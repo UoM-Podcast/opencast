@@ -25,8 +25,12 @@ import java.util.List;
 
 public interface RequirementService {
 
+  String REQUIREMENTS_PROVIDER_PROPERTY = "requirements.provider";
+
   enum Requirement { RECORDING, CAPTIONS };
   enum Resource { USER, EVENT, SERIES }
+
+  String getProviderName();
 
   List<String> getIds(Resource resource, Requirement requirement) throws
           RequirementServiceException;
