@@ -32,11 +32,6 @@ import org.opencastproject.pm.syllabus.api.VModule;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.util.data.Option;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.HttpClients;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.osgi.service.component.ComponentContext;
@@ -44,9 +39,6 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Dictionary;
@@ -77,13 +69,9 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   // Must be valid is local == false
   private URL remoteServiceURL;
 
-  // Remote connection when local == false
-  private HttpClient httpClient =  HttpClients.createDefault();;
-
   public void activate(final ComponentContext cc) {
     logger.info("Activating {}", this.getClass().getName());
     syllabusCaptureFilter = new SyllabusCaptureFilterImpl();
-    httpClient = HttpClients.createDefault();
     try {
       updated(cc.getProperties());
     } catch (ConfigurationException e) {
@@ -127,7 +115,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       logger.debug("Requesting all syllabus data");
 
       String url = remoteServiceURL.toString();
-      data = getResponseAsObject(url);
+      data = RemoteObjectUtil.getResponseAsObject(client, url);
     }
 
     return data;
@@ -149,7 +137,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       logger.debug("Requesting syllabus module data");
 
       String url = remoteServiceURL.toString() + "?subset=modules";
-      data = getResponseAsObject(url);
+      data = RemoteObjectUtil.getResponseAsObject(client, url);
     }
 
     return data;
@@ -162,7 +150,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
          sourceDescription = syllabusService.getSourceDescription();
       } else {
         String url = remoteServiceURL.toString() + "/description";
-        sourceDescription = getResponseAsObject(url);
+        sourceDescription = RemoteObjectUtil.getResponseAsObject(client, url);
       }
     }
 
@@ -175,7 +163,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       return syllabusService.getModuleByCourseKey(courseKey);
     } else {
       String url = remoteServiceURL.toString() + "/modules?coursekey=" + courseKey;
-      final VModule module = getResponseAsObject(url);
+      final VModule module = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return module;
     }
@@ -187,7 +175,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       return syllabusService.findModuleActivityIdsByCourseKey(courseKey);
     } else {
       String url = remoteServiceURL.toString() + "/modules/activites/ids?coursekey=" + courseKey;
-      final List<String> activityIds = getResponseAsObject(url);
+      final List<String> activityIds = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activityIds;
     }
@@ -201,7 +189,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       String url = remoteServiceURL.toString() + "/activites/datetime"
               + "?startid=" + startActivityId
               + "&endid=" + endActivityId;
-      final List<VActivityDateTime> datetimes = getResponseAsObject(url);
+      final List<VActivityDateTime> datetimes = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return datetimes;
     }
@@ -210,34 +198,6 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   @Override
   public SyllabusCaptureFilter getSyllabusCaptureFilter() {
     return syllabusCaptureFilter;
-  }
-
-  private <T> T getResponseAsObject(String url) {
-    try {
-      HttpGet get = new HttpGet(url);
-      HttpResponse response = client.execute(get);
-      T object = null;
-      if (response != null && response.getStatusLine().getStatusCode() == 200) {
-        final HttpEntity entity = response.getEntity();
-
-        if (entity != null) {
-          try (InputStream stream = entity.getContent()) {
-            ObjectInputStream objStream = new ObjectInputStream(stream);
-            object = (T) objStream.readObject();
-            return object;
-          } catch (IOException e) {
-            logger.error("Can't read object stream:", e);
-            return null;
-          } catch (ClassNotFoundException ee) {
-            logger.error("Class not found: {}", ee.getMessage());
-            return object;
-          }
-        }
-      }
-    } catch (IOException e) {
-      logger.error("Can't connect to remote SyllabusDataService");
-    }
-    return null;
   }
 
   /**

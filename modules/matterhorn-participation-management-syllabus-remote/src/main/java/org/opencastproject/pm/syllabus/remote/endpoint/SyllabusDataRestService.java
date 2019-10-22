@@ -20,13 +20,13 @@
  */
 package org.opencastproject.pm.syllabus.remote.endpoint;
 
-
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
 import org.opencastproject.pm.syllabus.api.SyllabusData;
 import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.api.VActivityDateTime;
 import org.opencastproject.pm.syllabus.api.VModule;
+import org.opencastproject.pm.syllabus.impl.RemoteObjectUtil;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
@@ -38,8 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
@@ -47,11 +45,9 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.StreamingOutput;
 
 @Path("/")
 @RestService(name = "syllabus_data_service", title = "Syllabus Data Service", abstractText = "Provide remote access to S+ data", notes = {
@@ -94,7 +90,7 @@ public class SyllabusDataRestService {
     }
 
     try {
-      return writeObjectResponse(syllabusData);
+      return RemoteObjectUtil.writeObjectResponse(syllabusData);
     } catch (IOException e) {
       logger.error("Unable to write fetch SyllabusData response", e);
       return Response.serverError().build();
@@ -136,7 +132,7 @@ public class SyllabusDataRestService {
 
     try {
       logger.info("module found");
-      return writeObjectResponse(module);
+      return RemoteObjectUtil.writeObjectResponse(module);
     } catch (IOException e) {
       logger.error("Unable to write modules response", e);
       return Response.serverError().build();
@@ -164,7 +160,7 @@ public class SyllabusDataRestService {
     }
 
     try {
-      return writeObjectResponse(ids);
+      return RemoteObjectUtil.writeObjectResponse(ids);
     } catch (IOException e) {
       logger.error("Unable to write activity ids response", e);
       return Response.serverError().build();
@@ -193,25 +189,11 @@ public class SyllabusDataRestService {
     }
 
     try {
-      return writeObjectResponse(datetimes);
+      return RemoteObjectUtil.writeObjectResponse(datetimes);
     } catch (IOException e) {
       logger.error("Unable to write datetimes response", e);
       return Response.serverError().build();
     }
-  }
-
-  // Create a serialized object as response
-  private Response writeObjectResponse(final Object obj) throws IOException {
-    StreamingOutput stream = new StreamingOutput() {
-      @Override
-      public void write(OutputStream os) throws IOException, WebApplicationException {
-        ObjectOutputStream objectStream = new ObjectOutputStream(os);
-        objectStream.writeObject(obj);
-        objectStream.flush();
-      }
-    };
-
-    return Response.ok(stream).build();
   }
 
 /** OSGi container callback. */
