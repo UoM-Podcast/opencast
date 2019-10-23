@@ -159,9 +159,6 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-impl/${project.version}</bundle>
-    <!-- FIXME: This is a temporary addition -->
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-remote/${project.version}</bundle>
-    <!-- -->
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-admin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-ui-admin-vaadin/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-api/${project.version}</bundle>
@@ -738,5 +735,17 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-security-cas/${project.version}</bundle>
   </feature>
 
+  <feature name="opencast-remote-data">
+    <feature start-level="80">ext-core</feature>
+    <feature start-level="80">opencast-core</feature>
 
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-messages/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-impl/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-persistence/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-requirement-dass/${project.version}</bundle>
+  </feature>
 </features>

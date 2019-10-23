@@ -38,6 +38,7 @@
         <module>dist-edit-distribution</module>
         <module>dist-presentation</module>
         <module>dist-worker</module>
+        <module>dist-remote</module>
       </modules>
     </profile>
 
@@ -59,6 +60,15 @@
       </modules>
     </profile>
 
+    <profile>
+      <id>remote</id>
+
+      <modules>
+        <module>karaf-features</module>
+        <module>dist-remote</module>
+      </modules>
+    </profile>
+    
     <profile>
       <id>none</id>
       <modules />
