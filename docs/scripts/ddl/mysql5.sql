@@ -336,6 +336,7 @@ CREATE TABLE mh_archive_asset (
   checksum VARCHAR(255) NOT NULL,
   uri VARCHAR(255) NOT NULL,
   version BIGINT(20) NOT NULL,
+  storage_id VARCHAR(255) NOT NULL,
   PRIMARY KEY (id),
   CONSTRAINT UNQ_mh_archive_asset UNIQUE (organization,mediapackage,mediapackageelement,version),
   CONSTRAINT FK_mh_archive_asset_organization FOREIGN KEY (organization) REFERENCES mh_organization (id) ON DELETE CASCADE
@@ -354,6 +355,7 @@ CREATE TABLE mh_archive_episode (
   dublincore_xml MEDIUMTEXT,
   mediapackage_xml MEDIUMTEXT,
   modification_date DATETIME DEFAULT NULL,
+  storage_id VARCHAR(255) NOT NULL,
   PRIMARY KEY (id,version,organization),
   CONSTRAINT FK_mh_archive_episode_organization FOREIGN KEY (organization) REFERENCES mh_organization (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -371,6 +373,19 @@ CREATE TABLE mh_archive_version_claim (
 
 CREATE INDEX IX_mh_archive_version_claim_mediapackage on mh_archive_version_claim (mediapackage);
 CREATE INDEX IX_mh_archive_version_claim_last_claimed on mh_archive_version_claim (last_claimed);
+
+CREATE TABLE mh_aws_asset_mapping (
+	id BIGINT(20) NOT NULL PRIMARY KEY,
+	deletion_date DATETIME DEFAULT NULL,
+	media_package_element VARCHAR(128) NOT NULL,
+	media_package VARCHAR(128) NOT NULL,
+	object_key VARCHAR(1024) NOT NULL,
+	object_version VARCHAR(1024) NOT NULL,
+	organization VARCHAR(128) NOT NULL,
+	version BIGINT(20) NOT NULL,
+  CONSTRAINT UNQ_mh_aws_asset_mapping UNIQUE (organization,media_package,media_package_element,version),
+  CONSTRAINT FK_mh_aws_asset_mapping_organization FOREIGN KEY (organization) REFERENCES mh_organization (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- ACL manager

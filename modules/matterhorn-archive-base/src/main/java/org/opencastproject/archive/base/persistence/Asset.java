@@ -29,11 +29,13 @@ public final class Asset {
   private final URI uri;
   private final StoragePath storagePath;
   private final String checksum;
+  private final String storeId;
 
-  public Asset(URI uri, StoragePath storagePath, String checksum) {
+  public Asset(URI uri, StoragePath storagePath, String checksum, String storeId) {
     this.uri = uri;
     this.storagePath = storagePath;
     this.checksum = checksum;
+    this.storeId = storeId;
   }
 
   public URI getUri() {
@@ -47,4 +49,6 @@ public final class Asset {
   public String getChecksum() {
     return checksum;
   }
+
+  public String getStoreId() { return storeId; }
 }

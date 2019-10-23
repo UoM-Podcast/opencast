@@ -57,6 +57,7 @@
               OSGI-INF/operations/archive.xml,
               OSGI-INF/operations/delete-archive.xml,
               OSGI-INF/operations/load-from-archive.xml,
+              OSGI-INF/operations/move-storage.xml,
               OSGI-INF/operations/strip-archive.xml
             </Service-Component>
           </instructions>

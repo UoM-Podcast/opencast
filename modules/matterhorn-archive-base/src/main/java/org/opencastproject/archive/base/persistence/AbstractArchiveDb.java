@@ -25,7 +25,9 @@ import static org.opencastproject.archive.api.Version.FIRST;
 import static org.opencastproject.archive.api.Version.version;
 import static org.opencastproject.archive.base.StoragePath.spath;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findAll;
+import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllByDate;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllById;
+import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllByIdAndDate;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findByIdAndVersion;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findLatestById;
 import static org.opencastproject.util.data.Monadics.mlist;
@@ -48,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -84,6 +87,48 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
       @Override
       public Option<Episode> apply(EntityManager em) {
         return findByIdAndVersion(em, mediaPackageId, version).map(EpisodeDto.toEpisode);
+      }
+    });
+  }
+
+  @Override
+  public List<Episode> getEpisode(final String mediaPackageId) throws ArchiveDbException {
+    return tx(new Function<EntityManager, List<Episode>>() {
+      @Override
+      public List<Episode> apply(EntityManager em) {
+        List<Episode> list = new LinkedList<Episode>();
+        for (EpisodeDto e : findAllById(em, mediaPackageId)) {
+          list.add(e.toEpisode());
+        }
+        return list;
+      }
+    });
+  }
+
+  @Override
+  public List<Episode> getEpisodes(final Date start, final Date end) throws ArchiveDbException {
+    return tx(new Function<EntityManager, List<Episode>>() {
+      @Override
+      public List<Episode> apply(EntityManager em) {
+        List<Episode> list = new LinkedList<Episode>();
+        for (EpisodeDto e : findAllByDate(em, start, end)) {
+          list.add(e.toEpisode());
+        }
+        return list;
+      }
+    });
+  }
+
+  @Override
+  public List<Episode> getEpisodes(final String mediapackageId, final Date start, final Date end) throws ArchiveDbException {
+    return tx(new Function<EntityManager, List<Episode>>() {
+      @Override
+      public List<Episode> apply(EntityManager em) {
+        List<Episode> list = new LinkedList<Episode>();
+        for (EpisodeDto e : findAllByIdAndDate(em, mediapackageId, start, end)) {
+          list.add(e.toEpisode());
+        }
+        return list;
       }
     });
   }
@@ -187,8 +232,8 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
     });
   }
 
-  @Override
-  public void storeEpisode(final PartialMediaPackage pmp, final DublinCoreCatalog dublinCore, final AccessControlList acl, final Date now, final Version version)
+ @Override
+  public void storeEpisode(final PartialMediaPackage pmp, final DublinCoreCatalog dublinCore, final AccessControlList acl, final Date now, final Version version, final String storeId)
           throws ArchiveDbException {
     final String orgId = getSecurityService().getOrganization().getId();
     tx(new Effect<EntityManager>() {
@@ -201,14 +246,16 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
                                                                     orgId,
                                                                     acl,
                                                                     now,
-                                                                    false));
+                                                                    false,
+                                                                    storeId));
         em.persist(episodeDto);
         // create assets
         final String mpId = pmp.getMediaPackage().getIdentifier().toString();
         for (MediaPackageElement e : pmp.getPartial()) {
           final AssetDto a = AssetDto.create(e.getURI(),
                                              spath(orgId, mpId, version, e.getIdentifier()),
-                                             e.getChecksum().toString());
+                                             e.getChecksum().toString(),
+                                             storeId);
           em.persist(a);
         }
       }
@@ -231,6 +278,27 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
   @Override
   public Option<Asset> findAssetByChecksum(String checksum) throws ArchiveDbException {
     return tx(AssetDto.findOneByChecksum(checksum)).map(AssetDto.toAsset);
+  }
+
+  public Option<Asset> findAssetByChecksumAndStore(String checksum, String storeId) throws ArchiveDbException {
+    return tx(AssetDto.findOneByChecksumAndStore(checksum, storeId)).map(AssetDto.toAsset);
+  }
+
+  @Override
+  public Option<Asset> findAssetByChecksumAndMediaPackageId(String checksum, final String mpId) throws ArchiveDbException {
+    return tx(AssetDto.findOneByChecksumAndMediaPackageId(checksum, mpId)).map(AssetDto.toAsset);
+  }
+
+  public boolean setStorageLocation(final String mpId, final Version version, final String targetStoreId) {
+    return tx(new Function<EntityManager, Boolean>() {
+      @Override
+      public Boolean apply(EntityManager em) {
+        if (EpisodeDto.setStorageId(em, mpId, version, targetStoreId)) {
+          return AssetDto.setStorageId(em, mpId, version, targetStoreId);
+        }
+        return false;
+      }
+    });
   }
 
   /** Run transactional with exception handling. */

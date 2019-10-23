@@ -74,6 +74,8 @@ public class FileSystemElementStore implements ElementStore {
   /** The default archive directory name */
   private static final String DEFAULT_ARCHIVE_DIRECTORY = "archive";
 
+  private String storeType = null;
+
   /** The root directory for storing files */
   private String rootDirectory = null;
 
@@ -91,6 +93,9 @@ public class FileSystemElementStore implements ElementStore {
    *          the component context
    */
   public void activate(final ComponentContext cc) throws IllegalStateException, IOException {
+    storeType = (String) cc.getProperties().get(ElementStore.STORE_TYPE_PROPERTY);
+    logger.info("{} is: {}", ElementStore.STORE_TYPE_PROPERTY, storeType);
+
     rootDirectory = StringUtils.trimToNull(cc.getBundleContext().getProperty(CONFIG_ARCHIVE_ROOT_DIR));
 
     if (rootDirectory == null) {
@@ -287,4 +292,8 @@ public class FileSystemElementStore implements ElementStore {
     return Option.some(new File(rootDirectory).getTotalSpace());
   }
 
+  @Override
+  public String getStoreType() {
+    return storeType;
+  }
 }

@@ -35,6 +35,8 @@ import java.io.InputStream;
  */
 public interface ElementStore extends StorageUsage {
 
+  String STORE_TYPE_PROPERTY = "store.type";
+
   /** Add the content of <code>soure</code> under the given path. */
   void put(StoragePath path, Source source) throws ElementStoreException;
 
@@ -57,4 +59,11 @@ public interface ElementStore extends StorageUsage {
    * @return true, if the selected resources could be found and deleted
    */
   boolean delete(DeletionSelector sel) throws ElementStoreException;
+
+  /**
+   * Returns the store.type property
+   *
+   * @return store type
+   */
+  String getStoreType();
 }

@@ -5,6 +5,7 @@
                immediate="true">
   <implementation class="org.opencastproject.archive.storage.FileSystemElementStore" />
   <property name="service.description" value="File system based element store" />
+  <property name="store.type" value="local-filesystem" />
   <service>
     <provide interface="org.opencastproject.archive.base.storage.ElementStore" />
   </service>

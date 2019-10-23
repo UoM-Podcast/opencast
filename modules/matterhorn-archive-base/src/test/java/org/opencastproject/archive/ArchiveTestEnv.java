@@ -208,6 +208,7 @@ public final class ArchiveTestEnv {
     EasyMock.expect(elementStore.delete(EasyMock.<DeletionSelector> anyObject())).andReturn(true).once();
     EasyMock.expect(elementStore.copy(EasyMock.<StoragePath> anyObject(), EasyMock.<StoragePath> anyObject()))
             .andReturn(true).anyTimes();
+    EasyMock.expect(elementStore.getStoreType()).andReturn("test-store").anyTimes();
     EasyMock.replay(elementStore);
     // security service
     userResponder = new Responder<User>(defaultUser);

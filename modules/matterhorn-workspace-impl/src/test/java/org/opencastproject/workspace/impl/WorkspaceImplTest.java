@@ -21,6 +21,8 @@
 
 package org.opencastproject.workspace.impl;
 
+import org.opencastproject.security.api.Organization;
+import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.security.api.TrustedHttpClient.RequestRunner;
 import org.opencastproject.security.util.StandAloneTrustedHttpClientImpl;
@@ -71,6 +73,12 @@ public class WorkspaceImplTest {
   @Before
   public void setUp() throws Exception {
     workspace = new WorkspaceImpl(workspaceRoot, false);
+    Organization organization = EasyMock.createMock(Organization.class);
+    EasyMock.expect(organization.getId()).andReturn("org1").anyTimes();
+    SecurityService securityService = EasyMock.createMock(SecurityService.class);
+    EasyMock.expect(securityService.getOrganization()).andReturn(organization).anyTimes();
+    EasyMock.replay(securityService, organization);
+    workspace.setSecurityService(securityService);
     workspace.activate(null);
   }
 

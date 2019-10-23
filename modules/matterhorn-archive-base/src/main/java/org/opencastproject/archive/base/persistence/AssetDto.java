@@ -28,6 +28,7 @@ import static org.opencastproject.util.persistence.PersistenceUtil.runFirstResul
 import static org.opencastproject.util.persistence.PersistenceUtil.runSingleResultQuery;
 import static org.opencastproject.util.persistence.PersistenceUtil.runUpdate;
 
+import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.StoragePath;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
@@ -48,8 +49,11 @@ import javax.persistence.Table;
 @Table(name = "mh_archive_asset")
 @NamedQueries({
         @NamedQuery(name = "Asset.findByUri", query = "SELECT a FROM Asset a WHERE a.uri = :uri"),
-        @NamedQuery(name = "Asset.findByChecksum", query = "SELECT a FROM Asset a WHERE a.checksum = :checksum"),
-        @NamedQuery(name = "Asset.deleteByMediaPackageId", query = "DELETE FROM Asset a WHERE a.mediaPackageId = :mpId") })
+        @NamedQuery(name = "Asset.findByChecksum", query = "SELECT a FROM Asset a WHERE a.checksum = :checksum order by a.version DESC"),
+        @NamedQuery(name = "Asset.findByChecksumAndMediaPackageId", query = "SELECT a FROM Asset a WHERE a.mediaPackageId = :mediapackage AND a.checksum = :checksum order by a.version DESC"),
+        @NamedQuery(name = "Asset.findByChecksumAndStore", query = "SELECT a FROM Asset a WHERE a.checksum = :checksum AND a.storageId = :storeId order by a.version DESC"),
+        @NamedQuery(name = "Asset.deleteByMediaPackageId", query = "DELETE FROM Asset a WHERE a.mediaPackageId = :mpId"),
+        @NamedQuery(name = "Asset.setStorageId", query = "UPDATE Asset a SET a.storageId = :storeId WHERE a.mediaPackageId = :mpId AND a.version = :version")})
 public final class AssetDto {
   @Id
   @GeneratedValue
@@ -74,8 +78,11 @@ public final class AssetDto {
   @Column(name = "checksum", nullable = false, length = 64)
   private String checksum;
 
+  @Column(name = "storage_id", nullable = false)
+  private String storageId;
+
   /** Create a new DTO. */
-  public static AssetDto create(URI uri, StoragePath path, String checksum) {
+  public static AssetDto create(URI uri, StoragePath path, String checksum, String storeId) {
     final AssetDto dto = new AssetDto();
     dto.uri = uri.toString();
     dto.organizationId = path.getOrganizationId();
@@ -83,12 +90,13 @@ public final class AssetDto {
     dto.mediaPackageElementId = path.getAssetId();
     dto.version = path.getVersion().value();
     dto.checksum = checksum;
+    dto.storageId = storeId;
     return dto;
   }
 
   /** Convert into business object. */
   public Asset toAsset() {
-    return new Asset(URI.create(uri), spath(organizationId, mediaPackageId, version(version), mediaPackageElementId), checksum);
+    return new Asset(URI.create(uri), spath(organizationId, mediaPackageId, version(version), mediaPackageElementId), checksum, storageId);
   }
 
   /** Find an asset by its URI. */
@@ -109,12 +117,34 @@ public final class AssetDto {
     };
   }
 
+  /** Find an arbitrary asset having the same checksum and store Id. */
+  public static Function<EntityManager, Option<AssetDto>> findOneByChecksumAndStore(final String checksum, final String storeId) {
+    return new Function<EntityManager, Option<AssetDto>>() {
+      @Override public Option<AssetDto> apply(EntityManager em) {
+        return runFirstResultQuery(em, "Asset.findByChecksumAndStore", tuple("checksum", checksum), tuple("storeId", storeId));
+      }
+    };
+  }
+
+  /** Find an arbitrary asset having the same checksum. */
+  public static Function<EntityManager, Option<AssetDto>> findOneByChecksumAndMediaPackageId(final String checksum, final String mpId) {
+    return new Function<EntityManager, Option<AssetDto>>() {
+      @Override public Option<AssetDto> apply(EntityManager em) {
+        return runFirstResultQuery(em, "Asset.findByChecksumAndMediaPackageId", tuple("mediapackage", mpId), tuple("checksum", checksum));
+      }
+    };
+  }
+
   /**
    * Delete assets by media package ID.
    * @return true if at least on asset has been deleted
    */
   public static boolean deleteByMediaPackageId(EntityManager em, String mpId) {
     return runUpdate(em, "Asset.deleteByMediaPackageId", tuple("mpId", mpId));
+  }
+
+  public static boolean setStorageId(EntityManager em, String mpId, Version version, String storeId) {
+    return runUpdate(em, "Asset.setStorageId", tuple("mpId", mpId), tuple("version", version.value()), tuple("storeId", storeId));
   }
 
   /** Convert a DTO into the corresponding business object. */

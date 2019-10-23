@@ -315,7 +315,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     // store mediapackage in db
     try {
       rewriteAssetsForArchival(pmp, version);
-      persistence.storeEpisode(pmp, dc, acl, now, version);
+      persistence.storeEpisode(pmp, dc, acl, now, version, elementStore.getStoreType());
     } catch (ArchiveDbException e) {
       logger.error("Could not store episode {}: {}", mpId, e);
       throw new ArchiveException(e);
@@ -622,7 +622,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
   }
 
   /** Store all assets of <code>mp</code> under the given version. */
-  private void storeAssets(final PartialMediaPackage pmp, final Version version) throws Exception {
+  protected void storeAssets(final PartialMediaPackage pmp, final Version version) throws Exception {
     final String mpId = pmp.getMediaPackage().getIdentifier().toString();
     final String orgId = getOrgId();
     for (final MediaPackageElement e : pmp.getPartial()) {
@@ -679,12 +679,12 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     }
   }
 
-  private String getOrgId() {
+  protected String getOrgId() {
     return secSvc.getOrganization().getId();
   }
 
   /** Check if element <code>e</code> is already part of the history. */
-  private Option<StoragePath> findAssetInVersions(final String assetId, final String checksum) throws Exception {
+  protected Option<StoragePath> findAssetInVersions(final String assetId, final String checksum) throws Exception {
     return persistence.findAssetByChecksum(checksum).map(new Function<Asset, StoragePath>() {
       @Override
       public StoragePath apply(Asset asset) {
@@ -835,7 +835,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
   }
 
   /** Protect access to the contained media package. */
-  private Function<Episode, Protected<Episode>> protectEpisode(final String action) {
+  protected Function<Episode, Protected<Episode>> protectEpisode(final String action) {
     return new Function<Episode, Protected<Episode>>() {
       @Override
       public Protected<Episode> apply(Episode e) {
@@ -941,6 +941,14 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
   @Override
   public String getClassName() {
     return ArchiveBase.class.getName();
+  }
+
+  protected ArchiveDb getPersistence() {
+    return this.persistence;
+  }
+
+  protected Workspace getWorkspace() {
+    return this.workspace;
   }
 
 }

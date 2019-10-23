@@ -29,6 +29,7 @@ import static org.opencastproject.archive.base.storage.Source.source;
 import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.StoragePath;
 import org.opencastproject.archive.base.storage.DeletionSelector;
+import org.opencastproject.archive.base.storage.ElementStore;
 import org.opencastproject.util.PathSupport;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.workspace.api.Workspace;
@@ -51,6 +52,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Dictionary;
+import java.util.Hashtable;
 
 public class FileSystemElementStoreTest {
   private static final String XML_EXTENSTION = ".xml";
@@ -104,6 +107,9 @@ public class FileSystemElementStoreTest {
 
     ComponentContext cc = EasyMock.createNiceMock(ComponentContext.class);
     EasyMock.expect(cc.getBundleContext()).andReturn(bundleContext).anyTimes();
+    Dictionary<String, Object> t = new Hashtable<>();
+    t.put(ElementStore.STORE_TYPE_PROPERTY, "test-store");
+    EasyMock.expect(cc.getProperties()).andReturn(t).anyTimes();
     EasyMock.replay(cc);
 
     repo.setWorkspace(workspace);
