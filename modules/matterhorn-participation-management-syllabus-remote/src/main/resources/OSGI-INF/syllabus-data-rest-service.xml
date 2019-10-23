@@ -10,9 +10,9 @@
   <service>
     <provide interface="org.opencastproject.pm.syllabus.remote.endpoint.SyllabusDataRestService" />
   </service>
-  <!-- FIXME: interface="org.opencastproject.pm.syllabus.api.SyllabusDataService" -->
+  <!-- to test remote in AllinOne change interface="org.opencastproject.pm.syllabus.remote.SyllabusDataServiceRemote" -->
   <reference name="syllabusDataService"
-             interface="org.opencastproject.pm.syllabus.remote.SyllabusDataServiceRemote"
+             interface="org.opencastproject.pm.syllabus.api.SyllabusDataService"
              cardinality="1..1"
              policy="static"
              bind="setSyllabusDataService" />
