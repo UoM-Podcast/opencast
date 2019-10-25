@@ -107,7 +107,7 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
           dataSource.getConnection();
           logger.info("Connected to DASS database");
         } catch (SQLException e) {
-          logger.error("Cannot connect to DASS database with url {} and user {}", url, user);
+          logger.error("Cannot connect to DASS database");
           dataSource.close();
           throw e;
         }
@@ -144,14 +144,14 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
 
           @Override
           public List<String> getIds(RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/%s/%s/%s/entities/ids", remoteServiceURL.toString(), providerName, resource, requirement);
+            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities", remoteServiceURL.toString(), providerName, resource, requirement);
 
             return RemoteObjectUtil.getResponseAsObject(client, url);
           }
 
           @Override
           public Boolean checkId(String id, RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/%s/%s/%s/entities/%s", remoteServiceURL.toString(), providerName, resource, requirement, id);
+            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities/%s", remoteServiceURL.toString(), providerName, resource, requirement, id);
 
             try {
               HttpGet get = new HttpGet(url);

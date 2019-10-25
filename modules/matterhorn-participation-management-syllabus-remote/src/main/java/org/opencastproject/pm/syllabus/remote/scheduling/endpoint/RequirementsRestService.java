@@ -62,8 +62,8 @@ public class RequirementsRestService {
   private final Map<String, RequirementService> requirementServices = new HashMap();
 
   @GET
-  @Path("/{provider}/{resource}/{requirement}/entities/ids")
-  @RestQuery(name = "get_ids", description = "Get all ids from the provider have the requirement on the given resource",
+  @Path("/providers/{provider}/resources/{resource}/requirements/{requirement}/entities")
+  @RestQuery(name = "get_entity_ids", description = "Get all entity ids from the provider have the requirement on the given resource",
           returnDescription = "List<String> serialized object",
           pathParameters = {
             @RestParameter(name = "provider", type = STRING, isRequired = true, description = "Requirements provider name "),
@@ -76,7 +76,7 @@ public class RequirementsRestService {
             @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to get the ids"),
             @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "The provider can not be found")
           })
-  public Response getIds(@PathParam("provider") String provider, @PathParam("resource") String resource, @PathParam("requirement") String requirement) {
+  public Response getEntityIds(@PathParam("provider") String provider, @PathParam("resource") String resource, @PathParam("requirement") String requirement) {
     if (!requirementServices.containsKey(provider)) {
       return Response.status(Status.SERVICE_UNAVAILABLE).build();
     }
@@ -100,8 +100,8 @@ public class RequirementsRestService {
   }
 
   @GET
-  @Path("/{provider}/{resource}/{requirement}/entities/{id}")
-  @RestQuery(name = "check_entity_requirment", description = "Check whether an entity has the specified requirement",
+  @Path("/providers/{provider}/resources/{resource}/requirements/{requirement}/entities/{id}")
+  @RestQuery(name = "check_entity_requirement", description = "Check whether an entity has the specified requirement",
           returnDescription = "no content, see status code",
           pathParameters = {
             @RestParameter(name = "provider", type = STRING, isRequired = true, description = "Requirements provider name "),
@@ -116,7 +116,7 @@ public class RequirementsRestService {
             @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to get the requirements"),
             @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "The provider can not be found")
           })
-  public Response checkId(@PathParam("provider") String provider, @PathParam("resource") String resource, @PathParam("requirement") String requirement, @PathParam("id") String id) {
+  public Response checkEntityId(@PathParam("provider") String provider, @PathParam("resource") String resource, @PathParam("requirement") String requirement, @PathParam("id") String id) {
     if (!requirementServices.containsKey(provider)) {
       return Response.status(Status.SERVICE_UNAVAILABLE).build();
     }
