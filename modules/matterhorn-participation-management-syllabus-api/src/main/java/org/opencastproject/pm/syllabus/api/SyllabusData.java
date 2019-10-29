@@ -37,9 +37,9 @@ public abstract class SyllabusData implements Serializable {
   private Map<String, String> locationSuitability;
 
   // MAT-329, Guava Multimap won't deserialize due to ClassLoader issues
-  // Apache Commons Collection 3.2.2 doesn't use generic
-  private MultiMap activityLocation; //<String, VActivityLocation>
-  private MultiMap activityParent; //<String, VActivityParents>
+  // Apache Commons Collection 3.2.2 doesn't support generics
+  private MultiMap activityLocation; // <String, VActivityLocation>
+  private MultiMap activityParent; // <String, VActivityParents>
   private Map<String, VZones> zones;
   private Map<String, VStaff> staff;
   private MultiMap activityStaff; // <String, VActivityStaff>
