@@ -23,8 +23,10 @@ package org.opencastproject.pm.syllabus.api;
 
 import org.joda.time.DateTime;
 
+import java.io.Serializable;
+
 /** Properties common to all Syllabus+ views. */
-public interface SyllabusView {
+public interface SyllabusView extends Serializable {
   /** Return the time this entity was last modified. */
   DateTime getLastChanged();
 }

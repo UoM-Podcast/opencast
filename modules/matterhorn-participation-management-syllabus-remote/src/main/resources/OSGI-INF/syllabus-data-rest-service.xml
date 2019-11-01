@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
+               name="org.opencastproject.pm.syllabus.remote.endpoint.SyllabusDataRestService"
+               immediate="true">
+  <implementation class="org.opencastproject.pm.syllabus.remote.endpoint.SyllabusDataRestService" />
+  <property name="service.description" value="Syllabus+ data harvester REST Endpoint" />
+  <property name="opencast.service.type" value="org.opencastproject.pm" />
+  <property name="opencast.service.path" value="/syllabus" />
+  <property name="opencast.service.jobproducer" value="false" />
+  <service>
+    <provide interface="org.opencastproject.pm.syllabus.remote.endpoint.SyllabusDataRestService" />
+  </service>
+  <!-- to test remote in AllinOne change interface="org.opencastproject.pm.syllabus.remote.SyllabusDataServiceRemote" -->
+  <reference name="syllabusDataService"
+             interface="org.opencastproject.pm.syllabus.api.SyllabusDataService"
+             cardinality="1..1"
+             policy="static"
+             bind="setSyllabusDataService" />
+</scr:component>

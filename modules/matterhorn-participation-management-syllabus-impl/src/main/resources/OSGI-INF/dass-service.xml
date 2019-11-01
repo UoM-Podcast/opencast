@@ -5,12 +5,17 @@
                activate="activate"
                deactivate="deactivate">
   <implementation class="org.opencastproject.pm.syllabus.impl.scheduling.DassRequirementServicePublisher" />
-  <!-- necessary for the ConfigurationManagement to pick up the config properties and call updated(Dictionary) -->
-  <property name="service.pid" 
+  <property name="service.pid"
             value="org.opencastproject.pm.syllabus.impl.scheduling.DassRequirementServicePublisher" />
   <property name="service.description"
             value="Dass database connector service publisher" />
+  <property name="requirements.provider" value="dass" />
   <service>
     <provide interface="org.osgi.service.cm.ManagedService" />
   </service>
+  <reference name="trustedHttpClient"
+             interface="org.opencastproject.security.api.TrustedHttpClient"
+             cardinality="1..1"
+             policy="static"
+             bind="setTrustedHttpClient" />
 </scr:component>

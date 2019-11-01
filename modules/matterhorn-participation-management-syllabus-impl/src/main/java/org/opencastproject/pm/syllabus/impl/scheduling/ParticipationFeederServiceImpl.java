@@ -35,7 +35,8 @@ import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseException;
 import org.opencastproject.pm.api.scheduling.ParticipationFeederService;
 import org.opencastproject.pm.api.util.RequirementManager;
-import org.opencastproject.pm.syllabus.api.SyllabusService;
+import org.opencastproject.pm.syllabus.api.SyllabusData;
+import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.api.VActivity;
 import org.opencastproject.pm.syllabus.api.VModule;
 import org.opencastproject.requirement.api.RequirementService;
@@ -65,15 +66,6 @@ import javax.ws.rs.core.Response;
 
 /** Connects the {@link ParticipationFeederRunner} to the OSGi environment. */
 public class ParticipationFeederServiceImpl implements ManagedService, ParticipationFeederService {
-
-  private static final String CAPTURE_ROOMS_PROPERTY = "capture.rooms";
-  private static final String CAPTURE_ROOM_PROPERTY = "capture.room";
-  private static final String[] CAPTURE_ROOM_PROPS = {"name","id","inputs"};
-
-  private static final String CAPTURE_TYPES_PROPERTY = "capture.types";
-  private static final String CAPTURE_TYPE_PROPERTY = "capture.type";
-  private static final String[] CAPTURE_TYPE_PROPS = {"name","id"};
-
   public static final boolean DEFAULT_RUN_ON_START = false;
   public static final boolean DEFAULT_SCHEDULE = false;
 
@@ -81,8 +73,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
   private static final Logger logger = LoggerFactory.getLogger(ParticipationFeederRunner.class);
 
   // Dependencies
-
-  private SyllabusService syllabusService;
+  private SyllabusDataService syllabusDataService;
   private ParticipationManagementDatabase persistence;
   private SecurityService securityService;
   private OrganizationDirectoryService organizationDirectoryService;
@@ -96,8 +87,8 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
   private ParticipationFeederRunner runner;
 
   /** OSGi container callback. */
-  public void setSyllabusService(SyllabusService syllabusService) {
-    this.syllabusService = syllabusService;
+  public void setSyllabusDataService(SyllabusDataService syllabusDataService) {
+    this.syllabusDataService = syllabusDataService;
   }
 
   /** OSGi container callback. */
@@ -125,7 +116,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
     logger.info("Start participation management feeder");
     requirementManager = new DassRequirementManager(requirementService, persistence);
     systemUser = cc.getBundleContext().getProperty(SecurityUtil.PROPERTY_KEY_SYS_USER);
-    runner = new ParticipationFeederRunner(syllabusService, persistence, requirementManager, secCtx);
+    runner = new ParticipationFeederRunner(syllabusDataService, persistence, requirementManager, secCtx);
   }
 
   /** OSGi container callback. */
@@ -196,7 +187,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
 
   @Override
   public Course getCourseByActivityId(String activityId) throws NotFoundException {
-    final SyllabusData data = SyllabusData.fetchModules(syllabusService);
+    final SyllabusData data = syllabusDataService.fetchModules();
     final ModuleFinder moduleFinder = new ModuleFinder(data.getModule(), data.getActivityParent(), data.getActivity());
     final VActivity activity = data.getActivity().get(activityId);
 
@@ -213,37 +204,12 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
     return course;
   }
 
-  public void setParticipationProperties(Dictionary properties) throws ConfigurationException {
-        final String rooms = getCfg(properties, CAPTURE_ROOMS_PROPERTY);
 
-        for (String room : rooms.split(",")) {
-            for (String prop : CAPTURE_ROOM_PROPS) {
-                Option<String> value = getOptCfg(properties, CAPTURE_ROOM_PROPERTY + "." + room.trim() + "." + prop);
-                if (value.isSome()) {
-                    syllabusService.addCaptureRoomProperty(room.trim(), prop, value.get());
-                }
-            }
-        }
-        final Option<String> typesOption = getOptCfg(properties, CAPTURE_TYPES_PROPERTY);
-        if (typesOption.isSome()) {
-            String types = typesOption.get();
-            for (String type : types.split(",")) {
-                for (String prop : CAPTURE_TYPE_PROPS) {
-                    Option<String> value = getOptCfg(properties, CAPTURE_TYPE_PROPERTY + "." + type.trim() + "." + prop);
-                    if (value.isSome()) {
-                        syllabusService.addCaptureActivityTypeProperty(type.trim(), prop, value.get());
-                    }
-                }
-            }
-        } else {
-            syllabusService.addCaptureActivityTypeProperty("ANY", "id", syllabusService.ACTIVITY_TYPE_ANY);
-        }
-  }
 
   @Override
   public Course getCourseByCourseKey(String courseKey) throws NotFoundException {
     final List<VModule> modules = new ArrayList<VModule>();
-    final VModule module = syllabusService.getModuleByCourseKey(courseKey);
+    final VModule module = syllabusDataService.getModuleByCourseKey(courseKey);
 
     if (module != null) {
       modules.add(module);
@@ -259,7 +225,7 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
 
   @Override
   public List<String> getActivityIds(String courseKey) throws NotFoundException {
-    return syllabusService.findModuleActivityIdsByCourseKey(courseKey);
+    return syllabusDataService.findModuleActivityIdsByCourseKey(courseKey);
   }
 
   /** OSGi container called (ConfigurationAdmin). */
@@ -271,8 +237,6 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
       final String orgId = getCfg(properties, "organization");
       final boolean runOnStart = getOptCfg(properties, "run-on-start").map(toBool).getOrElse(DEFAULT_RUN_ON_START);
       final boolean schedule = getOptCfg(properties, "schedule").map(toBool).getOrElse(DEFAULT_SCHEDULE);
-
-      setParticipationProperties(properties);
 
       // create security context
       final Organization org;

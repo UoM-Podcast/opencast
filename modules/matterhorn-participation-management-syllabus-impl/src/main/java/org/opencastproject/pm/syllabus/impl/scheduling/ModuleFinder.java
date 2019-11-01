@@ -36,13 +36,13 @@ import org.opencastproject.pm.syllabus.api.VModule;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 
-import com.google.common.collect.Multimap;
-
+import org.apache.commons.collections.MultiMap;
 import org.apache.commons.lang.StringUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -52,13 +52,13 @@ final class ModuleFinder {
   // activityId -> VModule
   private final Map<String, VModule> moduleMap;
   // activityId -> VActivityParents
-  private final Multimap<String, VActivityParents> parentsMap;
+  private final MultiMap parentsMap;
   // activityId -> VActivity
   private final Map<String, VActivity> activityMap;
 //  private final Cache<String, List<VModule>> cache = Caches.lru(100, 30 * 60000);
 
   ModuleFinder(Map<String, VModule> moduleMap,
-               Multimap<String, VActivityParents> parentsMap,
+               MultiMap parentsMap,
                Map<String, VActivity> activityMap) {
     this.moduleMap = moduleMap;
     this.parentsMap = parentsMap;
@@ -148,7 +148,11 @@ final class ModuleFinder {
     if (hasModule(a)) {
       return list(a);
     } else {
-      final List<VActivity> parents = mlist(parentsMap.get(a.getId()))
+      List<VActivityParents> activityParents = (List<VActivityParents>)parentsMap.get(a.getId());
+      if (activityParents == null) {
+        activityParents = new ArrayList<>();
+      }
+      final List<VActivity> parents = mlist(activityParents)
               .map(VActivityParentsF.getParentId)
               .bind(getMap(activityMap))
               .bind(collectUntilModuleF).value();

@@ -48,6 +48,7 @@ import org.opencastproject.pm.api.Recording;
 import org.opencastproject.pm.api.Recording.ReviewStatus;
 import org.opencastproject.pm.api.Room;
 import org.opencastproject.pm.syllabus.api.Occurrence;
+import org.opencastproject.pm.syllabus.api.SyllabusCaptureFilter;
 import org.opencastproject.pm.syllabus.api.SyllabusService;
 import org.opencastproject.pm.syllabus.api.VActivity;
 import org.opencastproject.pm.syllabus.api.VActivityDateTime;
@@ -394,6 +395,7 @@ public class AbstractSyllabusServiceTest {
   @Test
   public void testBuildActivityHierarchyPartitioned() {
     final SyllabusService syl = syl();
+    final SyllabusCaptureFilter captureRooms = new SyllabusCaptureFilterImpl();
     //
     // Slurp some tables into memory. Then partition the activity list and fetch V_ACTIVITY_DATETIME
     // in partitions.
@@ -457,7 +459,7 @@ public class AbstractSyllabusServiceTest {
       final Set<String> as = toSet(mlist(al).bind(new Function<VLocationSuitability, Option<String>>() {
         @Override
         public Option<String> apply(VLocationSuitability a) {
-          return syl.getCaptureRoomTypeIDs().contains(a.getSuitabilityId()) ? some(a.getLocationId()) : none(String.class);
+          return captureRooms.getCaptureRoomTypeIDs().contains(a.getSuitabilityId()) ? some(a.getLocationId()) : none(String.class);
         }
       }).value());
 //      System.out.pri ntln("# locations featuring capture agents " + as.size());
@@ -481,7 +483,7 @@ public class AbstractSyllabusServiceTest {
       // iterate activity partition
       for (VActivity activity : activityPartition) {
         final String aId = activity.getId();
-        if (!syl.isCaptureActivityType(activity))
+        if (!captureRooms.isCaptureActivityType(activity))
           continue;
         for (VActivityDateTime dateTime : activityDateTimeMap.get(aId)) {
           for (VActivityLocation activityLocation : activityLocationMap.get(aId)) {

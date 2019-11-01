@@ -18,23 +18,21 @@
  * the License.
  *
  */
+package org.opencastproject.pm.syllabus.remote;
 
-package org.opencastproject.requirement.api;
+import org.opencastproject.pm.syllabus.impl.SyllabusDataServiceImpl;
 
-import java.util.List;
+import org.osgi.service.component.ComponentContext;
+import org.slf4j.LoggerFactory;
 
-public interface RequirementService {
 
-  String REQUIREMENTS_PROVIDER_PROPERTY = "requirements.provider";
+// TEST convience class to allow the remote version of SyllabusDataServiceImpl to be run
+// in the same node
+public class SyllabusDataServiceRemote extends SyllabusDataServiceImpl {
 
-  enum Requirement { RECORDING, CAPTIONS };
-  enum Resource { USER, EVENT, SERIES }
-
-  String getProviderName();
-
-  List<String> getIds(Resource resource, Requirement requirement) throws
-          RequirementServiceException;
-
-  Boolean checkId(String id, Resource resource, Requirement requirement) throws
-          RequirementServiceException;
+  @Override
+  public void activate(final ComponentContext cc) {
+    logger = LoggerFactory.getLogger(SyllabusDataServiceRemote.class);
+    super.activate(cc);
+  }
 }

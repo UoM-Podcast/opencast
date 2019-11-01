@@ -18,23 +18,20 @@
  * the License.
  *
  */
+package org.opencastproject.pm.syllabus.remote.scheduling;
 
-package org.opencastproject.requirement.api;
+import org.opencastproject.pm.syllabus.impl.scheduling.DassRequirementServicePublisher;
 
-import java.util.List;
+import org.osgi.service.cm.ConfigurationException;
+import org.osgi.service.component.ComponentContext;
+import org.slf4j.LoggerFactory;
 
-public interface RequirementService {
-
-  String REQUIREMENTS_PROVIDER_PROPERTY = "requirements.provider";
-
-  enum Requirement { RECORDING, CAPTIONS };
-  enum Resource { USER, EVENT, SERIES }
-
-  String getProviderName();
-
-  List<String> getIds(Resource resource, Requirement requirement) throws
-          RequirementServiceException;
-
-  Boolean checkId(String id, Resource resource, Requirement requirement) throws
-          RequirementServiceException;
+// TEST convience class to allow the remote version of DassRequirementServicePublisher to be run
+// in the same node
+public class DassRequirementServicePublisherRemote extends DassRequirementServicePublisher {
+  @Override
+  public void activate(final ComponentContext cc) throws ConfigurationException {
+    logger = LoggerFactory.getLogger(DassRequirementServicePublisherRemote.class);
+    super.activate(cc);
+  }
 }

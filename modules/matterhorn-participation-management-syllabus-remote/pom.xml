@@ -1,8 +1,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>matterhorn-participation-management-syllabus-impl</artifactId>
-  <name>matterhorn-participation-management-syllabus-impl</name>
+  <artifactId>matterhorn-participation-management-syllabus-remote</artifactId>
+  <name>matterhorn-participation-management-syllabus-remote</name>
   <packaging>bundle</packaging>
   <parent>
     <groupId>org.opencastproject</groupId>
@@ -27,11 +27,6 @@
     </dependency>
     <dependency>
       <groupId>org.opencastproject</groupId>
-      <artifactId>matterhorn-requirement-dass</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.opencastproject</groupId>
       <artifactId>matterhorn-participation-api</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -41,8 +36,9 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.servicemix.bundles</groupId>
-      <artifactId>org.apache.servicemix.bundles.quartz</artifactId>
+      <groupId>org.opencastproject</groupId>
+      <artifactId>matterhorn-participation-management-syllabus-impl</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -51,10 +47,6 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>commons-collections</groupId>
-      <artifactId>commons-collections</artifactId>
     </dependency>
     <dependency>
       <groupId>joda-time</groupId>
@@ -89,54 +81,9 @@
       <artifactId>org.osgi.compendium</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.eclipse.persistence</groupId>
-      <artifactId>javax.persistence</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.persistence</groupId>
-      <artifactId>org.eclipse.persistence.core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.mchange</groupId>
-      <artifactId>c3p0</artifactId>
-    </dependency>
-    <dependency>
-    <groupId>org.w3c</groupId>
-    <artifactId>dom</artifactId>
-    <version>2.3.0-jaxb-1.0.6</version>
-    </dependency>
-    <dependency>
-      <groupId>net.sourceforge.jtds</groupId>
-      <artifactId>jtds</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>jcifs</groupId>
-      <artifactId>jcifs</artifactId>
-    </dependency>
-    <dependency><!-- for local testing -->
-      <groupId>mysql</groupId>
-      <artifactId>mysql-connector-java</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.persistence</groupId>
-      <artifactId>org.eclipse.persistence.jpa</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.persistence</groupId>
-      <artifactId>org.eclipse.persistence.asm</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.eclipse.persistence</groupId>
-      <artifactId>org.eclipse.persistence.antlr</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.h2database</groupId>
-      <artifactId>h2</artifactId>
-      <scope>test</scope>
+      <groupId>org.w3c</groupId>
+      <artifactId>dom</artifactId>
+      <version>2.3.0-jaxb-1.0.6</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -162,10 +109,6 @@
   <build>
     <plugins>
       <plugin>
-        <groupId>de.empulse.eclipselink</groupId>
-        <artifactId>staticweave-maven-plugin</artifactId>
-      </plugin>
-      <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
         <extensions>true</extensions>
@@ -174,31 +117,20 @@
             <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
             <Build-Number>${buildNumber}</Build-Number>
             <Import-Package>
-              org.joda.time.chrono,
               *;resolution:=optional
             </Import-Package>
             <Export-Package>
-              org.opencastproject.pm.syllabus.impl;version=${project.version},
-              org.opencastproject.pm.syllabus.impl.snapcount;version=${project.version},
-              org.opencastproject.pm.syllabus.impl.scheduling;version=${project.version}
+              org.opencastproject.pm.syllabus.remote;version=${project.version},
+              org.opencastproject.pm.syllabus.remote.endpoint;version=${project.version}
             </Export-Package>
-            <Embed-Dependency>
-<!--              c3p0;inline=true,-->
-              dom;inline=true,
-              mysql-connector-java;inline=true,
-              jtds;inline=true,
-              jcifs;inline=true
-            </Embed-Dependency>
             <Service-Component>
-              OSGI-INF/participation-feeder-service.xml,
-              OSGI-INF/snap-count-service.xml,
-              OSGI-INF/dass-service.xml,
-              OSGI-INF/syllabus-service.xml,
-              OSGI-INF/syllabus-data-service.xml
+              <!--MAT-329, MAT-334, uncomment remote services if testing on AllinOne node
+              OSGI-INF/dass-service-remote.xml,
+              OSGI-INF/syllabus-data-service-remote.xml,
+              -->
+              OSGI-INF/requirements-rest-service.xml,
+              OSGI-INF/syllabus-data-rest-service.xml
             </Service-Component>
-            <Meta-Persistence>
-              META-INF/persistence.xml
-            </Meta-Persistence>
           </instructions>
         </configuration>
       </plugin>

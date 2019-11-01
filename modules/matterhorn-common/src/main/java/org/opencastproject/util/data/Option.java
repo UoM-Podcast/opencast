@@ -27,6 +27,8 @@ import static org.opencastproject.util.data.functions.Misc.chuck;
 
 import com.entwinemedia.fn.data.Opt;
 
+import java.io.Serializable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -37,7 +39,7 @@ import java.util.List;
  * wrap null into a some. Instead use none.
  */
 // todo clean up the mix of abstract methods and concrete implementations based on the isSome() decision
-public abstract class Option<A> implements Iterable<A> {
+public abstract class Option<A> implements Iterable<A>, Serializable {
   private Option() {
   }
 

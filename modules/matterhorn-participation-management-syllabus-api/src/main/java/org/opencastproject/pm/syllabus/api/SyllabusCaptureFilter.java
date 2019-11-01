@@ -18,23 +18,30 @@
  * the License.
  *
  */
+package org.opencastproject.pm.syllabus.api;
 
-package org.opencastproject.requirement.api;
+import org.osgi.service.cm.ConfigurationException;
 
+import java.util.Dictionary;
 import java.util.List;
+import java.util.Map;
 
-public interface RequirementService {
+public interface SyllabusCaptureFilter {
 
-  String REQUIREMENTS_PROVIDER_PROPERTY = "requirements.provider";
+  void addCaptureRoomProperty(final String captureRoom, String property, String value);
 
-  enum Requirement { RECORDING, CAPTIONS };
-  enum Resource { USER, EVENT, SERIES }
+  void addCaptureActivityTypeProperty(final String activityType, String property, String value);
 
-  String getProviderName();
+  Map<String, Map<String, String>> getCaptureRooms();
 
-  List<String> getIds(Resource resource, Requirement requirement) throws
-          RequirementServiceException;
+  List<String> getCaptureRoomTypeIDs();
 
-  Boolean checkId(String id, Resource resource, Requirement requirement) throws
-          RequirementServiceException;
+  List<String> getCaptureActivityTypeIDs();
+
+  boolean isCaptureActivityType(VActivity activity);
+
+  boolean hasCaptureAgent(VLocationSuitability suitability);
+
+  void updateProperties(Dictionary properties) throws ConfigurationException;
 }
+

@@ -81,7 +81,7 @@ public final class OaiPmhUtil {
   }
 
   public static DateFormat newDateTimeFormat() {
-    SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
     f.setTimeZone(TimeZone.getTimeZone("UTC"));
     return f;
   }
