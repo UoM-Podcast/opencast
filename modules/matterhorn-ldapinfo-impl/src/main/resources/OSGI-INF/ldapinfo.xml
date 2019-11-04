@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" 
+               name="org.opencastproject.ldapinfo.impl.LdapInfoServiceImpl" 
+               immediate="true" 
+               activate="activate">
+  <implementation class="org.opencastproject.ldapinfo.impl.LdapInfoServiceImpl" />
+  <property name="service.pid" value="org.opencastproject.ldapinfo.impl.LdapInfoServiceImpl" />
+  <property name="service.description" value="LDAP Information Service" />
+  <service>
+    <provide interface="org.osgi.service.cm.ManagedService" />
+    <provide interface="org.opencastproject.ldapinfo.api.LdapInfoService" />
+  </service>
+</scr:component>
