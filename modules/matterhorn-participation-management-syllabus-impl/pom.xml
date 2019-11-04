@@ -194,7 +194,8 @@
               OSGI-INF/snap-count-service.xml,
               OSGI-INF/dass-service.xml,
               OSGI-INF/syllabus-service.xml,
-              OSGI-INF/syllabus-data-service.xml
+              OSGI-INF/syllabus-data-service.xml,
+              OSGI-INF/remote-access-https-client.xml
             </Service-Component>
             <Meta-Persistence>
               META-INF/persistence.xml

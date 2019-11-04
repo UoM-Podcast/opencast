@@ -20,7 +20,7 @@
  */
 package org.opencastproject.pm.syllabus.impl;
 
-import org.opencastproject.security.api.TrustedHttpClient;
+import org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -43,13 +43,14 @@ import javax.ws.rs.core.StreamingOutput;
  * Util class to send and receive objects via http
  */
 public final class RemoteObjectUtil {
-    private RemoteObjectUtil() {
-    }
+  private RemoteObjectUtil() {
+  }
 
-    private static Logger logger = LoggerFactory.getLogger(RemoteObjectUtil.class);
+  private static Logger logger = LoggerFactory.getLogger(RemoteObjectUtil.class);
 
-    // Get object stream from url and deserialize
-    public static <T> T getResponseAsObject(TrustedHttpClient client, String url) {
+  // Get object stream from url and deserialize
+  public static <T> T getResponseAsObject(RemoteAccessHttpsClient client, String url) {
+
     try {
       HttpGet get = new HttpGet(url);
       HttpResponse response = client.execute(get);
