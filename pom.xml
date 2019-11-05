@@ -119,6 +119,8 @@
     <module>modules/matterhorn-inspection-service-remote</module>
     <module>modules/matterhorn-inspection-workflowoperation</module>
     <module>modules/matterhorn-kernel</module>
+    <module>modules/matterhorn-ldapinfo-api</module>
+    <module>modules/matterhorn-ldapinfo-impl</module>
     <module>modules/matterhorn-lti</module>
     <module>modules/matterhorn-message-broker-api</module>
     <module>modules/matterhorn-message-broker-impl</module>
