@@ -4,8 +4,8 @@ ALTER TABLE mh_host_registration ADD COLUMN node_name VARCHAR(255) AFTER host;
 ALTER TABLE mh_archive_episode ADD COLUMN dublincore_xml MEDIUMTEXT AFTER access_control;
 
 -- Archive AWS storage
-ALTER TABLE mh_archive_episode ADD COLUMN storage_id VARCHAR(255) NOT NULL;
-ALTER TABLE mh_archive_asset ADD COLUMN storage_id VARCHAR(255) NOT NULL;
+ALTER TABLE mh_archive_episode ADD COLUMN storage_id VARCHAR(255) NOT NULL DEFAULT 'local-filesystem';
+ALTER TABLE mh_archive_asset ADD COLUMN storage_id VARCHAR(255) NOT NULL DEFAULT 'local-filesystem';
 
 CREATE TABLE mh_aws_asset_mapping (
 	id BIGINT(20) NOT NULL PRIMARY KEY,
