@@ -336,7 +336,7 @@ CREATE TABLE mh_archive_asset (
   checksum VARCHAR(255) NOT NULL,
   uri VARCHAR(255) NOT NULL,
   version BIGINT(20) NOT NULL,
-  storage_id VARCHAR(255) NOT NULL,
+  storage_id VARCHAR(255) NOT NULL DEFAULT 'local-filesystem',
   PRIMARY KEY (id),
   CONSTRAINT UNQ_mh_archive_asset UNIQUE (organization,mediapackage,mediapackageelement,version),
   CONSTRAINT FK_mh_archive_asset_organization FOREIGN KEY (organization) REFERENCES mh_organization (id) ON DELETE CASCADE
@@ -355,7 +355,7 @@ CREATE TABLE mh_archive_episode (
   dublincore_xml MEDIUMTEXT,
   mediapackage_xml MEDIUMTEXT,
   modification_date DATETIME DEFAULT NULL,
-  storage_id VARCHAR(255) NOT NULL,
+  storage_id VARCHAR(255) NOT NULL DEFAULT 'local-filesystem',
   PRIMARY KEY (id,version,organization),
   CONSTRAINT FK_mh_archive_episode_organization FOREIGN KEY (organization) REFERENCES mh_organization (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
