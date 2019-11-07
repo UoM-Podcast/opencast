@@ -23,14 +23,20 @@ package org.opencastproject.pm.syllabus.impl;
 import static org.opencastproject.util.OsgiUtil.getOptCfg;
 import static org.opencastproject.util.OsgiUtil.getOptCfgAsBoolean;
 
+import org.opencastproject.pm.syllabus.api.Activities;
 import org.opencastproject.pm.syllabus.api.SyllabusCaptureFilter;
 import org.opencastproject.pm.syllabus.api.SyllabusData;
 import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.api.SyllabusService;
 import org.opencastproject.pm.syllabus.api.VActivityDateTime;
+import org.opencastproject.pm.syllabus.api.VActivityLocation;
+import org.opencastproject.pm.syllabus.api.VLocation;
 import org.opencastproject.pm.syllabus.api.VModule;
+import org.opencastproject.pm.syllabus.api.VStaff;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.util.data.Option;
+
+import org.joda.time.DateTime;
 
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
@@ -200,6 +206,138 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     return syllabusCaptureFilter;
   }
 
+  @Override
+  public List<Activities> findActivityByStaffId(String staffId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findStaffActivities(staffId);
+    } else {
+      String url = remoteServiceURL.toString() + "/activities/staff?id=" + staffId;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public List<Activities> findActivityByModule(String moduleName) {
+    if (local && syllabusService != null) {
+      return syllabusService.findModuleActivities(moduleName);
+    } else {
+      String url = remoteServiceURL.toString() + "/activities/module?name=" + moduleName;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public List<Activities> findChildActivity(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findChildActivities(activityId);
+    } else {
+      String url = remoteServiceURL.toString() + "/activities/child?id=" + activityId;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public VStaff findStaffById(String spotId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findStaffById(spotId);
+    } else {
+      String url = remoteServiceURL.toString() + "/staff/find?id=" + spotId;
+      final VStaff staff = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return staff;
+    }
+  }
+
+  @Override
+  public List<VStaff> findStaffByStaffActivityId(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findStaffByStaffActivityId(activityId);
+    } else {
+      String url = remoteServiceURL.toString() + "/staff/activity?activityId=" + activityId;
+      final List<VStaff> staff = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return staff;
+    }
+  }
+
+  @Override
+  public List<VActivityLocation> findByActivityLocationId(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findByActivityLocationId(activityId);
+    } else {
+      String url = remoteServiceURL.toString() + "/activity/location?activityId=" + activityId;
+      final List<VActivityLocation> locations = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return locations;
+    }
+  }
+
+  @Override
+  public List<VActivityDateTime> findActivityDateTime(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findActivityDateTime(activityId);
+    } else {
+      String url = remoteServiceURL.toString() + "/activity/datetime?activityId=" + activityId;
+      final List<VActivityDateTime> activity = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activity;
+    }
+  }
+
+  @Override
+  public List<VLocation> findSuitabilityByLocationId(String locationId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findSuitabilityByLocationId(locationId);
+    } else {
+      String url = remoteServiceURL.toString() + "/location/suitability?locationId=" + locationId;
+      final List<VLocation> suitability = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return suitability;
+    }
+  }
+
+  @Override
+  public List<Activities> findActivitiesByLocation(String location, DateTime start, DateTime end) {
+    if (local && syllabusService != null) {
+      return syllabusService.findActivitiesByLocation(location, start, end);
+    } else {
+      String url = remoteServiceURL.toString() + "/activities/location?locationId=" + location + "&start=" + start + "&end=" + end;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public List<Activities> findParentActivities(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findParentActivities(activityId);
+    } else {
+      String url = remoteServiceURL.toString() + "/activity/parent?activityId=" + activityId;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public VModule getModuleById(String id) {
+    if (local && syllabusService != null) {
+      return syllabusService.getModuleById(id);
+    } else {
+      String url = remoteServiceURL.toString() + "/modules/find?id=" + id;
+      final VModule module = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return module;
+    }
+  }
+
   /**
    * OSGi container callback.
    * @param syllabusService
@@ -216,4 +354,5 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   public void setTrustedHttpClient(TrustedHttpClient client) {
     this.client = client;
   }
+
 }

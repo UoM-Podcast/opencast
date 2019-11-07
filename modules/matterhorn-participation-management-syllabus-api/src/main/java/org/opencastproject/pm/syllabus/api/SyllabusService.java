@@ -209,4 +209,29 @@ public interface SyllabusService {
    * @return source description
    */
   VModule getModuleByCourseKey(String courseKey);
+
+  List<Activities> findStaffActivities(String staffId);
+
+  List<Activities> findModuleActivities(String moduleName);
+
+  List<Activities> findChildActivities(String activityId);
+
+  /** Return a {@link VStaff staff} given spotId */
+  VStaff findStaffById(String spotId);
+
+  List<VStaff> findStaffByStaffActivityId(String activityId);
+
+  /**
+   * Get a module my its id
+   * @return module
+   */
+  VModule getModuleById(String id);
+
+  List<VActivityLocation> findByActivityLocationId(String activityId);
+
+  List<VLocation> findSuitabilityByLocationId(String locationId);
+
+  List<Activities> findActivitiesByLocation(String location, DateTime start, DateTime end);
+
+  List<Activities> findParentActivities(String activityId);
 }

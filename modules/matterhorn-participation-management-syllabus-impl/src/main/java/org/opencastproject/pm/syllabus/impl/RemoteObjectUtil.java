@@ -22,6 +22,9 @@ package org.opencastproject.pm.syllabus.impl;
 
 import org.opencastproject.security.api.TrustedHttpClient;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -90,4 +93,10 @@ public final class RemoteObjectUtil {
 
     return Response.ok(stream).build();
   }
+
+    public static Response writeJson(Object object) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        String moduleJson = mapper.writeValueAsString(object);
+        return Response.ok(moduleJson).build();
+    }
 }

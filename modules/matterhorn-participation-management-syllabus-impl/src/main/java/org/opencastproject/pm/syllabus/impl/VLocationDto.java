@@ -28,12 +28,15 @@ import org.opencastproject.pm.syllabus.api.VLocation;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.functions.Strings;
+import org.opencastproject.util.persistence.Queries;
 
 import org.joda.time.DateTime;
 
 import java.util.Date;
+import java.util.List;
 
 import javax.persistence.Entity;
+import javax.persistence.EntityManager;
 import javax.persistence.Id;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
@@ -100,4 +103,24 @@ public final class VLocationDto {
   // -------------------------------------------------------------------------------------------------------------------
 
   public static final Finder<VLocationDto> finder = new Finder<VLocationDto>("VLocation");
+
+  public abstract static class LocationSuitabilityFinder<A> extends Finder {
+    public LocationSuitabilityFinder(String entityName) {
+      super(entityName);
+    }
+    public abstract Function<EntityManager, List<VLocation>> findSuitabilityByLocationId(String locationId);
+  }
+
+  public static final Finder<VLocation> finderSuitability = new VLocationDto.LocationSuitabilityFinder<String>("VLocation") {
+    @Override
+    public Function<EntityManager, List<VLocation>>findSuitabilityByLocationId(String locationId) {
+      return Queries.sql.findAll(
+              "select ls.SuitabilityId, st.Name from rdowner.V_Location_Suitability ls "
+                      + "join rdowner.V_SUITABILITY st on st.Id = ls.SuitabilityId "
+                      +  "where ls.LocationId = ? "
+                      +  "and st.Id in (SELECT V_SUITABILITY.Id "
+                      +  "from rdowner.V_SUITABILITY "
+                      +  "where V_SUITABILITY.Name like '%PODCAST%') " , locationId);
+    }
+  };
 }

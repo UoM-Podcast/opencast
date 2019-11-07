@@ -22,10 +22,14 @@ package org.opencastproject.pm.syllabus.remote.endpoint;
 
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
+import org.opencastproject.pm.syllabus.api.Activities;
 import org.opencastproject.pm.syllabus.api.SyllabusData;
 import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.api.VActivityDateTime;
+import org.opencastproject.pm.syllabus.api.VActivityLocation;
+import org.opencastproject.pm.syllabus.api.VLocation;
 import org.opencastproject.pm.syllabus.api.VModule;
+import org.opencastproject.pm.syllabus.api.VStaff;
 import org.opencastproject.pm.syllabus.impl.RemoteObjectUtil;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
@@ -33,6 +37,8 @@ import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
 import com.google.common.base.Strings;
+
+import org.joda.time.DateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -192,6 +198,289 @@ public class SyllabusDataRestService {
       return RemoteObjectUtil.writeObjectResponse(datetimes);
     } catch (IOException e) {
       logger.error("Unable to write datetimes response", e);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/activities/staff")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "activtiy_by_staff", description = "Get activities by staff id",
+          returnDescription = "List of staff activities serialized object",
+          restParameters = { @RestParameter(name = "id", type = STRING, isRequired = true, description = "Staff ID") },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Activity for staff"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "Activities not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findActivityByStaffId(@QueryParam("id") String staffId) {
+    try {
+      List<Activities> activities = syllabusDataService.findActivityByStaffId(staffId);
+      if (activities.isEmpty()) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(activities);
+    } catch (Exception e) {
+      logger.warn("Could not get staff activities for staff ID: '{}'", staffId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/activities/module")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "activtiy_by_staff", description = "Get activites by module name",
+          returnDescription = "List of modules",
+          restParameters = { @RestParameter(name = "name", type = STRING, isRequired = true, description = "Module name") },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Activity for module"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "Activities not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findActivityByModule(@QueryParam("name") String moduleName) {
+    try {
+      List<Activities> activities = syllabusDataService.findActivityByModule('%' + moduleName + '%');
+      if (activities.isEmpty()) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(activities);
+    } catch (Exception e) {
+      logger.warn("Could not get module activities for module name: '{}'", moduleName);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/activities/child")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "activtiy_by_staff", description = "Get child activities by activity id",
+          returnDescription = "List of child activities",
+          restParameters = { @RestParameter(name = "id", type = STRING, isRequired = true, description = "Activity id") },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Activity for module"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "Activities not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findChildActivity(@QueryParam("id") String activityId) {
+    try {
+      List<Activities> activities = syllabusDataService.findChildActivity(activityId);
+      if (activities.isEmpty()) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(activities);
+    } catch (Exception e) {
+      logger.warn("Could not get module activities for module name: '{}'", activityId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/module/find")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "module_by_id", description = "Find activity matching module id",
+          returnDescription = "Module",
+          restParameters = {
+                  @RestParameter(name = "id", type = STRING, isRequired = true, description = "Module ID")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "module activity matching id"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "module not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findModuleById(@QueryParam("id") String id) {
+    try {
+      VModule module = syllabusDataService.getModuleById(id);
+      if (module == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(module);
+    } catch (Exception e) {
+      logger.warn("Could not get module with id : '{}'", id);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/staff/find")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "find_staff_by_id", description = "Find staff by id",
+          returnDescription = "Staff",
+          restParameters = {
+                  @RestParameter(name = "id", type = STRING, isRequired = true, description = "staff ID")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "staff matching ID"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "staff not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findStaffById(@QueryParam("id") String spotId) {
+    try {
+      VStaff staff = syllabusDataService.findStaffById(spotId);
+      if (staff == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(staff);
+    } catch (Exception e) {
+      logger.warn("Could not get staff with spotId : '{}'", spotId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/staff/activity")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "find_staff_by_activity", description = "Find staff by activity",
+          returnDescription = "Staff",
+          restParameters = {
+                  @RestParameter(name = "activityId", type = STRING, isRequired = true, description = "activity ID")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "staff matching activity ID"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "staff not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findStaffByStaffActivityId(@QueryParam("activityId") String activityId) {
+    try {
+      List<VStaff> staff = syllabusDataService.findStaffByStaffActivityId(activityId);
+      if (staff == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(staff);
+    } catch (Exception e) {
+      logger.warn("Could not get staff with spotId : '{}'", activityId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/activity/location")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "find_location_by_activity", description = "Find location by activity",
+          returnDescription = "Location details",
+          restParameters = {
+                  @RestParameter(name = "activityId", type = STRING, isRequired = true, description = "activity ID")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "location matching activity ID"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "location not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findByActivityLocationId(@QueryParam("activityId") String activityId) {
+    try {
+      List<VActivityLocation> location = syllabusDataService.findByActivityLocationId(activityId);
+      if (location == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(location);
+    } catch (Exception e) {
+      logger.warn("Could not location with activity id : '{}'", activityId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/activity/datetime")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "find_location_by_activity", description = "Find location by activity",
+          returnDescription = "Location details",
+          restParameters = {
+                  @RestParameter(name = "activityId", type = STRING, isRequired = true, description = "activity ID")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "location matching activity ID"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "location not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findActivityDateTime(@QueryParam("activityId") String activityId) {
+    try {
+      List<VActivityDateTime> activity = syllabusDataService.findActivityDateTime(activityId);
+      if (activity == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(activity);
+    } catch (Exception e) {
+      logger.warn("Could not location with activity id : '{}'", activityId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/location/suitability")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "find_location_by_activity", description = "Find location by activity",
+          returnDescription = "Location details",
+          restParameters = {
+                  @RestParameter(name = "locationId", type = STRING, isRequired = true, description = "locationId ID")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "location matching activity ID"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "location not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findSuitabilityByLocationId(@QueryParam("locationId") String activityId) {
+    try {
+      List<VLocation> suitability = syllabusDataService.findSuitabilityByLocationId(activityId);
+      if (suitability == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(suitability);
+    } catch (Exception e) {
+      logger.warn("Could not location with activity id : '{}'", activityId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/activities/location")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "activties_datetime_by_range", description = "Activities datetime by id range",
+          returnDescription = "List<Activities> object",
+          restParameters = {
+                  @RestParameter(name = "locationId", type = STRING, isRequired = true, description = "Location id"),
+                  @RestParameter(name = "start", type = STRING, isRequired = true, description = "Start date"),
+                  @RestParameter(name = "end", type = STRING, isRequired = true, description = "End date")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Activities in given location"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "Activities not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findActivitiesByLocation(@QueryParam("locationId") String locationId, @QueryParam("start") String startDate, @QueryParam("end") String endDate) {
+
+    DateTime sdate = new DateTime(startDate);
+    DateTime edate = new DateTime(endDate);
+    try {
+      List<Activities> activities = syllabusDataService.findActivitiesByLocation(locationId, sdate, edate);
+      if (activities  == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(activities);
+    } catch (Exception e) {
+      logger.warn("Could not activities with location id : '{}'", locationId);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
+  @Path("/activity/parent")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "activtiy_parent", description = "Get parent activities by activity id",
+          returnDescription = "List of parent activities",
+          restParameters = { @RestParameter(name = "id", type = STRING, isRequired = true, description = "Activity id") },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Parent activities"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "Activities not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findParentActivities(@QueryParam("id") String activityId) {
+    try {
+      List<Activities> activities = syllabusDataService.findParentActivities(activityId);
+      if (activities.isEmpty()) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(activities);
+    } catch (Exception e) {
+      logger.warn("Could not parents activities for activity id: '{}'", activityId);
       return Response.serverError().build();
     }
   }
