@@ -33,7 +33,7 @@ import org.opencastproject.pm.syllabus.api.VActivityLocation;
 import org.opencastproject.pm.syllabus.api.VLocation;
 import org.opencastproject.pm.syllabus.api.VModule;
 import org.opencastproject.pm.syllabus.api.VStaff;
-import org.opencastproject.security.api.TrustedHttpClient;
+import org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient;
 import org.opencastproject.util.data.Option;
 
 import org.joda.time.DateTime;
@@ -45,15 +45,14 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Dictionary;
 import java.util.List;
 
 public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataService {
   // service config properties
   private static final String LOCAL_PROPERTY = "local";
-  private static final String REMOTE_URL_PROPERTY = "url";
+  private static final String REMOTE_ENDPOINT_PROPERTY = "remote.endpoint";
+  private static final String REMOTE_ENDPOINT_DEFAULT = "/syllabus";
 
   protected SyllabusCaptureFilter syllabusCaptureFilter;
 
@@ -69,20 +68,14 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   private String sourceDescription = null;
 
   // Handle remote connections securely
-  protected TrustedHttpClient client = null;
+  protected RemoteAccessHttpsClient client = null;
 
-  // URI of the base remote SyllabusEntityService. eg https://example.com/syllabus
-  // Must be valid is local == false
-  private URL remoteServiceURL;
+  // Remote endpoint, default REMOTE_ENDPOINT_DEFAULT
+  private String remoteEndpoint;
 
   public void activate(final ComponentContext cc) {
     logger.info("Activating {}", this.getClass().getName());
     syllabusCaptureFilter = new SyllabusCaptureFilterImpl();
-    try {
-      updated(cc.getProperties());
-    } catch (ConfigurationException e) {
-      logger.debug("Couldn't read properties");
-    }
   }
 
   @Override
@@ -93,15 +86,13 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       logger.info("Setting service to {} mode", local ? "local" : "remote");
     }
 
-    Option<String> value = getOptCfg(properties, REMOTE_URL_PROPERTY);
-    if (value.isSome()) {
-      try {
-        remoteServiceURL = new URL(value.get());
-      } catch (MalformedURLException e) {
-        logger.error("Remote URL is invalid: ", e);
-      }
+    remoteEndpoint = getOptCfg(properties, REMOTE_ENDPOINT_PROPERTY).getOrElse(REMOTE_ENDPOINT_DEFAULT);
+
+    if ('/' != remoteEndpoint.charAt(0)) {
+      remoteEndpoint = "/" + remoteEndpoint;
     }
 
+    logger.info("Setting service to {} mode", local ? "local" : "remote");
     syllabusCaptureFilter.updateProperties(properties);
   }
 
@@ -120,7 +111,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     } else {
       logger.debug("Requesting all syllabus data");
 
-      String url = remoteServiceURL.toString();
+      String url = client.getRemoteBaseAddress() + remoteEndpoint;
       data = RemoteObjectUtil.getResponseAsObject(client, url);
     }
 
@@ -142,7 +133,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     } else {
       logger.debug("Requesting syllabus module data");
 
-      String url = remoteServiceURL.toString() + "?subset=modules";
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "?subset=modules";
       data = RemoteObjectUtil.getResponseAsObject(client, url);
     }
 
@@ -155,7 +146,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       if (local && syllabusService != null) {
          sourceDescription = syllabusService.getSourceDescription();
       } else {
-        String url = remoteServiceURL.toString() + "/description";
+        String url = client.getRemoteBaseAddress() + remoteEndpoint + "/description";
         sourceDescription = RemoteObjectUtil.getResponseAsObject(client, url);
       }
     }
@@ -168,7 +159,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.getModuleByCourseKey(courseKey);
     } else {
-      String url = remoteServiceURL.toString() + "/modules?coursekey=" + courseKey;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules?coursekey=" + courseKey;
       final VModule module = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return module;
@@ -180,7 +171,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findModuleActivityIdsByCourseKey(courseKey);
     } else {
-      String url = remoteServiceURL.toString() + "/modules/activites/ids?coursekey=" + courseKey;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules/activites/ids?coursekey=" + courseKey;
       final List<String> activityIds = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activityIds;
@@ -192,7 +183,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findActivityDateTimeByRange(startActivityId, endActivityId);
     } else {
-      String url = remoteServiceURL.toString() + "/activites/datetime"
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activites/datetime"
               + "?startid=" + startActivityId
               + "&endid=" + endActivityId;
       final List<VActivityDateTime> datetimes = RemoteObjectUtil.getResponseAsObject(client, url);
@@ -347,11 +338,11 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   }
 
   /**
-   * Sets the trusted http client
+   * Sets the remote access https client
    *
    * @param client
    */
-  public void setTrustedHttpClient(TrustedHttpClient client) {
+  public void setRemoteAccessHttpsClient(RemoteAccessHttpsClient client) {
     this.client = client;
   }
 
