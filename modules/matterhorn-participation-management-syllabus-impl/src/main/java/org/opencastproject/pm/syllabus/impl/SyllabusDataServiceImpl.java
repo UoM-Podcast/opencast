@@ -211,7 +211,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findStaffActivities(staffId);
     } else {
-      String url = remoteServiceURL.toString() + "/activities/staff?id=" + staffId;
+      String url = remoteServiceURL.toString() + "/activities/staff?staffid=" + staffId;
       final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activities;
@@ -235,7 +235,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findChildActivities(activityId);
     } else {
-      String url = remoteServiceURL.toString() + "/activities/child?id=" + activityId;
+      String url = remoteServiceURL.toString() + "/activities/child?activityid=" + activityId;
       final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activities;

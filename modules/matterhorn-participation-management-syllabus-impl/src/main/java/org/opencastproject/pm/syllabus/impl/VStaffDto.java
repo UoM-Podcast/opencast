@@ -48,7 +48,8 @@ import javax.persistence.TemporalType;
 @Table(name = "V_STAFF")
 @NamedQueries({
         @NamedQuery(name = "VStaff.findAllSince", query = "select a from VStaff a where a.lastChanged > :since"),
-        @NamedQuery(name = "VStaff.findAll", query = "select a from VStaff a") })
+        @NamedQuery(name = "VStaff.findAll", query = "select a from VStaff a"),
+        @NamedQuery(name = "VStaff.getById", query = "select a from VStaff a where a.hostKey = :spotId")})
 public final class VStaffDto {
   @Id
   private String id;
