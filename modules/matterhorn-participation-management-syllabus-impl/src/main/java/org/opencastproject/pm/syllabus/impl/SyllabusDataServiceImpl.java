@@ -202,7 +202,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findStaffActivities(staffId);
     } else {
-      String url = remoteServiceURL.toString() + "/activities/staff?staffid=" + staffId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/staff?staffid=" + staffId;
       final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activities;
@@ -214,7 +214,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findModuleActivities(moduleName);
     } else {
-      String url = remoteServiceURL.toString() + "/activities/module?name=" + moduleName;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/module?name=" + moduleName;
       final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activities;
@@ -226,7 +226,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findChildActivities(activityId);
     } else {
-      String url = remoteServiceURL.toString() + "/activities/child?activityid=" + activityId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/child?activityid=" + activityId;
       final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activities;
@@ -238,7 +238,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findStaffById(spotId);
     } else {
-      String url = remoteServiceURL.toString() + "/staff/find?id=" + spotId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/staff/find?id=" + spotId;
       final VStaff staff = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return staff;
@@ -250,7 +250,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findStaffByStaffActivityId(activityId);
     } else {
-      String url = remoteServiceURL.toString() + "/staff/activity?activityId=" + activityId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/staff/activity?activityId=" + activityId;
       final List<VStaff> staff = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return staff;
@@ -262,7 +262,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findByActivityLocationId(activityId);
     } else {
-      String url = remoteServiceURL.toString() + "/activity/location?activityId=" + activityId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activity/location?activityId=" + activityId;
       final List<VActivityLocation> locations = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return locations;
@@ -274,7 +274,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findActivityDateTime(activityId);
     } else {
-      String url = remoteServiceURL.toString() + "/activity/datetime?activityId=" + activityId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activity/datetime?activityId=" + activityId;
       final List<VActivityDateTime> activity = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activity;
@@ -286,7 +286,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findSuitabilityByLocationId(locationId);
     } else {
-      String url = remoteServiceURL.toString() + "/location/suitability?locationId=" + locationId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/location/suitability?locationId=" + locationId;
       final List<VLocation> suitability = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return suitability;
@@ -298,7 +298,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findActivitiesByLocation(location, start, end);
     } else {
-      String url = remoteServiceURL.toString() + "/activities/location?locationId=" + location + "&start=" + start + "&end=" + end;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/location?locationId=" + location + "&start=" + start + "&end=" + end;
       final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activities;
@@ -310,7 +310,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findParentActivities(activityId);
     } else {
-      String url = remoteServiceURL.toString() + "/activity/parent?activityId=" + activityId;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activity/parent?activityId=" + activityId;
       final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activities;
@@ -322,7 +322,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.getModuleById(id);
     } else {
-      String url = remoteServiceURL.toString() + "/modules/find?id=" + id;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules/find?id=" + id;
       final VModule module = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return module;
