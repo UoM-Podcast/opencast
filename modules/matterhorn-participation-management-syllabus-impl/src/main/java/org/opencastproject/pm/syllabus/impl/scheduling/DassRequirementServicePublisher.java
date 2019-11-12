@@ -32,10 +32,10 @@ import static org.osgi.framework.Constants.SERVICE_DESCRIPTION;
 import static org.osgi.framework.Constants.SERVICE_PID;
 
 import org.opencastproject.pm.syllabus.impl.RemoteObjectUtil;
+import org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient;
 import org.opencastproject.requirement.api.RequirementService;
 import org.opencastproject.requirement.api.RequirementServiceException;
 import org.opencastproject.requirement.impl.dass.AbstractDassRequirementService;
-import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.util.data.Effect0;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.osgi.SimpleServicePublisher;
@@ -51,9 +51,8 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.beans.PropertyVetoException;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.sql.SQLException;
 import java.util.Dictionary;
 import java.util.List;
@@ -64,7 +63,8 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
 
   // service config properties
   private static final String LOCAL_PROPERTY = "local";
-  private static final String REMOTE_URL_PROPERTY = "url";
+  private static final String REMOTE_ENDPOINT_PROPERTY = "remote.endpoint";
+  private static final String REMOTE_ENDPOINT_DEFAULT = "/requirement";
 
   /** The logger */
   protected static Logger logger = LoggerFactory.getLogger(DassRequirementServicePublisher.class);
@@ -72,7 +72,7 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
   private Boolean local = true;
 
   // Handle remote connections securely
-  protected TrustedHttpClient client = null;
+  protected RemoteAccessHttpsClient client = null;
 
   @Override
   public SimpleServicePublisher.ServiceReg registerService(Dictionary p, ComponentContext cc) throws ConfigurationException {
@@ -124,17 +124,13 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
           }
         };
       } else {
-        final URL remoteServiceURL;
-        Option<String> value = getOptCfg(p, REMOTE_URL_PROPERTY);
-        if (value.isSome()) {
-          try {
-            remoteServiceURL = new URL(value.get());
-          } catch (MalformedURLException e) {
-            throw new ConfigurationException(REMOTE_URL_PROPERTY, "Remote URL is invalid: ", e);
-          }
-        } else {
-          throw new ConfigurationException(REMOTE_URL_PROPERTY, "Remote URL must be set for remote service");
+        String remoteEndpoint = getOptCfg(p, REMOTE_ENDPOINT_PROPERTY).getOrElse(REMOTE_ENDPOINT_DEFAULT);
+
+        if ('/' != remoteEndpoint.charAt(0)) {
+          remoteEndpoint = "/" + remoteEndpoint;
         }
+
+        final String remoteEndpointURL = client.getRemoteBaseAddress() + remoteEndpoint;
 
         srv = new RequirementService() {
           @Override
@@ -144,14 +140,15 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
 
           @Override
           public List<String> getIds(RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities", remoteServiceURL.toString(), providerName, resource, requirement);
+            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities",
+                    remoteEndpointURL, providerName, resource, requirement);
 
             return RemoteObjectUtil.getResponseAsObject(client, url);
           }
 
           @Override
           public Boolean checkId(String id, RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities/%s", remoteServiceURL.toString(), providerName, resource, requirement, id);
+            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities/%s", remoteEndpointURL, providerName, resource, requirement, id);
 
             try {
               HttpGet get = new HttpGet(url);
@@ -179,7 +176,7 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
         protected void run() {
         }
       });
-    } catch (Exception e) {
+    } catch (PropertyVetoException | SQLException | ConfigurationException e) {
       logger.error("Cannot set up DASS requirement service");
       throw new ConfigurationException("?", "see exception", e);
     }
@@ -195,7 +192,7 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
    *
    * @param client
    */
-  public void setTrustedHttpClient(TrustedHttpClient client) {
+  public void setRemoteAccessHttpsClient(RemoteAccessHttpsClient client) {
     this.client = client;
   }
 }
