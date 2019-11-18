@@ -42,9 +42,6 @@ import org.opencastproject.util.osgi.SimpleServicePublisher;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.HttpGet;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.component.ComponentContext;
@@ -52,7 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.beans.PropertyVetoException;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Dictionary;
 import java.util.List;
@@ -64,7 +60,7 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
   // service config properties
   private static final String LOCAL_PROPERTY = "local";
   private static final String REMOTE_ENDPOINT_PROPERTY = "remote.endpoint";
-  private static final String REMOTE_ENDPOINT_DEFAULT = "/requirement";
+  private static final String REMOTE_ENDPOINT_DEFAULT = "/requirements";
 
   /** The logger */
   protected static Logger logger = LoggerFactory.getLogger(DassRequirementServicePublisher.class);
@@ -140,7 +136,7 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
 
           @Override
           public List<String> getIds(RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities",
+            String url = String.format("%s/providers/%s/resources/%s?requirement=%s",
                     remoteEndpointURL, providerName, resource, requirement);
 
             return RemoteObjectUtil.getResponseAsObject(client, url);
@@ -148,18 +144,13 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
 
           @Override
           public Boolean checkId(String id, RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/providers/%s/resources/%s/requirements/%s/entities/%s", remoteEndpointURL, providerName, resource, requirement, id);
+            String url = String.format("%s/providers/%s/resources/%s?requirement=%s&id=%s", remoteEndpointURL, providerName, resource, requirement, id);
 
-            try {
-              HttpGet get = new HttpGet(url);
-              HttpResponse response = client.execute(get);
-
-              if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-                return true;
-              }
-            } catch (IOException e) {
-              logger.error("Can't connect to remote service at {}", url);
+            List<String> resources = RemoteObjectUtil.getResponseAsObject(client, url);
+            if (resources != null && !resources.isEmpty()) {
+              return true;
             }
+
             return false;
           }
         };

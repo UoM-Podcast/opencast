@@ -5,7 +5,7 @@
   <implementation class="org.opencastproject.pm.syllabus.remote.scheduling.endpoint.RequirementsRestService" />
   <property name="service.description" value="Syllabus+ data harvester REST Endpoint" />
   <property name="opencast.service.type" value="org.opencastproject.pm" />
-  <property name="opencast.service.path" value="/requirement" />
+  <property name="opencast.service.path" value="/requirements" />
   <property name="opencast.service.jobproducer" value="false" />
   <service>
     <provide interface="org.opencastproject.pm.syllabus.remote.scheduling.endpoint.RequirementsRestService" />

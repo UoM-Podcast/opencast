@@ -36,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
@@ -62,82 +65,64 @@ public class RequirementsRestService {
   private final Map<String, RequirementService> requirementServices = new HashMap();
 
   @GET
-  @Path("/providers/{provider}/resources/{resource}/requirements/{requirement}/entities")
-  @RestQuery(name = "get_entity_ids", description = "Get all entity ids from the provider have the requirement on the given resource",
-          returnDescription = "List<String> serialized object",
+  @Path("/providers/{provider}/resources/{resource}")
+  @RestQuery(name = "get_resources", description = "Return the resources the specified requirement",
+          returnDescription = "no content, see status code",
           pathParameters = {
             @RestParameter(name = "provider", type = STRING, isRequired = true, description = "Requirements provider name "),
-            @RestParameter(name = "resource", type = STRING, isRequired = true, description = "Resource name"),
+            @RestParameter(name = "resource", type = STRING, isRequired = true, description = "Resource name")
+          },
+          restParameters = {
             @RestParameter(name = "requirement", type = STRING, isRequired = true, description = "Requirement name"),
+            @RestParameter(name = "id", type = STRING, isRequired = false, description = "Resource id, only return this id if it has the requirement")
           },
           reponses = {
-            @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "Ids that have the resource requirement"),
-            @RestResponse(responseCode = HttpServletResponse.SC_BAD_REQUEST, description = "The resource and/or are requirement invalid"),
-            @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to get the ids"),
+            @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "The reources with the requirement"),
+            @RestResponse(responseCode = HttpServletResponse.SC_BAD_REQUEST, description = "The resource and/or requirement are invalid"),
+            @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "The resources do not have the requirement"),
+            @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to get the resources"),
             @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "The provider can not be found")
           })
-  public Response getEntityIds(@PathParam("provider") String provider, @PathParam("resource") String resource, @PathParam("requirement") String requirement) {
-    if (!requirementServices.containsKey(provider)) {
+  public Response getResources(@PathParam("provider") String provider, @PathParam("resource") String resource, @QueryParam("requirement") String requirement, @QueryParam("id") String id) {
+    RequirementService service = requirementServices.get(provider);
+
+    if (service == null) {
       return Response.status(Status.SERVICE_UNAVAILABLE).build();
     }
-
-    RequirementService service = requirementServices.get(provider);
 
     try {
       RequirementService.Resource resourceEnum = RequirementService.Resource.valueOf(StringUtils.upperCase(resource));
       RequirementService.Requirement requirementEnum = RequirementService.Requirement.valueOf(StringUtils.upperCase(requirement));
 
-      try {
-        final List<String> entityIds = service.getIds(resourceEnum, requirementEnum);
-
-        return RemoteObjectUtil.writeObjectResponse(entityIds);
-      } catch (RequirementServiceException | IOException ex) {
-        return Response.status(Status.SERVICE_UNAVAILABLE).build();
+      if (StringUtils.isNotEmpty(id)) {
+        return checkResourceId(service, resourceEnum, requirementEnum, id);
+      } else {
+        return getResourceIds(service, resourceEnum, requirementEnum);
       }
     } catch (IllegalArgumentException ea) {
       return Response.status(Status.BAD_REQUEST).build();
     }
   }
 
-  @GET
-  @Path("/providers/{provider}/resources/{resource}/requirements/{requirement}/entities/{id}")
-  @RestQuery(name = "check_entity_requirement", description = "Check whether an entity has the specified requirement",
-          returnDescription = "no content, see status code",
-          pathParameters = {
-            @RestParameter(name = "provider", type = STRING, isRequired = true, description = "Requirements provider name "),
-            @RestParameter(name = "resource", type = STRING, isRequired = true, description = "Resource name"),
-            @RestParameter(name = "requirement", type = STRING, isRequired = true, description = "Requirement name"),
-            @RestParameter(name = "id", type = STRING, isRequired = true, description = "Entity id")
-          },
-          reponses = {
-            @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "The entity has the requirement"),
-            @RestResponse(responseCode = HttpServletResponse.SC_BAD_REQUEST, description = "The resource and/or requirement are invalid"),
-            @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "The entity does not have the requirement"),
-            @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to get the requirements"),
-            @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "The provider can not be found")
-          })
-  public Response checkEntityId(@PathParam("provider") String provider, @PathParam("resource") String resource, @PathParam("requirement") String requirement, @PathParam("id") String id) {
-    if (!requirementServices.containsKey(provider)) {
+  private Response getResourceIds(RequirementService service, RequirementService.Resource resource, RequirementService.Requirement requirement) {
+    try {
+      final List<String> entityIds = service.getIds(resource, requirement);
+
+      return RemoteObjectUtil.writeObjectResponse(entityIds);
+    } catch (RequirementServiceException | IOException ex) {
       return Response.status(Status.SERVICE_UNAVAILABLE).build();
     }
+  }
 
-    RequirementService service = requirementServices.get(provider);
-
+  private Response checkResourceId(RequirementService service, RequirementService.Resource resource, RequirementService.Requirement requirement, String id) {
     try {
-      RequirementService.Resource resourceEnum = RequirementService.Resource.valueOf(StringUtils.upperCase(resource));
-      RequirementService.Requirement requirementEnum = RequirementService.Requirement.valueOf(StringUtils.upperCase(requirement));
-
-      try {
-        if (service.checkId(id, resourceEnum, requirementEnum)) {
-          return Response.ok().build();
-        } else {
-          return Response.status(Status.NOT_FOUND).build();
-        }
-      } catch (RequirementServiceException ex) {
-        return Response.status(Status.SERVICE_UNAVAILABLE).build();
+      if (service.checkId(id, resource, requirement)) {
+        return RemoteObjectUtil.writeObjectResponse(new ArrayList(Arrays.asList(id)));
+      } else {
+        return Response.status(Status.NOT_FOUND).build();
       }
-    } catch (IllegalArgumentException ea) {
-      return Response.status(Status.BAD_REQUEST).build();
+    } catch (IOException | RequirementServiceException ex) {
+      return Response.status(Status.SERVICE_UNAVAILABLE).build();
     }
   }
 
