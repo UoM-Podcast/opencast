@@ -743,6 +743,10 @@
     <feature start-level="80">ext-core</feature>
     <feature start-level="80">opencast-core</feature>
 
+    <feature>cxf-jaxws</feature>
+    <bundle start-level="82">mvn:uk.ac.manchester.its.media/manchester-enrolments/1.0-SNAPSHOT</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-enrolments/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-enrolments/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-ldapinfo-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-ldapinfo-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-messages/${project.version}</bundle>
