@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
@@ -72,7 +71,7 @@ public class EnrolmentsRest {
 
   @GET
   @Path("/classes")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.APPLICATION_OCTET_STREAM, MediaType.APPLICATION_JSON})
   @RestQuery(name = "class enrolments", description = "Get the class enrolments for the user",
       restParameters = {
         @RestParameter(description = "User's unique identifier", isRequired = true, name = "spotid", type = RestParameter.Type.STRING),
@@ -93,7 +92,7 @@ public class EnrolmentsRest {
 
       if (format != null && StringUtils.equalsIgnoreCase(format, "json")) {
         String json = new Gson().toJson(enrolments);
-        return Response.ok(json).build();
+        return Response.ok(json).type(MediaType.APPLICATION_JSON).build();
       } else {
         try {
           return RemoteObjectUtil.writeObjectResponse(enrolments);
