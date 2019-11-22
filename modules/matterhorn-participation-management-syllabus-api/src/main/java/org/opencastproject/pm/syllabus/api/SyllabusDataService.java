@@ -21,6 +21,8 @@
 
 package org.opencastproject.pm.syllabus.api;
 
+import org.joda.time.DateTime;
+
 import java.util.List;
 
 /**
@@ -70,5 +72,27 @@ public interface SyllabusDataService {
    */
   VModule getModuleByCourseKey(String courseKey);
 
+  VModule getModuleById(String id);
+
   SyllabusCaptureFilter getSyllabusCaptureFilter();
+
+  List<Activities> findActivityByStaffId(String staffId);
+
+  List<Activities> findActivityByModule(String moduleName);
+
+  List<Activities> findChildActivity(String activityId);
+
+  VStaff findStaffById(String spotId);
+
+  List<VStaff> findStaffByStaffActivityId(String activityId);
+
+  List<VActivityLocation> findByActivityLocationId(String activityId);
+
+  List<VActivityDateTime> findActivityDateTime(String activityId);
+
+  List<VLocation> findSuitabilityByLocationId(String locationId);
+
+  List<Activities> findActivitiesByLocation(String location, DateTime start, DateTime end);
+
+  List<Activities> findParentActivities(String activityId);
 }

@@ -28,12 +28,15 @@ import org.opencastproject.pm.syllabus.api.VStaff;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.functions.Strings;
+import org.opencastproject.util.persistence.Queries;
 
 import org.joda.time.DateTime;
 
 import java.util.Date;
+import java.util.List;
 
 import javax.persistence.Entity;
+import javax.persistence.EntityManager;
 import javax.persistence.Id;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
@@ -45,7 +48,8 @@ import javax.persistence.TemporalType;
 @Table(name = "V_STAFF")
 @NamedQueries({
         @NamedQuery(name = "VStaff.findAllSince", query = "select a from VStaff a where a.lastChanged > :since"),
-        @NamedQuery(name = "VStaff.findAll", query = "select a from VStaff a") })
+        @NamedQuery(name = "VStaff.findAll", query = "select a from VStaff a"),
+        @NamedQuery(name = "VStaff.getById", query = "select a from VStaff a where a.hostKey = :spotId")})
 public final class VStaffDto {
   @Id
   private String id;
@@ -114,4 +118,26 @@ public final class VStaffDto {
   // -------------------------------------------------------------------------------------------------------------------
 
   public static final Finder<VStaffDto> finder = new Finder<VStaffDto>("VStaff");
+
+  public abstract static class StaffFinder<A> extends Finder {
+    public StaffFinder(String entityName) {
+      super(entityName);
+    }
+
+    /**
+     * Get staff details given staff activity ID
+     @param activityId
+     @return
+     */
+    public abstract Function<EntityManager, List<VStaff>> findStaffByStaffActivityId(String activityId);
+  }
+
+  public static final Finder<VStaffDto> finderStaff = new VStaffDto.StaffFinder<VStaffDto>("VStaff") {
+    @Override
+    public Function<EntityManager, List<VStaff>> findStaffByStaffActivityId(String activityId) {
+      return Queries.sql.findAll(
+              "select sta.id, sta.Hostkey, sta.name, sta.email, sta.description from rdowner.V_Staff sta inner join rdowner.V_Activity_Staff acs on acs.StaffId = sta.Id "
+                      + "where acs.ActivityId  = ? " , activityId);
+    }
+  };
 }

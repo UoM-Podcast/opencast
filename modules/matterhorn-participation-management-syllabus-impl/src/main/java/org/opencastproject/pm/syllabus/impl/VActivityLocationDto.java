@@ -94,4 +94,20 @@ public final class VActivityLocationDto {
   public static Function<EntityManager, List<VActivityLocationDto>> findByActivityId(String activityId) {
     return Queries.named.findAll("VActivityLocation.findByActivityId", tuple("activityId", activityId));
   }
+
+  public abstract static class LocationFinder<A> extends Finder {
+    public LocationFinder(String entityName) {
+      super(entityName);
+    }
+    public abstract Function<EntityManager, List<VActivityLocation>> findByActivityLocationId(String activityId);
+  }
+
+  public static final Finder<VActivityLocation> finderLocation = new VActivityLocationDto.LocationFinder<String>("VActivityLocation") {
+    @Override
+    public Function<EntityManager, List<VActivityLocation>>findByActivityLocationId(String activityId) {
+      return Queries.sql.findAll(
+              "select loc.name, loc.Id from rdowner.V_Location loc inner join rdowner.V_Activity_Location acl on acl.LocationId = loc.Id "
+                      + "where acl.ActivityId  = ? " , activityId);
+    }
+  };
 }

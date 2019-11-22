@@ -26,6 +26,7 @@ import static org.opencastproject.util.data.Monadics.mlist;
 import static org.opencastproject.util.data.Tuple.tuple;
 import static org.opencastproject.util.persistence.Queries.sql;
 
+import org.opencastproject.pm.syllabus.api.Activities;
 import org.opencastproject.pm.syllabus.api.Occurrence;
 import org.opencastproject.pm.syllabus.api.SyllabusService;
 import org.opencastproject.pm.syllabus.api.VActivity;
@@ -70,6 +71,21 @@ public abstract class AbstractSyllabusService implements SyllabusService {
 
   private final String sqlFindAllOccurrence;
 
+  private final String sqlFindStaffActivities = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-staff-activities.sql"),
+          "utf-8");
+
+  private final String sqlFindModuleActivities = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-module-activities.sql"),
+          "utf-8");
+
+  private final String sqlFindChildActivities = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-child-activities.sql"),
+          "utf-8");
+
+  private final String sqlFindParentActivities = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-parent-activity.sql"),
+          "utf-8");
+
+  private final String sqlFindLocationActivities = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-activity-by-location.sql"),
+          "utf-8");
+
   protected AbstractSyllabusService() {
     sqlFindAllOccurrence = IoSupport.readToString(AbstractSyllabusService.class.getResource("find-all-occurrence.sql"),
             "utf-8");
@@ -91,6 +107,28 @@ public abstract class AbstractSyllabusService implements SyllabusService {
     public final Col<String> locHostKey = stringCol();
 
     public OccurrenceJoinTable(Object[] row) {
+      super(row);
+      init();
+    }
+  }
+
+  public static class ActivitiesJoinTable extends Table<ActivitiesJoinTable> {
+
+    public final Col<String> actId = stringCol();
+    public final Col<String> actName = stringCol();
+    public final Col<String> modId = stringCol();
+    public final Col<String> modName = stringCol();
+    public final Col<String> modDescription = stringCol();
+    public final Col<String> courseK = stringCol();
+    public final Col<Boolean> actParent = booleanCol();
+    public final Col<Boolean> actChild = booleanCol();
+    public final Col<Boolean> actVariantParent = booleanCol();
+    public final Col<Boolean> actVariantChild = booleanCol();
+    public final Col<String> actType = stringCol();
+    public final Col<DateTime> actDatStartDateTime = dateTimeCol();
+    public final Col<DateTime> actDatEndDateTime = dateTimeCol();
+
+    public ActivitiesJoinTable(Object[] row) {
       super(row);
       init();
     }
@@ -321,6 +359,74 @@ public abstract class AbstractSyllabusService implements SyllabusService {
     }
   }
 
+  @Override
+  public VStaff findStaffById(String spotId) {
+    Option<Object> dto = getPenv().tx(Queries.named.findFirst("VStaff.getById", tuple("spotId", spotId)));
+    if (dto.isSome()) {
+      return VStaffDto.toDomain.apply((VStaffDto) dto.get());
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public List<VActivityLocation> findByActivityLocationId(String activityId) {
+    Function<EntityManager, List<VActivityLocation>> f = ((VActivityLocationDto.LocationFinder) VActivityLocationDto.finderLocation).findByActivityLocationId(activityId);
+    return getPenv().tx(f);
+  }
+
+  @Override
+  public List<VLocation> findSuitabilityByLocationId(String locationId) {
+    Function<EntityManager, List<VLocation>> f = ((VLocationDto.LocationSuitabilityFinder) VLocationDto.finderSuitability).findSuitabilityByLocationId(locationId);
+    return getPenv().tx(f);
+  }
+
+  @Override
+  public VModule getModuleById(String id) {
+    Option<Object> dto = getPenv().tx(Queries.named.findFirst("VModule.getById", tuple("id", id)));
+    if (dto.isSome()) {
+      return VModuleDto.toDomain.apply((VModuleDto) dto.get());
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public List<Activities> findStaffActivities(String staffId) {
+    return mlist(getPenv().tx(sql.<Object[]>findAll(sqlFindStaffActivities, staffId)))
+            .map(rowToStaffActivities).value();
+  }
+
+  @Override
+  public List<Activities> findModuleActivities(String moduleName) {
+    return mlist(getPenv().tx(sql.<Object[]>findAll(sqlFindModuleActivities, moduleName)))
+            .map(rowToStaffActivities).value();
+  }
+
+  @Override
+  public List<Activities> findChildActivities(String activityId) {
+    return mlist(getPenv().tx(sql.<Object[]>findAll(sqlFindChildActivities, activityId)))
+            .map(rowToStaffActivities).value();
+  }
+
+  @Override
+  public List<Activities> findParentActivities(String activityId) {
+    return mlist(getPenv().tx(sql.<Object[]>findAll(sqlFindParentActivities, activityId)))
+            .map(rowToStaffActivities).value();
+  }
+
+  @Override
+  public List<Activities> findActivitiesByLocation(String location, DateTime since, DateTime untilStartDate) {
+    return mlist(getPenv().tx(sql.<Object[]>findAll(sqlFindLocationActivities, location, since.toDate(), untilStartDate.toDate())))
+            .map(rowToStaffActivities).value();
+  }
+
+  @Override
+  public List<VStaff> findStaffByStaffActivityId(String activityId) {
+    Function<EntityManager, List<VStaff>> f = ((VStaffDto.StaffFinder) VStaffDto.finderStaff).findStaffByStaffActivityId(activityId);
+    return getPenv().tx(f);
+  }
+
   // could by solved with JPA @javax.persistence.SqlResultSetMapping also
   public static final Function<Object[], Occurrence> rowToOccurrence = new Function<Object[], Occurrence>() {
     @Override
@@ -337,6 +443,15 @@ public abstract class AbstractSyllabusService implements SyllabusService {
               t.get(t.locLastChanged), Option.<String> none());
       final Interval time = new Interval(t.get(t.actDatStartDateTime), t.get(t.actDatEndDateTime));
       return new OccurrenceImpl(t.get(t.actId), t.get(t.actName), loc, time, lastChanged);
+    }
+  };
+
+  public static final Function<Object[], Activities> rowToStaffActivities = new Function<Object[], Activities>() {
+    @Override
+    public Activities apply(final Object[] selected) {
+      final ActivitiesJoinTable t = new ActivitiesJoinTable(selected);
+      return new ActivitiesImpl(t.get(t.actId), t.get(t.actName), t.get(t.modId), t.get(t.modName), t.get(t.modDescription), t.get(t.courseK),
+              t.get(t.actParent), t.get(t.actChild), t.get(t.actVariantParent), t.get(t.actVariantChild), t.get(t.actType), t.get(t.actDatStartDateTime), t.get(t.actDatEndDateTime));
     }
   };
 }

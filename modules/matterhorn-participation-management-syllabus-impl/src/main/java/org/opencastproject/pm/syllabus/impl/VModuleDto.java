@@ -47,7 +47,8 @@ import javax.persistence.TemporalType;
 @NamedQueries({
         @NamedQuery(name = "VModule.findAllSince", query = "select a from VModule a where a.lastChanged > :since"),
         @NamedQuery(name = "VModule.findAll", query = "select a from VModule a"),
-        @NamedQuery(name = "VModule.getByCourseKey", query = "select a from VModule a where a.userText4 = :courseKey") })
+        @NamedQuery(name = "VModule.getByCourseKey", query = "select a from VModule a where a.userText4 = :courseKey"),
+        @NamedQuery(name = "VModule.getById", query = "select a from VModule a where a.id = :id") })
 public final class VModuleDto implements Serializable {
   @Id
   private String id;

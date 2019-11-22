@@ -23,14 +23,20 @@ package org.opencastproject.pm.syllabus.impl;
 import static org.opencastproject.util.OsgiUtil.getOptCfg;
 import static org.opencastproject.util.OsgiUtil.getOptCfgAsBoolean;
 
+import org.opencastproject.pm.syllabus.api.Activities;
 import org.opencastproject.pm.syllabus.api.SyllabusCaptureFilter;
 import org.opencastproject.pm.syllabus.api.SyllabusData;
 import org.opencastproject.pm.syllabus.api.SyllabusDataService;
 import org.opencastproject.pm.syllabus.api.SyllabusService;
 import org.opencastproject.pm.syllabus.api.VActivityDateTime;
+import org.opencastproject.pm.syllabus.api.VActivityLocation;
+import org.opencastproject.pm.syllabus.api.VLocation;
 import org.opencastproject.pm.syllabus.api.VModule;
+import org.opencastproject.pm.syllabus.api.VStaff;
 import org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient;
 import org.opencastproject.util.data.Option;
+
+import org.joda.time.DateTime;
 
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
@@ -165,7 +171,7 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     if (local && syllabusService != null) {
       return syllabusService.findModuleActivityIdsByCourseKey(courseKey);
     } else {
-      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules/activites/ids?coursekey=" + courseKey;
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules/activities/ids?coursekey=" + courseKey;
       final List<String> activityIds = RemoteObjectUtil.getResponseAsObject(client, url);
 
       return activityIds;
@@ -191,6 +197,138 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     return syllabusCaptureFilter;
   }
 
+  @Override
+  public List<Activities> findActivityByStaffId(String staffId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findStaffActivities(staffId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/staff?staffid=" + staffId;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public List<Activities> findActivityByModule(String moduleName) {
+    if (local && syllabusService != null) {
+      return syllabusService.findModuleActivities(moduleName);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/module?modulename=" + moduleName;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public List<Activities> findChildActivity(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findChildActivities(activityId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/" + activityId + "/child";
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public VStaff findStaffById(String spotId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findStaffById(spotId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/staff/" + spotId;
+      final VStaff staff = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return staff;
+    }
+  }
+
+  @Override
+  public List<VStaff> findStaffByStaffActivityId(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findStaffByStaffActivityId(activityId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/staff?activityid=" + activityId;
+      final List<VStaff> staff = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return staff;
+    }
+  }
+
+  @Override
+  public List<VActivityLocation> findByActivityLocationId(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findByActivityLocationId(activityId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/locations?activityid=" + activityId;
+      final List<VActivityLocation> locations = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return locations;
+    }
+  }
+
+  @Override
+  public List<VActivityDateTime> findActivityDateTime(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findActivityDateTime(activityId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/" + activityId + "/datetime";
+      final List<VActivityDateTime> activity = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activity;
+    }
+  }
+
+  @Override
+  public List<VLocation> findSuitabilityByLocationId(String locationId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findSuitabilityByLocationId(locationId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/suitabilities?locationid=" + locationId;
+      final List<VLocation> suitability = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return suitability;
+    }
+  }
+
+  @Override
+  public List<Activities> findActivitiesByLocation(String location, DateTime start, DateTime end) {
+    if (local && syllabusService != null) {
+      return syllabusService.findActivitiesByLocation(location, start, end);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/location?locationid=" + location + "&start=" + start + "&end=" + end;
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public List<Activities> findParentActivities(String activityId) {
+    if (local && syllabusService != null) {
+      return syllabusService.findParentActivities(activityId);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/activities/" + activityId + "/parents";
+      final List<Activities> activities = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return activities;
+    }
+  }
+
+  @Override
+  public VModule getModuleById(String id) {
+    if (local && syllabusService != null) {
+      return syllabusService.getModuleById(id);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules/" + id;
+      final VModule module = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return module;
+    }
+  }
+
   /**
    * OSGi container callback.
    * @param syllabusService
@@ -207,4 +345,5 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   public void setRemoteAccessHttpsClient(RemoteAccessHttpsClient client) {
     this.client = client;
   }
+
 }
