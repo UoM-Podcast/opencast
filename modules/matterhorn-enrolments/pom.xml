@@ -76,4 +76,29 @@
       </plugin>
     </plugins>
   </build>
+
+  <repositories>
+    <repository>
+      <id>podcast</id>
+      <name>UoM Podcast - Releases</name>
+      <url>http://src.mhdev.man.ac.uk/nexus/content/repositories/releases</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
+    <repository>
+      <id>podcast-snapshots</id>
+      <name>UoM Podcast - Snapshots</name>
+      <url>http://src.mhdev.man.ac.uk/nexus/content/repositories/snapshots</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </repository>
+  </repositories>
 </project>
