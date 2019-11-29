@@ -4,7 +4,7 @@
                immediate="true">
   <implementation class="org.opencastproject.enrolments.endpoint.EnrolmentsRest" />
   <property name="service.description" value="Enrolments REST Endpoint" />
-  <property name="opencast.service.type" value="org.opencastproject.ldapinfo" />
+  <property name="opencast.service.type" value="org.opencastproject.enrolments" />
   <property name="opencast.service.path" value="/enrolments" />
   <property name="opencast.service.jobproducer" value="false" />
   <service>
