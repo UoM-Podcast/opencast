@@ -39,6 +39,7 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 
@@ -92,7 +93,7 @@ public final class RemoteObjectUtil {
       }
     };
 
-    return Response.ok(stream).build();
+    return Response.ok(stream).type(MediaType.APPLICATION_OCTET_STREAM).build();
   }
 
     public static Response writeJson(Object object) throws JsonProcessingException {

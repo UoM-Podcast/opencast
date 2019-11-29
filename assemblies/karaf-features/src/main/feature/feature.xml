@@ -311,6 +311,13 @@
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-videosegmenter-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-waveform-remote/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-workflow-service-remote/${project.version}</bundle>
+
+    <feature>cxf-jaxws</feature>
+    <bundle start-level="82">mvn:uk.ac.manchester.its.media/manchester-enrolments/1.0-SNAPSHOT</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-enrolments/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-ldapinfo-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-ldapinfo-impl/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-participation-management-syllabus-remote/${project.version}</bundle>
   </feature>
 
   <feature name="opencast-admin">
@@ -743,6 +750,9 @@
     <feature start-level="80">ext-core</feature>
     <feature start-level="80">opencast-core</feature>
 
+    <feature>cxf-jaxws</feature>
+    <bundle start-level="82">mvn:uk.ac.manchester.its.media/manchester-enrolments/1.0-SNAPSHOT</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-enrolments/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-ldapinfo-api/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-ldapinfo-impl/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-messages/${project.version}</bundle>
