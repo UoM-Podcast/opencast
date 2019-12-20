@@ -67,6 +67,9 @@ import javax.persistence.TemporalType;
                 + "AND e.version = (SELECT MAX(e2.version) FROM Episode e2 WHERE e2.mediaPackageId = :mediaPackageId)"),
         @NamedQuery(name = "Episode.findLatestVersion", query = "SELECT MAX(a.version) FROM Episode a WHERE a.mediaPackageId = :mediaPackageId "),
         @NamedQuery(name = "Episode.findAllById", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mediaPackageId"),
+        @NamedQuery(name = "Episode.findAllNoDC", query = "SELECT e FROM Episode e WHERE e.dublinCoreXml IS NULL"),
+        @NamedQuery(name = "Episode.findByIdAndDate", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mpId AND e.modificationDate >= :start AND e.modificationDate <= :end AND e.deleted=false"),
+        @NamedQuery(name = "Episode.findByDate", query = "SELECT e FROM Episode e WHERE e.modificationDate >= :start AND e.modificationDate <= :end AND e.deleted=false"),
         @NamedQuery(name = "Episode.updateDublinCoreXML", query = "UPDATE Episode e SET e.dublinCoreXml = :dublinCoreXml WHERE e.mediaPackageId = :mediaPackageId AND e.version = :version")
 })
 
@@ -198,6 +201,10 @@ public final class EpisodeDto {
     return PersistenceUtil.findAll(em, "Episode.findAllById", tuple("mediaPackageId", mediaPackageId));
   }
 
+  public static List<EpisodeDto> findAllNoDC(EntityManager em) {
+    return PersistenceUtil.findAll(em, "Episode.findAllNoDC");
+  }
+
   public static List<EpisodeDto> findAll(EntityManager em) {
     return PersistenceUtil.findAll(em, "Episode.findAll");
   }
@@ -209,4 +216,13 @@ public final class EpisodeDto {
           tuple("version", version.value()),
           tuple("dublinCoreXml", dublinCoreXml));
   }
+
+  public static List<EpisodeDto> findAllByDate(EntityManager em, Date start, Date end) {
+    return PersistenceUtil.findAll(em, "Episode.findByDate", tuple("start", start), tuple("end", end));
+  }
+
+  public static List<EpisodeDto> findAllByIdAndDate(EntityManager em, String mediapackageId, Date start, Date end) {
+    return PersistenceUtil.findAll(em, "Episode.findByIdAndDate", tuple("mpId", mediapackageId), tuple("start", start), tuple("end", end));
+  }
+
 }

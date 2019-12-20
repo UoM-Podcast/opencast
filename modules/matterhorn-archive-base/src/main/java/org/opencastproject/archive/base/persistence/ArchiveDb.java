@@ -29,6 +29,7 @@ import org.opencastproject.util.data.Option;
 
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 
 /** API that defines persistent storage of episodes. */
 public interface ArchiveDb {
@@ -143,5 +144,64 @@ public interface ArchiveDb {
   boolean updateEpisodeDC(String mediaPackageId, Version version, String dublinCoreXml)
     throws ArchiveDbException;
 
+  /**
+   * Find an asset by its checksum
+   *
+   * @param checksum
+   *          the checksum of the asset
+   * @return
+   *          an Option containing the asset.  Maybe.
+   * @throws ArchiveDbException
+   */
   Option<Asset> findAssetByChecksum(String checksum) throws ArchiveDbException;
+
+  /**
+   * Return a list of all versions for an episode.
+   *
+   * @param mediaPackageId
+   *          the mediapackage id to select
+   * @return
+   *          the (potentially empty) list of versions for that episode
+   * @throws ArchiveDbException
+   */
+  List<Episode> getEpisode(String mediaPackageId) throws ArchiveDbException;
+
+  /**
+   * Return a list of all versions and episodes archived between the start and end dates
+   *
+   * @param start
+   *          the start date for the window
+   * @param end
+   *          the end date for the window
+   * @return
+   *          the (potentially empty) list of versions and episodes
+   * @throws ArchiveDbException
+   */
+  List<Episode> getEpisodes(Date start, Date end) throws ArchiveDbException;
+
+  /**
+   * Return a list of all versions and episodes archived between the start and end dates
+   *
+   * @param mediaPackageId
+   *          the mediapackage id to select
+   * @param start
+   *          the start date for the window
+   * @param end
+   *          the end date for the window
+   * @return
+   *          the (potentially empty) list of versions and episodes
+   * @throws ArchiveDbException
+   */
+  List<Episode> getEpisodes(String mediaPackageId, Date start, Date end) throws ArchiveDbException;
+
+  /**
+   * Returns all episodes in persistence storage that have no DublinCoreXML
+   *
+   * @return 
+   *          the (potentially empty) list of versions and episodes
+   * @throws ArchiveDbException
+   *         if exception occurs
+   */
+
+  Iterator<Episode> getEpisodesNoDC() throws ArchiveDbException;
 }
