@@ -310,7 +310,7 @@ public class OaiPmhPublicationServiceImpl extends AbstractJobProducer implements
     final List<Job> jobs = new ArrayList<>();
     final String pubChannelId = publicationChannelId(repository);
     try {
-        Job job = downloadDistributionService.distribute(pubChannelId, mediaPackage, downloadIds, checkAvailability); //, true, useAlternateDirectory);
+        Job job = downloadDistributionService.distribute(pubChannelId, mediaPackage, downloadIds, checkAvailability, true, useAlternateDirectory);
         jobs.add(job);
         if (streamingIds.size() > 0) {
           job = streamingDistributionService.distribute(pubChannelId, mediaPackage, streamingIds);

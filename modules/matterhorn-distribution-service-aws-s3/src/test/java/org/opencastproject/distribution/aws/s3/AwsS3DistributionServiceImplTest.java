@@ -104,12 +104,16 @@ public class AwsS3DistributionServiceImplTest {
     mpeIds.add("presenter-delivery");
 
     boolean checkAvailability = true;
+    boolean preserveReference = false;
+    boolean makePublic = false;
 
     List<String> args = new LinkedList<String>();
     args.add("channelId");
     args.add(MediaPackageParser.getAsXml(mp));
     args.add(gson.toJson(mpeIds));
     args.add(Boolean.toString(checkAvailability));
+    args.add(Boolean.toString(preserveReference));
+    args.add(Boolean.toString(makePublic));
 
     EasyMock.expect(
             serviceRegistry.createJob(
@@ -119,7 +123,7 @@ public class AwsS3DistributionServiceImplTest {
             )).andReturn(null).once();
     EasyMock.replay(serviceRegistry);
 
-    service.distribute("channelId", mp, "presenter-delivery");
+    service.distribute("channelId", mp, "presenter-delivery", checkAvailability);
 
     EasyMock.verify(serviceRegistry);
   }
@@ -130,12 +134,16 @@ public class AwsS3DistributionServiceImplTest {
     mpeIds.add("presenter-delivery");
 
     boolean checkAvailability = false;
+    boolean preserveReference = false;
+    boolean makePublic = false;
 
     List<String> args = new LinkedList<String>();
     args.add("channelId");
     args.add(MediaPackageParser.getAsXml(mp));
     args.add(gson.toJson(mpeIds));
     args.add(Boolean.toString(checkAvailability));
+    args.add(Boolean.toString(preserveReference));
+    args.add(Boolean.toString(makePublic));
 
     EasyMock.expect(
             serviceRegistry.createJob(
@@ -145,7 +153,7 @@ public class AwsS3DistributionServiceImplTest {
                     )).andReturn(null).once();
     EasyMock.replay(serviceRegistry);
 
-    service.distribute("channelId", mp, mpeIds, checkAvailability);
+    service.distribute("channelId", mp, mpeIds, checkAvailability, preserveReference, makePublic);
 
     EasyMock.verify(serviceRegistry);
   }
@@ -212,7 +220,7 @@ public class AwsS3DistributionServiceImplTest {
     Set<String> mpeIds = new LinkedHashSet<String>();
     mpeIds.add("presenter-delivery");
 
-    MediaPackageElement[] mpes = service.distributeElements("channelId", mp, mpeIds, false);
+    MediaPackageElement[] mpes = service.distributeElements("channelId", mp, mpeIds, false, false);
     MediaPackageElement mpe = mpes[0];
 
     Assert.assertEquals(new URI(

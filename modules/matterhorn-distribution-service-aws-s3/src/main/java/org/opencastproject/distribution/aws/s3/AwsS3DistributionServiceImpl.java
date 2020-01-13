@@ -56,6 +56,9 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.DeleteVersionRequest;
 import com.amazonaws.services.s3.model.GetObjectMetadataRequest;
 import com.amazonaws.services.s3.model.ListVersionsRequest;
+import com.amazonaws.services.s3.model.ObjectTagging;
+import com.amazonaws.services.s3.model.SetObjectTaggingRequest;
+import com.amazonaws.services.s3.model.Tag;
 import com.amazonaws.services.s3.model.VersionListing;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.Upload;
@@ -93,6 +96,9 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
   /** Job type */
   public static final String JOB_TYPE = "org.opencastproject.distribution.aws.s3";
 
+  /** S3 Object Tag that labels public objects **/
+  public static final String S3_DISTRIBUTION_PUBLIC_TAG = "Public";
+
   /** List of available operations on jobs */
   public enum Operation {
     Distribute, Retract, Restore
@@ -123,6 +129,9 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
 
   /** The opencast download distribution url */
   private String opencastDistributionUrl = null;
+
+  /** Public Object Tags */
+  private ObjectTagging publicObjectTagging;
 
   private Gson gson = new Gson();
 
@@ -191,6 +200,11 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
       createAWSBucket();
       this.distributionChannel = OsgiUtil.getComponentContextProperty(cc, CONFIG_KEY_STORE_TYPE);
 
+      // Create Public Object Tags
+      List<Tag> publicObjectTagList = new ArrayList<>();
+      publicObjectTagList.add(new Tag(S3_DISTRIBUTION_PUBLIC_TAG, "true"));
+      publicObjectTagging = new ObjectTagging(publicObjectTagList);
+
       logger.info("AwsS3DistributionService activated!");
     }
   }
@@ -207,35 +221,6 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
     logger.info("AwsS3DistributionService deactivated!");
   }
 
-  @Override
-  public Job distribute(String pubChannelId, MediaPackage mediaPackage, Set<String> downloadIds,
-    boolean checkAvailability, boolean preserveReference, boolean ignore) throws DistributionException, MediaPackageException {
-    throw new UnsupportedOperationException("Not supported yet.");
-  //stub function
-  }
-  /**
-   * {@inheritDoc}
-   *
-   * @see org.opencastproject.distribution.api.DownloadDistributionService#distribute(String,
-   *      org.opencastproject.mediapackage.MediaPackage, String, boolean)
-   */
-  @Override
-  public Job distribute(String channelId, MediaPackage mediaPackage,  Set<String> elementIds, boolean checkAvailability)
-          throws DistributionException, MediaPackageException {
-    notNull(mediaPackage, "mediapackage");
-    notNull(elementIds, "elementIds");
-    notNull(channelId, "channelId");
-    try {
-      return serviceRegistry.createJob(
-              JOB_TYPE,
-              Operation.Distribute.toString(),
-              Arrays.asList(channelId, MediaPackageParser.getAsXml(mediaPackage), gson.toJson(elementIds),
-                      Boolean.toString(checkAvailability)));
-    } catch (ServiceRegistryException e) {
-      throw new DistributionException("Unable to create a job", e);
-    }
-  }
-
   /**
    * {@inheritDoc}
    *
@@ -245,7 +230,7 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
   @Override
   public Job distribute(String channelId, MediaPackage mediapackage, String elementId) throws DistributionException,
           MediaPackageException {
-    return distribute(channelId, mediapackage, elementId, true);
+    return distribute(channelId, mediapackage, elementId, false);
   }
   /**
    * {@inheritDoc}
@@ -267,11 +252,47 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
    */
   @Override
   public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability,
-          boolean useAlternateDirectory)
+          boolean preserveReference)
           throws DistributionException, MediaPackageException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability);
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, preserveReference, false);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Job distribute(String channelId, MediaPackage mediapackage, Set<String> elementIds, boolean checkAvailability)
+          throws DistributionException, MediaPackageException {
+    return distribute(channelId, mediapackage, elementIds, checkAvailability, false, false);
+  }
+
+  /**
+   * {@inheritDoc}
+   *
+   * @see org.opencastproject.distribution.api.DownloadDistributionService#distribute(String,
+   *      org.opencastproject.mediapackage.MediaPackage, String, boolean)
+   */
+  @Override
+  public Job distribute(String channelId, MediaPackage mediaPackage,  Set<String> elementIds,
+          boolean checkAvailability, boolean preserveReference, boolean makePublic)
+          throws DistributionException, MediaPackageException {
+    notNull(mediaPackage, "mediapackage");
+    notNull(elementIds, "elementIds");
+    notNull(channelId, "channelId");
+    try {
+      return serviceRegistry.createJob(
+              JOB_TYPE,
+              Operation.Distribute.toString(),
+              Arrays.asList(channelId, MediaPackageParser.getAsXml(mediaPackage),
+                      gson.toJson(elementIds),
+                      Boolean.toString(checkAvailability),
+                      Boolean.toString(preserveReference),
+                      Boolean.toString(makePublic)));
+    } catch (ServiceRegistryException e) {
+      throw new DistributionException("Unable to create a job", e);
+    }
   }
 
   /**
@@ -291,7 +312,7 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
    *           cannot be copied or another unexpected exception occurs.
    */
   public MediaPackageElement[] distributeElements(String channelId, MediaPackage mediapackage, Set<String> elementIds,
-          boolean checkAvailability) throws DistributionException {
+          boolean checkAvailability, boolean makePublic) throws DistributionException {
     notNull(mediapackage, "mediapackage");
     notNull(elementIds, "elementIds");
     notNull(channelId, "channelId");
@@ -300,7 +321,7 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
     List<MediaPackageElement> distributedElements = new ArrayList<MediaPackageElement>();
 
     for (MediaPackageElement element : elements) {
-      MediaPackageElement distributedElement = distributeElement(channelId, mediapackage, element, checkAvailability);
+      MediaPackageElement distributedElement = distributeElement(channelId, mediapackage, element, checkAvailability, makePublic);
       distributedElements.add(distributedElement);
     }
     return distributedElements.toArray(new MediaPackageElement[distributedElements.size()]);
@@ -329,11 +350,13 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
    *          The element that should be distributed contained within the media package.
    * @param checkAvailability
    *          Checks if the distributed element is available
+   * @param makePublic
+   *          Make the object publicly readable
    * @return A reference to the MediaPackageElement that has been distributed.
    * @throws DistributionException
    */
   public MediaPackageElement distributeElement(String channelId, final MediaPackage mediaPackage, MediaPackageElement element,
-          boolean checkAvailability) throws DistributionException {
+          boolean checkAvailability, boolean makePublic) throws DistributionException {
     notNull(channelId, "channelId");
     notNull(mediaPackage, "mediapackage");
     notNull(element, "element");
@@ -362,6 +385,11 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
                 new Object[] { objectName, bucketName, (System.currentTimeMillis() - start) / 1000 });
       } catch (AmazonClientException e) {
         throw new DistributionException("AWS error: " + e.getMessage(), e);
+      }
+
+      if (makePublic) {
+        SetObjectTaggingRequest tagObjectReq = new SetObjectTaggingRequest(bucketName, objectName, publicObjectTagging);
+        s3.setObjectTagging(tagObjectReq);
       }
 
       // Create a representation of the distributed file in the media package
@@ -654,8 +682,10 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
       switch (op) {
         case Distribute:
           Boolean checkAvailability = Boolean.parseBoolean(arguments.get(3));
+          Boolean preserveReference = Boolean.parseBoolean(arguments.get(4));
+          Boolean makePublic = Boolean.parseBoolean(arguments.get(5));
           MediaPackageElement[] distributedElements = distributeElements(channelId, mediaPackage, elementIds,
-                  checkAvailability);
+                  checkAvailability, makePublic);
           return (distributedElements != null)
                   ? MediaPackageElementParser.getArrayAsXml(Arrays.asList(distributedElements)) : null;
         case Retract:
