@@ -74,6 +74,8 @@ public interface SyllabusDataService {
 
   VModule getModuleById(String id);
 
+  List<VModule> getAllModule();
+
   SyllabusCaptureFilter getSyllabusCaptureFilter();
 
   List<Activities> findActivityByStaffId(String staffId);

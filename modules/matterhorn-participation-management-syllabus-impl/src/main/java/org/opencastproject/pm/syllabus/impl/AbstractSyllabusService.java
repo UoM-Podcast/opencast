@@ -392,6 +392,11 @@ public abstract class AbstractSyllabusService implements SyllabusService {
   }
 
   @Override
+  public List<VModule> getAllModule() {
+    return mlist(getPenv().tx(VModuleDto.finder.findAll())).map(VModuleDto.toDomain).value();
+  }
+
+  @Override
   public List<Activities> findStaffActivities(String staffId) {
     return mlist(getPenv().tx(sql.<Object[]>findAll(sqlFindStaffActivities, staffId)))
             .map(rowToStaffActivities).value();

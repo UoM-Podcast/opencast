@@ -177,6 +177,29 @@ public class SyllabusDataRestService {
   }
 
   @GET
+  @Path("/modules/all")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "module_all", description = "get all modules",
+          returnDescription = "List of Module",
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "All modules"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "Modules not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response getAllModule() {
+    try {
+      List<VModule> modules = syllabusDataService.getAllModule();
+      if (modules == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(modules);
+    } catch (Exception e) {
+      logger.warn("Could not get modules");
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
   @Path("/activites/datetime")
   @Produces(MediaType.APPLICATION_OCTET_STREAM)
   @RestQuery(name = "activties_datetime_by_range", description = "Activities datetime by id range",
