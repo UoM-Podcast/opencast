@@ -234,4 +234,6 @@ public interface SyllabusService {
   List<Activities> findActivitiesByLocation(String location, DateTime start, DateTime end);
 
   List<Activities> findParentActivities(String activityId);
+
+  List<VModule> getAllModule();
 }

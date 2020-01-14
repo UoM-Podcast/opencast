@@ -329,6 +329,18 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
     }
   }
 
+  @Override
+  public List<VModule> getAllModule() {
+    if (local && syllabusService != null) {
+      return syllabusService.getAllModule();
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules/all";
+      final List<VModule> module = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return module;
+    }
+  }
+
   /**
    * OSGi container callback.
    * @param syllabusService
