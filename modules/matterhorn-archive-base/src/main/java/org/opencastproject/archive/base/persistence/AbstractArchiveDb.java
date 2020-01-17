@@ -25,7 +25,10 @@ import static org.opencastproject.archive.api.Version.FIRST;
 import static org.opencastproject.archive.api.Version.version;
 import static org.opencastproject.archive.base.StoragePath.spath;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findAll;
+import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllByDate;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllById;
+import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllByIdAndDate;
+import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllNoDC;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findByIdAndVersion;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findLatestById;
 import static org.opencastproject.util.data.Monadics.mlist;
@@ -48,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -89,6 +93,48 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
   }
 
   @Override
+  public List<Episode> getEpisode(final String mediaPackageId) throws ArchiveDbException {
+    return tx(new Function<EntityManager, List<Episode>>() {
+      @Override
+      public List<Episode> apply(EntityManager em) {
+        List<Episode> list = new LinkedList<Episode>();
+        for (EpisodeDto e : findAllById(em, mediaPackageId)) {
+          list.add(e.toEpisode());
+        }
+        return list;
+      }
+    });
+  }
+
+  @Override
+  public List<Episode> getEpisodes(final Date start, final Date end) throws ArchiveDbException {
+    return tx(new Function<EntityManager, List<Episode>>() {
+      @Override
+      public List<Episode> apply(EntityManager em) {
+        List<Episode> list = new LinkedList<Episode>();
+        for (EpisodeDto e : findAllByDate(em, start, end)) {
+          list.add(e.toEpisode());
+        }
+        return list;
+      }
+    });
+  }
+
+  @Override
+  public List<Episode> getEpisodes(final String mediapackageId, final Date start, final Date end) throws ArchiveDbException {
+    return tx(new Function<EntityManager, List<Episode>>() {
+      @Override
+      public List<Episode> apply(EntityManager em) {
+        List<Episode> list = new LinkedList<Episode>();
+        for (EpisodeDto e : findAllByIdAndDate(em, mediapackageId, start, end)) {
+          list.add(e.toEpisode());
+        }
+        return list;
+      }
+    });
+  }
+
+  @Override
   public Option<Episode> getLatestEpisode(final String mediaPackageId) throws ArchiveDbException {
     return tx(new Function<EntityManager, Option<Episode>>() {
       @Override
@@ -124,6 +170,19 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
       @Override
       public Iterator<Episode> apply(EntityManager em) {
         return mlist(findAll(em)).map(EpisodeDto.toEpisode).iterator();
+      }
+    });
+  }
+
+  @Override
+  public Iterator<Episode> getEpisodesNoDC() throws ArchiveDbException {
+    // todo implement database paging
+    return tx(new Function<EntityManager, Iterator<Episode>>() {
+      @Override
+      public Iterator<Episode> apply(EntityManager em) {
+        List<EpisodeDto> epNoDC = findAllNoDC(em);
+        logger.info("getEpisodesNoDC returns {} episodes ",epNoDC.size());
+        return mlist(epNoDC).map(EpisodeDto.toEpisode).iterator();
       }
     });
   }

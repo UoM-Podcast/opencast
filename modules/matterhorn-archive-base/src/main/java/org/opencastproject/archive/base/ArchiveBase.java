@@ -220,12 +220,14 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
   @Override
   public void updateDublincore() throws ArchiveException {
     Iterator<Episode> episodes;
+    logger.info("start updateEpisodeDC");
     try {
-      episodes = persistence.getAllEpisodes();
+      episodes = persistence.getEpisodesNoDC();
     } catch (ArchiveDbException e) {
       logger.error("Unable to load the archive entries: {}", e);
       throw new ServiceException(e.getMessage());
     }
+    logger.info("updating {} Episodes", episodes);
     int errors = 0;
     int rewritten = 0;
     int total = 0;
@@ -276,7 +278,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
         }
       } catch (Exception e) {
         errors++;
-        logger.error("updateEpisodeDC threw an exception: {} ", e);
+        logger.error("updateEpisodeDC threw an exception: {} ", e.getMessage());
       } finally {
         secSvc.setOrganization(null);
         secSvc.setUser(null);
