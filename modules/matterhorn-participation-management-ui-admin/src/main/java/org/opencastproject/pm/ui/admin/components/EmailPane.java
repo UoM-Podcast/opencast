@@ -20,34 +20,25 @@
  */
 package org.opencastproject.pm.ui.admin.components;
 
-import static org.opencastproject.kernel.mail.EmailAddress.emailAddress;
 import static org.opencastproject.pm.ui.common.util.UiUtil.hlayout;
 import static org.opencastproject.pm.ui.common.util.UiUtil.tableStringColGen;
 import static org.opencastproject.pm.ui.common.util.UiUtil.vlayout;
 import static org.opencastproject.pm.ui.common.util.UiUtil.withMargin;
 import static org.opencastproject.util.data.Arrays.array;
 
-import org.opencastproject.messages.MessageSignature;
-import org.opencastproject.messages.MessageTemplate;
-import org.opencastproject.pm.api.Course;
 import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.EmailSender;
-import org.opencastproject.pm.api.Message;
+import org.opencastproject.pm.api.ParticipationManagementException;
 import org.opencastproject.pm.api.Person;
-import org.opencastproject.pm.api.Recording;
 import org.opencastproject.pm.api.persistence.EmailView;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseException;
-import org.opencastproject.pm.api.persistence.RecordingQuery;
 import org.opencastproject.pm.ui.common.util.I18N;
 import org.opencastproject.pm.ui.common.util.UiUtil;
 import org.opencastproject.security.api.DefaultOrganization;
 import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
-import org.opencastproject.security.api.User;
 import org.opencastproject.security.util.SecurityContext;
-import org.opencastproject.security.util.SecurityUtil;
-import org.opencastproject.util.IoSupport;
 import org.opencastproject.util.data.Cell;
 import org.opencastproject.util.data.Effect0;
 import org.opencastproject.util.data.Function;
@@ -67,7 +58,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -80,8 +70,6 @@ public class EmailPane extends CustomComponent {
   private Long nCoursesSent = 0L;
   private Long nCoursesUnsent = 0L;
   private Long nCoursesFailed = 0L;
-  private List<Recording> recordings;
-  private List<Course> courses;
 
   private final Button sendMailButton;
   private final Button resendFailedMailButton;
@@ -346,27 +334,6 @@ public class EmailPane extends CustomComponent {
     });
   }
 
-  /**
-   * Create a default Message
-   *
-   * @return a default test message
-   */
-  private Message getDefaultMessage() {
-    User user = SecurityUtil.createSystemUser(systemUserName, new DefaultOrganization());
-    // FIXME: This should be configured from file
-    Person creator = Person.person("Podcast Service", "podcast-service@manchester.ac.uk");
-    MessageSignature msgSign = MessageSignature.messageSignature("admin", user,
-            emailAddress(creator.getEmail(), creator.getName()), "Send by admin");
-
-    String body = IoSupport.loadTxtFromClassPath("mail-template-invitation.ftl", getClass()).get();
-
-    // Create an ad-hoc version of the templates as we are reading it from the
-    // class path every time
-    MessageTemplate tmpl = new MessageTemplate("invitation", user,
-            "Podcasting - set your lecture recording preferences",
-            body).createAdHocCopy();
-    return new Message(creator, tmpl, msgSign);
-  }
 
   /**
    * Send mails for each recordings in the list
@@ -403,15 +370,11 @@ public class EmailPane extends CustomComponent {
         sctx.runInContext(new Effect0() {
           @Override
           protected void run() {
-            logger.info("Sending emails. Organization is " + contextOrg);
             try {
-              recordings = pm
-                      .get()
-                      .get()
-                      .findRecordings(
-                              RecordingQuery.createWithoutDeleted().withEmailStatus(status));
-            } catch (ParticipationManagementDatabaseException e) {
-              logger.error("Unable to find unsent recordings! {}", e.getMessage());
+              for (EmailSender es : emailSenderService.get()) {
+                es.sendMessages(systemUserName, status, true);
+              }
+            } catch (ParticipationManagementException e) {
               invokeUIChange(new Effect0() {
                 @Override
                 protected void run() {
@@ -424,39 +387,6 @@ public class EmailPane extends CustomComponent {
                 }
               });
               return;
-            }
-
-            try {
-              courses = pm.get().get().findCoursesByEmailState(EmailStatus.valueOf(status.toString()));
-            } catch (ParticipationManagementDatabaseException e) {
-              logger.error("Unable to find unsent courses! {}", e.getMessage());
-              invokeUIChange(new Effect0() {
-                @Override
-                protected void run() {
-                  error.setVisible(true);
-                  error.setCaption(i18n.s("tab.email.error.db"));
-                  indicator.setEnabled(false);
-                  indicator.setVisible(false);
-                  sendMailButton.setEnabled(true);
-                  resendFailedMailButton.setEnabled(false);
-                }
-              });
-              return;
-            }
-
-            // Resent email status to unsent
-            if (status != EmailStatus.UNSENT) {
-              for (Recording r : recordings) {
-                r.setEmailStatus(EmailStatus.UNSENT);
-              }
-
-              for (Course c : courses) {
-                c.setEmailStatus(EmailStatus.UNSENT);
-              }
-            }
-
-            for (EmailSender es : emailSenderService.get()) {
-              es.sendMessagesForRecordings(recordings, courses, getDefaultMessage(), true);
             }
 
             invokeUIChange(new Effect0() {

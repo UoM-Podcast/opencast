@@ -21,16 +21,30 @@
 
 package org.opencastproject.pm.api;
 
+import org.opencastproject.kernel.mail.EmailAddress;
+import org.opencastproject.pm.api.Course.EmailStatus;
+
 import java.util.Collection;
+import java.util.List;
 
 /** Send PMM emails. */
 public interface EmailSender {
+
   /**
    * Send emails based on <code>message</code> to the recipients referring to the given recordings and update object
    * associations.
    */
   void sendMessagesForRecordings(Collection<Recording> recording, Collection<Course> courses, Message message,
           boolean store);
+
+  void sendMessages(String systemUserName, final EmailStatus status, final boolean store) throws ParticipationManagementException;
+
+  Message getDefaultMessage(String systemUserName);
+  /**
+   * Send emails based on <code>message</code> to the recipients referring to the given recordings and update object
+   * associations.
+   */
+  void sendErrorMessage(Message message, List<EmailAddress> to);
 
   String renderInvitationBody(Message template, Collection<Recording> recording, Collection<Course> courses, Person receiver);
 }

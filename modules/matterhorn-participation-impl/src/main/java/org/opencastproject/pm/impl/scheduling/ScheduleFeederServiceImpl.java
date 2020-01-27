@@ -40,6 +40,7 @@ import org.opencastproject.pm.api.persistence.RecordingQuery;
 import org.opencastproject.pm.api.scheduling.ParticipationManagementSchedulingException;
 import org.opencastproject.pm.api.scheduling.ScheduleFeederService;
 import org.opencastproject.pm.api.scheduling.ScheduleProvider;
+import org.opencastproject.pm.api.scheduling.SnapCountService;
 import org.opencastproject.scheduler.api.SchedulerException;
 import org.opencastproject.scheduler.api.SchedulerService;
 import org.opencastproject.security.api.Organization;
@@ -132,6 +133,7 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
   private ScheduleProvider scheduleProvider;
   private SeriesService seriesService;
   private ParticipationManagementDatabase participationManagementDB;
+  private SnapCountService snapCountService = null;
 
   private String systemUser;
 
@@ -172,6 +174,11 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
   /** OSGi container callback. */
   public void setParticipationManagementDatabase(ParticipationManagementDatabase participationManagementDB) {
     this.participationManagementDB = participationManagementDB;
+  }
+
+  /** OSGi container callback. */
+  public void setSnapCountService(SnapCountService snapCountService) {
+    this.snapCountService = snapCountService;
   }
 
   /** OSGi container callback. */
@@ -266,6 +273,10 @@ public class ScheduleFeederServiceImpl implements ManagedService, ScheduleFeeder
       // Configure the synchronization start date
       syncPast = getOptCfg(properties, OPT_SYNC_PAST).map(toBool).getOrElse(SYNC_PAST_DEFAULT);
       logger.info("Past recordings {} be included in the synchronization", syncPast ? "will" : "won't");
+
+      if (snapCountService != null) {
+        runner.setSnapCountService(snapCountService);
+      }
 
       // create security context
       final Organization org;
