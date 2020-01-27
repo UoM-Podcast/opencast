@@ -90,9 +90,6 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   /** The configuration key to use for determining error recipients address */
   public static final String ERROR_EMAIL_ADDRESS_CONFIG = "error.email.address";
 
-  /** The configuration key to use for determining error recipients name */
-  public static final String ERROR_EMAIL_NAME_CONFIG = "error.email.name";
-
   /** OSGi container callback. */
   public void setSyllabusService(SyllabusService syllabusService) {
     this.syllabusService = syllabusService;
@@ -272,9 +269,8 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
     if (properties != null) {
       // read configuration
       String email = getCfg(properties, ERROR_EMAIL_ADDRESS_CONFIG);
-      String ename = getOptCfg(properties, ERROR_EMAIL_NAME_CONFIG).getOrElse("");
-      logger.info("Sending Snapcount error messages to {}({})",email,ename);
-      errorRecipients.add(new EmailAddress(email, ename));
+      logger.info("Sending Snapcount error messages to {} ",email);
+      errorRecipients.add(new EmailAddress(email, ""));
     }
   }
 
