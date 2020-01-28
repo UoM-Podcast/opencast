@@ -22,13 +22,18 @@
 package org.opencastproject.pm.syllabus.impl.snapcount;
 
 import static org.opencastproject.kernel.mail.EmailAddress.emailAddress;
+import static org.opencastproject.pm.api.Course.EmailStatus;
+import static org.opencastproject.util.OsgiUtil.getCfg;
+import static org.opencastproject.util.OsgiUtil.getOptCfg;
 import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.data.VCell.ocell;
 
+import org.opencastproject.kernel.mail.EmailAddress;
 import org.opencastproject.messages.MessageSignature;
 import org.opencastproject.messages.MessageTemplate;
 import org.opencastproject.pm.api.EmailSender;
 import org.opencastproject.pm.api.Message;
+import org.opencastproject.pm.api.ParticipationManagementException;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Synchronization;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
@@ -58,8 +63,10 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.HashMap;
+import java.util.List;
 
 public class SnapCountServiceImpl implements ManagedService, SnapCountService {
 
@@ -78,8 +85,12 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   private ParticipationFeederRunner pmRunner;
   private final VCell<Option<SecurityContext>> secCtx = ocell();
   private EmailSender emailSenderService;
+  private List<EmailAddress> errorRecipients = new ArrayList<EmailAddress>();
 
- /** OSGi container callback. */
+  /** The configuration key to use for determining error recipients address */
+  public static final String ERROR_EMAIL_ADDRESS_CONFIG = "error.email.address";
+
+  /** OSGi container callback. */
   public void setSyllabusService(SyllabusService syllabusService) {
     this.syllabusService = syllabusService;
   }
@@ -214,7 +225,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
             "Error Syncing Syllabus - not enough entries in S+ DB",
             body);
         Message errorMessage = new Message(creator, tmpl, msgSign);
-//        emailSenderService.sendErrorMessage(errorMessage);
+        emailSenderService.sendErrorMessage(errorMessage, errorRecipients);
         return;
       }
       if (stats.getDeleted() > 200) {
@@ -227,6 +238,12 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
                 + "Please run MH update manually!";
         logger.error("Error Syncing Syllabus - Trying to delete too many Recordings");
         logger.error(body);
+        MessageTemplate tmpl = new MessageTemplate("invitation", user,
+            "Error Syncing Syllabus - Trying to delete too many Recordings",
+            body);
+        Message errorMessage = new Message(creator, tmpl, msgSign);
+        emailSenderService.sendErrorMessage(errorMessage, errorRecipients);
+        return;
       }
       logger.info("Start Matterhorn Scheduler Sync");
       matterhornSyncService.synchronize();
@@ -237,10 +254,24 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
     }
 
 
+  @Override
+  public void sendOptOutEmails() {
+    try {
+      emailSenderService.sendMessages(systemUser, EmailStatus.UNSENT, true);
+    } catch (ParticipationManagementException e) {
+      logger.error(e.getMessage());
+    }
+  }
 
   /** OSGi container called (ConfigurationAdmin). */
   @Override
   public synchronized void updated(Dictionary properties) throws ConfigurationException {
+    if (properties != null) {
+      // read configuration
+      String email = getCfg(properties, ERROR_EMAIL_ADDRESS_CONFIG);
+      logger.info("Sending Snapcount error messages to {} ",email);
+      errorRecipients.add(new EmailAddress(email, ""));
+    }
   }
 
   @Override

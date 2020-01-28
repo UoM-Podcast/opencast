@@ -22,6 +22,8 @@
 package org.opencastproject.pm.impl;
 
 import static java.lang.String.format;
+
+import static org.opencastproject.kernel.mail.EmailAddress.emailAddress;
 import static org.opencastproject.util.EqualsUtil.eq;
 import static org.opencastproject.util.EqualsUtil.hash;
 import static org.opencastproject.util.IoSupport.withFile;
@@ -34,6 +36,8 @@ import org.opencastproject.kernel.mail.EmailAddress;
 import org.opencastproject.messages.Mail;
 import org.opencastproject.messages.MailService;
 import org.opencastproject.messages.MailServiceException;
+import org.opencastproject.messages.MessageSignature;
+import org.opencastproject.messages.MessageTemplate;
 import org.opencastproject.messages.TemplateType;
 import org.opencastproject.pm.api.CaptureAgent;
 import org.opencastproject.pm.api.Course;
@@ -41,11 +45,16 @@ import org.opencastproject.pm.api.Course.EmailStatus;
 import org.opencastproject.pm.api.EmailSender;
 import org.opencastproject.pm.api.Error;
 import org.opencastproject.pm.api.Message;
+import org.opencastproject.pm.api.ParticipationManagementException;
 import org.opencastproject.pm.api.Person;
 import org.opencastproject.pm.api.Recording;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabase;
 import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseException;
 import org.opencastproject.pm.api.persistence.RecordingQuery;
+import org.opencastproject.security.api.DefaultOrganization;
+import org.opencastproject.security.api.User;
+import org.opencastproject.security.util.SecurityUtil;
+import org.opencastproject.util.IoSupport;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.data.Effect2;
 import org.opencastproject.util.data.Function;
@@ -131,25 +140,73 @@ public abstract class AbstractEmailSenderService implements EmailSender {
             staffMember.getName(), getOptOutLink(staffMember.getEmail()), modules));
   }
 
-//  @Override
-//  public void sendErrorMessage(Message message) {
-//    try {
-//        // send mail
-//        List<EmailAddress> to = new ArrayList<EmailAddress>();
-//        List<EmailAddress> cc = new ArrayList<EmailAddress>();
-//        // FIXME: UoM hack to CC sender (podcast-service)
-//        to.add(message.getSignature().getSender());
-//
-//        sendMail(new Mail(message.getSignature().getSender(), message.getSignature().getReplyTo(), to,
-//                Option.option(cc),
-//                message.getTemplate().getSubject(), message.getTemplate().getBody()));
-//      } catch (Exception e) {
-//        logger.error(format("Error while sending email to %s: %s", message.getSignature().getSender(), e));
-//        message.addError(new Error("email", "error while sending email to " + message.getSignature().getSender(), ExceptionUtils
-//                .getStackTrace(e)));
-//      }
-//  }
-//
+  @Override
+  public void sendMessages(String systemUserName, final EmailStatus status, final boolean store) throws ParticipationManagementException {
+    List<Recording> recordings;
+    try {
+      recordings = getDb().findRecordings(
+        RecordingQuery.createWithoutDeleted().withEmailStatus(status));
+    } catch (ParticipationManagementDatabaseException e) {
+      logger.error("Unable to find unsent recordings! {}", e.getMessage());
+      throw new ParticipationManagementException(e);
+    }
+    List<Course> courses;
+    try {
+      courses = getDb().findCoursesByEmailState(EmailStatus.valueOf(status.toString()));
+    } catch (ParticipationManagementDatabaseException e) {
+      logger.error("Unable to find unsent courses! {}", e.getMessage());
+      throw new ParticipationManagementException(e);
+    }
+    // Resent email status to unsent
+    if (status != EmailStatus.UNSENT) {
+      for (Recording r : recordings) {
+        r.setEmailStatus(EmailStatus.UNSENT);
+      }
+
+      for (Course c : courses) {
+        c.setEmailStatus(EmailStatus.UNSENT);
+      }
+    }
+    sendMessagesForRecordings(recordings, courses, getDefaultMessage(systemUserName), store);
+  }
+
+  /**
+   * Create a default Message
+   *
+   * @return a default test message
+   */
+  @Override
+  public Message getDefaultMessage(String systemUserName) {
+    User user = SecurityUtil.createSystemUser(systemUserName, new DefaultOrganization());
+    // FIXME: This should be configured from file
+    Person creator = Person.person("Podcast Service", "podcast-service@manchester.ac.uk");
+    MessageSignature msgSign = MessageSignature.messageSignature("admin", user,
+            emailAddress(creator.getEmail(), creator.getName()), "Send by admin");
+
+    String body = IoSupport.loadTxtFromClassPath("mail-template-invitation.ftl", getClass()).get();
+
+    // Create an ad-hoc version of the templates as we are reading it from the
+    // class path every time
+    MessageTemplate tmpl = new MessageTemplate("invitation", user,
+            "Podcasting - set your lecture recording preferences",
+            body).createAdHocCopy();
+    return new Message(creator, tmpl, msgSign);
+  }
+
+  @Override
+  public void sendErrorMessage(Message message, List<EmailAddress> to) {
+    try {
+        // send mail
+        List<EmailAddress> cc = new ArrayList<EmailAddress>();
+        sendMail(new Mail(message.getSignature().getSender(), message.getSignature().getReplyTo(), to,
+                Option.option(cc),message.getTemplate().getSubject(), message.getTemplate().getBody(), "text/html"));
+      } catch (Exception e) {
+        logger.error(format("Error while sending email to %s: %s", message.getSignature().getSender(), e));
+        message.addError(new Error("email", "error while sending email to " + message.getSignature().getSender(), ExceptionUtils
+                .getStackTrace(e)));
+      }
+  }
+
   /** Extract all courses from the given recordings and ensure that there are no duplicates. */
   public Collection<Course> extractCoursesUnique(Collection<Recording> recordings) {
     return unique(mlist(recordings).bind(Recording.getCourse).value(), Course.getId);
