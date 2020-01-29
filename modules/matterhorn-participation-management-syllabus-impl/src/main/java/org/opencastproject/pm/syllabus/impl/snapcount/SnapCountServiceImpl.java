@@ -24,7 +24,6 @@ package org.opencastproject.pm.syllabus.impl.snapcount;
 import static org.opencastproject.kernel.mail.EmailAddress.emailAddress;
 import static org.opencastproject.pm.api.Course.EmailStatus;
 import static org.opencastproject.util.OsgiUtil.getCfg;
-import static org.opencastproject.util.OsgiUtil.getOptCfg;
 import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.data.VCell.ocell;
 
