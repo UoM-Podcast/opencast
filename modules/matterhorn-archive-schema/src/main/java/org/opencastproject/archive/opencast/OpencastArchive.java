@@ -336,13 +336,19 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
     ElementStore currentStore = getElementStore(ep.getStoreId()).getOrElseNull();
     ElementStore targetStore = getElementStore(targetStoreId).getOrElseNull();
 
-    if (null == currentStore) {
-      logger.error("Unknown store for current store: " + ep.getStoreId());
-      return;
-    }
-    if (null == targetStore) {
-      logger.error("Unknown store for target store: " + targetStoreId);
-      return;
+    try {
+      if (null == currentStore) {
+        Thread.sleep(10000);
+        logger.error("Unknown store for current store: " + ep.getStoreId());
+        return;
+      }
+      if (null == targetStore) {
+        Thread.sleep(10000);
+        logger.error("Unknown store for target store: " + targetStoreId);
+        return;
+      }
+    } catch (InterruptedException ex) {
+        //
     }
 
     if (isLocalStore(ep.getStoreId()) || isLocalStore(targetStoreId)) {
