@@ -526,6 +526,11 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
       throw new IllegalStateException(e);
     }
     if (instancesInSolr == 0L) {
+      try {
+        Thread.sleep(60000);
+      } catch (InterruptedException ex) {
+        //
+      }
       logger.info("Start populating episode search index");
       Map<String, Version> maps = new HashMap<String, Version>();
       Iterator<Episode> episodes;
