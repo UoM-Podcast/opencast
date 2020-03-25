@@ -237,4 +237,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
     this.bucketName = bucketName;
   }
 
+  void setStoreType(String storeType) {
+    this.storeType = storeType;
+  }
 }

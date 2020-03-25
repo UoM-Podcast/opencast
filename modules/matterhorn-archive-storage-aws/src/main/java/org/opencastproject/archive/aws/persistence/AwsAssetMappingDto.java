@@ -46,12 +46,12 @@ import javax.xml.bind.annotation.XmlAttribute;
 @Table(name = "mh_aws_asset_mapping")
 @NamedQueries({
         // These exclude deleted mappings!
-        @NamedQuery(name = "AwsAssetMapping.findActiveMapping", query = "SELECT m FROM AwsAssetMapping m WHERE m.organizationId = :organizationId AND m.mediaPackageId = :mediaPackageId AND m.mediaPackageElementId = :mediaPackageElementId AND m.version = :version AND m.deletionDate IS NULL"),
-        @NamedQuery(name = "AwsAssetMapping.findAllActiveByObjectKey", query = "SELECT m FROM AwsAssetMapping m WHERE m.objectKey = :objectKey AND m.deletionDate IS NULL"),
-        @NamedQuery(name = "AwsAssetMapping.findAllActiveByMediaPackage", query = "SELECT m FROM AwsAssetMapping m WHERE m.organizationId = :organizationId AND m.mediaPackageId = :mediaPackageId  AND m.deletionDate IS NULL"),
-        @NamedQuery(name = "AwsAssetMapping.findAllActiveByMediaPackageAndVersion", query = "SELECT m FROM AwsAssetMapping m WHERE m.organizationId = :organizationId AND m.mediaPackageId = :mediaPackageId AND m.version = :version AND m.deletionDate IS NULL"),
+        @NamedQuery(name = "AwsAssetMapping.findActiveMapping", query = "SELECT m FROM AwsAssetMapping m WHERE m.organizationId = :organizationId AND m.mediaPackageId = :mediaPackageId AND m.mediaPackageElementId = :mediaPackageElementId AND m.version = :version AND m.storeId = :storeId AND m.deletionDate IS NULL"),
+        @NamedQuery(name = "AwsAssetMapping.findAllActiveByObjectKey", query = "SELECT m FROM AwsAssetMapping m WHERE m.objectKey = :objectKey AND m.storeId = :storeId AND m.deletionDate IS NULL"),
+        @NamedQuery(name = "AwsAssetMapping.findAllActiveByMediaPackage", query = "SELECT m FROM AwsAssetMapping m WHERE m.organizationId = :organizationId AND m.mediaPackageId = :mediaPackageId AND m.storeId = :storeId AND m.deletionDate IS NULL"),
+        @NamedQuery(name = "AwsAssetMapping.findAllActiveByMediaPackageAndVersion", query = "SELECT m FROM AwsAssetMapping m WHERE m.organizationId = :organizationId AND m.mediaPackageId = :mediaPackageId AND m.version = :version AND m.storeId = :storeId AND m.deletionDate IS NULL"),
         // This is to be used when restoring/re-ingesting mps so includes deleted mapings!
-        @NamedQuery(name = "AwsAssetMapping.findAllByMediaPackage", query = "SELECT m FROM AwsAssetMapping m WHERE m.mediaPackageId = :mediaPackageId ORDER BY m.version DESC") })
+        @NamedQuery(name = "AwsAssetMapping.findAllByMediaPackage", query = "SELECT m FROM AwsAssetMapping m WHERE m.mediaPackageId = :mediaPackageId AND m.storeId = :storeId ORDER BY m.version DESC") })
 public final class AwsAssetMappingDto {
 
   @Id
@@ -59,6 +59,9 @@ public final class AwsAssetMappingDto {
   @Column(name = "id", length = 128)
   @XmlAttribute
   private long id;
+
+  @Column(name = "store_id", nullable = false, length = 128)
+  private String storeId;
 
   @Column(name = "organization", nullable = false, length = 128)
   private String organizationId;
@@ -88,8 +91,9 @@ public final class AwsAssetMappingDto {
   }
 
   /** Constructor with all fields. */
-  public AwsAssetMappingDto(String organizationId, String mediaPackageId, String elementId, Long version,
+  public AwsAssetMappingDto(String storeId, String organizationId, String mediaPackageId, String elementId, Long version,
           String objectKey, String objectVersion) {
+    this.storeId = storeId;
     this.organizationId = organizationId;
     this.mediaPackageId = mediaPackageId;
     this.mediaPackageElementId = elementId;
@@ -100,18 +104,18 @@ public final class AwsAssetMappingDto {
 
   /** Convert into business object. */
   public AwsAssetMapping toAWSArchiveMapping() {
-    return new AwsAssetMapping(organizationId, mediaPackageId, mediaPackageElementId, version, objectKey,
+    return new AwsAssetMapping(storeId, organizationId, mediaPackageId, mediaPackageElementId, version, objectKey,
             objectVersion, deletionDate);
   }
 
-  public static AwsAssetMappingDto storeMapping(EntityManager em, StoragePath path, String objectKey,
+  public static AwsAssetMappingDto storeMapping(EntityManager em, String storeId, StoragePath path, String objectKey,
           String objectVersion) throws AwsAssetDatabaseException {
-    AwsAssetMappingDto mapDto = new AwsAssetMappingDto(path.getOrganizationId(), path.getMediaPackageId(),
+    AwsAssetMappingDto mapDto = new AwsAssetMappingDto(storeId, path.getOrganizationId(), path.getMediaPackageId(),
             path.getAssetId(), Long.valueOf(path.getVersion().toString()), objectKey, objectVersion);
 
     EntityTransaction tx = em.getTransaction();
     try {
-      AwsAssetMappingDto existing = findMapping(em, path);
+      AwsAssetMappingDto existing = findMapping(em, storeId, path);
 
       //If we've already seen this at some point but deleted it, just undelete it
       if (null != existing && objectKey.equals(existing.objectKey) && objectVersion.equals(existing.objectVersion)) {
@@ -136,7 +140,7 @@ public final class AwsAssetMappingDto {
   }
 
   /** Find a mapping by its storage path. Returns null if not found. */
-  public static AwsAssetMappingDto findMapping(EntityManager em, final StoragePath path)
+  public static AwsAssetMappingDto findMapping(EntityManager em, final String storeId, final StoragePath path)
           throws AwsAssetDatabaseException {
     Query query = null;
     try {
@@ -145,6 +149,7 @@ public final class AwsAssetMappingDto {
       query.setParameter("mediaPackageId", path.getMediaPackageId());
       query.setParameter("mediaPackageElementId", path.getAssetId());
       query.setParameter("version", Long.valueOf(path.getVersion().toString()));
+      query.setParameter("storeId", storeId);
       return (AwsAssetMappingDto) query.getSingleResult();
     } catch (NoResultException e) {
       return null; // Not found
@@ -155,12 +160,13 @@ public final class AwsAssetMappingDto {
 
   /** Find all assets that link to the AWS S3 object passed. */
   @SuppressWarnings("unchecked")
-  public static List<AwsAssetMappingDto> findMappingsByKey(EntityManager em, final String objectKey)
+  public static List<AwsAssetMappingDto> findMappingsByKey(EntityManager em, final String storeId, final String objectKey)
           throws AwsAssetDatabaseException {
     Query query = null;
     try {
       query = em.createNamedQuery("AwsAssetMapping.findAllActiveByObjectKey");
       query.setParameter("objectKey", objectKey);
+      query.setParameter("storeId", storeId);
       return query.getResultList();
     } catch (Exception e) {
       throw new AwsAssetDatabaseException(e);
@@ -170,7 +176,7 @@ public final class AwsAssetMappingDto {
   /** Find all assets that belong to a media package and version (optional). */
   @SuppressWarnings("unchecked")
   public static List<AwsAssetMappingDto> findMappingsByMediaPackageAndVersion(EntityManager em,
-          final StoragePath path) throws AwsAssetDatabaseException {
+          final String storeId, final StoragePath path) throws AwsAssetDatabaseException {
     Query query = null;
     try {
       // Find a specific versions?
@@ -182,6 +188,7 @@ public final class AwsAssetMappingDto {
 
       query.setParameter("organizationId", path.getOrganizationId());
       query.setParameter("mediaPackageId", path.getMediaPackageId());
+      query.setParameter("storeId", storeId);
 
       return query.getResultList();
     } catch (Exception e) {
@@ -192,8 +199,8 @@ public final class AwsAssetMappingDto {
   /**
    * Marks mapping as deleted.
    */
-  public static void deleteMappping(EntityManager em, StoragePath path) throws AwsAssetDatabaseException {
-    AwsAssetMappingDto mapDto = findMapping(em, path);
+  public static void deleteMappping(EntityManager em, String storeId, StoragePath path) throws AwsAssetDatabaseException {
+    AwsAssetMappingDto mapDto = findMapping(em, storeId, path);
     if (mapDto == null)
       return;
 
@@ -215,12 +222,13 @@ public final class AwsAssetMappingDto {
 
   /** Find all mappings that belong to a media package id. Also returns deleted mappings! */
   @SuppressWarnings("unchecked")
-  public static List<AwsAssetMappingDto> findMappingsByMediaPackage(EntityManager em, final String mpId)
+  public static List<AwsAssetMappingDto> findMappingsByMediaPackage(EntityManager em, String storeId, final String mpId)
           throws AwsAssetDatabaseException {
     Query query = null;
     try {
       query = em.createNamedQuery("AwsAssetMapping.findAllByMediaPackage");
       query.setParameter("mediaPackageId", mpId);
+      query.setParameter("storeId", storeId);
 
       return query.getResultList();
     } catch (Exception e) {

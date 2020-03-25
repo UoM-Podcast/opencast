@@ -52,6 +52,8 @@ public class AwsAssetDatabaseImplTest {
 
   private AwsAssetDatabaseImpl database;
 
+  private static final String STORE_1_ID = "store_1";
+  private static final String STORE_2_ID = "store_2";
   private static final String ORG = "org";
   private static final String MP_ID = "abcd";
   private static final String ASSET1_ID = "efgh";
@@ -84,9 +86,45 @@ public class AwsAssetDatabaseImplTest {
   @Test
   public void testStoreMapping() throws Exception {
     StoragePath path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
 
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_1_ID, path);
+    Assert.assertNotNull(mapping);
+    Assert.assertEquals("archive_path/" + ASSET1_ID, mapping.getObjectKey());
+    Assert.assertEquals(AWS_VERSION_1, mapping.getObjectVersion());
+    Assert.assertNull(mapping.getDeletionDate());
+
+    mapping = database.findMapping(STORE_2_ID, path);
+    Assert.assertNull(mapping);
+  }
+
+  @Test
+  public void testStoreMultipleMapping() throws Exception {
+    StoragePath path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_2_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+
+    //Find it in store 1
+    AwsAssetMapping mapping = database.findMapping(STORE_1_ID, path);
+    Assert.assertNotNull(mapping);
+    Assert.assertEquals("archive_path/" + ASSET1_ID, mapping.getObjectKey());
+    Assert.assertEquals(AWS_VERSION_1, mapping.getObjectVersion());
+    Assert.assertNull(mapping.getDeletionDate());
+
+    //Make sure it's also present in store 2
+    mapping = database.findMapping(STORE_2_ID, path);
+    Assert.assertNotNull(mapping);
+    Assert.assertEquals("archive_path/" + ASSET1_ID, mapping.getObjectKey());
+    Assert.assertEquals(AWS_VERSION_1, mapping.getObjectVersion());
+    Assert.assertNull(mapping.getDeletionDate());
+
+    //Delete from store 1
+    database.deleteMapping(STORE_1_ID, path);
+    //Make sure it's gone from store 1
+    mapping = database.findMapping(STORE_1_ID, path);
+    Assert.assertNull(mapping);
+    //Make sure it's still present in store 2
+    mapping = database.findMapping(STORE_2_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals("archive_path/" + ASSET1_ID, mapping.getObjectKey());
     Assert.assertEquals(AWS_VERSION_1, mapping.getObjectVersion());
@@ -96,17 +134,17 @@ public class AwsAssetDatabaseImplTest {
   @Test
   public void testDeleteMapping() throws Exception {
     StoragePath path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
 
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_1_ID, path);
     Assert.assertNotNull(mapping);
 
-    database.deleteMapping(path);
+    database.deleteMapping(STORE_1_ID, path);
     // Mapping row is not deleted, but findMapping should not find it
-    mapping = database.findMapping(path);
+    mapping = database.findMapping(STORE_1_ID, path);
     Assert.assertNull(mapping);
     // Mapping should have its deletion date set
-    List<AwsAssetMapping> mappings = database.findAllByMediaPackage(MP_ID);
+    List<AwsAssetMapping> mappings = database.findAllByMediaPackage(STORE_1_ID, MP_ID);
     Assert.assertEquals(1, mappings.size());
     Assert.assertNotNull(mappings.get(0).getDeletionDate());
   }
@@ -114,9 +152,9 @@ public class AwsAssetDatabaseImplTest {
   @Test
   public void testFindMapping() throws Exception {
     StoragePath path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
 
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_1_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals("archive_path/" + ASSET1_ID, mapping.getObjectKey());
     Assert.assertEquals(AWS_VERSION_1, mapping.getObjectVersion());
@@ -126,12 +164,12 @@ public class AwsAssetDatabaseImplTest {
   @Test
   public void testFindMappingByKey() throws Exception {
     StoragePath path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
     // Store another mapping with the same key (logic hard-link to existing file)
     path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET2_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
 
-    List<AwsAssetMapping> mappings = database.findMappingsByKey("archive_path/" + ASSET1_ID);
+    List<AwsAssetMapping> mappings = database.findMappingsByKey(STORE_1_ID, "archive_path/" + ASSET1_ID);
     Assert.assertEquals(2, mappings.size());
     AwsAssetMapping m1 = mappings.get(0);
     AwsAssetMapping m2 = mappings.get(1);
@@ -142,18 +180,18 @@ public class AwsAssetDatabaseImplTest {
   @Test
   public void testFindMappingByMediaPackageAndVersion() throws Exception {
     StoragePath path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
     // Another version of the SAME asset (same checksum)
     path = new StoragePath(ORG, MP_ID, Version.version(2L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
     // One more version
     path = new StoragePath(ORG, MP_ID, Version.version(3L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
 
     // Search by media package, version 2
     path = new StoragePath(ORG, MP_ID, Version.version(2L), null);
 
-    List<AwsAssetMapping> mappings = database.findMappingsByMediaPackageAndVersion(path);
+    List<AwsAssetMapping> mappings = database.findMappingsByMediaPackageAndVersion(STORE_1_ID, path);
     Assert.assertEquals(1, mappings.size());
     Assert.assertEquals(2L, mappings.get(0).getVersion().longValue());
   }
@@ -161,18 +199,18 @@ public class AwsAssetDatabaseImplTest {
   @Test
   public void testFindMappingByMediaPackageNoVersion() throws Exception {
     StoragePath path = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
     // Another version
     path = new StoragePath(ORG, MP_ID, Version.version(2L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
     // One more version
     path = new StoragePath(ORG, MP_ID, Version.version(3L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
 
     // Search by media package, any version
     path = new StoragePath(ORG, MP_ID, null, null);
 
-    List<AwsAssetMapping> mappings = database.findMappingsByMediaPackageAndVersion(path);
+    List<AwsAssetMapping> mappings = database.findMappingsByMediaPackageAndVersion(STORE_1_ID, path);
     Assert.assertEquals(3, mappings.size());
     // Store versions found in order
     TreeSet<Long> versions = new TreeSet<Long>();
@@ -191,23 +229,23 @@ public class AwsAssetDatabaseImplTest {
   public void testFindAllByMediaPackage() throws Exception {
     // Store an asset
     StoragePath path1 = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET1_ID);
-    database.storeMapping(path1, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path1, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
     // Store another asset
     StoragePath path2 = new StoragePath(ORG, MP_ID, Version.version(1L), ASSET2_ID);
-    database.storeMapping(path2, "archive_path/" + ASSET2_ID, AWS_VERSION_2);
+    database.storeMapping(STORE_1_ID, path2, "archive_path/" + ASSET2_ID, AWS_VERSION_2);
     // Another version of the asset 1 (same checksum)
     StoragePath path = new StoragePath(ORG, MP_ID, Version.version(2L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
     // One more version
     path = new StoragePath(ORG, MP_ID, Version.version(3L), ASSET1_ID);
-    database.storeMapping(path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
+    database.storeMapping(STORE_1_ID, path, "archive_path/" + ASSET1_ID, AWS_VERSION_1);
 
     // Delete version 1
-    database.deleteMapping(path1);
-    database.deleteMapping(path2);
+    database.deleteMapping(STORE_1_ID, path1);
+    database.deleteMapping(STORE_1_ID, path2);
 
     // Search by media package
-    List<AwsAssetMapping> mappings = database.findAllByMediaPackage(MP_ID);
+    List<AwsAssetMapping> mappings = database.findAllByMediaPackage(STORE_1_ID, MP_ID);
     // Deleted assets should also be returned
     Assert.assertEquals(4, mappings.size());
   }

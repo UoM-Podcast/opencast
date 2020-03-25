@@ -87,8 +87,8 @@ public final class AwsGlacierCacheMappingDto {
   }
 
   /** Convert into business object. */
-  public AwsAssetMapping toAWSArchiveMapping() {
-    return new AwsAssetMapping(organizationId, mediaPackageId, mediaPackageElementId, version, null,
+  public AwsAssetMapping toAWSArchiveMapping(String storeId) {
+    return new AwsAssetMapping(storeId, organizationId, mediaPackageId, mediaPackageElementId, version, null,
             null, null);
   }
 

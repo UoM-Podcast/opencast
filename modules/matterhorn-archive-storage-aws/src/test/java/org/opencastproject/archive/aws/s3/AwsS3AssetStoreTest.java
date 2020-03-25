@@ -50,6 +50,8 @@ import org.osgi.service.component.ComponentContext;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.Dictionary;
+import java.util.Hashtable;
 
 public class AwsS3AssetStoreTest {
   private ComboPooledDataSource pooledDataSource;
@@ -63,6 +65,7 @@ public class AwsS3AssetStoreTest {
 
   private static final String BUCKET_NAME = "aws-archive-bucket";
 
+  private static final String STORE_ID = "store-1";
   private static final String ORG_ID = "org";
   private static final String MP_ID = "abcd";
   private static final String MP_ID2 = "mnop";
@@ -110,8 +113,21 @@ public class AwsS3AssetStoreTest {
     EasyMock.expect(workspace.get(uri)).andReturn(sampleFile).anyTimes();
     EasyMock.replay(workspace);
 
+    Dictionary<String, Object> p = new Hashtable<>();
+    p.put(AwsS3AssetStore.AWS_S3_ENABLED, Boolean.TRUE.toString());
+    p.put(AwsS3AssetStore.STORE_TYPE_PROPERTY, STORE_ID);
+    p.put(AwsS3AssetStore.AWS_S3_BUCKET_CONFIG, BUCKET_NAME);
+    p.put(AwsS3AssetStore.AWS_S3_REGION_CONFIG, "test-region");
+    p.put(AwsS3AssetStore.AWS_S3_ACCESS_KEY_ID_CONFIG, "access-key");
+    p.put(AwsS3AssetStore.AWS_S3_SECRET_ACCESS_KEY_CONFIG, "secret-key");
+    ComponentContext cc = EasyMock.createNiceMock(ComponentContext.class);
+    EasyMock.expect(cc.getProperties()).andReturn(p).anyTimes();
+    EasyMock.replay(cc);
+
     store = new AwsS3AssetStore();
+    store.activate(cc);
     store.setBucketName(BUCKET_NAME);
+    store.setStoreType(STORE_ID);
     store.setS3(s3Client);
     store.setS3TransferManager(s3Transfer);
     store.setWorkspace(workspace);
@@ -137,7 +153,7 @@ public class AwsS3AssetStoreTest {
     store.put(path, Source.source(uri));
 
     // Check if mapping saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
@@ -164,14 +180,14 @@ public class AwsS3AssetStoreTest {
     Assert.assertTrue(store.copy(path, path2));
 
     // Check if both mappings saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
     Assert.assertEquals(1L, mapping.getVersion().longValue());
     Assert.assertEquals(ASSET_ID, mapping.getMediaPackageElementId());
 
-    AwsAssetMapping mapping2 = database.findMapping(path2);
+    AwsAssetMapping mapping2 = database.findMapping(STORE_ID, path2);
     Assert.assertNotNull(mapping2);
     Assert.assertEquals(ORG_ID, mapping2.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping2.getMediaPackageId());
@@ -248,13 +264,13 @@ public class AwsS3AssetStoreTest {
     store.put(path2, Source.source(uri));
 
     // Check if mappings were saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
     Assert.assertEquals(1L, mapping.getVersion().longValue());
 
-    AwsAssetMapping mapping2 = database.findMapping(path2);
+    AwsAssetMapping mapping2 = database.findMapping(STORE_ID, path2);
     Assert.assertNotNull(mapping2);
     Assert.assertEquals(ORG_ID, mapping2.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping2.getMediaPackageId());
@@ -265,9 +281,9 @@ public class AwsS3AssetStoreTest {
     Assert.assertTrue(store.delete(versionSelector));
 
     // Check if version1 was deleted but version 2 is still there
-    Assert.assertNull(database.findMapping(path));
+    Assert.assertNull(database.findMapping(STORE_ID, path));
 
-    mapping2 = database.findMapping(path2);
+    mapping2 = database.findMapping(STORE_ID, path2);
     Assert.assertNotNull(mapping2);
   }
 
@@ -297,13 +313,13 @@ public class AwsS3AssetStoreTest {
     store.put(path2, Source.source(uri));
 
     // Check if mappings were saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
     Assert.assertEquals(1L, mapping.getVersion().longValue());
 
-    AwsAssetMapping mapping2 = database.findMapping(path2);
+    AwsAssetMapping mapping2 = database.findMapping(STORE_ID, path2);
     Assert.assertNotNull(mapping2);
     Assert.assertEquals(ORG_ID, mapping2.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping2.getMediaPackageId());
@@ -314,8 +330,8 @@ public class AwsS3AssetStoreTest {
     Assert.assertTrue(store.delete(mpSelector));
 
     // Check if both versions were deleted
-    Assert.assertNull(database.findMapping(path));
-    Assert.assertNull(database.findMapping(path2));
+    Assert.assertNull(database.findMapping(STORE_ID, path));
+    Assert.assertNull(database.findMapping(STORE_ID, path2));
   }
 
   // @Test
@@ -336,7 +352,7 @@ public class AwsS3AssetStoreTest {
     store.put(path, Source.source(uri));
 
     // Check if mappings were saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
@@ -347,7 +363,7 @@ public class AwsS3AssetStoreTest {
     store.delete(versionSelector);
 
     // Check if version 1 is still there
-    Assert.assertNotNull(database.findMapping(path));
+    Assert.assertNotNull(database.findMapping(STORE_ID, path));
   }
 
   @Test
@@ -370,14 +386,14 @@ public class AwsS3AssetStoreTest {
     Assert.assertTrue(store.copy(path, path2));
 
     // Check if both mappings saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(STORE_ID, path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
     Assert.assertEquals(1L, mapping.getVersion().longValue());
     Assert.assertEquals(ASSET_ID, mapping.getMediaPackageElementId());
 
-    AwsAssetMapping mapping2 = database.findMapping(path2);
+    AwsAssetMapping mapping2 = database.findMapping(STORE_ID, path2);
     Assert.assertNotNull(mapping2);
     Assert.assertEquals(ORG_ID, mapping2.getOrganizationId());
     Assert.assertEquals(MP_ID2, mapping2.getMediaPackageId());
@@ -393,9 +409,9 @@ public class AwsS3AssetStoreTest {
     Assert.assertTrue(store.delete(versionSelector));
 
     // Check if mp 1, asset 1 was deleted
-    Assert.assertNull(database.findMapping(path));
+    Assert.assertNull(database.findMapping(STORE_ID, path));
     // Check if mp2, asset 2 still there
-    mapping2 = database.findMapping(path2);
+    mapping2 = database.findMapping(STORE_ID, path2);
     Assert.assertNotNull(mapping2);
   }
 

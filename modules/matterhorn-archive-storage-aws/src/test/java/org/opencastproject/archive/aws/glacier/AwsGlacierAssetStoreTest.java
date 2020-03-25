@@ -63,6 +63,7 @@ public class AwsGlacierAssetStoreTest {
 
   private static final String VAULT_NAME = "aws-glacier-vault";
 
+  private static final String STORE_ID = "test-glacier-store";
   private static final String ORG_ID = "org";
   private static final String MP_ID = "abcd";
   private static final String ASSET_ID = "efgh";
@@ -104,6 +105,7 @@ public class AwsGlacierAssetStoreTest {
     store = new AwsGlacierAssetStore();
     store.setArchiveTransferManager(archiveTransfer);
     store.setVaultName(VAULT_NAME);
+    store.setStoreType(STORE_ID);
     store.setGlacierClient(glacierClient);
     store.setLocalCacheRoot(cacheRoot);
     store.setWorkspace(workspace);
@@ -129,7 +131,7 @@ public class AwsGlacierAssetStoreTest {
     store.put(path, Source.source(uri));
 
     // Check if mapping saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(store.getStoreType(), path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
@@ -138,7 +140,7 @@ public class AwsGlacierAssetStoreTest {
 
     //Ensure that we don't have a locally cached copy
     Assert.assertFalse(database.isLocallyCached(path));
-    Assert.assertEquals(0, database.getLocallyCachedFiles(new Date()).size());
+    Assert.assertEquals(0, database.getLocallyCachedFiles(store.getStoreType(), new Date()).size());
   }
 
   @Test
@@ -158,14 +160,14 @@ public class AwsGlacierAssetStoreTest {
 
     //Ensure that we don't have a locally cached copy
     Assert.assertFalse(database.isLocallyCached(path));
-    Assert.assertEquals(0, database.getLocallyCachedFiles(new Date()).size());
+    Assert.assertEquals(0, database.getLocallyCachedFiles(store.getStoreType(), new Date()).size());
 
     Option<InputStream> stream = store.get(path);
 
     Assert.assertTrue(stream.isSome());
     //Ensure that we *do* have a locally cached copy
     Assert.assertTrue(database.isLocallyCached(path));
-    Assert.assertEquals(1, database.getLocallyCachedFiles(new Date()).size());
+    Assert.assertEquals(1, database.getLocallyCachedFiles(store.getStoreType(), new Date()).size());
 
     //This ensures that we're actually pulling from the cached copy, rather than refetching
     stream = store.get(path);
@@ -208,7 +210,7 @@ public class AwsGlacierAssetStoreTest {
 
     //Ensure that we don't have a locally cached copy
     Assert.assertFalse(database.isLocallyCached(path));
-    Assert.assertEquals(0, database.getLocallyCachedFiles(new Date()).size());
+    Assert.assertEquals(0, database.getLocallyCachedFiles(store.getStoreType(), new Date()).size());
 
     Option<InputStream> stream = store.get(path);
 
@@ -249,7 +251,7 @@ public class AwsGlacierAssetStoreTest {
     store.put(path, Source.source(uri));
 
     // Check if mapping saved to db
-    AwsAssetMapping mapping = database.findMapping(path);
+    AwsAssetMapping mapping = database.findMapping(store.getStoreType(), path);
     Assert.assertNotNull(mapping);
     Assert.assertEquals(ORG_ID, mapping.getOrganizationId());
     Assert.assertEquals(MP_ID, mapping.getMediaPackageId());
@@ -258,7 +260,7 @@ public class AwsGlacierAssetStoreTest {
 
     //Ensure that we don't have a locally cached copy
     Assert.assertFalse(database.isLocallyCached(path));
-    Assert.assertEquals(0, database.getLocallyCachedFiles(new Date()).size());
+    Assert.assertEquals(0, database.getLocallyCachedFiles(store.getStoreType(), new Date()).size());
 
     DeletionSelector ds = DeletionSelector.delAll(ORG_ID, MP_ID);
     Assert.assertTrue(store.delete(ds));
@@ -282,14 +284,14 @@ public class AwsGlacierAssetStoreTest {
 
     //Ensure that we don't have a locally cached copy
     Assert.assertFalse(database.isLocallyCached(path));
-    Assert.assertEquals(0, database.getLocallyCachedFiles(new Date()).size());
+    Assert.assertEquals(0, database.getLocallyCachedFiles(store.getStoreType(), new Date()).size());
 
     Option<InputStream> stream = store.get(path);
 
     Assert.assertTrue(stream.isSome());
     //Ensure that we *do* have a locally cached copy
     Assert.assertTrue(database.isLocallyCached(path));
-    Assert.assertEquals(1, database.getLocallyCachedFiles(new Date()).size());
+    Assert.assertEquals(1, database.getLocallyCachedFiles(store.getStoreType(), new Date()).size());
 
     //This ensures that we're actually pulling from the cached copy, rather than refetching
     stream = store.get(path);

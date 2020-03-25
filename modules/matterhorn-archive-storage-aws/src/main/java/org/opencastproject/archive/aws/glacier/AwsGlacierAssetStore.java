@@ -252,7 +252,7 @@ public class AwsGlacierAssetStore extends AwsAbstractArchive implements RemoteEl
   public void purgeCache(Date olderThan) throws ElementStoreException {
     try {
       logger.info("Purging AWS Glacier cache...");
-      List<StoragePath> purge = database.getLocallyCachedFiles(olderThan);
+      List<StoragePath> purge = database.getLocallyCachedFiles(getStoreType(), olderThan);
       for (StoragePath path : purge) {
         File purgeMe = getLocalCacheFile(path);
         FileUtils.deleteQuietly(purgeMe);
@@ -288,4 +288,7 @@ public class AwsGlacierAssetStore extends AwsAbstractArchive implements RemoteEl
     this.glacierClient = client;
   }
 
+  public void setStoreType(String storeType) {
+    this.storeType = storeType;
+  }
 }
