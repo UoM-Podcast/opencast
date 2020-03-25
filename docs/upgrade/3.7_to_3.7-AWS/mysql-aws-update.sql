@@ -19,3 +19,13 @@ CREATE TABLE mh_aws_asset_mapping (
   CONSTRAINT UNQ_mh_aws_asset_mapping UNIQUE (organization,media_package,media_package_element,version),
   CONSTRAINT FK_mh_aws_asset_mapping_organization FOREIGN KEY (organization) REFERENCES mh_organization (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE mh_aws_cache_mapping (
+  id BIGINT(20) NOT NULL,
+  cached_on DATETIME DEFAULT NULL,
+  media_package_element VARCHAR(128) NOT NULL,
+  media_package VARCHAR(128) NOT NULL,
+  organization VARCHAR(128) NOT NULL,
+  version BIGINT(20) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

@@ -967,3 +967,13 @@ CREATE TABLE mh_transcription_service_job (
   PRIMARY KEY (id),
   CONSTRAINT FK_mh_transcription_service_job_provider_id FOREIGN KEY (provider_id) REFERENCES mh_transcription_service_provider (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE mh_aws_cache_mapping (
+  id BIGINT(20) NOT NULL,
+  cached_on DATETIME DEFAULT NULL,
+  media_package_element VARCHAR(128) NOT NULL,
+  media_package VARCHAR(128) NOT NULL,
+  organization VARCHAR(128) NOT NULL,
+  version BIGINT(20) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

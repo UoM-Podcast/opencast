@@ -28,9 +28,9 @@ import org.opencastproject.archive.aws.persistence.AwsAssetDatabase;
 import org.opencastproject.archive.aws.persistence.AwsAssetDatabaseException;
 import org.opencastproject.archive.aws.persistence.AwsAssetMapping;
 import org.opencastproject.archive.base.StoragePath;
+import org.opencastproject.archive.base.storage.AbstractRemoteElementStore;
 import org.opencastproject.archive.base.storage.DeletionSelector;
 import org.opencastproject.archive.base.storage.ElementStoreException;
-import org.opencastproject.archive.base.storage.RemoteElementStore;
 import org.opencastproject.archive.base.storage.Source;
 import org.opencastproject.util.ConfigurationException;
 import org.opencastproject.util.NotFoundException;
@@ -49,7 +49,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-public abstract class AwsAbstractArchive implements RemoteElementStore {
+public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
   /** The default AWS region name */
   public static final String DEFAULT_AWS_REGION = "us-east-1";
 
@@ -107,12 +107,11 @@ public abstract class AwsAbstractArchive implements RemoteElementStore {
   }
 
   /** @see org.opencastproject.archive.base.storage.ElementStore#copy(StoragePath, StoragePath) */
-  public boolean copy(final StoragePath from, final StoragePath to) throws ElementStoreException
-  {
+  public boolean copy(final StoragePath from, final StoragePath to) throws ElementStoreException {
     try {
       AwsAssetMapping map = database.findMapping(from);
       if (map == null) {
-        logger.warn("Origin file mapping not found in database: {}", from);
+        logger.debug("Origin file mapping not found in database: {}", from);
         return false;
       }
       // New mapping will point to the SAME AWS object, nothing will be uploaded

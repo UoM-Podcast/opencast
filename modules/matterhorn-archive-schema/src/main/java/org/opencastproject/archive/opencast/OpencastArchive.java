@@ -353,8 +353,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
 
     if (isLocalStore(ep.getStoreId()) || isLocalStore(targetStoreId)) {
       //Content is local, or is going to be local after the move
-      logger.debug("Moving {} from {} to {}", ep , ep.getStoreId(),
-              targetStoreId);
+      logger.debug("Moving {} from {} to {}", ep , ep.getStoreId(), targetStoreId);
 
       try {
         PartialMediaPackage pmp = mkPartial(MediaPackageSupport.copy(ep.getMediaPackage()));
@@ -362,13 +361,19 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
           mpe.setURI(rewriter.apply(ep.getVersion(), mpe));
         }
         copyElementsToStore(pmp, ep.getOrganization(), ep.getVersion(), targetStore);
+        logger.debug("Done moving elements for {} from {} to {}", ep, ep.getStoreId(), targetStoreId);
         copyManifest(ep, targetStore);
+        logger.debug("Done moving manifest for {} from {} to {}", ep, ep.getStoreId(), targetStoreId);
       } catch (IOException | NotFoundException | ArchiveException e) {
         //Rollback the action?
+        logger.error("Error moving elements or manifest for {} from {} to {}", ep, ep.getStoreId(), targetStoreId);
         deleteElementsFromStore(ep, targetStore);
+        logger.error("Deleting elements of {} from {}", ep, targetStoreId);
       }
       getPersistence().setStorageLocation(ep.getMediaPackage().getIdentifier().toString(), ep.getVersion(), targetStoreId);
+      logger.debug("Setting storage location for {} to {}", ep, targetStoreId);
       deleteElementsFromStore(ep, currentStore);
+      logger.debug("Deleting elements of {} from {}", ep, currentStore);
     } else {
       //Content is not local, thus download to local and then upload to new remote
       String intermediate = localElementStore.getStoreType();

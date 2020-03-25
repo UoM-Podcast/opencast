@@ -74,4 +74,8 @@ public final class AwsAssetMapping {
   public Date getDeletionDate() {
     return deletionDate;
   }
+
+  public String getPrintablePath() {
+    return mediaPackageId + "/" + mediaPackageElementId + "@" + version;
+  }
 }

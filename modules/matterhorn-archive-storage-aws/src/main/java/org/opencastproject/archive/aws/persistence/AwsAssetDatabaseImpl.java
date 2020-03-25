@@ -21,6 +21,7 @@
 
 package org.opencastproject.archive.aws.persistence;
 
+import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.StoragePath;
 
 import org.osgi.service.component.ComponentContext;
@@ -28,6 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.persistence.EntityManagerFactory;
@@ -44,7 +47,7 @@ public class AwsAssetDatabaseImpl implements AwsAssetDatabase {
 
   /** OSGi callback. */
   public void activate(ComponentContext cc) {
-    logger.info("Activating AWS S3 archive");
+    logger.info("Activating AWS storage adapter database");
   }
 
   /** OSGi callback. Closes entity manager factory. */
@@ -111,6 +114,36 @@ public class AwsAssetDatabaseImpl implements AwsAssetDatabase {
       resultList.add(dto.toAWSArchiveMapping());
     }
     return resultList;
+  }
+
+  public void addLocallyCachedFile(StoragePath path) throws AwsAssetDatabaseException {
+    AwsGlacierCacheMappingDto.storeMapping(emf.createEntityManager(), path);
+  }
+
+  public List<StoragePath> getLocallyCachedFiles(Date expireEarlierThan) throws AwsAssetDatabaseException {
+    List<AwsGlacierCacheMappingDto> list = AwsGlacierCacheMappingDto.findMapping(emf.createEntityManager(), expireEarlierThan);
+    List<StoragePath> results = new LinkedList<>();
+    for (AwsGlacierCacheMappingDto dto : list) {
+      AwsAssetMapping map = dto.toAWSArchiveMapping();
+      results.add(new StoragePath(map.getOrganizationId(), map.getMediaPackageId(), new Version(map.getVersion()), map.getMediaPackageElementId()));
+    }
+    return results;
+  }
+
+  public boolean isLocallyCached(StoragePath path) {
+    try {
+      AwsGlacierCacheMappingDto map = AwsGlacierCacheMappingDto.findMapping(emf.createEntityManager(), path);
+      if (null != map) {
+        return true;
+      }
+    } catch (AwsAssetDatabaseException e) {
+      logger.error("Database error attempting to resolve path " + path, e);
+    }
+    return false;
+  }
+
+  public void deleteCacheMapping(StoragePath path) throws AwsAssetDatabaseException {
+    AwsGlacierCacheMappingDto.deleteMapping(emf.createEntityManager(), path);
   }
 
 }

@@ -129,7 +129,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
       s3TransferManager = new TransferManager(s3);
 
-      logger.info("AwsS3ArchiveAssetStore activated!");
+      logger.info("AwsS3ArchiveAssetStore activated with key id beginning {}!", provider.getCredentials().getAWSAccessKeyId().substring(0, 5));
     }
 
   }
@@ -175,7 +175,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
     // Upload file to AWS S3
     // Use TransferManager to take advantage of multipart upload.
     // TransferManager processes all transfers asynchronously, so this call will return immediately.
-    logger.info("Uploading {} to archive bucket {}...", objectName, bucketName);
+    logger.info("Uploading {} to S3 bucket {}...", objectName, bucketName);
     Upload upload = s3TransferManager.upload(bucketName, objectName, origin);
     long start = System.currentTimeMillis();
 
