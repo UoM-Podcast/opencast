@@ -203,6 +203,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
           case "audio":
           case "image":
           case "video":
+            logger.debug("Tagging S3 object {} as Freezable", objectName);
             List<Tag> tags = new ArrayList<>();
             tags.add(new Tag("Freezable", "true"));
             s3.setObjectTagging(new SetObjectTaggingRequest(bucketName, objectName, new ObjectTagging(tags)));
