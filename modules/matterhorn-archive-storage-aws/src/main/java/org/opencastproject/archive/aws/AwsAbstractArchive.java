@@ -33,6 +33,7 @@ import org.opencastproject.archive.base.storage.DeletionSelector;
 import org.opencastproject.archive.base.storage.ElementStoreException;
 import org.opencastproject.archive.base.storage.Source;
 import org.opencastproject.util.ConfigurationException;
+import org.opencastproject.util.MimeType;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.data.Option;
@@ -176,7 +177,7 @@ public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
     String objectVersion = null;
     try {
       // Upload file to AWS
-      AwsUploadOperationResult result = uploadObject(origin, objectName);
+      AwsUploadOperationResult result = uploadObject(origin, objectName, source.getMimeType());
       objectName = result.getObjectName();
       objectVersion = result.getObjectVersion();
     } catch (Exception e) {
@@ -193,7 +194,7 @@ public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
     }
   }
 
-  protected abstract AwsUploadOperationResult uploadObject(File origin, String objectName) throws ElementStoreException;
+  protected abstract AwsUploadOperationResult uploadObject(File origin, String objectName, Option<MimeType> mimeType) throws ElementStoreException;
 
   /** @see org.opencastproject.archive.base.storage.ElementStore#get(StoragePath) */
   public Option<InputStream> get(final StoragePath path) throws ElementStoreException {

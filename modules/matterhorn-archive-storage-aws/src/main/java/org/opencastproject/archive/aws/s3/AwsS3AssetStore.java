@@ -27,6 +27,7 @@ import org.opencastproject.archive.aws.persistence.AwsAssetMapping;
 import org.opencastproject.archive.base.storage.ElementStoreException;
 import org.opencastproject.archive.base.storage.RemoteElementStore;
 import org.opencastproject.util.ConfigurationException;
+import org.opencastproject.util.MimeType;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.data.Option;
 
@@ -38,9 +39,13 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.BucketVersioningConfiguration;
+import com.amazonaws.services.s3.model.ObjectTagging;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.SetBucketVersioningConfigurationRequest;
+import com.amazonaws.services.s3.model.SetObjectTaggingRequest;
+import com.amazonaws.services.s3.model.Tag;
 import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
 
 import org.apache.commons.lang3.StringUtils;
@@ -51,7 +56,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.List;
 
 public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElementStore {
 
@@ -115,11 +122,12 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
       // Keys not informed so use default credentials provider chain, which
       // will look at the environment variables, java system props, credential files, and instance
       // profile credentials
-      if (accessKeyIdOpt.isNone() && accessKeySecretOpt.isNone())
+      if (accessKeyIdOpt.isNone() && accessKeySecretOpt.isNone()) {
         provider = new DefaultAWSCredentialsProviderChain();
-      else
+      } else {
         provider = new AWSStaticCredentialsProvider(
                 new BasicAWSCredentials(accessKeyIdOpt.get(), accessKeySecretOpt.get()));
+      }
 
       // Create AWS client.
       s3 = AmazonS3ClientBuilder.standard()
@@ -127,7 +135,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
               .withCredentials(provider)
               .build();
 
-      s3TransferManager = new TransferManager(s3);
+      s3TransferManager = TransferManagerBuilder.standard().withS3Client(s3).build();
 
       logger.info("AwsS3ArchiveAssetStore activated with key id beginning {}!", provider.getCredentials().getAWSAccessKeyId().substring(0, 5));
     }
@@ -167,10 +175,11 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
   /**
    * Returns the aws s3 object id created by aws
    */
-  protected AwsUploadOperationResult uploadObject(File origin, String objectName) throws ElementStoreException {
+  protected AwsUploadOperationResult uploadObject(File origin, String objectName, Option<MimeType> mimeType) throws ElementStoreException {
     // Check first if bucket is there.
-    if (!bucketCreated)
+    if (!bucketCreated) {
       createAWSBucket();
+    }
 
     // Upload file to AWS S3
     // Use TransferManager to take advantage of multipart upload.
@@ -186,6 +195,23 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
       logger.info("Upload of {} to archive bucket {} completed in {} seconds",
               new Object[] { objectName, bucketName, (System.currentTimeMillis() - start) / 1000 });
       obj = s3.getObject(bucketName, objectName);
+
+      // Tag objects that are suitable for Glacier storage class
+      // NOTE: Use of S3TransferManager means that tagging has to be done as a separate request
+      if (mimeType.isSome()) {
+        switch (mimeType.get().getType()) {
+          case "audio":
+          case "image":
+          case "video":
+            List<Tag> tags = new ArrayList<>();
+            tags.add(new Tag("Freezable", "true"));
+            s3.setObjectTagging(new SetObjectTaggingRequest(bucketName, objectName, new ObjectTagging(tags)));
+            break;
+          default:
+            break;
+        }
+      }
+
       //If bucket versioning is disabled the versionId is null, so return a -1 to indicate no version
       String versionId = obj.getObjectMetadata().getVersionId();
       //FIXME: We need to do better checking this, what if versioning is just suspended?
@@ -213,8 +239,8 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
   }
 
   /**
-  *
-  */
+   *
+   */
   protected void deleteObject(AwsAssetMapping map) {
     s3.deleteObject(bucketName, map.getObjectKey());
   }
