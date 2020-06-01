@@ -120,12 +120,12 @@ public class AwsS3RestEndpoint {
           StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), mediaPackageId, item.getVersion(), e.getIdentifier());
           if (awsS3AssetStore.contains(storagePath)) {
             try {
-              info.append(String.format("%s, %s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.getAssetStorageClass(storagePath)));
+              info.append(String.format("%s,%s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.getAssetStorageClass(storagePath)));
             } catch (ElementStoreException ex) {
               throw new ArchiveException(ex);
             }
           } else {
-            info.append(String.format("%s, Not stored in %s", e.getURI(), awsS3AssetStore.getStoreType()));
+            info.append(String.format("%s,NONE\n", e.getURI()));
           }
         }
         return ok(info.toString());
@@ -179,12 +179,12 @@ public class AwsS3RestEndpoint {
           StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), mediaPackageId, item.getVersion(), e.getIdentifier());
           if (awsS3AssetStore.contains(storagePath)) {
             try {
-              info.append(String.format("%s, %s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.modifyAssetStorageClass(storagePath, storageClass)));
+              info.append(String.format("%s,%s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.modifyAssetStorageClass(storagePath, storageClass)));
             } catch (ElementStoreException ex) {
               throw new ArchiveException(ex);
             }
           } else {
-            info.append(String.format("%s, NONE", e.getURI(), awsS3AssetStore.getStoreType()));
+            info.append(String.format("%s,NONE\n", e.getURI()));
           }
         }
         return ok(info.toString());
