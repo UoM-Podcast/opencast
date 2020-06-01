@@ -132,7 +132,8 @@
               OSGI-INF/aws-archive-persistence.xml,
               OSGI-INF/aws-glacier-cache-cleaner.xml,
               OSGI-INF/aws-glacier-element-store.xml,
-              OSGI-INF/aws-s3-element-store.xml
+              OSGI-INF/aws-s3-element-store.xml,
+              OSGI-INF/aws-s3-rest-endpoint.xml
             </Service-Component>
             <Meta-Persistence>
               META-INF/persistence.xml

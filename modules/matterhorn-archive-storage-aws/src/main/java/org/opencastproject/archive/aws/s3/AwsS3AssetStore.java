@@ -23,7 +23,9 @@ package org.opencastproject.archive.aws.s3;
 
 import org.opencastproject.archive.aws.AwsAbstractArchive;
 import org.opencastproject.archive.aws.AwsUploadOperationResult;
+import org.opencastproject.archive.aws.persistence.AwsAssetDatabaseException;
 import org.opencastproject.archive.aws.persistence.AwsAssetMapping;
+import org.opencastproject.archive.base.StoragePath;
 import org.opencastproject.archive.base.storage.ElementStoreException;
 import org.opencastproject.archive.base.storage.RemoteElementStore;
 import org.opencastproject.util.ConfigurationException;
@@ -32,6 +34,7 @@ import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.data.Option;
 
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -39,14 +42,19 @@ import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.BucketVersioningConfiguration;
+import com.amazonaws.services.s3.model.CopyObjectRequest;
+import com.amazonaws.services.s3.model.GetObjectTaggingRequest;
+import com.amazonaws.services.s3.model.GetObjectTaggingResult;
 import com.amazonaws.services.s3.model.ObjectTagging;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.SetBucketVersioningConfigurationRequest;
 import com.amazonaws.services.s3.model.SetObjectTaggingRequest;
+import com.amazonaws.services.s3.model.StorageClass;
 import com.amazonaws.services.s3.model.Tag;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
+
 
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.ComponentContext;
@@ -64,6 +72,8 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
   /** Log facility */
   private static final Logger logger = LoggerFactory.getLogger(AwsS3AssetStore.class);
+
+  private static final Tag freezable = new Tag("Freezable", "true");
 
   // Service configuration
   public static final String AWS_S3_ENABLED = "org.opencastproject.archive.aws.s3.enabled";
@@ -205,7 +215,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
           case "video":
             logger.debug("Tagging S3 object {} as Freezable", objectName);
             List<Tag> tags = new ArrayList<>();
-            tags.add(new Tag("Freezable", "true"));
+            tags.add(freezable);
             s3.setObjectTagging(new SetObjectTaggingRequest(bucketName, objectName, new ObjectTagging(tags)));
             break;
           default:
@@ -232,8 +242,101 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
   }
 
   /**
+   * Return the object key of the asset in S3
+   * @param storagePath asset storage path
+   */
+  public String getAssetObjectKey(StoragePath storagePath) throws ElementStoreException {
+    try {
+      AwsAssetMapping map = database.findMapping(getStoreType(), storagePath);
+      return map.getObjectKey();
+    } catch (AwsAssetDatabaseException e) {
+      throw new ElementStoreException(e);
+    }
+  }
+
+  /**
+   * Return the storage class of the asset in S3
+   * @param storagePath asset storage path
+   */
+  public String getAssetStorageClass(StoragePath storagePath) throws ElementStoreException {
+    try {
+      AwsAssetMapping map = database.findMapping(getStoreType(), storagePath);
+
+      // null implies STANDARD
+      String storageClass = getObjectStorageClass(map.getObjectKey());
+      if (storageClass == null) {
+        return "STADNDARD";
+      }
+      return storageClass;
+    } catch (AwsAssetDatabaseException e) {
+      throw new ElementStoreException(e);
+    }
+  }
+
+  private String getObjectStorageClass(String objectName) throws ElementStoreException {
+    try {
+      S3Object object = s3.getObject(bucketName, objectName);
+      return object.getObjectMetadata().getStorageClass();
+    } catch (SdkClientException e) {
+      throw new ElementStoreException(e);
+    }
+  }
+
+  /**
+   * Change the storage class of the object if possible
+   * @param storagePath asset storage path
+   * @param storageClassId metadata storage class id
+   * @see https://aws.amazon.com/s3/storage-classes/
+   */
+  public String modifyAssetStorageClass(StoragePath storagePath, String storageClassId) throws ElementStoreException {
+    try {
+      StorageClass storageClass = StorageClass.fromValue(storageClassId);
+      AwsAssetMapping map = database.findMapping(getStoreType(), storagePath);
+      return modifyObjectStorageClass(map.getObjectKey(), storageClass).toString();
+    } catch (AwsAssetDatabaseException | IllegalArgumentException e) {
+      throw new ElementStoreException(e);
+    }
+  }
+
+  private StorageClass modifyObjectStorageClass(String objectName, StorageClass storageClass) throws ElementStoreException {
+    try {
+      S3Object object = s3.getObject(bucketName, objectName);
+      String storageClassId = object.getObjectMetadata().getStorageClass();
+      StorageClass objectStorageClass = storageClassId == null ? StorageClass.Standard : StorageClass.fromValue(storageClassId);
+
+      if (storageClass != objectStorageClass) {
+        /* objects can only be retrived from Glacier not moved */
+        if (objectStorageClass == StorageClass.Glacier) {
+          logger.warn("S3 Object {} can not be moved from storage class {}", objectStorageClass);
+          return objectStorageClass;
+        }
+
+        /* Only put suitable objects in Glacier */
+        if (storageClass == StorageClass.Glacier) {
+          GetObjectTaggingResult objectTaggingRequest = s3.getObjectTagging(new GetObjectTaggingRequest(bucketName, objectName));
+          if (!objectTaggingRequest.getTagSet().contains(freezable)) {
+            logger.info("S3 object {} not suitable for storage class {}", objectName, storageClass);
+            return objectStorageClass;
+          }
+        }
+
+        CopyObjectRequest copyRequest = new CopyObjectRequest(bucketName, objectName, bucketName, objectName).withStorageClass(storageClass);
+        s3.copyObject(copyRequest);
+        logger.info("S3 object {} moved to storage class {}", objectName, storageClass);
+      } else {
+        logger.info("S3 object {} already in storage class {}", objectName, storageClass);
+      }
+
+      return storageClass;
+    } catch (SdkClientException e) {
+      throw new ElementStoreException(e);
+    }
+  }
+
+  /**
    *
    */
+  @Override
   protected InputStream getObject(AwsAssetMapping map) {
     S3Object object = s3.getObject(bucketName, map.getObjectKey());
     return object.getObjectContent();
@@ -242,6 +345,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
   /**
    *
    */
+  @Override
   protected void deleteObject(AwsAssetMapping map) {
     s3.deleteObject(bucketName, map.getObjectKey());
   }
