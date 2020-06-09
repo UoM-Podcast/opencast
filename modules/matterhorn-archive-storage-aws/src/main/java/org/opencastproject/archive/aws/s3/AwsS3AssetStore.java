@@ -275,8 +275,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
   private String getObjectStorageClass(String objectName) throws ElementStoreException {
     try {
-      S3Object object = s3.getObject(bucketName, objectName);
-      return object.getObjectMetadata().getStorageClass();
+      return s3.getObjectMetadata(bucketName, objectName).getStorageClass();
     } catch (SdkClientException e) {
       throw new ElementStoreException(e);
     }
@@ -300,22 +299,21 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
   private StorageClass modifyObjectStorageClass(String objectName, StorageClass storageClass) throws ElementStoreException {
     try {
-      S3Object object = s3.getObject(bucketName, objectName);
-      String storageClassId = object.getObjectMetadata().getStorageClass();
+      String storageClassId = s3.getObjectMetadata(bucketName, objectName).getStorageClass();
       StorageClass objectStorageClass = storageClassId == null ? StorageClass.Standard : StorageClass.fromValue(storageClassId);
 
       if (storageClass != objectStorageClass) {
         /* objects can only be retrived from Glacier not moved */
-        if (objectStorageClass == StorageClass.Glacier) {
+        if (objectStorageClass == StorageClass.Glacier || objectStorageClass == StorageClass.DeepArchive) {
           logger.warn("S3 Object {} can not be moved from storage class {}", objectStorageClass);
           return objectStorageClass;
         }
 
         /* Only put suitable objects in Glacier */
-        if (storageClass == StorageClass.Glacier) {
+        if (storageClass == StorageClass.Glacier || objectStorageClass == StorageClass.DeepArchive) {
           GetObjectTaggingResult objectTaggingRequest = s3.getObjectTagging(new GetObjectTaggingRequest(bucketName, objectName));
           if (!objectTaggingRequest.getTagSet().contains(freezable)) {
-            logger.info("S3 object {} not suitable for storage class {}", objectName, storageClass);
+            logger.info("S3 object {} is not suitable for storage class {}", objectName, storageClass);
             return objectStorageClass;
           }
         }

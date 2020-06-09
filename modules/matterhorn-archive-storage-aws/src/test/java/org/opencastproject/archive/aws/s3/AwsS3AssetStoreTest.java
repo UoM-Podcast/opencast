@@ -107,6 +107,7 @@ public class AwsS3AssetStoreTest {
     s3Transfer = EasyMock.createStrictMock(TransferManager.class);
     EasyMock.expect(s3Client.listObjects(BUCKET_NAME)).andReturn(null);
     EasyMock.expect(s3Client.getObject(BUCKET_NAME, KEY_VERSION_1 + ASSET_ID + ".xml")).andReturn(s3Object);
+    EasyMock.expect(s3Client.getObjectMetadata(BUCKET_NAME, KEY_VERSION_1 + ASSET_ID + ".xml")).andReturn(objMetadata).anyTimes();
     // Replay will be called in each test
 
     workspace = EasyMock.createNiceMock(Workspace.class);
