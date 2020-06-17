@@ -116,6 +116,9 @@ public class AwsS3RestEndpoint {
 
         StringBuilder info = new StringBuilder();
         for (MediaPackageElement e : item.getMediaPackage().elements()) {
+          if (e.getElementType() == MediaPackageElement.Type.Publication) {
+            continue;
+          }
 
           StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), mediaPackageId, item.getVersion(), e.getIdentifier());
           if (awsS3AssetStore.contains(storagePath)) {
@@ -175,6 +178,9 @@ public class AwsS3RestEndpoint {
 
         StringBuilder info = new StringBuilder();
         for (MediaPackageElement e : item.getMediaPackage().elements()) {
+          if (e.getElementType() == MediaPackageElement.Type.Publication) {
+            continue;
+          }
 
           StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), mediaPackageId, item.getVersion(), e.getIdentifier());
           if (awsS3AssetStore.contains(storagePath)) {
