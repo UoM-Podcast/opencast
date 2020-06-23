@@ -393,11 +393,15 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
   private void restoreGlacierObject(String objectName, Integer objectRestorePeriod, Boolean wait) {
     Boolean prevOngoingRestore = s3.getObjectMetadata(bucketName, objectName).getOngoingRestore();
-    RestoreObjectRequest requestRestore = new RestoreObjectRequest(bucketName, objectName, objectRestorePeriod);
-    s3.restoreObjectV2(requestRestore);
 
-    // if the object had already been restored the restore request will just
-    // increase the expiration time
+    // Check the restoration status of the object.
+    if (prevOngoingRestore != null && !prevOngoingRestore) {
+      // if the object had already been restored the restore request will just
+      // increase the expiration time
+      RestoreObjectRequest requestRestore = new RestoreObjectRequest(bucketName, objectName, objectRestorePeriod);
+      s3.restoreObjectV2(requestRestore);
+    }
+
     if (s3.getObjectMetadata(bucketName, objectName).getRestoreExpirationTime() == null) {
       logger.info("Restoring object {} from Glacier class storage", objectName);
 
@@ -406,7 +410,6 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
         return;
       }
 
-      // Check the restoration status of the object.
       // Wait min restore time and then poll ofter that
       try {
         // Check as restore might have already been initiated
