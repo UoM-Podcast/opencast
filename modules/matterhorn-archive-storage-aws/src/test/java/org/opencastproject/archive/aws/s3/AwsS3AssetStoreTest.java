@@ -100,6 +100,7 @@ public class AwsS3AssetStoreTest {
     // Set up the service
     ObjectMetadata objMetadata = EasyMock.createStrictMock(ObjectMetadata.class);
     EasyMock.expect(objMetadata.getVersionId()).andReturn(AWS_VERSION_1).anyTimes();
+    EasyMock.expect(objMetadata.getStorageClass()).andReturn(null);
     EasyMock.replay(objMetadata);
     s3Object = EasyMock.createNiceMock(S3Object.class);
     EasyMock.expect(s3Object.getObjectMetadata()).andReturn(objMetadata).anyTimes();

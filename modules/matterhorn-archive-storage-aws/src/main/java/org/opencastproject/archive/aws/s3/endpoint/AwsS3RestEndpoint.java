@@ -20,6 +20,7 @@
  */
 package org.opencastproject.archive.aws.s3.endpoint;
 
+import static org.opencastproject.util.RestUtil.R.noContent;
 import static org.opencastproject.util.RestUtil.R.notFound;
 import static org.opencastproject.util.RestUtil.R.ok;
 import static org.opencastproject.util.RestUtil.R.serverError;
@@ -44,6 +45,7 @@ import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,13 +62,6 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-/**
- * A base REST endpoint for the archive. It leaves out all metadata related
- * methods like find.
- * <p>
- * No @Path annotation here since this class cannot be created by JAX-RS. Put it
- * on the concrete implementations.
- */
 @Path("/")
 @RestService(name = "archive-aws-s3", title = "AWS S3 Archive",
         notes = {
@@ -85,10 +80,10 @@ public class AwsS3RestEndpoint {
   private SecurityService securityService = null;
 
   @GET
-  @Path("{mediaPackageId}/elements/storageClass")
+  @Path("{mediaPackageId}/assets/storageClass")
   @Produces(MediaType.TEXT_PLAIN)
   @RestQuery(name = "getStorageClass",
-          description = "Get the S3 Storage Class for each element in the Media Package",
+          description = "Get the S3 Storage Class for each asset in the Media Package",
           pathParameters = {
             @RestParameter(
                     name = "mediaPackageId", isRequired = true,
@@ -96,16 +91,22 @@ public class AwsS3RestEndpoint {
                     description = "The media package indentifier.")},
           reponses = {
             @RestResponse(
-                    description = "OK if repopulation has started",
-                    responseCode = HttpServletResponse.SC_OK)
+                    description = "mediapackage found in S3",
+                    responseCode = HttpServletResponse.SC_OK),
+            @RestResponse(
+                    description = "mediapackage not found or has no assets in S3",
+                    responseCode = HttpServletResponse.SC_NOT_FOUND)
           },
-          returnDescription = "List each element's Object Key and S3 Storage Class ")
+          returnDescription = "List each asset's Object Key and S3 Storage Class ")
   public Response getStorageClass(@PathParam("mediaPackageId") final String mediaPackageId) {
     return handleException(new Function0<Response>() {
+      private String getMediaPackageId() {
+        return StringUtils.trimToNull(mediaPackageId);
+      }
       @Override public Response apply() {
         final Query idQuery = QueryBuilder.query()
                 .currentOrganization(securityService)
-                .mediaPackageId(mediaPackageId)
+                .mediaPackageId(getMediaPackageId())
                 .onlyLastVersion(true);
         final ResultSet result = archive.find(idQuery, uriRewriter);
         if (result.size() > 1)
@@ -120,7 +121,7 @@ public class AwsS3RestEndpoint {
             continue;
           }
 
-          StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), mediaPackageId, item.getVersion(), e.getIdentifier());
+          StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), getMediaPackageId(), item.getVersion(), e.getIdentifier());
           if (awsS3AssetStore.contains(storagePath)) {
             try {
               info.append(String.format("%s,%s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.getAssetStorageClass(storagePath)));
@@ -133,15 +134,14 @@ public class AwsS3RestEndpoint {
         }
         return ok(info.toString());
       }
-
     });
   }
 
   @PUT
-  @Path("{mediaPackageId}/elements")
+  @Path("{mediaPackageId}/assets")
   @Produces(MediaType.TEXT_PLAIN)
   @RestQuery(name = "modifyStorageClass",
-          description = "Move the Media Package elements to the specified S3 Storage Class if possible",
+          description = "Move the Media Package assets to the specified S3 Storage Class if possible",
           pathParameters = {
             @RestParameter(
                     name = "mediaPackageId",
@@ -158,16 +158,27 @@ public class AwsS3RestEndpoint {
           },
           reponses = {
             @RestResponse(
-                    description = "OK if repopulation has started",
-                    responseCode = HttpServletResponse.SC_OK)
+                    description = "mediapackage found in S3",
+                    responseCode = HttpServletResponse.SC_OK),
+            @RestResponse(
+                    description = "mediapackage not found or has no assets in S3",
+                    responseCode = HttpServletResponse.SC_NOT_FOUND)
           },
-          returnDescription = "List each element's Object Key and new S3 Storage Class")
+          returnDescription = "List each asset's Object Key and new S3 Storage Class")
   public Response modifyStorageClass(@PathParam("mediaPackageId") final String mediaPackageId, @FormParam("storageClass") final String storageClass) {
     return handleException(new Function0<Response>() {
+      private String getMediaPackageId() {
+        return StringUtils.trimToNull(mediaPackageId);
+      }
+
+      private String getStorageClass() {
+        return StringUtils.trimToNull(storageClass);
+      }
+
       @Override public Response apply() {
         final Query idQuery = QueryBuilder.query()
                 .currentOrganization(securityService)
-                .mediaPackageId(mediaPackageId)
+                .mediaPackageId(getMediaPackageId())
                 .onlyLastVersion(true);
         final ResultSet result = archive.find(idQuery, uriRewriter);
         if (result.size() > 1)
@@ -182,10 +193,10 @@ public class AwsS3RestEndpoint {
             continue;
           }
 
-          StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), mediaPackageId, item.getVersion(), e.getIdentifier());
+          StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), getMediaPackageId(), item.getVersion(), e.getIdentifier());
           if (awsS3AssetStore.contains(storagePath)) {
             try {
-              info.append(String.format("%s,%s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.modifyAssetStorageClass(storagePath, storageClass)));
+              info.append(String.format("%s,%s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.modifyAssetStorageClass(storagePath, getStorageClass())));
             } catch (ElementStoreException ex) {
               throw new ArchiveException(ex);
             }
@@ -196,6 +207,146 @@ public class AwsS3RestEndpoint {
         return ok(info.toString());
       }
 
+    });
+  }
+
+  @GET
+  @Path("glacier/{mediaPackageId}/assets")
+  @Produces(MediaType.TEXT_PLAIN)
+  @RestQuery(name = "restoreAssetsStatus",
+          description = "Get the mediapackage asset's restored status",
+          pathParameters = {
+            @RestParameter(
+                    name = "mediaPackageId",
+                    isRequired = true,
+                    type = RestParameter.Type.STRING,
+                    description = "The media package indentifier.")
+          },
+          reponses = {
+            @RestResponse(
+                    description = "mediapackage found in S3 and assets in Glacier",
+                    responseCode = HttpServletResponse.SC_OK),
+            @RestResponse(
+                    description = "mediapackage found in S3 but no assets in Glacier",
+                    responseCode = HttpServletResponse.SC_NO_CONTENT),
+            @RestResponse(
+                    description = "mediapackage not found or has no assets in S3",
+                    responseCode = HttpServletResponse.SC_NOT_FOUND)
+          },
+          returnDescription = "List each glacier asset's restoration status and expiration date")
+  public Response restoreAssetsStatus(@PathParam("mediaPackageId") final String mediaPackageId) {
+    return handleException(new Function0<Response>() {
+      private String getMediaPackageId() {
+        return StringUtils.trimToNull(mediaPackageId);
+      }
+
+      @Override public Response apply() {
+        final Query idQuery = QueryBuilder.query()
+                .currentOrganization(securityService)
+                .mediaPackageId(getMediaPackageId())
+                .onlyLastVersion(true);
+        final ResultSet result = archive.find(idQuery, uriRewriter);
+        if (result.size() > 1)
+          return serverError();
+        if (result.size() == 0)
+          return notFound();
+        final ResultItem item = result.getItems().get(0);
+          StringBuilder info = new StringBuilder();
+
+        for (MediaPackageElement e : item.getMediaPackage().elements()) {
+          if (e.getElementType() == MediaPackageElement.Type.Publication) {
+            continue;
+          }
+
+          StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), getMediaPackageId(), item.getVersion(), e.getIdentifier());
+          String assetStorageClass = awsS3AssetStore.getAssetStorageClass(storagePath);
+          if (awsS3AssetStore.contains(storagePath)
+                  && ("GLACIER".equals(assetStorageClass) || "DEEP_ARCHIVE".equals(assetStorageClass))) {
+            try {
+              info.append(String.format("%s,%s\n", awsS3AssetStore.getAssetObjectKey(storagePath), awsS3AssetStore.getAssetRestoreStatusString(storagePath)));
+            } catch (ElementStoreException ex) {
+              throw new ArchiveException(ex);
+            }
+          }
+        }
+        if (info.length() == 0) {
+          return noContent();
+        }
+        return ok(info.toString());
+      }
+    });
+  }
+
+  @PUT
+  @Path("glacier/{mediaPackageId}/assets")
+  @Produces(MediaType.TEXT_PLAIN)
+  @RestQuery(name = "restoreAssets",
+          description = "Initiate the restore of any assets in Glacier storage class",
+          pathParameters = {
+            @RestParameter(
+                    name = "mediaPackageId",
+                    isRequired = true,
+                    type = RestParameter.Type.STRING,
+                    description = "The media package indentifier.")
+          },
+          restParameters = {
+            @RestParameter(
+                    name = "restorePeriod",
+                    isRequired = false,
+                    type = RestParameter.Type.INTEGER,
+                    defaultValue = "2",
+                    description = "Number of days to restore the assets for, default see service configuration")
+          },
+          reponses = {
+            @RestResponse(
+                    description = "restore of assets started",
+                    responseCode = HttpServletResponse.SC_NO_CONTENT),
+            @RestResponse(
+                    description = "mediapackage not found or has no assets in S3",
+                    responseCode = HttpServletResponse.SC_NOT_FOUND)
+          },
+          returnDescription = "Restore of assets initiated")
+  public Response restoreAssets(@PathParam("mediaPackageId") final String mediaPackageId, @FormParam("restorePeriod") final Integer restorePeriod) {
+    return handleException(new Function0<Response>() {
+      private String getMediaPackageId() {
+        return StringUtils.trimToNull(mediaPackageId);
+      }
+
+      private Integer getRestorePeriod() {
+        return restorePeriod != null ? restorePeriod : awsS3AssetStore.getRestorePeriod();
+      }
+
+      @Override public Response apply() {
+        final Query idQuery = QueryBuilder.query()
+                .currentOrganization(securityService)
+                .mediaPackageId(getMediaPackageId())
+                .onlyLastVersion(true);
+        final ResultSet result = archive.find(idQuery, uriRewriter);
+        if (result.size() > 1)
+          return serverError();
+        if (result.size() == 0)
+          return notFound();
+        final ResultItem item = result.getItems().get(0);
+
+        for (MediaPackageElement e : item.getMediaPackage().elements()) {
+          if (e.getElementType() == MediaPackageElement.Type.Publication) {
+            continue;
+          }
+
+          StoragePath storagePath = new StoragePath(securityService.getOrganization().getId(), getMediaPackageId(), item.getVersion(), e.getIdentifier());
+          String assetStorageClass = awsS3AssetStore.getAssetStorageClass(storagePath);
+          if (awsS3AssetStore.contains(storagePath)
+                  && ("GLACIER".equals(assetStorageClass) || "DEEP_ARCHIVE".equals(assetStorageClass))) {
+            try {
+              // Initiate restore and return
+              awsS3AssetStore.initiateRestoreAsset(storagePath, getRestorePeriod());
+            } catch (ElementStoreException ex) {
+              throw new ArchiveException(ex);
+            }
+          }
+        }
+        return noContent();
+      }
     });
   }
 
