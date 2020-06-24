@@ -410,6 +410,32 @@ public class SyllabusDataRestService {
   }
 
   @GET
+  @Path("/locations/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(name = "location_by_name", description = "Find location details matching name",
+          returnDescription = "Location",
+          pathParameters = {
+                  @RestParameter(name = "name", type = STRING, isRequired = true, description = "Location name")
+          },
+          reponses = {
+                  @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "location matching location name"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_NOT_FOUND, description = "location not found"),
+                  @RestResponse(responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR, description = "Unable to query S+ database")
+          })
+  public Response findLocationByName(@PathParam("name") String name) {
+    try {
+      VLocation location = syllabusDataService.findLocationByName(name);
+      if (location == null) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+      return RemoteObjectUtil.writeJson(location);
+    } catch (Exception e) {
+      logger.warn("Could not find location with name : '{}'", name);
+      return Response.serverError().build();
+    }
+  }
+
+  @GET
   @Path("/activities/{id}/datetime")
   @Produces(MediaType.APPLICATION_JSON)
   @RestQuery(name = "find_activity_start_and_end", description = "Find activity start and end",

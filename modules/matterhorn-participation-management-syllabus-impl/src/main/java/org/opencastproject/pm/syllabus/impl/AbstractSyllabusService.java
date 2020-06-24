@@ -432,6 +432,16 @@ public abstract class AbstractSyllabusService implements SyllabusService {
     return getPenv().tx(f);
   }
 
+  @Override
+  public VLocation findLocationByName(String name) {
+    Option<Object> dto = getPenv().tx(Queries.named.findFirst("VLocation.findByName", tuple("name", name)));
+    if (dto.isSome()) {
+      return VLocationDto.toDomain.apply((VLocationDto) dto.get());
+    } else {
+      return null;
+    }
+  }
+
   // could by solved with JPA @javax.persistence.SqlResultSetMapping also
   public static final Function<Object[], Occurrence> rowToOccurrence = new Function<Object[], Occurrence>() {
     @Override
