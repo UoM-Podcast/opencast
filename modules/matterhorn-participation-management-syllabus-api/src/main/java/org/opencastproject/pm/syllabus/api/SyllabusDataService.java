@@ -97,4 +97,6 @@ public interface SyllabusDataService {
   List<Activities> findActivitiesByLocation(String location, DateTime start, DateTime end);
 
   List<Activities> findParentActivities(String activityId);
+
+  VLocation findLocationByName(String name);
 }

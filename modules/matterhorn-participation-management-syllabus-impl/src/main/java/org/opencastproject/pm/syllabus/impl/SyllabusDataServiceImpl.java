@@ -294,6 +294,18 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
   }
 
   @Override
+  public VLocation findLocationByName(String name) {
+    if (local && syllabusService != null) {
+      return syllabusService.findLocationByName(name);
+    } else {
+      String url = client.getRemoteBaseAddress() + remoteEndpoint + "/locations/" + name;
+      final VLocation location = RemoteObjectUtil.getResponseAsObject(client, url);
+
+      return location;
+    }
+  }
+
+  @Override
   public List<Activities> findActivitiesByLocation(String location, DateTime start, DateTime end) {
     if (local && syllabusService != null) {
       return syllabusService.findActivitiesByLocation(location, start, end);

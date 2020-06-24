@@ -236,4 +236,6 @@ public interface SyllabusService {
   List<Activities> findParentActivities(String activityId);
 
   List<VModule> getAllModule();
+
+  VLocation findLocationByName(String name);
 }

@@ -48,6 +48,7 @@ import javax.persistence.TemporalType;
 @Table(name = "V_LOCATION")
 @NamedQueries({
         @NamedQuery(name = "VLocation.findAllSince", query = "select a from VLocation a where a.lastChanged > :since"),
+        @NamedQuery(name = "VLocation.findByName", query = "select a from VLocation a where a.name = :name"),
         @NamedQuery(name = "VLocation.findAll", query = "select a from VLocation a") })
 public final class VLocationDto {
   @Id
