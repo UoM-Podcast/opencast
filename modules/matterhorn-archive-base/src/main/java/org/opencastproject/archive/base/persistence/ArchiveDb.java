@@ -236,4 +236,15 @@ public interface ArchiveDb {
    * @throws ArchiveDbException
    */
   List<Episode> getEpisodes(String mediaPackageId, Date start, Date end) throws ArchiveDbException;
+
+  /**
+   * Returns all episodes in persistence storage that have no DublinCoreXML
+   *
+   * @return 
+   *          the (potentially empty) list of versions and episodes
+   * @throws ArchiveDbException
+   *         if exception occurs
+   */
+
+  Iterator<Episode> getEpisodesNoDC() throws ArchiveDbException;
 }

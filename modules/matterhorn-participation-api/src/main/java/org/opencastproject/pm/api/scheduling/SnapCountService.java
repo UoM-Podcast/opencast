@@ -37,6 +37,8 @@ public interface SnapCountService {
 
     void verifyParticipationFeeder();
 
+    void sendOptOutEmails();
+
     HashMap<String,String> getStats();
 
 }

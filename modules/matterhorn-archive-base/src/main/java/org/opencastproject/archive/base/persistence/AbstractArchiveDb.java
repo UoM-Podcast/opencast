@@ -28,6 +28,7 @@ import static org.opencastproject.archive.base.persistence.EpisodeDto.findAll;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllByDate;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllById;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllByIdAndDate;
+import static org.opencastproject.archive.base.persistence.EpisodeDto.findAllNoDC;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findByIdAndVersion;
 import static org.opencastproject.archive.base.persistence.EpisodeDto.findLatestById;
 import static org.opencastproject.util.data.Monadics.mlist;
@@ -169,6 +170,19 @@ public abstract class AbstractArchiveDb implements ArchiveDb {
       @Override
       public Iterator<Episode> apply(EntityManager em) {
         return mlist(findAll(em)).map(EpisodeDto.toEpisode).iterator();
+      }
+    });
+  }
+
+  @Override
+  public Iterator<Episode> getEpisodesNoDC() throws ArchiveDbException {
+    // todo implement database paging
+    return tx(new Function<EntityManager, Iterator<Episode>>() {
+      @Override
+      public Iterator<Episode> apply(EntityManager em) {
+        List<EpisodeDto> epNoDC = findAllNoDC(em);
+        logger.info("getEpisodesNoDC returns {} episodes ",epNoDC.size());
+        return mlist(epNoDC).map(EpisodeDto.toEpisode).iterator();
       }
     });
   }

@@ -67,6 +67,7 @@ import javax.persistence.TemporalType;
                 + "AND e.version = (SELECT MAX(e2.version) FROM Episode e2 WHERE e2.mediaPackageId = :mediaPackageId)"),
         @NamedQuery(name = "Episode.findLatestVersion", query = "SELECT MAX(a.version) FROM Episode a WHERE a.mediaPackageId = :mediaPackageId "),
         @NamedQuery(name = "Episode.findAllById", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mediaPackageId"),
+        @NamedQuery(name = "Episode.findAllNoDC", query = "SELECT e FROM Episode e WHERE e.dublinCoreXml IS NULL"),
         @NamedQuery(name = "Episode.findByIdAndDate", query = "SELECT e FROM Episode e WHERE e.mediaPackageId=:mpId AND e.modificationDate >= :start AND e.modificationDate <= :end AND e.deleted=false"),
         @NamedQuery(name = "Episode.findByDate", query = "SELECT e FROM Episode e WHERE e.modificationDate >= :start AND e.modificationDate <= :end AND e.deleted=false"),
         @NamedQuery(name = "Episode.setStorageId", query = "UPDATE Episode e SET e.storageId=:storageId WHERE e.mediaPackageId=:mediaPackageId AND e.version=:version"),
@@ -203,6 +204,10 @@ public final class EpisodeDto {
 
   public static List<EpisodeDto> findAllById(EntityManager em, String mediaPackageId) {
     return PersistenceUtil.findAll(em, "Episode.findAllById", tuple("mediaPackageId", mediaPackageId));
+  }
+
+  public static List<EpisodeDto> findAllNoDC(EntityManager em) {
+    return PersistenceUtil.findAll(em, "Episode.findAllNoDC");
   }
 
   public static List<EpisodeDto> findAll(EntityManager em) {

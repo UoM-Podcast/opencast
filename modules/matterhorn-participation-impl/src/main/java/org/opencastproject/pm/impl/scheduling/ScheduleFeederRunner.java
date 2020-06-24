@@ -40,6 +40,7 @@ import org.opencastproject.pm.api.persistence.ParticipationManagementDatabaseExc
 import org.opencastproject.pm.api.scheduling.ParticipationManagementSchedulingException;
 import org.opencastproject.pm.api.scheduling.Schedule;
 import org.opencastproject.pm.api.scheduling.ScheduleProvider;
+import org.opencastproject.pm.api.scheduling.SnapCountService;
 import org.opencastproject.scheduler.api.SchedulerException;
 import org.opencastproject.scheduler.api.SchedulerQuery;
 import org.opencastproject.scheduler.api.SchedulerService;
@@ -113,6 +114,8 @@ public class ScheduleFeederRunner {
   private final Cell<HashMap<String, String>> inputProperties;
   private final Cell<HashMap<String, String>> inputCANames;
   private final Scheduler scheduler;
+
+  private static SnapCountService snapCountService = null;
 
   public ScheduleFeederRunner(ScheduleFeederServiceImpl scheduleFeeder, SchedulerService schedulerService,
           ParticipationManagementDatabase participationManagementDB, ScheduleProvider scheduleProvider,
@@ -191,6 +194,10 @@ public class ScheduleFeederRunner {
       scheduler.shutdown();
     } catch (org.quartz.SchedulerException ignore) {
     }
+  }
+
+  public void setSnapCountService(SnapCountService snapCountService) {
+    this.snapCountService = snapCountService;
   }
 
   /**
@@ -326,6 +333,9 @@ public class ScheduleFeederRunner {
           }
         });
         logger.info("Participation Management scheduling finished");
+      }
+      if (null != parent.snapCountService) {
+        parent.snapCountService.sendOptOutEmails();
       }
     }
 
