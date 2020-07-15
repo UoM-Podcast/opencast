@@ -32,6 +32,7 @@ import org.opencastproject.archive.base.StoragePath;
 import org.opencastproject.archive.base.storage.ElementStoreException;
 import org.opencastproject.archive.base.storage.RemoteElementStore;
 import org.opencastproject.util.ConfigurationException;
+import org.opencastproject.util.MimeType;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.data.Option;
 
@@ -196,7 +197,7 @@ public class AwsGlacierAssetStore extends AwsAbstractArchive implements RemoteEl
     glacierClient.createVault(createVaultRequest);
   }
 
-  protected AwsUploadOperationResult uploadObject(File origin, String objectName) {
+  protected AwsUploadOperationResult uploadObject(File origin, String objectName, Option<MimeType> mimeType) {
     String archiveId;
     try {
       logger.info("Uploading {} to Glacier vault {}...", objectName, vaultName);

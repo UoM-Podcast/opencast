@@ -100,6 +100,7 @@ public class AwsS3AssetStoreTest {
     // Set up the service
     ObjectMetadata objMetadata = EasyMock.createStrictMock(ObjectMetadata.class);
     EasyMock.expect(objMetadata.getVersionId()).andReturn(AWS_VERSION_1).anyTimes();
+    EasyMock.expect(objMetadata.getStorageClass()).andReturn(null);
     EasyMock.replay(objMetadata);
     s3Object = EasyMock.createNiceMock(S3Object.class);
     EasyMock.expect(s3Object.getObjectMetadata()).andReturn(objMetadata).anyTimes();
@@ -107,6 +108,7 @@ public class AwsS3AssetStoreTest {
     s3Transfer = EasyMock.createStrictMock(TransferManager.class);
     EasyMock.expect(s3Client.listObjects(BUCKET_NAME)).andReturn(null);
     EasyMock.expect(s3Client.getObject(BUCKET_NAME, KEY_VERSION_1 + ASSET_ID + ".xml")).andReturn(s3Object);
+    EasyMock.expect(s3Client.getObjectMetadata(BUCKET_NAME, KEY_VERSION_1 + ASSET_ID + ".xml")).andReturn(objMetadata).anyTimes();
     // Replay will be called in each test
 
     workspace = EasyMock.createNiceMock(Workspace.class);
