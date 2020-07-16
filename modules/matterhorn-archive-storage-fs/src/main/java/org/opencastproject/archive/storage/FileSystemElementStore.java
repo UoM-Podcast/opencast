@@ -68,9 +68,6 @@ public class FileSystemElementStore implements ElementStore {
   /** Configuration key for the storage directory */
   public static final String CONFIG_STORAGE_DIR = "org.opencastproject.storage.dir";
 
-  /** Configuration key for the archive root directory */
-  public static final String CONFIG_ARCHIVE_ROOT_DIR = "org.opencastproject.episode.rootdir";
-
   /** The default archive directory name */
   private static final String DEFAULT_ARCHIVE_DIRECTORY = "archive";
 

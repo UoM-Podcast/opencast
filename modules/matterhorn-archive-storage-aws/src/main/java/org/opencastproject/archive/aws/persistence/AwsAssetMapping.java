@@ -24,6 +24,7 @@ package org.opencastproject.archive.aws.persistence;
 import java.util.Date;
 
 public final class AwsAssetMapping {
+  private final String storeId;
   private final String organizationId;
   private final String mediaPackageId;
   private final String mediaPackageElementId;
@@ -35,9 +36,10 @@ public final class AwsAssetMapping {
   // Date/time this asset was deleted
   private final Date deletionDate;
 
-  public AwsAssetMapping(String organizationId, String mediaPackageId, String mediaPackageElementId, Long version,
+  public AwsAssetMapping(String storeId, String organizationId, String mediaPackageId, String mediaPackageElementId, Long version,
           String objectKey, String objectVersion, Date deletedDate) {
     super();
+    this.storeId = storeId;
     this.organizationId = organizationId;
     this.mediaPackageId = mediaPackageId;
     this.mediaPackageElementId = mediaPackageElementId;
@@ -45,6 +47,10 @@ public final class AwsAssetMapping {
     this.objectKey = objectKey;
     this.objectVersion = objectVersion;
     this.deletionDate = deletedDate;
+  }
+
+  public String getStoreId() {
+    return storeId;
   }
 
   public String getOrganizationId() {
@@ -73,5 +79,9 @@ public final class AwsAssetMapping {
 
   public Date getDeletionDate() {
     return deletionDate;
+  }
+
+  public String getPrintablePath() {
+    return storeId + ":" + mediaPackageId + "/" + mediaPackageElementId + "@" + version;
   }
 }

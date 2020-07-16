@@ -28,11 +28,12 @@ import org.opencastproject.archive.aws.persistence.AwsAssetDatabase;
 import org.opencastproject.archive.aws.persistence.AwsAssetDatabaseException;
 import org.opencastproject.archive.aws.persistence.AwsAssetMapping;
 import org.opencastproject.archive.base.StoragePath;
+import org.opencastproject.archive.base.storage.AbstractRemoteElementStore;
 import org.opencastproject.archive.base.storage.DeletionSelector;
 import org.opencastproject.archive.base.storage.ElementStoreException;
-import org.opencastproject.archive.base.storage.RemoteElementStore;
 import org.opencastproject.archive.base.storage.Source;
 import org.opencastproject.util.ConfigurationException;
+import org.opencastproject.util.MimeType;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.data.Option;
@@ -49,7 +50,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-public abstract class AwsAbstractArchive implements RemoteElementStore {
+public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
   /** The default AWS region name */
   public static final String DEFAULT_AWS_REGION = "us-east-1";
 
@@ -107,18 +108,17 @@ public abstract class AwsAbstractArchive implements RemoteElementStore {
   }
 
   /** @see org.opencastproject.archive.base.storage.ElementStore#copy(StoragePath, StoragePath) */
-  public boolean copy(final StoragePath from, final StoragePath to) throws ElementStoreException
-  {
+  public boolean copy(final StoragePath from, final StoragePath to) throws ElementStoreException {
     try {
-      AwsAssetMapping map = database.findMapping(from);
+      AwsAssetMapping map = database.findMapping(getStoreType(), from);
       if (map == null) {
-        logger.warn("Origin file mapping not found in database: {}", from);
+        logger.debug("Origin file mapping not found in database: {}", from);
         return false;
       }
       // New mapping will point to the SAME AWS object, nothing will be uploaded
       logger.debug(String.format("Adding AWS %s link mapping to database: %s points to %s, version %s", getStoreType(),
               to, map.getObjectKey(), map.getObjectVersion()));
-      database.storeMapping(to, map.getObjectKey(), map.getObjectVersion());
+      database.storeMapping(getStoreType(), to, map.getObjectKey(), map.getObjectVersion());
       return true;
     } catch (AwsAssetDatabaseException e) {
       throw new ElementStoreException(e);
@@ -127,7 +127,7 @@ public abstract class AwsAbstractArchive implements RemoteElementStore {
 
   public boolean contains(StoragePath path) throws ElementStoreException {
     try {
-      AwsAssetMapping map = database.findMapping(path);
+      AwsAssetMapping map = database.findMapping(getStoreType(), path);
       return (map != null);
     } catch (AwsAssetDatabaseException e) {
       throw new ElementStoreException(e);
@@ -177,7 +177,7 @@ public abstract class AwsAbstractArchive implements RemoteElementStore {
     String objectVersion = null;
     try {
       // Upload file to AWS
-      AwsUploadOperationResult result = uploadObject(origin, objectName);
+      AwsUploadOperationResult result = uploadObject(origin, objectName, source.getMimeType());
       objectName = result.getObjectName();
       objectVersion = result.getObjectVersion();
     } catch (Exception e) {
@@ -188,18 +188,18 @@ public abstract class AwsAbstractArchive implements RemoteElementStore {
       // Upload was successful. Store mapping in the database
       logger.debug(String.format("Adding AWS %s mapping to database: %s points to %s, object version %s", getStoreType(),
               storagePath, objectName, objectVersion));
-      database.storeMapping(storagePath, objectName, objectVersion);
+      database.storeMapping(getStoreType(), storagePath, objectName, objectVersion);
     } catch (AwsAssetDatabaseException e) {
       throw new ElementStoreException(e);
     }
   }
 
-  protected abstract AwsUploadOperationResult uploadObject(File origin, String objectName) throws ElementStoreException;
+  protected abstract AwsUploadOperationResult uploadObject(File origin, String objectName, Option<MimeType> mimeType) throws ElementStoreException;
 
   /** @see org.opencastproject.archive.base.storage.ElementStore#get(StoragePath) */
   public Option<InputStream> get(final StoragePath path) throws ElementStoreException {
     try {
-      AwsAssetMapping map = database.findMapping(path);
+      AwsAssetMapping map = database.findMapping(getStoreType(), path);
       if (map == null) {
         logger.warn("File mapping not found in database: {}", path);
         return Option.none();
@@ -222,11 +222,11 @@ public abstract class AwsAbstractArchive implements RemoteElementStore {
     // Build path, version may be null if all versions are desired
     StoragePath path = new StoragePath(sel.getOrganizationId(), sel.getMediaPackageId(), sel.getVersion().getOrElseNull(), null);
     try {
-      List<AwsAssetMapping> list = database.findMappingsByMediaPackageAndVersion(path);
+      List<AwsAssetMapping> list = database.findMappingsByMediaPackageAndVersion(getStoreType(), path);
       // Traverse all file mappings for that media package / version(s)
       for (AwsAssetMapping map : list) {
         // Find all mappings that point to the same object (like hard-links)
-        List<AwsAssetMapping> links = database.findMappingsByKey(map.getObjectKey());
+        List<AwsAssetMapping> links = database.findMappingsByKey(getStoreType(), map.getObjectKey());
         if (links.size() == 1) {
           // This is the only active mapping thats point to the object; thus, the object can be deleted.
           logger.debug("Deleting archive object from AWS {}: {}, version {}", getStoreType(), map.getObjectKey(), map.getObjectVersion());
@@ -234,7 +234,7 @@ public abstract class AwsAbstractArchive implements RemoteElementStore {
           logger.info("Archive object deleted from AWS {}: {}, version {}", getStoreType(), map.getObjectKey(), map.getObjectVersion());
         }
         // Add a deletion date to the mapping in the table. This doesn't delete the row.
-        database.deleteMapping(new StoragePath(map.getOrganizationId(), map.getMediaPackageId(), Version.version(map
+        database.deleteMapping(getStoreType(), new StoragePath(map.getOrganizationId(), map.getMediaPackageId(), Version.version(map
                 .getVersion()), map.getMediaPackageElementId()));
       }
       return true;

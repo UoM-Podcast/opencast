@@ -23,21 +23,30 @@ package org.opencastproject.archive.aws.persistence;
 
 import org.opencastproject.archive.base.StoragePath;
 
+import java.util.Date;
 import java.util.List;
 
 public interface AwsAssetDatabase {
 
-  AwsAssetMapping storeMapping(StoragePath path, String objectKey, String objectVersion) throws
+  AwsAssetMapping storeMapping(String storeId, StoragePath path, String objectKey, String objectVersion) throws
           AwsAssetDatabaseException;
 
-  void deleteMapping(StoragePath path) throws AwsAssetDatabaseException;
+  void addLocallyCachedFile(StoragePath path) throws AwsAssetDatabaseException;
 
-  AwsAssetMapping findMapping(StoragePath path) throws AwsAssetDatabaseException;
+  List<StoragePath> getLocallyCachedFiles(String storeId, Date expireEarlierThan) throws AwsAssetDatabaseException;
 
-  List<AwsAssetMapping> findMappingsByKey(String objectKey) throws AwsAssetDatabaseException;
+  boolean isLocallyCached(StoragePath path);
 
-  List<AwsAssetMapping> findMappingsByMediaPackageAndVersion(StoragePath path) throws AwsAssetDatabaseException;
+  void deleteCacheMapping(StoragePath path) throws AwsAssetDatabaseException;
 
-  List<AwsAssetMapping> findAllByMediaPackage(String mpId) throws AwsAssetDatabaseException;
+  void deleteMapping(String storeId, StoragePath path) throws AwsAssetDatabaseException;
+
+  AwsAssetMapping findMapping(String storeId, StoragePath path) throws AwsAssetDatabaseException;
+
+  List<AwsAssetMapping> findMappingsByKey(String storeId, String objectKey) throws AwsAssetDatabaseException;
+
+  List<AwsAssetMapping> findMappingsByMediaPackageAndVersion(String storeId, StoragePath path) throws AwsAssetDatabaseException;
+
+  List<AwsAssetMapping> findAllByMediaPackage(String storeId, String mpId) throws AwsAssetDatabaseException;
 
 }

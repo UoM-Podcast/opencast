@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
-               name="org.opencastproject.archive.aws.s3.AwsS3AssetStore"
+               name="org.opencastproject.archive.aws.glacier.AwsGlacierAssetStore"
                activate="activate"
                immediate="true">
 
-  <implementation class="org.opencastproject.archive.aws.s3.AwsS3AssetStore"/>
-  <property name="service.description" value="Amazon S3 based element store"/>
-  <property name="store.type" value="aws-s3"/>
+  <implementation class="org.opencastproject.archive.aws.glacier.AwsGlacierAssetStore"/>
+  <property name="service.description" value="Amazon Glacier based element store"/>
+  <property name="store.type" value="aws-glacier"/>
   <service>
     <provide interface="org.opencastproject.archive.base.storage.RemoteElementStore" />
-    <provide interface="org.opencastproject.archive.aws.s3.AwsS3AssetStore"/>
+    <provide interface="org.opencastproject.archive.aws.glacier.AwsGlacierAssetStore" />
   </service>
 
   <reference name="workspace" interface="org.opencastproject.workspace.api.Workspace" policy="static"

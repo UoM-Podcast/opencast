@@ -21,6 +21,7 @@
 
 package org.opencastproject.archive.aws.persistence;
 
+import org.opencastproject.archive.api.Version;
 import org.opencastproject.archive.base.StoragePath;
 
 import org.osgi.service.component.ComponentContext;
@@ -28,6 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.persistence.EntityManagerFactory;
@@ -44,7 +47,7 @@ public class AwsAssetDatabaseImpl implements AwsAssetDatabase {
 
   /** OSGi callback. */
   public void activate(ComponentContext cc) {
-    logger.info("Activating AWS S3 archive");
+    logger.info("Activating AWS storage adapter database");
   }
 
   /** OSGi callback. Closes entity manager factory. */
@@ -58,9 +61,9 @@ public class AwsAssetDatabaseImpl implements AwsAssetDatabase {
   }
 
   @Override
-  public AwsAssetMapping storeMapping(StoragePath path, String objectKey, String objectVersion)
+  public AwsAssetMapping storeMapping(String storeId, StoragePath path, String objectKey, String objectVersion)
           throws AwsAssetDatabaseException {
-    AwsAssetMappingDto dto = AwsAssetMappingDto.storeMapping(emf.createEntityManager(), path, objectKey,
+    AwsAssetMappingDto dto = AwsAssetMappingDto.storeMapping(emf.createEntityManager(), storeId, path, objectKey,
             objectVersion);
     if (dto != null)
       return dto.toAWSArchiveMapping();
@@ -68,21 +71,21 @@ public class AwsAssetDatabaseImpl implements AwsAssetDatabase {
   }
 
   @Override
-  public void deleteMapping(StoragePath path) throws AwsAssetDatabaseException {
-    AwsAssetMappingDto.deleteMappping(emf.createEntityManager(), path);
+  public void deleteMapping(String storeId, StoragePath path) throws AwsAssetDatabaseException {
+    AwsAssetMappingDto.deleteMappping(emf.createEntityManager(), storeId, path);
   }
 
   @Override
-  public AwsAssetMapping findMapping(StoragePath path) throws AwsAssetDatabaseException {
-    AwsAssetMappingDto dto = AwsAssetMappingDto.findMapping(emf.createEntityManager(), path);
+  public AwsAssetMapping findMapping(String storeId, StoragePath path) throws AwsAssetDatabaseException {
+    AwsAssetMappingDto dto = AwsAssetMappingDto.findMapping(emf.createEntityManager(), storeId, path);
     if (dto != null)
       return dto.toAWSArchiveMapping();
     return null;
   }
 
   @Override
-  public List<AwsAssetMapping> findMappingsByKey(String objectKey) throws AwsAssetDatabaseException {
-    List<AwsAssetMappingDto> list = AwsAssetMappingDto.findMappingsByKey(emf.createEntityManager(), objectKey);
+  public List<AwsAssetMapping> findMappingsByKey(String storeId, String objectKey) throws AwsAssetDatabaseException {
+    List<AwsAssetMappingDto> list = AwsAssetMappingDto.findMappingsByKey(emf.createEntityManager(), storeId, objectKey);
     List<AwsAssetMapping> resultList = new ArrayList<AwsAssetMapping>();
     for (AwsAssetMappingDto dto : list) {
       resultList.add(dto.toAWSArchiveMapping());
@@ -91,10 +94,10 @@ public class AwsAssetDatabaseImpl implements AwsAssetDatabase {
   }
 
   @Override
-  public List<AwsAssetMapping> findMappingsByMediaPackageAndVersion(StoragePath path)
+  public List<AwsAssetMapping> findMappingsByMediaPackageAndVersion(String storeId, StoragePath path)
           throws AwsAssetDatabaseException {
     List<AwsAssetMappingDto> list = AwsAssetMappingDto.findMappingsByMediaPackageAndVersion(
-            emf.createEntityManager(), path);
+            emf.createEntityManager(), storeId, path);
     List<AwsAssetMapping> resultList = new ArrayList<AwsAssetMapping>();
     for (AwsAssetMappingDto dto : list) {
       resultList.add(dto.toAWSArchiveMapping());
@@ -103,14 +106,44 @@ public class AwsAssetDatabaseImpl implements AwsAssetDatabase {
   }
 
   @Override
-  public List<AwsAssetMapping> findAllByMediaPackage(String mpId) throws AwsAssetDatabaseException {
+  public List<AwsAssetMapping> findAllByMediaPackage(String storeId, String mpId) throws AwsAssetDatabaseException {
     List<AwsAssetMappingDto> list = AwsAssetMappingDto.findMappingsByMediaPackage(emf.createEntityManager(),
-            mpId);
+            storeId, mpId);
     List<AwsAssetMapping> resultList = new ArrayList<AwsAssetMapping>();
     for (AwsAssetMappingDto dto : list) {
       resultList.add(dto.toAWSArchiveMapping());
     }
     return resultList;
+  }
+
+  public void addLocallyCachedFile(StoragePath path) throws AwsAssetDatabaseException {
+    AwsGlacierCacheMappingDto.storeMapping(emf.createEntityManager(), path);
+  }
+
+  public List<StoragePath> getLocallyCachedFiles(String storeId, Date expireEarlierThan) throws AwsAssetDatabaseException {
+    List<AwsGlacierCacheMappingDto> list = AwsGlacierCacheMappingDto.findMapping(emf.createEntityManager(), expireEarlierThan);
+    List<StoragePath> results = new LinkedList<>();
+    for (AwsGlacierCacheMappingDto dto : list) {
+      AwsAssetMapping map = dto.toAWSArchiveMapping(storeId);
+      results.add(new StoragePath(map.getOrganizationId(), map.getMediaPackageId(), new Version(map.getVersion()), map.getMediaPackageElementId()));
+    }
+    return results;
+  }
+
+  public boolean isLocallyCached(StoragePath path) {
+    try {
+      AwsGlacierCacheMappingDto map = AwsGlacierCacheMappingDto.findMapping(emf.createEntityManager(), path);
+      if (null != map) {
+        return true;
+      }
+    } catch (AwsAssetDatabaseException e) {
+      logger.error("Database error attempting to resolve path " + path, e);
+    }
+    return false;
+  }
+
+  public void deleteCacheMapping(StoragePath path) throws AwsAssetDatabaseException {
+    AwsGlacierCacheMappingDto.deleteMapping(emf.createEntityManager(), path);
   }
 
 }

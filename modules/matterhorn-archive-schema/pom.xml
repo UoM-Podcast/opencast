@@ -211,7 +211,8 @@
             <Service-Component>
               OSGI-INF/archive.xml,
               OSGI-INF/archive-rest.xml,
-              OSGI-INF/archive-jobproducer.xml
+              OSGI-INF/archive-jobproducer.xml,
+              OSGI-INF/archive-timed-storage.xml
             </Service-Component>
             <Meta-Persistence>
               META-INF/persistence.xml

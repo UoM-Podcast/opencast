@@ -22,6 +22,6 @@
 package org.opencastproject.archive.base.storage;
 
 public interface RemoteElementStore extends ElementStore {
-  //Defines the root directory to be used for any caching done by a remote element store.  Caches should live as directories under this directory.
-  String ELEMENT_STORE_CACHE_ROOT = "org.opencastproject.archive.storage.cache.rootdir";
+  //Defines the path to add to the archive directory's base for use in remote element store caches.  Caches should live as directories under this directory.
+  String ELEMENT_STORE_CACHE_SLUG = "cache";
 }

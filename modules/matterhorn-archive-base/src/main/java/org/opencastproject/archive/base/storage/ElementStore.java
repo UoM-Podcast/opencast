@@ -37,6 +37,9 @@ public interface ElementStore extends StorageUsage {
 
   String STORE_TYPE_PROPERTY = "store.type";
 
+  /** Configuration key for the archive root directory */
+  String CONFIG_ARCHIVE_ROOT_DIR = "org.opencastproject.episode.rootdir";
+
   /** Add the content of <code>soure</code> under the given path. */
   void put(StoragePath path, Source source) throws ElementStoreException;
 
