@@ -726,11 +726,29 @@
   </feature>
 
   <feature name="opencast-edit-distribution">
-    <feature start-level="80">opencast-presentation</feature>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-archive-base/${project.version}</bundle>
-    <bundle start-level="82">mvn:org.opencastproject/matterhorn-authorization-manager/${project.version}</bundle>
+    <feature start-level="80">opencast-core</feature>
+    <feature start-level="82">opencast-participation-management-teacher</feature>
+
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-acl/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-aws-s3-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-aws-s3/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-download/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-service-streaming/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-distribution-workflowoperation/${project.version}</bundle>
     <bundle start-level="82">mvn:org.opencastproject/matterhorn-edit-ui-ng/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-lti/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-messages/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-oaipmh/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-oaipmh-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-oaipmh-persistence/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-publication-service-oaipmh/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-runtime-info-ui/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-scheduler-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-search-service-api/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-series-service-remote/${project.version}</bundle>
+    <bundle start-level="82">mvn:org.opencastproject/matterhorn-workflow-service-remote/${project.version}</bundle>
   </feature>
 
   <feature name="opencast-migration">
