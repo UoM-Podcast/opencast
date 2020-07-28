@@ -116,6 +116,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   private static final int DEFAULT_CLEANUP_RESULTS_DAYS = 7;
   private static final boolean DEFAULT_PROFANITY_FILTER = false;
   private static final String DEFAULT_LANGUAGE = "en-US";
+  private static final String DEFAULT_MODEL = "default";
   private static final String GOOGLE_SPEECH_URL = "https://speech.googleapis.com/v1";
   private static final String GOOGLE_AUTH2_URL = "https://www.googleapis.com/oauth2/v4/token";
   private static final String REQUEST_PATH = "/speech:longrunningrecognize";
@@ -165,6 +166,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   public static final String ENABLED_CONFIG = "enabled";
   public static final String GOOGLE_SPEECH_LANGUAGE = "google.speech.language";
   public static final String PROFANITY_FILTER = "google.speech.profanity.filter";
+  public static final String MODEL = "google.speech.transcription.model";
   public static final String WORKFLOW_CONFIG = "workflow";
   public static final String DISPATCH_WORKFLOW_INTERVAL_CONFIG = "workflow.dispatch.interval";
   public static final String COMPLETION_CHECK_BUFFER_CONFIG = "completion.check.buffer";
@@ -182,6 +184,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
    */
   private boolean enabled = false; // Disabled by default
   private boolean profanityFilter = DEFAULT_PROFANITY_FILTER;
+  private String model = DEFAULT_MODEL;
   private String language = DEFAULT_LANGUAGE;
   private String workflowDefinitionId = DEFAULT_WF_DEF;
   private long workflowDispatchInterval = DEFAULT_DISPATCH_INTERVAL;
@@ -240,6 +243,14 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
           logger.info("Language used is {}", language);
         } else {
           logger.info("Default language will be used");
+        }
+        // Transription model to be used
+        Option<String> transModel = OsgiUtil.getOptCfg(cc.getProperties(), MODEL);
+        if (transModel.isSome()) {
+          model = transModel.get();
+          logger.info("Transcription model used is {}", model);
+        } else {
+          logger.info("Default Transcription model will be used");
         }
         // Workflow to execute when getting callback (optional, with default)
         Option<String> wfOpt = OsgiUtil.getOptCfg(cc.getProperties(), WORKFLOW_CONFIG);
@@ -459,6 +470,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     configValues.put("languageCode", languageCode);
     configValues.put("enableWordTimeOffsets", true);
     configValues.put("profanityFilter", profanityFilter);
+    configValues.put("model", model);
     audioValues.put("uri", audioUrl);
     container.put("config", configValues);
     container.put("audio", audioValues);
