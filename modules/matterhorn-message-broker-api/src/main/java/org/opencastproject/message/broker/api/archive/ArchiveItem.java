@@ -26,9 +26,13 @@ import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageException;
 import org.opencastproject.mediapackage.MediaPackageParser;
 import org.opencastproject.message.broker.api.MessageItem;
+import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
+import org.opencastproject.metadata.dublincore.DublinCoreUtil;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AccessControlParser;
+import org.opencastproject.util.data.Option;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -46,6 +50,7 @@ public class ArchiveItem implements MessageItem, Serializable {
   private final String mediapackageId;
   private final String mediapackage;
   private final String acl;
+  private final String dc;
   private final long version;
   private final Date date;
   private final Type type;
@@ -65,8 +70,8 @@ public class ArchiveItem implements MessageItem, Serializable {
    *          The modification date.
    * @return Builds a {@link ArchiveItem} for updating a mediapackage.
    */
-  public static ArchiveItem update(MediaPackage mediapackage, AccessControlList acl, Version version, Date date) {
-    return new ArchiveItem(mediapackage, acl, version, date);
+  public static ArchiveItem update(MediaPackage mediapackage, AccessControlList acl, DublinCoreCatalog dc, Version version, Date date) {
+    return new ArchiveItem(mediapackage, acl, dc, version, date);
   }
 
   /**
@@ -92,10 +97,17 @@ public class ArchiveItem implements MessageItem, Serializable {
    * @param date
    *          The modification date.
    */
-  public ArchiveItem(MediaPackage mediapackage, AccessControlList acl, Version version, Date date) {
+  public ArchiveItem(MediaPackage mediapackage, AccessControlList acl, DublinCoreCatalog dc, Version version, Date date) {
     this.mediapackageId = null;
     this.mediapackage = MediaPackageParser.getAsXml(mediapackage);
     this.acl = AccessControlParser.toJsonSilent(acl);
+    String dublinCore = null;
+    try {
+      dublinCore = dc.toXmlString();
+    } catch (IOException ex) {
+      //
+    }
+    this.dc = dublinCore;
     this.version = version.value();
     this.date = date;
     this.type = Type.Update;
@@ -113,6 +125,7 @@ public class ArchiveItem implements MessageItem, Serializable {
     this.mediapackageId = mediapackageId;
     this.mediapackage = null;
     this.acl = null;
+    this.dc = null;
     this.version = -1;
     this.date = date;
     this.type = Type.Delete;
@@ -149,6 +162,10 @@ public class ArchiveItem implements MessageItem, Serializable {
 
   public Date getDate() {
     return date;
+  }
+
+  public Option<DublinCoreCatalog> getDublinCore() {
+    return DublinCoreUtil.fromXml(dc);
   }
 
   public Type getType() {

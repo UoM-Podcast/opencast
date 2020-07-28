@@ -301,18 +301,18 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
     enrichAssetChecksums(pmp);
     // download and archive elements
     storeAssets(pmp, version);
+    DublinCoreCatalog dc = null;
+    for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, mp)) {
+      dc = dcc;
+    }
     messageSender.sendObjectMessage(ArchiveItem.ARCHIVE_QUEUE, MessageSender.DestinationType.Queue,
-            ArchiveItem.update(mp, acl, version, now));
+            ArchiveItem.update(mp, acl, dc, version, now));
     // store mediapackage in index
     /*
      * todo: Url-rewritten mediapackages cannot be stored in solr since the solr index accesses metadata catalogs via
      * StaticMetadataService which in turn uses the workspace to download them. If the URL is already a URN this does
      * not work.
      */
-    DublinCoreCatalog dc = null;
-    for (DublinCoreCatalog dcc : DublinCoreUtil.loadEpisodeDublinCore(workspace, mp)) {
-      dc = dcc;
-    }
     index(mp, dc, acl, now, version);
     // store mediapackage in db
     try {
@@ -902,7 +902,7 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
                     messageSender.sendObjectMessage(
                             destinationId,
                             MessageSender.DestinationType.Queue,
-                            ArchiveItem.update(pmp.getMediaPackage(), episode.getAcl(), episode.getVersion(),
+                            ArchiveItem.update(pmp.getMediaPackage(), episode.getAcl(), episode.getDublinCore(), episode.getVersion(),
                                     episode.getModificationDate()));
                     if (((current[0] % responseInterval) == 0) || (current[0] == total)) {
                       messageSender.sendObjectMessage(IndexProducer.RESPONSE_QUEUE, MessageSender.DestinationType.Queue,
