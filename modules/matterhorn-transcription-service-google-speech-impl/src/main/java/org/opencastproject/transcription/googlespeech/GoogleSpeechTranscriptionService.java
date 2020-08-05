@@ -166,7 +166,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   public static final String ENABLED_CONFIG = "enabled";
   public static final String GOOGLE_SPEECH_LANGUAGE = "google.speech.language";
   public static final String PROFANITY_FILTER = "google.speech.profanity.filter";
-  public static final String MODEL = "google.speech.transcription.model";
+  public static final String TRANSCRIPTION_MODEL = "google.speech.transcription.model";
   public static final String WORKFLOW_CONFIG = "workflow";
   public static final String DISPATCH_WORKFLOW_INTERVAL_CONFIG = "workflow.dispatch.interval";
   public static final String COMPLETION_CHECK_BUFFER_CONFIG = "completion.check.buffer";
@@ -245,7 +245,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
           logger.info("Default language will be used");
         }
         // Transription model to be used
-        Option<String> transModel = OsgiUtil.getOptCfg(cc.getProperties(), MODEL);
+        Option<String> transModel = OsgiUtil.getOptCfg(cc.getProperties(), TRANSCRIPTION_MODEL);
         if (transModel.isSome()) {
           model = transModel.get();
           logger.info("Transcription model used is {}", model);
