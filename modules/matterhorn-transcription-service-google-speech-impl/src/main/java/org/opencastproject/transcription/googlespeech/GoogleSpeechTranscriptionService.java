@@ -946,8 +946,8 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
           // If the job in progress, check if it should already have finished.
           if (GoogleSpeechTranscriptionJobControl.Status.Progress.name().equals(j.getStatus())) {
             // If job should already have been completed, try to get the results. Consider a buffer factor so that we
-            // don't try it too early.
-            if (j.getDateCreated().getTime() + j.getTrackDuration() + completionCheckBuffer * 1000 < System
+            // don't try it too early. Time to start trying is 1/4 the length of the video duration
+            if (j.getDateCreated().getTime() + (j.getTrackDuration() / 4) + completionCheckBuffer * 1000 < System
                     .currentTimeMillis()) {
               try {
                 if (!getAndSaveJobResults(jobId)) {
