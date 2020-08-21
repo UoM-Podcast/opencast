@@ -240,19 +240,48 @@ public class ParticipationFeederServiceImpl implements ManagedService, Participa
         }
   }
 
+   /* NOTE
+   * Should only be called if there are no activities and therefore no chance of
+   * being a combined course
+   */
   @Override
-  public Course getCourseByCourseKey(String courseKey) throws NotFoundException {
-    final List<VModule> modules = new ArrayList<VModule>();
-    final VModule module = syllabusService.getModuleByCourseKey(courseKey);
+  public Course getCourseByCourseKeys(List<String> courseKeys) throws NotFoundException {
+    Course course = null;
+    List<Course> courses;
 
-    if (module != null) {
-      modules.add(module);
-    } else {
-      throw (new NotFoundException());
+    // First see if course exists
+    try {
+      courses = persistence.findCoursesByCourseKey(courseKeys.get(0));
+    } catch (ParticipationManagementDatabaseException e) {
+      logger.error("Unable to search for Course {}", course.getExternalCourseKey());
+      throw(new NotFoundException(e));
     }
 
-    Course course = ParticipationFeederRunner.mergeModules(modules);
-    course.setSeriesId(course.createSeriesId());
+    if (courses.isEmpty()) {
+      // Create a new course
+      final List<VModule> modules = new ArrayList<VModule>();
+      for (String courseKey : courseKeys) {
+        final VModule module = syllabusService.getModuleByCourseKey(courseKey);
+
+        if (module != null) {
+          modules.add(module);
+        } else {
+          throw (new NotFoundException());
+        }
+      }
+      course = ParticipationFeederRunner.mergeModules(modules);
+      course.setSeriesId(course.createSeriesId());
+      try {
+        persistence.updateCourse(course);
+      } catch (ParticipationManagementDatabaseException e) {
+        logger.error("Unable to persist Course {}", course.getExternalCourseKey());
+      }
+    } else {
+      if (courses.size() > 1) {
+        logger.warn("Multiple Course entries found for {}", courseKeys.get(0));
+      }
+      course = courses.get(0);
+    }
 
     return course;
   }

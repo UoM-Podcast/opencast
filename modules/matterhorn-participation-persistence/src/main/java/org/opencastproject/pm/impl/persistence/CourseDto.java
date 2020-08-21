@@ -61,6 +61,7 @@ import javax.persistence.UniqueConstraint;
 @NamedQueries({ @NamedQuery(name = "Course.findAll", query = "SELECT c FROM Course c"),
         @NamedQuery(name = "Course.findById", query = "SELECT c FROM Course c WHERE c.courseId = :course"),
         @NamedQuery(name = "Course.findBySeries", query = "SELECT c FROM Course c WHERE c.seriesId = :series"),
+        @NamedQuery(name = "Course.findByCourseKey", query = "SELECT c FROM Course c WHERE c.externalCourseKey LIKE CONCAT('%',:courseKey,'%')"),
         @NamedQuery(name = "Course.clear", query = "DELETE FROM Course"),
         @NamedQuery(name = "Course.countByEmailState", query = "SELECT COUNT(c) FROM Course c WHERE c.emailStatus = :emailState"),
         @NamedQuery(name = "Course.findByEmailState", query = "SELECT c FROM Course c WHERE c.emailStatus = :emailState")})
