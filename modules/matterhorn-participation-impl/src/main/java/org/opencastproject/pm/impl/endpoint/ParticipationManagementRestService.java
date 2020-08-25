@@ -47,9 +47,13 @@ import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
+import org.apache.commons.lang.StringUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
@@ -292,6 +296,40 @@ public class ParticipationManagementRestService {
     return Response.ok().build();
   }
 
+  @POST
+  @Path("/course/{id}")
+  @Produces(MediaType.TEXT_XML)
+  @RestQuery(name = "createCourse", description = "Create a Course for the given mleid",
+          returnDescription = "",
+          pathParameters = {
+            @RestParameter(name = "id", isRequired = true, description = "Module MLE Id", type = STRING)
+          },
+          restParameters = {
+            @RestParameter(name = "combined_ids", isRequired = false, description = "Combined Module MLE IDs ','delimited", type = STRING)
+          },
+          reponses = {
+            @RestResponse(responseCode = HttpServletResponse.SC_PARTIAL_CONTENT, description = "The participation management module did not complete in a way that a schedule update is possible"),
+            @RestResponse(responseCode = HttpServletResponse.SC_OK, description = ""),
+            @RestResponse(responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE, description = "An external service not available")})
+  public Response createCourse(@PathParam("id") String courseKey, @FormParam("combined_ids") String combinedKeys) throws Exception {
+
+    try {
+      List<String> courseKeys = new ArrayList<>();
+      courseKeys.add(courseKey);
+
+      if (StringUtils.isNotEmpty(combinedKeys)) {
+        StringUtils.split(combinedKeys, ',');
+        courseKeys.addAll(Arrays.asList(StringUtils.split(combinedKeys, ',')));
+      }
+
+      feederService.getCourseByCourseKeys(courseKeys);
+    } catch (Exception e) {
+      logger.error(e.getMessage());
+      return Response.status(Status.SERVICE_UNAVAILABLE).build();
+    }
+
+    return Response.ok().build();
+  }
 
   @PUT
   @Path("/recording/{id}/status")
@@ -338,8 +376,10 @@ public class ParticipationManagementRestService {
   }
 
   private Response internalCourseKeySeriesId(String courseKey, Boolean post) {
+    List<String> courseKeys = new ArrayList<>();
+    courseKeys.add(courseKey);
     try {
-      Course course = feederService.getCourseByCourseKey(courseKey);
+      Course course = feederService.getCourseByCourseKeys(courseKeys);
 
       return createCourseSeries(course, post);
 

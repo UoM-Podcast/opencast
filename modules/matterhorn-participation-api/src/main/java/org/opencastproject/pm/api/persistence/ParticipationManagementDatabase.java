@@ -117,6 +117,8 @@ public interface ParticipationManagementDatabase {
 
   List<Course> findCoursesByEmailState(EmailStatus emailStatus) throws ParticipationManagementDatabaseException ;
 
+  List<Course> findCoursesByCourseKey(String courseKey) throws ParticipationManagementDatabaseException ;
+
   List<EmailView> findCoursesAsEmailView(EmailStatus emailStatus) throws ParticipationManagementDatabaseException;
 
   Recording getRecordingByEvent(long eventId) throws ParticipationManagementDatabaseException, NotFoundException;

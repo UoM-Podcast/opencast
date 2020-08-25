@@ -59,15 +59,15 @@ public interface ParticipationFeederService {
   Course getCourseByActivityId(String activityId) throws NotFoundException;
 
   /**
-  * returns a Course object that represent the module with the given courseKey
+  * returns a Course object that represent the module with the given courseKeys
   * NOTE: This should only be used if there are no activities associated with
   * the module
   *
-  @param courseKey
+  @param courseKeys
   @return
   @throws NotFoundException
   */
-  Course getCourseByCourseKey(String courseKey) throws NotFoundException;
+  Course getCourseByCourseKeys(List<String> courseKeys) throws NotFoundException;
 
   /**
   * returns child activity Ids that of activities that reference a module
