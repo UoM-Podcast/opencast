@@ -117,6 +117,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   private static final boolean DEFAULT_PROFANITY_FILTER = false;
   private static final String DEFAULT_LANGUAGE = "en-US";
   private static final String DEFAULT_MODEL = "default";
+  private static final boolean DEFAULT_ENABLE_PUNCTUATION = false;
   private static final String GOOGLE_SPEECH_URL = "https://speech.googleapis.com/v1";
   private static final String GOOGLE_AUTH2_URL = "https://www.googleapis.com/oauth2/v4/token";
   private static final String REQUEST_PATH = "/speech:longrunningrecognize";
@@ -167,6 +168,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   public static final String GOOGLE_SPEECH_LANGUAGE = "google.speech.language";
   public static final String PROFANITY_FILTER = "google.speech.profanity.filter";
   public static final String TRANSCRIPTION_MODEL = "google.speech.transcription.model";
+  public static final String ENABLE_PUNCTUATION = "google.speech.transcription.punctuation";
   public static final String WORKFLOW_CONFIG = "workflow";
   public static final String DISPATCH_WORKFLOW_INTERVAL_CONFIG = "workflow.dispatch.interval";
   public static final String COMPLETION_CHECK_BUFFER_CONFIG = "completion.check.buffer";
@@ -185,6 +187,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
   private boolean enabled = false; // Disabled by default
   private boolean profanityFilter = DEFAULT_PROFANITY_FILTER;
   private String model = DEFAULT_MODEL;
+  private boolean enablePunctuation = DEFAULT_ENABLE_PUNCTUATION;
   private String language = DEFAULT_LANGUAGE;
   private String workflowDefinitionId = DEFAULT_WF_DEF;
   private long workflowDispatchInterval = DEFAULT_DISPATCH_INTERVAL;
@@ -252,6 +255,15 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
         } else {
           logger.info("Default Transcription model will be used");
         }
+        // Enable punctuation or not
+        Option<String> punctuationOpt = OsgiUtil.getOptCfg(cc.getProperties(), ENABLE_PUNCTUATION);
+        if (punctuationOpt.isSome()) {
+          enablePunctuation = Boolean.parseBoolean(punctuationOpt.get());
+          logger.info("Enable punctuation is set to {}", enablePunctuation);
+        } else {
+          logger.info("Default punctuation setting will be used");
+        }
+
         // Workflow to execute when getting callback (optional, with default)
         Option<String> wfOpt = OsgiUtil.getOptCfg(cc.getProperties(), WORKFLOW_CONFIG);
         if (wfOpt.isSome()) {
@@ -471,6 +483,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     configValues.put("enableWordTimeOffsets", true);
     configValues.put("profanityFilter", profanityFilter);
     configValues.put("model", model);
+    configValues.put("enableAutomaticPunctuation", enablePunctuation);
     audioValues.put("uri", audioUrl);
     container.put("config", configValues);
     container.put("audio", audioValues);
