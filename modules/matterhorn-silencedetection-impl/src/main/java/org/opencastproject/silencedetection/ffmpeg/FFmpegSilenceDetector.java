@@ -148,7 +148,6 @@ public class FFmpegSilenceDetector {
     logger.info("Track {} loaded, duration is {} s", filePath, track.getDuration() / 1000);
 
     logger.info("Starting silence detection of {}", filePath);
-    String mediaPath = filePath.replaceAll(" ", "\\ ");
     DecimalFormat decimalFmt = new DecimalFormat("0.000", new DecimalFormatSymbols(Locale.US));
     String minSilenceLengthInSeconds = decimalFmt.format((double) minSilenceLength / 1000.0);
     String filter = "silencedetect=noise=" + thresholdDB + ":duration=" + minSilenceLengthInSeconds;
