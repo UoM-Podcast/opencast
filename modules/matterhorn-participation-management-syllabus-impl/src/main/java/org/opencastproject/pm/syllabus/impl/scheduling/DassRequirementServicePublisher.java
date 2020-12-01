@@ -24,7 +24,6 @@ package org.opencastproject.pm.syllabus.impl.scheduling;
 import static org.opencastproject.util.OsgiUtil.getCfg;
 import static org.opencastproject.util.OsgiUtil.getOptCfg;
 import static org.opencastproject.util.osgi.SimpleServicePublisher.ServiceReg.reg;
-import static org.opencastproject.util.osgi.SimpleServicePublisher.registerService;
 
 import org.opencastproject.requirement.api.RequirementService;
 import org.opencastproject.requirement.impl.dass.AbstractDassRequirementService;
@@ -49,21 +48,22 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
   /** The logger */
   private static final Logger logger = LoggerFactory.getLogger(DassRequirementServicePublisher.class);
 
-@Override
+  @Override
   public SimpleServicePublisher.ServiceReg registerService(Dictionary p, ComponentContext cc) throws ConfigurationException {
-    try {
-      final String identity = getOptCfg(p, "db.identity").getOrElse("dass");
-      final String driver = getOptCfg(p, "db.driver").getOrElse("com.mysql.jdbc.Driver");
-      final String url = getOptCfg(p, "db.url").orError(new ConfigurationException("db.url", "DASS database URL not specified")).get();
-      final String user = getCfg(p, "db.user");
-      final String pwd = getCfg(p, "db.password");
+    final String identity = getOptCfg(p, "db.identity").getOrElse("dass");
+    final String driver = getOptCfg(p, "db.driver").getOrElse("net.sourceforge.jtds.jdbc.Driver");
+    final String url = getCfg(p, "db.url");
+    final String user = getCfg(p, "db.user");
+    final String pwd = getCfg(p, "db.password");
 
+    try {
       final ComboPooledDataSource dataSource = new ComboPooledDataSource();
       dataSource.setDescription(identity);
       dataSource.setDriverClass(driver);
       dataSource.setJdbcUrl(url);
       dataSource.setUser(user);
       dataSource.setPassword(pwd);
+
       logger.info("Setting up DASS Database connection");
 
       try {
