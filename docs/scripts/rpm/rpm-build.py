@@ -314,7 +314,6 @@ gitHashShort = os.popen("git log -1 --pretty=format:\"%h\"").read()
 
 # Create a recent changelog
 today = datetime.date.today()
-since = today - datetime.timedelta(days=changelogPeriod)
 gitLog = os.popen('git log -n ' + str(changelogNumber) + ' --no-merges --pretty="format:- %ci %h \"%s\""').read()
 changelog = today.strftime("* %a %b %d %Y") + " MediaTechnologies <podcast-tech@manchester.ac.uk> - " + projectVersion + "\n" + gitLog
 
