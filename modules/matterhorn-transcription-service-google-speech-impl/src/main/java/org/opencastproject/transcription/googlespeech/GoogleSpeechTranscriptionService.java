@@ -1028,8 +1028,14 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
             final ResultSet result = archive.findForAdministrativeRead(q, httpMediaPackageElementProvider.getUriRewriter());
 
             if (result.getItems().isEmpty()) {
-              // Media package not archived yet? Skip until next time.
-              logger.warn("Media package {} has not been archived yet. Skipped.", mpId);
+              if (j.getDateCreated().getTime() + j.getTrackDuration()
+                      + (completionCheckBuffer + maxProcessingSeconds) * 1000 > System.currentTimeMillis()) {
+                // Media package not archived but still within completion time? Skip until next time.
+                logger.warn("Media package {} has not been archived yet. Skipped.", mpId);
+              } else {
+                // Close transcription job and email admin
+                cancelTranscription(jobId, "Transcription ERROR", "Transcription job canceled, archived mediapackage not found");
+              }
               continue;
             }
 
