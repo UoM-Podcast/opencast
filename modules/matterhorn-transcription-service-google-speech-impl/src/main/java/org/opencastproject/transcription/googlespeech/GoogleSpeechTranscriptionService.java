@@ -579,12 +579,12 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
           JSONParser jsonParser = new JSONParser();
           JSONObject jsonObject = (JSONObject) jsonParser.parse(jsonString);
           Boolean jobDone = (Boolean) jsonObject.get("done");
-          if (jobDone) {
-            resultsArray = getTranscriptionResult(jsonObject);
-          }
           GoogleSpeechTranscriptionJobControl jc = database.findByJob(jobId);
           if (jc != null) {
             mpId = jc.getMediaPackageId();
+          }
+          if (jobDone) {
+            resultsArray = getTranscriptionResult(jsonObject);
           }
           logger.info("Recognitions job {} has been found, completed status {}", jobId, jobDone.toString());
           EntityUtils.consume(entity);
@@ -610,6 +610,8 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     } catch (TranscriptionServiceException e) {
       throw e;
     } catch (Exception e) {
+      // Cancel the job and inform admin
+      cancelTranscription(jobId, "Transcription ERROR", "Transcription job canceled due to errors");
       String msg = String.format("Exception when calling the recognitions endpoint for media package %s, job id %s",
               mpId, jobId);
       logger.warn(String.format(msg, mpId, jobId), e);
@@ -868,6 +870,24 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
 
   private String buildResultsFileName(String jobId) {
     return PathSupport.toSafeName(jobId + ".json");
+  }
+
+  private void cancelTranscription(String jobId, String subject, String message) {
+    try {
+      database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.Canceled.name());
+      String mpId = database.findByJob(jobId).getMediaPackageId();
+      try {
+        // Delete file stored on Google storage
+        String token = getRefreshAccessToken();
+        deleteStorageFile(mpId, token);
+      } catch (Exception ex) {
+        logger.warn(String.format("ERROR - could not delete file %s.flac from Google cloud storage", mpId), ex);
+      }
+      // Send notification email
+      sendEmail(subject, String.format("%s(media package %s, job id %s).", message, mpId, jobId));
+    } catch (Exception e) {
+      logger.error(String.format(" ERROR - while deleting transcription job: %s", jobId), e);
+    }
   }
 
   public void setServiceRegistry(ServiceRegistry serviceRegistry) {
