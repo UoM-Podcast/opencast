@@ -610,8 +610,10 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
     } catch (TranscriptionServiceException e) {
       throw e;
     } catch (Exception e) {
-      // Cancel the job and inform admin
-      cancelTranscription(jobId, "Transcription ERROR", "Transcription job canceled due to errors");
+      if (hasTranscriptionRequestExpired(jobId)) {
+        // Cancel the job and inform admin
+        cancelTranscription(jobId, "Transcription ERROR", "Transcription job canceled due to errors");
+      }
       String msg = String.format("Exception when calling the recognitions endpoint for media package %s, job id %s",
               mpId, jobId);
       logger.warn(String.format(msg, mpId, jobId), e);
@@ -881,13 +883,26 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
         String token = getRefreshAccessToken();
         deleteStorageFile(mpId, token);
       } catch (Exception ex) {
-        logger.warn(String.format("ERROR - could not delete file %s.flac from Google cloud storage", mpId), ex);
+        logger.warn(String.format("could not delete file %s.flac from Google cloud storage", mpId), ex);
       }
       // Send notification email
       sendEmail(subject, String.format("%s(media package %s, job id %s).", message, mpId, jobId));
     } catch (Exception e) {
-      logger.error(String.format(" ERROR - while deleting transcription job: %s", jobId), e);
+      logger.error(String.format("ERROR while deleting transcription job: %s", jobId), e);
     }
+  }
+
+  private boolean hasTranscriptionRequestExpired(String jobId) {
+    try {
+      // set a time limit based on video duration and maximum processing time
+      if (database.findByJob(jobId).getDateCreated().getTime() + database.findByJob(jobId).getTrackDuration()
+              + (completionCheckBuffer + maxProcessingSeconds) * 1000 < System.currentTimeMillis()) {
+        return true;
+      }
+    } catch (Exception e) {
+      logger.error(String.format("ERROR while calculating transcription request expiration for job: %s", jobId), e);
+    }
+    return false;
   }
 
   public void setServiceRegistry(ServiceRegistry serviceRegistry) {
@@ -985,8 +1000,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
               try {
                 if (!getAndSaveJobResults(jobId)) {
                   // Job still running, not finished, so check if it should have finished more than N seconds ago
-                  if (j.getDateCreated().getTime() + j.getTrackDuration()
-                          + (completionCheckBuffer + maxProcessingSeconds) * 1000 < System.currentTimeMillis()) {
+                  if (hasTranscriptionRequestExpired(jobId)) {
                     // Processing for too long, mark job as canceled and don't check anymore
                     database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.Canceled.name());
                     // Delete file stored on Google storage
@@ -1028,8 +1042,7 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
             final ResultSet result = archive.findForAdministrativeRead(q, httpMediaPackageElementProvider.getUriRewriter());
 
             if (result.getItems().isEmpty()) {
-              if (j.getDateCreated().getTime() + j.getTrackDuration()
-                      + (completionCheckBuffer + maxProcessingSeconds) * 1000 > System.currentTimeMillis()) {
+              if (!hasTranscriptionRequestExpired(jobId)) {
                 // Media package not archived but still within completion time? Skip until next time.
                 logger.warn("Media package {} has not been archived yet. Skipped.", mpId);
               } else {
