@@ -343,8 +343,8 @@ public abstract class AbstractEmailSenderService implements EmailSender {
         break;
       case TEST_FILE:
         final File dir = new File(((Mode.TestFileMode) getMode()).getDirectory());
-        if (!dir.isDirectory()) {
-          logger.error(format("%s does not exist or is not a directory", dir));
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+          logger.error(format("Cannot create directory %s", dir));
         } else {
           final File out = new File(dir, asFileName(UUID.randomUUID().toString() + "-"
                   + mail.getRecipients().get(0).toString())

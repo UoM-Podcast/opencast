@@ -20,6 +20,9 @@ node/
 */nbproject/*
 */nb-configuration.xml
 
+# VSCode
+.vscode
+
 # ingore OS artifacts
 .DS_Store
 
@@ -41,9 +44,6 @@ docs/guides/*/site
 Makefile
 /modules/matterhorn-admin-ui-ng/bower_components/
 /modules/matterhorn-edit-ui-ng/bower_components/
-
-# Ignore OS artifacts
-.DS_Store
 
 # Ignore phantomjs logs
 phantomjsdriver.log

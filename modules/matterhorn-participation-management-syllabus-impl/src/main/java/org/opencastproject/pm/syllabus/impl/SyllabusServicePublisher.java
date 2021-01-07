@@ -61,17 +61,17 @@ public class SyllabusServicePublisher extends SimpleServicePublisher {
 
   @Override
   public ServiceReg registerService(Dictionary p, ComponentContext cc) throws ConfigurationException {
+    final String identity = getOptCfg(p, "db.identity").getOrElse("Syllabus+");
+    final String vendor = getOptCfg(p, "db.vendor").getOrElse("SQLServer");
+    final String driver = getOptCfg(p, "db.driver").getOrElse("net.sourceforge.jtds.jdbc.Driver");
+    final String url = getCfg(p, "db.url");
+    final String user = getCfg(p, "db.user");
+    final String pwd = getCfg(p, "db.password");
+    final Option<String> schema = getOptCfg(p, "db.schema");
+
+    logger.info("Set up connection to Syllabus database at {} with user {}", url, user);
+
     try {
-      final String identity = getOptCfg(p, "db.identity").getOrElse("Syllabus+");
-      final String vendor = getOptCfg(p, "db.vendor").getOrElse("SQLServer");
-      final String driver = getOptCfg(p, "db.driver").getOrElse("net.sourceforge.jtds.jdbc.Driver");
-      final String url = getOptCfg(p, "db.url").orError(new ConfigurationException("db.url", "Syllabus+ database URL not specified")).get();
-      final String user = getCfg(p, "db.user");
-      final String pwd = getCfg(p, "db.password");
-      final Option<String> schema = getOptCfg(p, "db.schema");
-
-      logger.info("Set up connection to Syllabus database at {} with user {}", url, user);
-
       final ComboPooledDataSource ds = new ComboPooledDataSource();
       ds.setDescription(identity);
       ds.setDriverClass(driver);

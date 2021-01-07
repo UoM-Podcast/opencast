@@ -1102,6 +1102,29 @@ public class ParticipationManagementDatabaseImpl implements ParticipationManagem
   }
 
   @Override
+  public List<Course> findCoursesByCourseKey(String courseKey)  throws ParticipationManagementDatabaseException {
+    EntityManager em = null;
+    try {
+      em = emf.createEntityManager();
+      List<Course> courses = new ArrayList<Course>();
+      Query q = em.createNamedQuery("Course.findByCourseKey");
+      q.setParameter("courseKey", courseKey);
+
+      List<CourseDto> courseDtos = q.getResultList();
+      for (CourseDto dto : courseDtos) {
+        courses.add(dto.toCourse());
+      }
+      return courses;
+    } catch (Exception e) {
+      logger.error("Could not get courses: {}", ExceptionUtils.getStackTrace(e));
+      throw new ParticipationManagementDatabaseException(e);
+    } finally {
+      if (em != null)
+        em.close();
+    }
+  }
+
+  @Override
   public List<CaptureAgent> findCaptureAgentsByCourse(Course course) throws ParticipationManagementDatabaseException {
     EntityManager em = null;
     try {

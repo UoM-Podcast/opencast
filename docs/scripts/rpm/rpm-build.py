@@ -1,12 +1,10 @@
 #!/usr/bin/python
 #
 
-#
 # This script is run after the Maven build has completed. As a result, all
 # build artifacts are already in place (${workspace}/lib/*). The script
 # then selects based on input parameters the artifacts that are to be included
 # in the resulting RPM and places them into a directory under /var/tmp.
-#
 
 from stat import S_ISREG, ST_CTIME, ST_MODE
 
@@ -42,8 +40,8 @@ noCleanup = False
 # The number of artifacts to keep in the rpm repository
 rpmHistorySize = 3
 
-# the number of date for which to create Changelog from
-changelogPeriod = 100
+# the number of commits to create Changelog from
+changelogNumber = 20
 
 # The log level
 logLevel = logging.INFO
@@ -118,7 +116,7 @@ def prepareSpecFile(specTemplate, specFinal, version, release, changelog):
     specFinalContents = specFinalContents.replace("CHANGE_ME_VERSION", version.replace("-", "."))
     specFinalContents = specFinalContents.replace("CHANGE_ME_RELEASE", release)
     specFinalContents = specFinalContents.replace("CHANGE_ME_CHANGELOG", changelog)
-    
+
     logger.info("Moving the updated rpm spec file to " + specFinal)
     # Parse the spec file
     f = open(specFinal, "w")
@@ -316,8 +314,7 @@ gitHashShort = os.popen("git log -1 --pretty=format:\"%h\"").read()
 
 # Create a recent changelog
 today = datetime.date.today()
-since = today - datetime.timedelta(days=changelogPeriod)
-gitLog = os.popen('git log --since ' + since.isoformat() + ' --no-merges --pretty="format:- %ci %h \"%s\""').read()
+gitLog = os.popen('git log -n ' + str(changelogNumber) + ' --no-merges --pretty="format:- %ci %h \"%s\""').read()
 changelog = today.strftime("* %a %b %d %Y") + " MediaTechnologies <podcast-tech@manchester.ac.uk> - " + projectVersion + "\n" + gitLog
 
 # Determine the database schema's build version

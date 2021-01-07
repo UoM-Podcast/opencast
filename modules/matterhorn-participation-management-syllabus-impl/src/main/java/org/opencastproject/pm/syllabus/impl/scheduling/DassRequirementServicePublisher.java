@@ -26,7 +26,6 @@ import static org.opencastproject.util.OsgiUtil.getOptCfgAsBoolean;
 import static org.opencastproject.util.data.Collections.dict;
 import static org.opencastproject.util.data.Tuple.tuple;
 import static org.opencastproject.util.osgi.SimpleServicePublisher.ServiceReg.reg;
-import static org.opencastproject.util.osgi.SimpleServicePublisher.registerService;
 
 import static org.osgi.framework.Constants.SERVICE_DESCRIPTION;
 import static org.osgi.framework.Constants.SERVICE_PID;
@@ -87,23 +86,25 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
 
       if (local) {
         final String identity = getOptCfg(p, "db.identity").getOrElse("dass");
-        final String driver = getOptCfg(p, "db.driver").getOrElse("com.mysql.jdbc.Driver");
+        final String driver = getOptCfg(p, "db.driver").getOrElse("net.sourceforge.jtds.jdbc.Driver");
         final String url = getOptCfg(p, "db.url").orError(new ConfigurationException("db.url", "DASS database URL not specified")).get();
         final String user = getCfg(p, "db.user");
         final String pwd = getCfg(p, "db.password");
+
         final ComboPooledDataSource dataSource = new ComboPooledDataSource();
         dataSource.setDescription(identity);
         dataSource.setDriverClass(driver);
         dataSource.setJdbcUrl(url);
         dataSource.setUser(user);
         dataSource.setPassword(pwd);
+
         logger.info("Setting up DASS Database connection");
 
         try {
           dataSource.getConnection();
           logger.info("Connected to DASS database");
         } catch (SQLException e) {
-          logger.error("Cannot connect to DASS database");
+          logger.error("Cannot connect to DASS database with url {} and user {}", url, user);
           dataSource.close();
           throw e;
         }
@@ -119,6 +120,8 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
             return providerName;
           }
         };
+
+
       } else {
         String remoteEndpoint = getOptCfg(p, REMOTE_ENDPOINT_PROPERTY).getOrElse(REMOTE_ENDPOINT_DEFAULT);
 
