@@ -295,7 +295,9 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   }
 
   public void addRemoteElementStore(RemoteElementStore elementStore) {
-    remoteStores.put(elementStore.getStoreType(), elementStore);
+    if (elementStore.getStoreType() != ElementStore.DISABLED_STORE_TYPE) {
+      remoteStores.put(elementStore.getStoreType(), elementStore);
+    }
   }
 
   public void removeRemoteElementStore(RemoteElementStore elementStore) {
