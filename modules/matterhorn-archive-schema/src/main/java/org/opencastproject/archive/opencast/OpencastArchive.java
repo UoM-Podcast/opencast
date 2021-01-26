@@ -287,6 +287,19 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
     }
   }
 
+  @Override
+  public boolean delete(final String mediaPackageId) throws ArchiveException {
+    // Try to delete archive from active remotes
+    DeletionSelector selector = DeletionSelector.delAll(getOrgId(), mediaPackageId);
+    for (Map.Entry<String, RemoteElementStore> remote: remoteStores.entrySet()) {
+      logger.info("Attempting to remove mediapackage {} from remote store {}", mediaPackageId, remote.getKey());
+      remote.getValue().delete(selector);
+    }
+
+    // Remove archive from opencast
+    return super.delete(mediaPackageId);
+  }
+
   /* End Remote Asset Storage Overrides */
 
   /* Begin New Remote Asset Storage Code */
