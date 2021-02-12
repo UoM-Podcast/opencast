@@ -30,6 +30,7 @@ import org.opencastproject.archive.aws.persistence.AwsAssetMapping;
 import org.opencastproject.archive.base.StoragePath;
 import org.opencastproject.archive.base.storage.AbstractRemoteElementStore;
 import org.opencastproject.archive.base.storage.DeletionSelector;
+import org.opencastproject.archive.base.storage.ElementStore;
 import org.opencastproject.archive.base.storage.ElementStoreException;
 import org.opencastproject.archive.base.storage.Source;
 import org.opencastproject.util.ConfigurationException;
@@ -61,7 +62,7 @@ public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
   protected AwsAssetDatabase database;
 
   /** The store type e.g. aws (long-term), or other implementations */
-  protected String storeType = null;
+  protected String storeType = ElementStore.DISABLED_STORE_TYPE;
   /** The AWS region */
   protected String regionName = null;
 

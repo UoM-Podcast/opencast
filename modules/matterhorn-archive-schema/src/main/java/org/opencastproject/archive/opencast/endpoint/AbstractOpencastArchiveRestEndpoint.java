@@ -25,6 +25,8 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static org.opencastproject.util.RestUtil.R.badRequest;
+import static org.opencastproject.util.RestUtil.R.noContent;
+import static org.opencastproject.util.RestUtil.R.notFound;
 import static org.opencastproject.util.RestUtil.R.ok;
 import static org.opencastproject.util.data.Option.none;
 import static org.opencastproject.util.data.Option.option;
@@ -41,6 +43,7 @@ import org.opencastproject.archive.opencast.OpencastQuery;
 import org.opencastproject.archive.opencast.OpencastResultSet;
 import org.opencastproject.job.api.JaxbJob;
 import org.opencastproject.job.api.Job;
+import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.RestUtil;
 import org.opencastproject.util.data.Function;
 import org.opencastproject.util.data.Function0;
@@ -61,6 +64,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
@@ -205,6 +209,26 @@ public abstract class AbstractOpencastArchiveRestEndpoint extends ArchiveRestEnd
         return Response.ok(convert(sr))
                 .type(RestUtil.getResponseFormat(format))
                 .build();
+      }
+    });
+  }
+
+  @DELETE
+  @Path("delete/{id}")
+  @RestQuery(name = "remove",
+             description = "Remove an episode from the archive.",
+             pathParameters = {@RestParameter(name = "id", isRequired = true,
+                                              type = RestParameter.Type.STRING, description = "The media package ID to remove from the archive.")},
+             reponses = {@RestResponse(description = "The mediapackage was removed, no content to return.", responseCode = HttpServletResponse.SC_NO_CONTENT),
+                     @RestResponse(description = "There has been an internal error and the mediapackage could not be deleted", responseCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR)},
+             returnDescription = "No content is returned.")
+  public Response delete(@PathParam("id") final String mediaPackageId) {
+    return handleException(new Function0.X<Response>() {
+      @Override public Response xapply() throws NotFoundException {
+        if (mediaPackageId != null && getArchive().delete(mediaPackageId))
+          return noContent();
+        else
+          return notFound();
       }
     });
   }
