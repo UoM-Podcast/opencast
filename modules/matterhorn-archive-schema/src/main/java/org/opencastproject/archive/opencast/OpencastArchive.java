@@ -381,9 +381,10 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         logger.debug("Done moving manifest for {} from {} to {}", ep, ep.getStoreId(), targetStoreId);
       } catch (IOException | NotFoundException | ArchiveException e) {
         //Rollback the action?
-        logger.error("Error moving elements or manifest for {} from {} to {}", ep, ep.getStoreId(), targetStoreId);
+        logger.error("Error moving elements or manifest for {} from {} to {}: {}", ep, ep.getStoreId(), targetStoreId, e.getMessage());
         deleteElementsFromStore(ep, targetStore);
-        logger.error("Deleting elements of {} from {}", ep, targetStoreId);
+        logger.error("Deleting any elements of {} from {}", ep, targetStoreId);
+        return;
       }
       getPersistence().setStorageLocation(ep.getMediaPackage().getIdentifier().toString(), ep.getVersion(), targetStoreId);
       logger.debug("Setting storage location for {} to {}", ep, targetStoreId);
