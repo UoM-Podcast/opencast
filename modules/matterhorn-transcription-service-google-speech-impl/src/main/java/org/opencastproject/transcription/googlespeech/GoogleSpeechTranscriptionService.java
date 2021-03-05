@@ -1024,25 +1024,30 @@ public class GoogleSpeechTranscriptionService extends AbstractJobProducer implem
                   // Job still running, not finished, so check if it should have finished more than N seconds ago
                   if (hasTranscriptionRequestExpired(jobId)) {
                     // Processing for too long, mark job as canceled and don't check anymore
-                    database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.Canceled.name());
-                    // Delete file stored on Google storage
-                    String token = getRefreshAccessToken();
-                    deleteStorageFile(mpId, token);
-                    // Send notification email
-                    sendEmail("Transcription ERROR", String.format(
-                            "Transcription job was in processing state for too long and was marked as canceled (media package %s, job id %s).",
-                            mpId, jobId));
+                    // Job should have been canceled otherwise cancel it
+                    if (!GoogleSpeechTranscriptionJobControl.Status.Canceled.equals(j.getStatus())) {
+                      database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.Canceled.name());
+                      // Delete file stored on Google storage
+                      String token = getRefreshAccessToken();
+                      deleteStorageFile(mpId, token);
+                      // Send notification email
+                      sendEmail("Transcription ERROR", String.format(
+                              "Transcription job was in processing state for too long and was marked as canceled (media package %s, job id %s).",
+                              mpId, jobId));
+                    }
                   }
                   // else Job still running, not finished
                   continue;
                 }
               } catch (TranscriptionServiceException e) {
                 if (e.getCode() == 404) {
-                  // Job not found there, update job state to canceled
-                  database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.Canceled.name());
-                  // Send notification email
-                  sendEmail("Transcription ERROR",
-                          String.format("Transcription job was not found (media package %s, job id %s).", mpId, jobId));
+                  // Job not found there, update job state to canceled if not already the case
+                  if (!GoogleSpeechTranscriptionJobControl.Status.Canceled.equals(j.getStatus())) {
+                    database.updateJobControl(jobId, GoogleSpeechTranscriptionJobControl.Status.Canceled.name());
+                    // Send notification email
+                    sendEmail("Transcription ERROR",
+                            String.format("Transcription job was not found (media package %s, job id %s).", mpId, jobId));
+                  }
                 }
                 continue; // Skip this one, exception was already logged
               } catch (IOException ex) {
