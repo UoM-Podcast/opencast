@@ -150,12 +150,15 @@ public class GoogleSpeechTranscriptionServiceStorage {
         case HttpStatus.SC_NO_CONTENT: // 204
           logger.info("Media file: {} deleted from Google storage", objectName);
           break;
+        case HttpStatus.SC_NOT_FOUND: // 404
+          logger.warn("Media file: {} not found on Google storage, it may have already been deleted", objectName);
+          break;
         default:
-          logger.warn("Unable to delete meida file: {} from Google Storage", objectName);
+          logger.warn("Unable to delete media file: {} from Google Storage, error code: {}", objectName, code);
           break;
       }
     } catch (Exception e) {
-      logger.warn("Unable to delete meida file: {} from Google Storage", objectName, e);
+      logger.warn("Unable to delete media file: {} from Google Storage", objectName, e);
     } finally {
       try {
         httpClient.close();
