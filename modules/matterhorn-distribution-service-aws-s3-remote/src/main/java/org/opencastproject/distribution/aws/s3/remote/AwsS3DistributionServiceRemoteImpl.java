@@ -61,6 +61,8 @@ public class AwsS3DistributionServiceRemoteImpl extends RemoteBase implements Aw
   private static final String PARAM_ELEMENT_ID = "elementId";
   private static final String PARAM_FILENAME = "fileName";
   private static final String PARAM_CHECK_AVAILABILITY = "checkAvailability";
+  private static final String PARAM_PRESERVCE_REFERENCE = "preserveReference";
+  private static final String PARAM_MAKE_PUBLIC = "makePublic";
 
   private final Gson gson = new Gson();
 
@@ -94,27 +96,36 @@ public class AwsS3DistributionServiceRemoteImpl extends RemoteBase implements Aw
 
   @Override
   public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability,
-          boolean ignore)
+          boolean makePublic)
           throws DistributionException, MediaPackageException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false, ignore);
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false, makePublic);
   }
 
   @Override
   public Job distribute(String channelId, final MediaPackage mediaPackage, Set<String> elementIds,
-          boolean checkAvailability)
-          throws DistributionException {
+      boolean checkAvailability) throws DistributionException {
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false, false);
+  }
+
+  @Override
+  public Job distribute(String channelId, MediaPackage mediaPackage, Set<String> elementIds,
+      boolean checkAvailability, boolean preserveReference, boolean makePublic)
+      throws DistributionException {
     logger.info(format("Distributing %s elements to %s@%s", elementIds.size(), channelId, distributionChannel));
     final HttpPost req = post(param(PARAM_CHANNEL_ID, channelId),
-            param(PARAM_MEDIAPACKAGE, MediaPackageParser.getAsXml(mediaPackage)),
-            param(PARAM_ELEMENT_ID, gson.toJson(elementIds)),
-            param(PARAM_CHECK_AVAILABILITY, Boolean.toString(checkAvailability)));
+        param(PARAM_MEDIAPACKAGE, MediaPackageParser.getAsXml(mediaPackage)),
+        param(PARAM_ELEMENT_ID, gson.toJson(elementIds)),
+        param(PARAM_CHECK_AVAILABILITY, Boolean.toString(checkAvailability)),
+        param(PARAM_PRESERVCE_REFERENCE, Boolean.toString(preserveReference)),
+        param(PARAM_MAKE_PUBLIC, Boolean.toString(makePublic)));
+
     for (Job job : join(runRequest(req, jobFromHttpResponse))) {
       return job;
     }
-    throw new DistributionException(format("Unable to distribute '%s' elements of "
-                    + "mediapackage '%s' using a remote destribution service proxy",
+    throw new DistributionException(
+        format("Unable to distribute '%s' elements of " + "mediapackage '%s' using a remote destribution service proxy",
             elementIds.size(), mediaPackage.getIdentifier().toString()));
   }
 
@@ -164,12 +175,5 @@ public class AwsS3DistributionServiceRemoteImpl extends RemoteBase implements Aw
     throw new DistributionException(format("Unable to restore element '%s' of "
             + "mediapackage '%s' using a remote destribution service proxy", elementId, mediaPackage.getIdentifier()
             .toString()));
-  }
-
-  @Override
-  public Job distribute(String pubChannelId, MediaPackage mediaPackage, Set<String> downloadIds,
-    boolean checkAvailability, boolean preserveReference, boolean ignore) throws DistributionException, MediaPackageException {
-    throw new UnsupportedOperationException("Not supported yet.");
-  //stub function
   }
 }

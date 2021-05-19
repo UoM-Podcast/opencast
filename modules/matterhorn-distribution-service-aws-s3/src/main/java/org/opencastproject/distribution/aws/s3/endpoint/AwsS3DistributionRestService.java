@@ -111,16 +111,21 @@ public class AwsS3DistributionRestService extends AbstractJobProducerEndpoint {
           @RestParameter(name = "mediapackage", isRequired = true, description = "The mediapackage", type = Type.TEXT),
           @RestParameter(name = "channelId", isRequired = true, description = "The publication channel ID", type = Type.TEXT),
           @RestParameter(name = "elementId", isRequired = true, description = "The element to distribute", type = Type.STRING),
-          @RestParameter(name = "checkAvailability", isRequired = false, description = "If the service should try to access the distributed element", type = Type.BOOLEAN) }, reponses = { @RestResponse(responseCode = SC_OK, description = "An XML representation of the distribution job") })
+          @RestParameter(name = "checkAvailability", isRequired = false, description = "If the service should try to access the distributed element", type = Type.BOOLEAN),
+          @RestParameter(name = "preserveReference", isRequired = false, description = "", type = Type.BOOLEAN),
+          @RestParameter(name = "makePublic", isRequired = false, description = "If the elemement is publicly readable", type = Type.BOOLEAN) },
+          reponses = { @RestResponse(responseCode = SC_OK, description = "An XML representation of the distribution job") })
   public Response distribute(@FormParam("mediapackage") String mediaPackageXml,
           @FormParam("channelId") String channelId, @FormParam("elementId") String elementId,
-          @DefaultValue("true") @FormParam("checkAvailability") boolean checkAvailability) throws Exception {
+          @DefaultValue("true") @FormParam("checkAvailability") boolean checkAvailability,
+          @DefaultValue("false") @FormParam("preserveReference") boolean preserveReference,
+          @DefaultValue("false") @FormParam("makePublic") boolean makePublic) throws Exception {
     Job job = null;
     try {
       Gson gson = new Gson();
       Set<String> setElementIds = gson.fromJson(elementId, new TypeToken<Set<String>>() { }.getType());
       MediaPackage mediapackage = MediaPackageParser.getFromXml(mediaPackageXml);
-      job = service.distribute(channelId, mediapackage, setElementIds, checkAvailability);
+      job = service.distribute(channelId, mediapackage, setElementIds, checkAvailability, preserveReference, makePublic);
     } catch (IllegalArgumentException e) {
       logger.debug("Unable to distribute element: {}", e.getMessage());
       return status(Status.BAD_REQUEST).build();
