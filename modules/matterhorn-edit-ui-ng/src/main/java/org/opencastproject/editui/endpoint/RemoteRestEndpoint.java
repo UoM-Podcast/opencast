@@ -25,7 +25,9 @@ import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.security.api.TrustedHttpClientException;
 import org.opencastproject.security.util.SecurityUtil;
-import org.opencastproject.systems.MatterhornConstants;
+import org.opencastproject.serviceregistry.api.ServiceRegistration;
+import org.opencastproject.serviceregistry.api.ServiceRegistry;
+import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -56,13 +58,28 @@ import javax.ws.rs.core.Response.Status;
  * @author Tobias M Schiebeck
  */
 abstract class RemoteRestEndpoint {
-
-  /**
-   * The logger
-   */
   private static final Logger logger = LoggerFactory.getLogger(RemoteRestEndpoint.class);
 
+  private ServiceRegistry serviceRegistry;
+  private String adminHost;
+
   public abstract SecurityService getSecurityService();
+
+  public ServiceRegistry getServiceRegistry() {
+    return serviceRegistry;
+  }
+
+  public void setAdminHostFromRegistry(ServiceRegistry serviceRegistry) {
+    try {
+      List<ServiceRegistration> regs = serviceRegistry.getServiceRegistrationsByType("org.opencastproject.adminui.endpoint.tools");
+      if (regs.size() > 0) {
+        adminHost = regs.get(0).getHost();
+      }
+    } catch (ServiceRegistryException e) {
+      logger.error("Can't set admin host", e.getMessage());
+    }
+    this.serviceRegistry = serviceRegistry;
+  }
 
   protected TrustedHttpClient trustedClient;
 
@@ -77,11 +94,18 @@ abstract class RemoteRestEndpoint {
   public Response forwardRequest(String uri, HttpServletRequest request, String json, List<BasicNameValuePair> params) {
     SecurityService secService = getSecurityService();
     Organization org = getSecurityService().getOrganization();
+    // FIXME: this should be set once at the implementation level
     secService.setUser(SecurityUtil.createSystemUser("admin", org));
     HttpResponse httpResponse = null;
     HttpRequestBase httpRequest = null;
     Response response = null;
-    String adminHost = org.getProperties().get(MatterhornConstants.ADMIN_URL_ORG_PROPERTY);
+
+    // There is a chance that adminHost is unset is this service starts before
+    // adminui.enpoint service is registered
+    if (adminHost.isEmpty()) {
+      setAdminHostFromRegistry(getServiceRegistry());
+    }
+
     String url = adminHost + uri;
     String sessionId = request.getRequestedSessionId();
     logger.debug("Forwarding request: {} {}", request.getMethod(), url);
