@@ -86,7 +86,7 @@ public class AwsS3DistributionServiceRemoteImpl extends RemoteBase implements Aw
 
   @Override
   public Job distribute(String channelId, MediaPackage mediaPackage, String elementId) throws DistributionException, MediaPackageException {
-    return distribute(channelId, mediaPackage, elementId, true);
+    return distribute(channelId, mediaPackage, elementId, false);
   }
 
    @Override
