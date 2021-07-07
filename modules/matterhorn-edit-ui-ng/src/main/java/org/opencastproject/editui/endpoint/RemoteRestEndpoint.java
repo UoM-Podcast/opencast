@@ -20,7 +20,6 @@
  */
 package org.opencastproject.editui.endpoint;
 
-import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.security.api.TrustedHttpClientException;
@@ -60,25 +59,34 @@ import javax.ws.rs.core.Response.Status;
 abstract class RemoteRestEndpoint {
   private static final Logger logger = LoggerFactory.getLogger(RemoteRestEndpoint.class);
 
+  private SecurityService securityService;
   private ServiceRegistry serviceRegistry;
   private String adminHost;
 
-  public abstract SecurityService getSecurityService();
-
-  public ServiceRegistry getServiceRegistry() {
-    return serviceRegistry;
+  private void useAdminUser() {
+    securityService.setUser(SecurityUtil.createSystemUser("admin", securityService.getOrganization()));
   }
 
-  public void setAdminHostFromRegistry(ServiceRegistry serviceRegistry) {
+  private String findAdminHost(ServiceRegistry serviceRegistry) {
     try {
       List<ServiceRegistration> regs = serviceRegistry.getServiceRegistrationsByType("org.opencastproject.adminui.endpoint.tools");
       if (regs.size() > 0) {
-        adminHost = regs.get(0).getHost();
+        return regs.get(0).getHost();
       }
     } catch (ServiceRegistryException e) {
       logger.error("Can't set admin host", e.getMessage());
     }
+    return new String();
+  }
+
+  public void setSecurityService(SecurityService securityService) {
+    this.securityService = securityService;
+    // NB can't create admin user until thread has a context
+  }
+
+  public void setServiceRegistry(ServiceRegistry serviceRegistry) {
     this.serviceRegistry = serviceRegistry;
+    adminHost = findAdminHost(serviceRegistry);
   }
 
   protected TrustedHttpClient trustedClient;
@@ -92,10 +100,6 @@ abstract class RemoteRestEndpoint {
   }
 
   public Response forwardRequest(String uri, HttpServletRequest request, String json, List<BasicNameValuePair> params) {
-    SecurityService secService = getSecurityService();
-    Organization org = getSecurityService().getOrganization();
-    // FIXME: this should be set once at the implementation level
-    secService.setUser(SecurityUtil.createSystemUser("admin", org));
     HttpResponse httpResponse = null;
     HttpRequestBase httpRequest = null;
     Response response = null;
@@ -103,8 +107,10 @@ abstract class RemoteRestEndpoint {
     // There is a chance that adminHost is unset is this service starts before
     // adminui.enpoint service is registered
     if (adminHost.isEmpty()) {
-      setAdminHostFromRegistry(getServiceRegistry());
+      adminHost = findAdminHost(serviceRegistry);
     }
+
+    useAdminUser();
 
     String url = adminHost + uri;
     String sessionId = request.getRequestedSessionId();
