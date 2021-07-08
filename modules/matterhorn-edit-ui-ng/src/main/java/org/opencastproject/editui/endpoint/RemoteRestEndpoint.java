@@ -71,10 +71,11 @@ abstract class RemoteRestEndpoint {
     try {
       List<ServiceRegistration> regs = serviceRegistry.getServiceRegistrationsByType("org.opencastproject.adminui.endpoint.tools");
       if (regs.size() > 0) {
+        logger.debug("Got host for org.opencastproject.adminui.endpoint.tools: {}", regs.get(0).getHost());
         return regs.get(0).getHost();
       }
     } catch (ServiceRegistryException e) {
-      logger.error("Can't set admin host", e.getMessage());
+      logger.error("Can't get host for org.opencastproject.adminui.endpoint.tools", e.getMessage());
     }
     return new String();
   }
@@ -104,8 +105,8 @@ abstract class RemoteRestEndpoint {
     HttpRequestBase httpRequest = null;
     Response response = null;
 
-    // There is a chance that adminHost is unset is this service starts before
-    // adminui.enpoint service is registered
+    // There is a chance that adminHost is unset if this service starts before
+    // adminui.enpoint service is registered (initial deployment)
     if (adminHost.isEmpty()) {
       adminHost = findAdminHost(serviceRegistry);
     }
