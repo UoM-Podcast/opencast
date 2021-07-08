@@ -21,7 +21,6 @@
 
 package org.opencastproject.editui.endpoint;
 
-import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.urlsigning.utils.UrlSigningServiceOsgiUtil;
 
 import org.osgi.service.cm.ConfigurationException;
@@ -35,20 +34,8 @@ import javax.ws.rs.Path;
 @Path("/")
 public class OsgiEventEndpoint extends AbstractEventEndpoint implements ManagedService {
 
-  private SecurityService securityService;
-
   private long expireSeconds = UrlSigningServiceOsgiUtil.DEFAULT_URL_SIGNING_EXPIRE_DURATION;
   private Boolean signWithClientIP = UrlSigningServiceOsgiUtil.DEFAULT_SIGN_WITH_CLIENT_IP;
-
-  @Override
-  public SecurityService getSecurityService() {
-    return securityService;
-  }
-
-  /** OSGi DI. */
-  public void setSecurityService(SecurityService securityService) {
-    this.securityService = securityService;
-  }
 
   @Override
   public void updated(@SuppressWarnings("rawtypes") Dictionary properties) throws ConfigurationException {

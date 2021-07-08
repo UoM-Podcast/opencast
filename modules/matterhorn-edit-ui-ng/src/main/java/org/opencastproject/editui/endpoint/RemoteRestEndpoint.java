@@ -20,12 +20,13 @@
  */
 package org.opencastproject.editui.endpoint;
 
-import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.security.api.TrustedHttpClientException;
 import org.opencastproject.security.util.SecurityUtil;
-import org.opencastproject.systems.MatterhornConstants;
+import org.opencastproject.serviceregistry.api.ServiceRegistration;
+import org.opencastproject.serviceregistry.api.ServiceRegistry;
+import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -56,13 +57,38 @@ import javax.ws.rs.core.Response.Status;
  * @author Tobias M Schiebeck
  */
 abstract class RemoteRestEndpoint {
-
-  /**
-   * The logger
-   */
   private static final Logger logger = LoggerFactory.getLogger(RemoteRestEndpoint.class);
 
-  public abstract SecurityService getSecurityService();
+  private SecurityService securityService;
+  private ServiceRegistry serviceRegistry;
+  private String adminHost;
+
+  private void useAdminUser() {
+    securityService.setUser(SecurityUtil.createSystemUser("admin", securityService.getOrganization()));
+  }
+
+  private String findAdminHost(ServiceRegistry serviceRegistry) {
+    try {
+      List<ServiceRegistration> regs = serviceRegistry.getServiceRegistrationsByType("org.opencastproject.adminui.endpoint.tools");
+      if (regs.size() > 0) {
+        logger.debug("Got host for org.opencastproject.adminui.endpoint.tools: {}", regs.get(0).getHost());
+        return regs.get(0).getHost();
+      }
+    } catch (ServiceRegistryException e) {
+      logger.error("Can't get host for org.opencastproject.adminui.endpoint.tools", e.getMessage());
+    }
+    return new String();
+  }
+
+  public void setSecurityService(SecurityService securityService) {
+    this.securityService = securityService;
+    // NB can't create admin user until thread has a context
+  }
+
+  public void setServiceRegistry(ServiceRegistry serviceRegistry) {
+    this.serviceRegistry = serviceRegistry;
+    adminHost = findAdminHost(serviceRegistry);
+  }
 
   protected TrustedHttpClient trustedClient;
 
@@ -75,13 +101,18 @@ abstract class RemoteRestEndpoint {
   }
 
   public Response forwardRequest(String uri, HttpServletRequest request, String json, List<BasicNameValuePair> params) {
-    SecurityService secService = getSecurityService();
-    Organization org = getSecurityService().getOrganization();
-    secService.setUser(SecurityUtil.createSystemUser("admin", org));
     HttpResponse httpResponse = null;
     HttpRequestBase httpRequest = null;
     Response response = null;
-    String adminHost = org.getProperties().get(MatterhornConstants.ADMIN_URL_ORG_PROPERTY);
+
+    // There is a chance that adminHost is unset if this service starts before
+    // adminui.enpoint service is registered (initial deployment)
+    if (adminHost.isEmpty()) {
+      adminHost = findAdminHost(serviceRegistry);
+    }
+
+    useAdminUser();
+
     String url = adminHost + uri;
     String sessionId = request.getRequestedSessionId();
     logger.debug("Forwarding request: {} {}", request.getMethod(), url);

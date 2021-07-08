@@ -20,7 +20,6 @@
  */
 package org.opencastproject.editui.endpoint;
 
-import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.urlsigning.utils.UrlSigningServiceOsgiUtil;
 import org.opencastproject.util.RestUtil.R;
 import org.opencastproject.util.doc.rest.RestParameter;
@@ -72,20 +71,6 @@ public class ToolsEndpoint extends RemoteRestEndpoint implements ManagedService 
   private long expireSeconds = UrlSigningServiceOsgiUtil.DEFAULT_URL_SIGNING_EXPIRE_DURATION;
 
   private Boolean signWithClientIP = UrlSigningServiceOsgiUtil.DEFAULT_SIGN_WITH_CLIENT_IP;
-
-  private SecurityService securityService;
-
-  /**
-   * OSGi DI
-   */
-  void setSecurityService(SecurityService securityService) {
-    this.securityService = securityService;
-  }
-
-  @Override
-  public SecurityService getSecurityService() {
-    return securityService;
-  }
 
   /**
    * OSGi callback if properties file is present

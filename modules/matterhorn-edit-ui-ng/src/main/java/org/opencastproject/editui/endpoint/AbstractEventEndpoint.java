@@ -25,7 +25,6 @@ import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 
 import org.opencastproject.rest.RestConstants;
-import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.systems.MatterhornConstants;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
@@ -82,8 +81,6 @@ public abstract class AbstractEventEndpoint extends RemoteRestEndpoint {
    * The default time before a piece of signed content expires. 2 Hours.
    */
   protected static final long DEFAULT_URL_SIGNING_EXPIRE_DURATION = 2 * 60 * 60;
-
-  public abstract SecurityService getSecurityService();
 
   /**
    * Default server URL
