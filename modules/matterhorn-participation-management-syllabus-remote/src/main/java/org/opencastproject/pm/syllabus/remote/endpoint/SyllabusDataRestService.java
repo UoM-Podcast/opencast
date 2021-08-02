@@ -164,10 +164,6 @@ public class SyllabusDataRestService {
   public Response findModuleActivityIdsByCourseKey(@QueryParam("coursekey") String courseKey) {
     List<String> ids = syllabusDataService.findModuleActivityIdsByCourseKey(courseKey);
 
-    if (ids.isEmpty()) {
-      return Response.status(Status.NOT_FOUND).build();
-    }
-
     try {
       return RemoteObjectUtil.writeObjectResponse(ids);
     } catch (IOException e) {
