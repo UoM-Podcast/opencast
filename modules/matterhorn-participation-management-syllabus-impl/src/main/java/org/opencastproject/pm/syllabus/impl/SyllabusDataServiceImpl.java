@@ -45,6 +45,7 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.List;
 
@@ -172,8 +173,12 @@ public class SyllabusDataServiceImpl implements ManagedService, SyllabusDataServ
       return syllabusService.findModuleActivityIdsByCourseKey(courseKey);
     } else {
       String url = client.getRemoteBaseAddress() + remoteEndpoint + "/modules/activities/ids?coursekey=" + courseKey;
-      final List<String> activityIds = RemoteObjectUtil.getResponseAsObject(client, url);
+      List<String> activityIds = RemoteObjectUtil.getResponseAsObject(client, url);
 
+      // Return the expected result if no activities found
+      if (activityIds == null) {
+        activityIds = new ArrayList<>();
+      }
       return activityIds;
     }
   }
