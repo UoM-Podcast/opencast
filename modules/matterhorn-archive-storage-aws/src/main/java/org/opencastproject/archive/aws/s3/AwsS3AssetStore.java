@@ -47,6 +47,7 @@ import com.amazonaws.services.s3.model.GetObjectTaggingRequest;
 import com.amazonaws.services.s3.model.GetObjectTaggingResult;
 import com.amazonaws.services.s3.model.ObjectTagging;
 import com.amazonaws.services.s3.model.RestoreObjectRequest;
+import com.amazonaws.services.s3.model.RestoreObjectResult;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.SetBucketVersioningConfigurationRequest;
 import com.amazonaws.services.s3.model.SetObjectTaggingRequest;
@@ -393,13 +394,15 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
   private void restoreGlacierObject(String objectName, Integer objectRestorePeriod, Boolean wait) {
     Boolean prevOngoingRestore = s3.getObjectMetadata(bucketName, objectName).getOngoingRestore();
+    RestoreObjectResult restoreResult;
 
     // Check the restoration status of the object.
-    if (prevOngoingRestore != null && !prevOngoingRestore) {
+    if (prevOngoingRestore == null || !prevOngoingRestore) {
       // if the object had already been restored the restore request will just
       // increase the expiration time
       RestoreObjectRequest requestRestore = new RestoreObjectRequest(bucketName, objectName, objectRestorePeriod);
-      s3.restoreObjectV2(requestRestore);
+      restoreResult = s3.restoreObjectV2(requestRestore);
+      logger.debug("Requesting restore result {}", restoreResult.toString());
     }
 
     if (s3.getObjectMetadata(bucketName, objectName).getRestoreExpirationTime() == null) {
