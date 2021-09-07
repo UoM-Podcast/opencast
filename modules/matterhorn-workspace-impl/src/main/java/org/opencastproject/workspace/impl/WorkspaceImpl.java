@@ -36,6 +36,7 @@ import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.data.Prelude.sleep;
 import static org.opencastproject.util.data.Tuple.tuple;
 
+import org.opencastproject.mediapackage.identifier.Id;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
 import org.opencastproject.util.FileSupport;
@@ -929,6 +930,25 @@ public final class WorkspaceImpl implements Workspace {
       }
     }
     logger.info("Finished cleanup of workspace");
+  }
+ @Override
+  public void cleanup(Id mediaPackageId) throws IOException {
+    cleanup(mediaPackageId, false);
+  }
+
+  @Override
+  public void cleanup(Id mediaPackageId, boolean filesOnly) throws IOException {
+    final File mediaPackageDir = workspaceFile(
+        WorkingFileRepository.MEDIAPACKAGE_PATH_PREFIX, mediaPackageId.toString());
+
+    if (filesOnly) {
+      logger.debug("Clean workspace media package directory {} (files only)", mediaPackageDir);
+      FileSupport.delete(mediaPackageDir, FileSupport.DELETE_FILES);
+    }
+    else {
+      logger.debug("Clean workspace media package directory {}", mediaPackageDir);
+      FileUtils.deleteDirectory(mediaPackageDir);
+    }
   }
 
   @Override

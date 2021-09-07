@@ -20,6 +20,7 @@
  */
 package org.opencastproject.workflow.handler.workflow;
 
+import org.opencastproject.mediapackage.identifier.Id;
 import org.opencastproject.util.FileSupport;
 import org.opencastproject.util.IoSupport;
 import org.opencastproject.util.NotFoundException;
@@ -155,6 +156,16 @@ public class UnitTestWorkspace implements Workspace {
   }
 
   @Override
+  public void cleanup(Id id) throws IOException {
+    throw new RuntimeException("Not supported yet.");
+  }
+
+  @Override
+  public void cleanup(Id id, boolean bln) throws IOException {
+    throw new RuntimeException("Not supported yet.");
+  }
+
+  @Override
   public Option<Long> getTotalSpace() {
     return Option.none();
   }
@@ -173,4 +184,5 @@ public class UnitTestWorkspace implements Workspace {
   public String rootDirectory() {
     return null;
   }
+
 }
