@@ -115,7 +115,7 @@ public class ScheduleFeederRunner {
   private final Cell<HashMap<String, String>> inputCANames;
   private final Scheduler scheduler;
 
-  private static SnapCountService snapCountService = null;
+  private SnapCountService snapCountService = null;
 
   public ScheduleFeederRunner(ScheduleFeederServiceImpl scheduleFeeder, SchedulerService schedulerService,
           ParticipationManagementDatabase participationManagementDB, ScheduleProvider scheduleProvider,
@@ -333,9 +333,15 @@ public class ScheduleFeederRunner {
           }
         });
         logger.info("Participation Management scheduling finished");
-      }
-      if (null != parent.snapCountService) {
-        parent.snapCountService.sendOptOutEmails();
+
+        if (null != parent.snapCountService) {
+          secCtx.runInContext(new Effect0() {
+            @Override
+            public void run() {
+              parent.snapCountService.sendOptOutEmails();
+            }
+          });
+        }
       }
     }
 
