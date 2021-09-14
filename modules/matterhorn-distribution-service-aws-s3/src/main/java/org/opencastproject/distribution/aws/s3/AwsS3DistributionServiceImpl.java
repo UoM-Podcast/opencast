@@ -252,11 +252,11 @@ public class AwsS3DistributionServiceImpl extends AbstractDistributionService im
    */
   @Override
   public Job distribute(String channelId, MediaPackage mediaPackage, String elementId, boolean checkAvailability,
-          boolean preserveReference)
+          boolean makePublic)
           throws DistributionException, MediaPackageException {
     Set<String> elementIds = new HashSet<String>();
     elementIds.add(elementId);
-    return distribute(channelId, mediaPackage, elementIds, checkAvailability, preserveReference, false);
+    return distribute(channelId, mediaPackage, elementIds, checkAvailability, false, makePublic);
   }
 
   /**
