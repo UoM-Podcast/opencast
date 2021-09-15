@@ -71,9 +71,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -132,20 +135,17 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
   /** Name of the configuration option that provides the target tags we should apply */
   public static final String TARGET_TAGS_PROPERTY = "target-tags";
 
-  /** Name of the configuration option that provides the number of events to create */
-  public static final String NUMBER_PROPERTY = "number-of-events";
-
-  /** Name of the configuration option that provides the maximum number of events to create */
-  public static final String MAX_NUMBER_PROPERTY = "max-number-of-events";
-
   /** Whether to actually use the number suffix (makes sense in conjunction with "set-series-id" */
   public static final String NO_SUFFIX = "no-suffix";
 
   /** The series ID that should be set on the copies (if unset, uses the same series) */
   public static final String SET_SERIES_ID = "set-series-id";
 
-  /** The default maximum number of events to create. Can be overridden. */
-  public static final int MAX_NUMBER_DEFAULT = 25;
+  /** The new title that should be set on the copies (if unset, uses the old title (copy-number-prefix)) */
+  public static final String SET_TITLE = "set-title";
+
+  /** The new startDate that should be set on the copies (if unset, uses the old startDate) */
+  public static final String SET_START_DATE = "set-start-date-time";
 
   /** The namespaces of the asset manager properties to copy. */
   public static final String PROPERTY_NAMESPACES_PROPERTY = "property-namespaces";
@@ -226,19 +226,10 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
     final List<String> configuredSourceTags = tagsAndFlavors.getSrcTags();
     final List<String> configuredTargetTags = tagsAndFlavors.getTargetTags();
     final boolean noSuffix = Boolean.parseBoolean(trimToEmpty(operation.getConfiguration(NO_SUFFIX)));
+    final String startDateString = trimToEmpty(operation.getConfiguration(SET_START_DATE));
     final String seriesId = trimToEmpty(operation.getConfiguration(SET_SERIES_ID));
-    final int numberOfEvents = Integer.parseInt(operation.getConfiguration(NUMBER_PROPERTY));
+    final String title = trimToEmpty(operation.getConfiguration(SET_TITLE));
     final String configuredPropertyNamespaces = trimToEmpty(operation.getConfiguration(PROPERTY_NAMESPACES_PROPERTY));
-    int maxNumberOfEvents = MAX_NUMBER_DEFAULT;
-
-    if (operation.getConfiguration(MAX_NUMBER_PROPERTY) != null) {
-      maxNumberOfEvents = Integer.parseInt(operation.getConfiguration(MAX_NUMBER_PROPERTY));
-    }
-
-    if (numberOfEvents > maxNumberOfEvents) {
-      throw new WorkflowOperationException("Number of events to create exceeds the maximum of "
-          + maxNumberOfEvents + ". Aborting.");
-    }
 
     SeriesInformation series = null;
     AccessControlList seriesAccessControl = null;
@@ -256,7 +247,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
       }
     }
 
-    logger.info("Creating {} new media packages from media package with id {}.", numberOfEvents,
+    logger.info("Creating new media package from media package with id {}.",
         mediaPackage.getIdentifier());
 
     final String[] propertyNamespaces = split(configuredPropertyNamespaces, ",");
@@ -320,7 +311,6 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
 
     Map<String, String> properties = new HashMap<>();
 
-    for (int i = 0; i < numberOfEvents; i++) {
       final List<URI> temporaryFiles = new ArrayList<>();
       MediaPackage newMp = null;
 
@@ -330,8 +320,25 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
           newMpId = UUID.randomUUID().toString();
         }
         // Clone the media package (without its elements)
-        newMp = copyMediaPackage(mediaPackage, series, newMpId, noSuffix, i + 1, copyNumberPrefix);
-
+        final String newTitle;
+        if (title.isEmpty()) {
+          newTitle = noSuffix
+                ? mediaPackage.getTitle()
+                : String.format("%s (%s)", mediaPackage.getTitle(), copyNumberPrefix);
+        } else {
+          newTitle = title;
+        }
+        Date mpDate = mediaPackage.getDate();
+        if (!startDateString.isEmpty()) {
+          try {
+            mpDate = DateFormat.getInstance().parse(startDateString);
+          } catch (ParseException ex) {
+            logger.info("{} could not be parsed as Date", startDateString);
+          }
+        }
+        logger.info("setting StartDate to {}", mpDate.toString());
+        final Date startDate = mpDate;
+        newMp = copyMediaPackage(mediaPackage, series, newMpId, newTitle, startDate);
         if (series != null) {
           URI newSeriesURI = null;
           String newSeriesId = UUID.randomUUID().toString();
@@ -370,23 +377,16 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
         for (final Publication originalPub : internalPublications) {
          copyPublication(originalPub, mediaPackage, newMp, removeTags, addTags, overrideTags, temporaryFiles);
         }
+        archiveService.add(newMp);
 
-//        archiveService.takeSnapshot(Archive.DEFAULT_OWNER, newMp);
-
-/*        // Clone properties of media package
-        for (String namespace : propertyNamespaces) {
-          copyProperties(namespace, mediaPackage, newMp);
-        }
-*/
         // Store media package ID as workflow property
-        properties.put("duplicate_media_package_" + (i + 1) + "_id", newMp.getIdentifier().toString());
+        properties.put("duplicate_media_package_id", newMp.getIdentifier().toString());
       } catch (IOException e) {
         throw new WorkflowOperationException(e);
       } finally {
         cleanup(temporaryFiles, Optional.ofNullable(newMp));
       }
-    }
-    return createResult(mediaPackage, properties, Action.CONTINUE, 0);
+    return createResult(mediaPackage, Action.CONTINUE);
   }
 
   private void cleanup(List<URI> temporaryFiles, Optional<MediaPackage> newMp) {
@@ -436,9 +436,9 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
       final MediaPackage source,
       final SeriesInformation series,
       final String newMpId,
-      final boolean noSuffix,
-      final long copyNumber,
-      final String copyNumberPrefix) throws WorkflowOperationException {
+      final String title,
+      final Date startDate
+      ) throws WorkflowOperationException {
     // We are not using MediaPackage.clone() here, since it does "too much" for us (e.g. copies all the attachments)
     MediaPackage destination;
     try {
@@ -459,10 +459,8 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
     destination.setDuration(source.getDuration());
     destination.setLanguage(source.getLanguage());
     destination.setLicense(source.getLicense());
-    final String newTitle = noSuffix
-            ? source.getTitle()
-            : String.format("%s (%s %d)", source.getTitle(), copyNumberPrefix, copyNumber);
-    destination.setTitle(newTitle);
+    destination.setDate(startDate);
+    destination.setTitle(title);
     return destination;
   }
 
@@ -553,20 +551,20 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
     return destination;
   }
 
-/*  private void copyProperties(String namespace, MediaPackage source, MediaPackage destination) {
-    source.get
-    final AQueryBuilder q = archiveService.createQuery();
-    final AResult properties = q.select(q.propertiesOf(namespace))
-        .where(q.mediaPackageId(source.getIdentifier().toString())).run();
-    if (properties.getRecords().head().isNone()) {
+  private void copyProperties(String namespace, MediaPackage source, MediaPackage destination) {
+//    source.getPublications()
+//    final AQueryBuilder q = archiveService.createQuery();
+//    final AResult properties = q.select(q.propertiesOf(namespace))
+//        .where(q.mediaPackageId(source.getIdentifier().toString())).run();
+//    if (properties.getRecords().head().isNone()) {
       logger.info("No properties to copy for media package {}, namespace {}.", source.getIdentifier(), namespace);
       return;
-    }
-    for (final Property p : properties.getRecords().head().get().getProperties()) {
-      final PropertyId newPropId = PropertyId.mk(destination.getIdentifier().toString(), namespace, p.getId()
+//    }
+//    for (final Property p : properties.getRecords().head().get().getProperties()) {
+/*      final PropertyId newPropId = PropertyId.mk(destination.getIdentifier().toString(), namespace, p.getId()
           .getName());
-      archiveService.setProperty(Property.mk(newPropId, p.getValue()));
-    }
-  }*/
+//      archiveService.setProperty(Property.mk(newPropId, p.getValue()));
+    }*/
+  }
 }
 

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- - - - - - - - - ANSIBLE INFO - - - - - - - - - - - - - - - -->
+<!-- Ansible managed -->
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+<definition xmlns="http://workflow.opencastproject.org">
+
+  <id>manchester-ingest-archive</id>
+  <title>Manchester Ingest Archive</title>
+  <tags>
+    <tag>upload-ng</tag>
+    <tag>archive-ng</tag>
+  </tags>
+  <description>
+    A workflow that transcodes the media into distribution formats, then sends the resulting distribution files,
+    along with their associated metadata, to the distribution channels.
+  </description>
+
+  <configuration_panel>
+  <![CDATA[
+    <div id="workflow-configuration">
+      <fieldset>
+        <legend>Media</legend>
+        <div>&nbsp;- override which of the available video tracks are used</div>
+        <div>
+          <input id="useAvailableScreen" name="useAvailableScreen" type="checkbox" checked="checked" class="configField" value="true" />
+          <label for="useAvailableScreen">Use Screen (presentation) if available</label>
+        </div>
+        <div>
+          <input id="useAvailableCamera" name="useAvailableCamera" type="checkbox" checked="checked" class="configField" value="true" />
+          <label for="useAvailableCamera">Use Camera (presenter) if available</label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>ACL</legend>
+        <div>
+          <input id="addEpisodeAcl" name="addEpisodeAcl" type="checkbox" class="configField" value="false" />
+          <label for="addEpisodeAcl">Add Episode ACL</label>
+        </div>
+        <div>
+          <label for="aclRoles" >Roles:</label>
+          <input id="aclRoles" name="aclRoles" type="text" maxlength="255" class="configField" style="width: 200px;" value="" disabled/>
+        </div>
+      </fieldset>
+    </div>
+
+    ]]>
+  </configuration_panel>
+
+  <operations>
+
+    <!-- ################## Ingest and Initialize ################### -->
+
+    <operation
+      id="include"
+      description="&lt;&lt;&lt; Ingest and initialize data">
+      <configurations>
+        <configuration key="workflow-id">manchester-partial-ingest-initialize</configuration>
+      </configurations>
+    </operation>
+
+
+    <!-- Archive the current state of the mediapackage -->
+
+    <operation
+      id="archive"
+      fail-on-error="true"
+      exception-handler-workflow="manchester-archive-error"
+      description="PUBLISH: Archive">
+      <configurations>
+        <configuration key="source-tags">archive</configuration>
+      </configurations>
+    </operation>
+
+
+    <operation
+      id="cleanup"
+      fail-on-error="false"
+      description="Cleaning up">
+      <configurations>
+        <configuration key="preserve-flavors">security/*</configuration>
+        <configuration key="delete-external">true</configuration>
+      </configurations>
+    </operation>
+    <!-- End of Workflow -->
+
+  </operations>
+
+</definition>

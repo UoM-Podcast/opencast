@@ -28,10 +28,6 @@ import static org.easymock.EasyMock.reset;
 import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
     .COPY_NUMBER_PREFIX_PROPERTY;
 import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
-    .MAX_NUMBER_PROPERTY;
-import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
-    .NUMBER_PROPERTY;
-import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
     .PROPERTY_NAMESPACES_PROPERTY;
 import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
     .SOURCE_FLAVORS_PROPERTY;
@@ -130,8 +126,6 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "*/*");
     configurations.put(SOURCE_TAGS_PROPERTY, "archive");
     configurations.put(TARGET_TAGS_PROPERTY, "");
-    configurations.put(NUMBER_PROPERTY, "" + numCopies);
-    configurations.put(MAX_NUMBER_PROPERTY, "" + 10);
     configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
     configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
 
@@ -157,8 +151,6 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "presenter/source");
     configurations.put(SOURCE_TAGS_PROPERTY, "archive");
     configurations.put(TARGET_TAGS_PROPERTY, "tag1,tag2");
-    configurations.put(NUMBER_PROPERTY, "" + 1);
-    configurations.put(MAX_NUMBER_PROPERTY, "" + 10);
     configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
     configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
 
@@ -178,8 +170,6 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "*/*");
     configurations.put(SOURCE_TAGS_PROPERTY, "part1");
     configurations.put(TARGET_TAGS_PROPERTY, "-part1,+tag3");
-    configurations.put(NUMBER_PROPERTY, "" + 1);
-    configurations.put(MAX_NUMBER_PROPERTY, "" + 10);
     configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
     configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
 
@@ -275,8 +265,6 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "*/*");
     configurations.put(SOURCE_TAGS_PROPERTY, "archive");
     configurations.put(TARGET_TAGS_PROPERTY, "");
-    configurations.put(NUMBER_PROPERTY, "" + numCopies);
-    configurations.put(MAX_NUMBER_PROPERTY, "" + maxCopies);
     configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
     configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
 
