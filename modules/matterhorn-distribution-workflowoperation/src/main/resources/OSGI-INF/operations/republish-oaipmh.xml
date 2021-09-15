@@ -20,6 +20,11 @@
              policy="static"
              target="(distribution.channel=aws.s3)"
              bind="setDistributionService" />
+  <reference name="authorizationService"
+             interface="org.opencastproject.security.api.AuthorizationService"
+             cardinality="1..1"
+             policy="static"
+             bind="setAuthorizationService" />
   <reference name="serviceRegistry"
              interface="org.opencastproject.serviceregistry.api.ServiceRegistry"
              cardinality="1..1"
