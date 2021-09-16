@@ -34,6 +34,16 @@
   <operations>
 
     <!-- Create the new events -->
+    <operation
+      id="defaults"
+      description="INIT: Applying default configuration values">
+      <configurations>
+        <configuration key="set-title"></configuration>
+        <configuration key="set-series-id"></configuration>
+        <configuration key="set-start-date-time"></configuration>
+        <configuration key="aclRoles">ROLE_ADMIN</configuration>
+      </configurations>
+    </operation>
 
     <operation
       id="duplicate-event"
@@ -43,10 +53,10 @@
       <configurations>
         <configuration key="source-flavors">*/*</configuration>
         <configuration key="target-tags"></configuration>
-         <configuration key="set-series-id">${seriesId}</configuration>
-         <configuration key="set-title">${mpTitle}</configuration>
-         <configuration key="set-start-date-time">${startDate} ${startTime}</configuration>
-         <configuration key="property-namespaces">org.opencastproject.assetmanager.security,org.opencastproject.workflow.configuration</configuration>
+        <configuration key="set-series-id">${seriesId}</configuration>
+        <configuration key="set-title">${mpTitle}</configuration>
+        <configuration key="set-start-date-time">${startDate} ${startTime}</configuration>
+        <configuration key="property-namespaces">org.opencastproject.assetmanager.security,org.opencastproject.workflow.configuration</configuration>
         <configuration key="copy-number-prefix">copy</configuration>
       </configurations>
     </operation>

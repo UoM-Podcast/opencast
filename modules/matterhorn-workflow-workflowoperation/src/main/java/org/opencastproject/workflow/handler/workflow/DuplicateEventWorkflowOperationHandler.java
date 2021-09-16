@@ -44,6 +44,8 @@ import org.opencastproject.mediapackage.selector.SimpleElementSelector;
 import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.metadata.dublincore.DublinCoreUtil;
+import org.opencastproject.metadata.dublincore.OpencastMetadataCodec;
+import org.opencastproject.metadata.dublincore.Precision;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AclScope;
 import org.opencastproject.security.api.AuthorizationService;
@@ -73,6 +75,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.text.DateFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -126,6 +129,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
   private static final String PLUS = "+";
   private static final String MINUS = "-";
 
+  private static final DateFormat ADMIN_UI_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   /** Name of the configuration option that provides the source flavors we are looking for */
   public static final String SOURCE_FLAVORS_PROPERTY = "source-flavors";
 
@@ -233,7 +237,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
 
     SeriesInformation series = null;
     AccessControlList seriesAccessControl = null;
-    if (!seriesId.isEmpty()) {
+    if (!seriesId.isEmpty() && !seriesId.startsWith("${")) {
       try {
         final DublinCoreCatalog dc = seriesService.getSeries(seriesId);
         series = new SeriesInformation(seriesId, dc, dc.get(DublinCore.PROPERTY_TITLE).get(0).getValue());
@@ -313,7 +317,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
 
       final List<URI> temporaryFiles = new ArrayList<>();
       MediaPackage newMp = null;
-
+      final Date startDate;
       try {
         String newMpId = workflowInstance.getConfiguration("newMpId");
         if (newMpId == null) {
@@ -321,7 +325,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
         }
         // Clone the media package (without its elements)
         final String newTitle;
-        if (title.isEmpty()) {
+        if (title.isEmpty() || (title.startsWith("${") && title.endsWith("}"))) {
           newTitle = noSuffix
                 ? mediaPackage.getTitle()
                 : String.format("%s (%s)", mediaPackage.getTitle(), copyNumberPrefix);
@@ -329,15 +333,26 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
           newTitle = title;
         }
         Date mpDate = mediaPackage.getDate();
+        String date = new SimpleDateFormat("yyyy-MM-dd").format(mpDate);
+        String time = new SimpleDateFormat("HH:mm:ss").format(mpDate);
         if (!startDateString.isEmpty()) {
-          try {
-            mpDate = DateFormat.getInstance().parse(startDateString);
-          } catch (ParseException ex) {
-            logger.info("{} could not be parsed as Date", startDateString);
+          String [] dt = startDateString.split(" ");
+          if (dt.length >= 2) {
+            if (!dt[0].startsWith("${")) {
+              date = dt[0];
+            }
+            if (!dt[1].startsWith("${")) {
+              time = (dt[1].split(":").length == 2) ? dt[1] + ":00" : dt[1];
+            }
           }
         }
+        try {
+          mpDate = ADMIN_UI_DATE_FORMAT.parse(date + " " + time);
+        } catch (ParseException ex) {
+          logger.info("{} could not be parsed as Date", date + " " + time);
+        }
         logger.info("setting StartDate to {}", mpDate.toString());
-        final Date startDate = mpDate;
+        startDate = mpDate;
         newMp = copyMediaPackage(mediaPackage, series, newMpId, newTitle, startDate);
         if (series != null) {
           URI newSeriesURI = null;
@@ -363,8 +378,9 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
         }
 
         // Create and add new episode dublin core with changed title
-        newMp = copyDublinCore(mediaPackage, originalEpisodeDc[0], newMp, series, removeTags, addTags, overrideTags,
-                temporaryFiles);
+        newMp = copyDublinCore(mediaPackage, originalEpisodeDc[0],
+                newMp, series, removeTags, addTags, overrideTags,
+                temporaryFiles, startDate);
 
         // Clone regular elements
         for (final MediaPackageElement e : elements) {
@@ -386,7 +402,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
       } finally {
         cleanup(temporaryFiles, Optional.ofNullable(newMp));
       }
-    return createResult(mediaPackage, Action.CONTINUE);
+    return createResult(mediaPackage, properties, Action.CONTINUE,0);
   }
 
   private void cleanup(List<URI> temporaryFiles, Optional<MediaPackage> newMp) {
@@ -525,10 +541,13 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
       final List<String> removeTags,
       final List<String> addTags,
       final List<String> overrideTags,
-      final List<URI> temporaryFiles) throws WorkflowOperationException {
+      final List<URI> temporaryFiles,
+      final Date creationDate
+  ) throws WorkflowOperationException {
     final DublinCoreCatalog destinationDublinCore = DublinCoreUtil.loadEpisodeDublinCore(workspace, source).get();
     destinationDublinCore.setIdentifier(null);
     destinationDublinCore.setURI(sourceDublinCore.getURI());
+    destinationDublinCore.set(DublinCore.PROPERTY_CREATED, OpencastMetadataCodec.encodeDate(creationDate,Precision.Second));
     destinationDublinCore.set(DublinCore.PROPERTY_TITLE, destination.getTitle());
     if (series != null) {
       destinationDublinCore.set(DublinCore.PROPERTY_IS_PART_OF, series.id);
@@ -551,20 +570,5 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
     return destination;
   }
 
-  private void copyProperties(String namespace, MediaPackage source, MediaPackage destination) {
-//    source.getPublications()
-//    final AQueryBuilder q = archiveService.createQuery();
-//    final AResult properties = q.select(q.propertiesOf(namespace))
-//        .where(q.mediaPackageId(source.getIdentifier().toString())).run();
-//    if (properties.getRecords().head().isNone()) {
-      logger.info("No properties to copy for media package {}, namespace {}.", source.getIdentifier(), namespace);
-      return;
-//    }
-//    for (final Property p : properties.getRecords().head().get().getProperties()) {
-/*      final PropertyId newPropId = PropertyId.mk(destination.getIdentifier().toString(), namespace, p.getId()
-          .getName());
-//      archiveService.setProperty(Property.mk(newPropId, p.getValue()));
-    }*/
-  }
 }
 
