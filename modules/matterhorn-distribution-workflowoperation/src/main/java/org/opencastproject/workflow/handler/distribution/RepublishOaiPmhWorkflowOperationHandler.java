@@ -44,9 +44,14 @@ import org.opencastproject.oaipmh.persistence.OaiPmhDatabaseException;
 import org.opencastproject.oaipmh.persistence.QueryBuilder;
 import org.opencastproject.oaipmh.persistence.SearchResult;
 import org.opencastproject.publication.api.OaiPmhPublicationService;
+import org.opencastproject.security.api.AccessControlEntry;
+import org.opencastproject.security.api.AccessControlList;
+import org.opencastproject.security.api.AclScope;
+import org.opencastproject.security.api.AuthorizationService;
 import org.opencastproject.util.JobUtil;
 import org.opencastproject.util.data.Collections;
 import org.opencastproject.util.data.Function;
+import org.opencastproject.util.data.Tuple;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowOperationException;
@@ -73,6 +78,8 @@ public final class RepublishOaiPmhWorkflowOperationHandler extends AbstractWorkf
 
   private OaiPmhDatabase oaiPmhDb = null;
   private DownloadDistributionService distSvc = null;
+  private AuthorizationService authService = null;
+  private AccessControlEntry publicACE = new AccessControlEntry("ROLE_ANONYMOUS", "read", true);
 
   /** The configuration options */
   private static final String OPT_SOURCE_FLAVORS = "source-flavors";
@@ -129,6 +136,22 @@ public final class RepublishOaiPmhWorkflowOperationHandler extends AbstractWorkf
       logger.warn(msg);
       throw new WorkflowOperationException(msg);
     }
+
+    // MAT-398 Need to identify if the MP is "Public"
+    // Use Authorization Service
+    Tuple<AccessControlList, AclScope> acls = authService.getActiveAcl(mp);
+    final boolean isPublic;
+    if (null != acls) {
+      if (acls.getA().getEntries().contains(publicACE)) {
+        isPublic = true;
+        logger.info("Mediapackage is public");
+      } else {
+        isPublic = false;
+      }
+    } else {
+      isPublic = false;
+    }
+
     // re-distribute elements to download
     final List<MediaPackageElement> distributedElements = mlist(filteredMp.getElements())
             .filter(MediaPackageSupport.Filters.isNotPublication).map(new Function.X<MediaPackageElement, Job>() {
@@ -139,7 +162,7 @@ public final class RepublishOaiPmhWorkflowOperationHandler extends AbstractWorkf
                   // is pretty ugly. In fact republication should be subject to the OaiPmhPublicationService
                   // and _not_ the workflow operation handler.
                   return distSvc.distribute(OaiPmhPublicationService.PUBLICATION_CHANNEL_PREFIX + repository,
-                          filteredMp, mpe.getIdentifier());
+                          filteredMp, mpe.getIdentifier(), false, isPublic);
                 } catch (Exception e) {
                   throw new WorkflowOperationException(e);
                 }
@@ -361,5 +384,10 @@ public final class RepublishOaiPmhWorkflowOperationHandler extends AbstractWorkf
   /** OSGi DI. */
   public void setDistributionService(DownloadDistributionService distSvc) {
     this.distSvc = distSvc;
+  }
+
+  /** OSGi DI. */
+  public void setAuthorizationService(AuthorizationService authService) {
+    this.authService = authService;
   }
 }
