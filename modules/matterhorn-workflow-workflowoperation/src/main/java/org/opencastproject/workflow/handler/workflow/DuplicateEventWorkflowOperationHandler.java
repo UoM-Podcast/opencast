@@ -21,7 +21,6 @@
 
 package org.opencastproject.workflow.handler.workflow;
 
-import static org.apache.commons.lang3.StringUtils.split;
 import static org.apache.commons.lang3.StringUtils.trimToEmpty;
 
 import org.opencastproject.archive.api.Archive;
@@ -130,6 +129,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
   private static final String MINUS = "-";
 
   private static final DateFormat ADMIN_UI_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
   /** Name of the configuration option that provides the source flavors we are looking for */
   public static final String SOURCE_FLAVORS_PROPERTY = "source-flavors";
 
@@ -151,11 +151,8 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
   /** The new startDate that should be set on the copies (if unset, uses the old startDate) */
   public static final String SET_START_DATE = "set-start-date-time";
 
-  /** The namespaces of the asset manager properties to copy. */
-  public static final String PROPERTY_NAMESPACES_PROPERTY = "property-namespaces";
-
   /** The prefix to use for the number which is appended to the original title of the event. */
-  public static final String COPY_NUMBER_PREFIX_PROPERTY = "copy-number-prefix";
+  public static final String COPY_SUFFIX_PROPERTY = "copy-suffix";
 
   /** The archive service */
   private Archive<?> archiveService = null;
@@ -229,11 +226,9 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
     final List<MediaPackageElementFlavor> configuredSourceFlavors = tagsAndFlavors.getSrcFlavors();
     final List<String> configuredSourceTags = tagsAndFlavors.getSrcTags();
     final List<String> configuredTargetTags = tagsAndFlavors.getTargetTags();
-    final boolean noSuffix = Boolean.parseBoolean(trimToEmpty(operation.getConfiguration(NO_SUFFIX)));
     final String startDateString = trimToEmpty(operation.getConfiguration(SET_START_DATE));
     final String seriesId = trimToEmpty(operation.getConfiguration(SET_SERIES_ID));
     final String title = trimToEmpty(operation.getConfiguration(SET_TITLE));
-    final String configuredPropertyNamespaces = trimToEmpty(operation.getConfiguration(PROPERTY_NAMESPACES_PROPERTY));
 
     SeriesInformation series = null;
     AccessControlList seriesAccessControl = null;
@@ -254,8 +249,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
     logger.info("Creating new media package from media package with id {}.",
         mediaPackage.getIdentifier());
 
-    final String[] propertyNamespaces = split(configuredPropertyNamespaces, ",");
-    final String copyNumberPrefix = trimToEmpty(operation.getConfiguration(COPY_NUMBER_PREFIX_PROPERTY));
+    final String copySuffix = trimToEmpty(operation.getConfiguration(COPY_SUFFIX_PROPERTY));
 
     final SimpleElementSelector elementSelector = new SimpleElementSelector();
     for (MediaPackageElementFlavor flavor : configuredSourceFlavors) {
@@ -326,9 +320,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
         // Clone the media package (without its elements)
         final String newTitle;
         if (title.isEmpty() || (title.startsWith("${") && title.endsWith("}"))) {
-          newTitle = noSuffix
-                ? mediaPackage.getTitle()
-                : String.format("%s (%s)", mediaPackage.getTitle(), copyNumberPrefix);
+          newTitle = String.format("%s (%s)", mediaPackage.getTitle(), copySuffix);
         } else {
           newTitle = title;
         }
@@ -355,7 +347,7 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
         startDate = mpDate;
         newMp = copyMediaPackage(mediaPackage, series, newMpId, newTitle, startDate);
         if (series != null) {
-          URI newSeriesURI = null;
+          URI newSeriesURI;
           String newSeriesId = UUID.randomUUID().toString();
           try (InputStream seriesDCInputStream = IOUtils.toInputStream(series.dc.toXmlString(), "UTF-8")) {
             newSeriesURI = workspace.put(newMpId, newSeriesId, "dublincore.xml", seriesDCInputStream);
@@ -569,6 +561,5 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
     }
     return destination;
   }
-
 }
 

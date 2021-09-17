@@ -26,9 +26,7 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
-    .COPY_NUMBER_PREFIX_PROPERTY;
-import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
-    .PROPERTY_NAMESPACES_PROPERTY;
+    .COPY_SUFFIX_PROPERTY;
 import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
     .SOURCE_FLAVORS_PROPERTY;
 import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkflowOperationHandler
@@ -126,8 +124,7 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "*/*");
     configurations.put(SOURCE_TAGS_PROPERTY, "archive");
     configurations.put(TARGET_TAGS_PROPERTY, "");
-    configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
-    configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
+    configurations.put(COPY_SUFFIX_PROPERTY, "copy");
 
     // run the operation handler
     WorkflowOperationResult result = getWorkflowOperationResult(mp, configurations);
@@ -136,7 +133,7 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     Assert.assertEquals(numCopies, clonedMediaPackages.getValues().size());
     for (int i = 1; i <= numCopies; i++) {
       final String expectedTitle = mp.getTitle()
-          + " (" + configurations.get(COPY_NUMBER_PREFIX_PROPERTY) + " " + i + ")";
+          + " (" + configurations.get(COPY_SUFFIX_PROPERTY) + " " + i + ")";
       Assert.assertEquals(expectedTitle, clonedMediaPackages.getValues().get(i - 1).getTitle());
     }
   }
@@ -151,8 +148,7 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "presenter/source");
     configurations.put(SOURCE_TAGS_PROPERTY, "archive");
     configurations.put(TARGET_TAGS_PROPERTY, "tag1,tag2");
-    configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
-    configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
+    configurations.put(COPY_SUFFIX_PROPERTY, "copy");
 
     // run the operation handler
     WorkflowOperationResult result = getWorkflowOperationResult(mp, configurations);
@@ -170,8 +166,7 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "*/*");
     configurations.put(SOURCE_TAGS_PROPERTY, "part1");
     configurations.put(TARGET_TAGS_PROPERTY, "-part1,+tag3");
-    configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
-    configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
+    configurations.put(COPY_SUFFIX_PROPERTY, "copy");
 
     // run the operation handler
     WorkflowOperationResult result = getWorkflowOperationResult(mp, configurations);
@@ -265,8 +260,7 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     configurations.put(SOURCE_FLAVORS_PROPERTY, "*/*");
     configurations.put(SOURCE_TAGS_PROPERTY, "archive");
     configurations.put(TARGET_TAGS_PROPERTY, "");
-    configurations.put(PROPERTY_NAMESPACES_PROPERTY, "org.opencastproject.assetmanager.security");
-    configurations.put(COPY_NUMBER_PREFIX_PROPERTY, "copy");
+    configurations.put(COPY_SUFFIX_PROPERTY, "copy");
 
     // run the operation handler
     getWorkflowOperationResult(mp, configurations);
