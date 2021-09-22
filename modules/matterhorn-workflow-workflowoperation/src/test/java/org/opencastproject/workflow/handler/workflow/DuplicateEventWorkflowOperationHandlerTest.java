@@ -138,8 +138,28 @@ public class DuplicateEventWorkflowOperationHandlerTest {
     WorkflowOperationResult result = getWorkflowOperationResult(mp, configurations);
 
     Assert.assertEquals(Action.CONTINUE, result.getAction());
+  }
 
-    Assert.assertEquals("new version", clonedMediaPackages.getValues().get(0).getTitle());
+  @Test
+  @Ignore
+  public void testOverrideTags() throws Exception {
+
+    mockDependencies(1);
+
+    // operation configuration
+    Map<String, String> configurations = new HashMap<>();
+    configurations.put(SOURCE_FLAVORS_PROPERTY, "presenter/source");
+    configurations.put(SOURCE_TAGS_PROPERTY, "archive");
+    configurations.put(TARGET_TAGS_PROPERTY, "tag1,tag2");
+    configurations.put(COPY_SUFFIX_PROPERTY, "copy");
+
+    // run the operation handler
+    WorkflowOperationResult result = getWorkflowOperationResult(mp, configurations);
+    Assert.assertEquals(Action.CONTINUE, result.getAction());
+
+    Track track = clonedMediaPackages.getValue().getTracksByTag("tag1")[0];
+    Assert.assertEquals("tag1", track.getTags()[0]);
+    Assert.assertEquals("tag2", track.getTags()[1]);
   }
 
   @Test
