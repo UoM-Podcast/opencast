@@ -389,7 +389,6 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
 
       // Store media package ID as workflow property
       properties.put("duplicate_media_package_id", newMp.getIdentifier().toString());
-      properties.put("media-package", newMp.getIdentifier().toString());
     } catch (IOException e) {
       throw new WorkflowOperationException(e);
     } finally {

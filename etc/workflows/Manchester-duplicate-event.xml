@@ -51,7 +51,7 @@
     <operation id="start-workflow">
       <configurations>
         <configuration key="workflow-definition">manchester</configuration>
-        <configuration key="media-package"></configuration>
+        <configuration key="media-package-key">duplicate_media_package_id</configuration>
       </configurations>
     </operation>
 
