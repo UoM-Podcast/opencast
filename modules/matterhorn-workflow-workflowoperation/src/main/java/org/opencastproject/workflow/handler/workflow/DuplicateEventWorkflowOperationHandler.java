@@ -309,91 +309,91 @@ public class DuplicateEventWorkflowOperationHandler extends AbstractWorkflowOper
 
     Map<String, String> properties = new HashMap<>();
 
-      final List<URI> temporaryFiles = new ArrayList<>();
-      MediaPackage newMp = null;
-      final Date startDate;
-      try {
-        String newMpId = workflowInstance.getConfiguration("newMpId");
-        if (newMpId == null) {
-          newMpId = UUID.randomUUID().toString();
-        }
-        // Clone the media package (without its elements)
-        final String newTitle;
-        if (title.isEmpty() || (title.startsWith("${") && title.endsWith("}"))) {
-          newTitle = String.format("%s (%s)", mediaPackage.getTitle(), copySuffix);
-        } else {
-          newTitle = title;
-        }
-        Date mpDate = mediaPackage.getDate();
-        String date = new SimpleDateFormat("yyyy-MM-dd").format(mpDate);
-        String time = new SimpleDateFormat("HH:mm:ss").format(mpDate);
-        if (!startDateString.isEmpty()) {
-          String [] dt = startDateString.split(" ");
-          if (dt.length >= 2) {
-            if (!dt[0].startsWith("${")) {
-              date = dt[0];
-            }
-            if (!dt[1].startsWith("${")) {
-              time = (dt[1].split(":").length == 2) ? dt[1] + ":00" : dt[1];
-            }
-          }
-        }
-        try {
-          mpDate = ADMIN_UI_DATE_FORMAT.parse(date + " " + time);
-        } catch (ParseException ex) {
-          logger.info("{} could not be parsed as Date", date + " " + time);
-        }
-        logger.info("setting StartDate to {}", mpDate.toString());
-        startDate = mpDate;
-        newMp = copyMediaPackage(mediaPackage, series, newMpId, newTitle, startDate);
-        if (series != null) {
-          URI newSeriesURI;
-          String newSeriesId = UUID.randomUUID().toString();
-          try (InputStream seriesDCInputStream = IOUtils.toInputStream(series.dc.toXmlString(), "UTF-8")) {
-            newSeriesURI = workspace.put(newMpId, newSeriesId, "dublincore.xml", seriesDCInputStream);
-          }
-          MediaPackageElementBuilder elementBuilder = MediaPackageElementBuilderFactory.newInstance()
-                  .newElementBuilder();
-          MediaPackageElement newSeriesMpElement = elementBuilder.elementFromURI(newSeriesURI,
-                  Catalog.TYPE, MediaPackageElements.SERIES);
-          newSeriesMpElement.setIdentifier(newSeriesId);
-          newMp.add(newSeriesMpElement);
-
-          if (seriesAccessControl != null) {
-            newMp = authorizationService.setAcl(newMp, AclScope.Series, seriesAccessControl).getA();
-            for (MediaPackageElement seriesAclMpe : newMp.getElementsByFlavor(MediaPackageElements.XACML_POLICY_SERIES)) {
-              for (final String tag : seriesAclTags) {
-                seriesAclMpe.addTag(tag);
-              }
-            }
-          }
-        }
-
-        // Create and add new episode dublin core with changed title
-        newMp = copyDublinCore(mediaPackage, originalEpisodeDc[0],
-                newMp, series, removeTags, addTags, overrideTags,
-                temporaryFiles, startDate);
-
-        // Clone regular elements
-        for (final MediaPackageElement e : elements) {
-          final MediaPackageElement element = (MediaPackageElement) e.clone();
-          updateTags(element, removeTags, addTags, overrideTags);
-          newMp.add(element);
-        }
-
-        // Clone internal publications
-        for (final Publication originalPub : internalPublications) {
-         copyPublication(originalPub, mediaPackage, newMp, removeTags, addTags, overrideTags, temporaryFiles);
-        }
-        archiveService.add(newMp);
-
-        // Store media package ID as workflow property
-        properties.put("duplicate_media_package_id", newMp.getIdentifier().toString());
-      } catch (IOException e) {
-        throw new WorkflowOperationException(e);
-      } finally {
-        cleanup(temporaryFiles, Optional.ofNullable(newMp));
+    final List<URI> temporaryFiles = new ArrayList<>();
+    MediaPackage newMp = null;
+    final Date startDate;
+    try {
+      String newMpId = workflowInstance.getConfiguration("newMpId");
+      if (newMpId == null) {
+        newMpId = UUID.randomUUID().toString();
       }
+      // Clone the media package (without its elements)
+      final String newTitle;
+      if (title.isEmpty() || (title.startsWith("${") && title.endsWith("}"))) {
+        newTitle = String.format("%s (%s)", mediaPackage.getTitle(), copySuffix);
+      } else {
+        newTitle = title;
+      }
+      Date mpDate = mediaPackage.getDate();
+      String date = new SimpleDateFormat("yyyy-MM-dd").format(mpDate);
+      String time = new SimpleDateFormat("HH:mm:ss").format(mpDate);
+      if (!startDateString.isEmpty()) {
+        String [] dt = startDateString.split(" ");
+        if (dt.length >= 2) {
+          if (!dt[0].startsWith("${")) {
+            date = dt[0];
+          }
+          if (!dt[1].startsWith("${")) {
+            time = (dt[1].split(":").length == 2) ? dt[1] + ":00" : dt[1];
+          }
+        }
+      }
+      try {
+        mpDate = ADMIN_UI_DATE_FORMAT.parse(date + " " + time);
+      } catch (ParseException ex) {
+        logger.info("{} could not be parsed as Date", date + " " + time);
+      }
+      logger.info("setting StartDate to {}", mpDate.toString());
+      startDate = mpDate;
+      newMp = copyMediaPackage(mediaPackage, series, newMpId, newTitle, startDate);
+      if (series != null) {
+        URI newSeriesURI;
+        String newSeriesId = UUID.randomUUID().toString();
+        try (InputStream seriesDCInputStream = IOUtils.toInputStream(series.dc.toXmlString(), "UTF-8")) {
+          newSeriesURI = workspace.put(newMpId, newSeriesId, "dublincore.xml", seriesDCInputStream);
+        }
+        MediaPackageElementBuilder elementBuilder = MediaPackageElementBuilderFactory.newInstance()
+                .newElementBuilder();
+        MediaPackageElement newSeriesMpElement = elementBuilder.elementFromURI(newSeriesURI,
+                Catalog.TYPE, MediaPackageElements.SERIES);
+        newSeriesMpElement.setIdentifier(newSeriesId);
+        newMp.add(newSeriesMpElement);
+
+        if (seriesAccessControl != null) {
+          newMp = authorizationService.setAcl(newMp, AclScope.Series, seriesAccessControl).getA();
+          for (MediaPackageElement seriesAclMpe : newMp.getElementsByFlavor(MediaPackageElements.XACML_POLICY_SERIES)) {
+            for (final String tag : seriesAclTags) {
+              seriesAclMpe.addTag(tag);
+            }
+          }
+        }
+      }
+
+      // Create and add new episode dublin core with changed title
+      newMp = copyDublinCore(mediaPackage, originalEpisodeDc[0],
+              newMp, series, removeTags, addTags, overrideTags,
+              temporaryFiles, startDate);
+
+      // Clone regular elements
+      for (final MediaPackageElement e : elements) {
+        final MediaPackageElement element = (MediaPackageElement) e.clone();
+        updateTags(element, removeTags, addTags, overrideTags);
+        newMp.add(element);
+      }
+
+      // Clone internal publications
+      for (final Publication originalPub : internalPublications) {
+       copyPublication(originalPub, mediaPackage, newMp, removeTags, addTags, overrideTags, temporaryFiles);
+      }
+      archiveService.add(newMp);
+
+      // Store media package ID as workflow property
+      properties.put("duplicate_media_package_id", newMp.getIdentifier().toString());
+    } catch (IOException e) {
+      throw new WorkflowOperationException(e);
+    } finally {
+      cleanup(temporaryFiles, Optional.ofNullable(newMp));
+    }
     return createResult(mediaPackage, properties, Action.CONTINUE,0);
   }
 

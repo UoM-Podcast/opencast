@@ -48,7 +48,14 @@
       </configurations>
     </operation>
 
-   <!-- Clean the system from work artifacts -->
+    <operation id="start-workflow">
+      <configurations>
+        <configuration key="workflow-definition">manchester</configuration>
+        <configuration key="media-package-key">duplicate_media_package_id</configuration>
+      </configurations>
+    </operation>
+
+    <!-- Clean the system from work artifacts -->
 
     <operation
         id="cleanup"
