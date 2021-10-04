@@ -1184,6 +1184,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
         hostRegistration = new HostRegistrationJpaImpl(host, address, nodeName, memory, cores, maxLoad, true, false);
         em.persist(hostRegistration);
       } else {
+        hostRegistration.setNodeName(nodeName);
         hostRegistration.setIpAddress(address);
         hostRegistration.setMemory(memory);
         hostRegistration.setCores(cores);
