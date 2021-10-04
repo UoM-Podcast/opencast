@@ -121,7 +121,7 @@ public final class AutoScalingTerminationStateService extends AbstractJobTermina
     }
 
     // make sure this hostregistration is not in maintenance due to previous
-    // temrmination handling
+    // termination handling
     try {
       String host = getServiceRegistry().getRegistryHostname();
       getServiceRegistry().setMaintenanceStatus(host, false);
