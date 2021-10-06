@@ -248,6 +248,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       final StoragePath storagePath = spath(orgId, mpId, version, e.getIdentifier());
       final Version lastVersion = new Version(version.value() - 1);
       findAssetByChecksumAndMediaPackageId(e.getChecksum().toString(), mpId).fold(new Option.EMatch<StoragePath>() {
+
         @Override
         public void esome(final StoragePath found) {
           final String currentStoreId = getEpisodeStorageLocation(lastVersion, mpId).getOrElse(new Function0<String>() {
@@ -268,14 +269,28 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
               throw new ArchiveException(ex);
             }
           }
-          if (!localElementStore.copy(found, storagePath))
-            throw new ArchiveException("An asset with checksum " + e.getChecksum().toString() + " has"
+          if (!localElementStore.copy(found, storagePath)) {
+            boolean result = false;
+            for (String remoteStoreKey : remoteStores.keySet()) {
+              ElementStore remoteStore = remoteStores.get(remoteStoreKey);
+                if (remoteStore.copy(found, storagePath)) {
+                  result = true;
+                  break;
+              }
+            }
+            if (!result) {
+              logger.error("The asset {} is not available on the local store ({})"
+                    + " or any of the connected filestores {}",
+                    found, localElementStore.getStoreType(), remoteStores.keySet());
+              throw new ArchiveException("An asset with checksum " + e.getChecksum().toString() + " has"
                     + " already been archived but trying to copy or link asset " + found + " failed");
+            }
+          }
         }
 
         @Override
         public void enone() {
-          Option<Long> size = null;
+          Option<Long> size;
           if (e.getSize() > 0) {
             size = Option.some(e.getSize());
           } else {
@@ -283,6 +298,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
           }
           localElementStore.put(storagePath, source(e.getURI(), size, option(e.getMimeType())));
         }
+
       });
     }
   }
