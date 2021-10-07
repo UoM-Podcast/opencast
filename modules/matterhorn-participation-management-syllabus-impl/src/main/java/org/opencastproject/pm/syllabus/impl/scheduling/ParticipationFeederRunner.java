@@ -201,7 +201,7 @@ public class ParticipationFeederRunner {
   }
 
   public void setSnapCountService(SnapCountService snapCountService) {
-    logger.info("setSnapCountService");
+    logger.debug("setSnapCountService");
     this.snapCountService = snapCountService;
   }
 
@@ -223,51 +223,6 @@ public class ParticipationFeederRunner {
         }
       } else {
         logger.warn("Feeder still running... Not executing");
-      }
-    }
-
-    public void verify(JobExecutionContext jobExecutionContext) throws JobExecutionException {
-    if (!running) {
-        running = true;
-        try {
-          verifyInSecurityCtx((ParticipationFeederRunner) jobExecutionContext.getJobDetail().getJobDataMap()
-                  .get(JOB_PARAM_PARENT));
-        } catch (Exception e) {
-          throw new JobExecutionException("An error occurred while harvesting schedule", e);
-        } finally {
-          running = false;
-        }
-      } else {
-        logger.warn("Feeder still running... Not executing");
-      }
-    }
-
-    /** Run the harvest verification inside a security context. */
-    private void verifyInSecurityCtx(final ParticipationFeederRunner parent) {
-      for (final SecurityContext secCtx : parent.secCtx.get()) {
-        logger.info("START: Verify participation harvest ====================================");
-        secCtx.runInContext(new Effect0() {
-          @Override
-          public void run() {
-            final Synchronization synchronization = new Synchronization(new Date());
-            try {
-              verifyHarvest(synchronization, parent);
-            } catch (Exception e) {
-              final String stackTrace = ExceptionUtils.getStackTrace(e);
-              synchronization.addError(new Error("uncaught-exception", "An uncaught exception occurred", stackTrace));
-              logger.error(stackTrace);
-            } finally {
-              logger.info("Persisted {} recordings with {} errors", synchronization.getSynchronizedRecordings().size(),
-                      synchronization.getErrors().size());
-              try {
-                parent.persistence.storeLatestSynchronization(synchronization);
-              } catch (ParticipationManagementDatabaseException e) {
-                logger.error("Unable to store synchronization {}", synchronization);
-              }
-            }
-          }
-        });
-        logger.info("END: Verify participation harvest ====================================");
       }
     }
 
@@ -299,29 +254,11 @@ public class ParticipationFeederRunner {
           }
         });
         logger.info("END: Harvesting participation ####################################");
-        if (null !=  parent.snapCountService) {
-          logger.info("START: Verify participation harvest ####################################");
+
+        if (null != parent.snapCountService && parent.snapCountService.isRunning()) {
           parent.snapCountService.verifyParticipationFeeder();
         }
       }
-    }
-
-    /** Run the harvest Verification. */
-    private void verifyHarvest(final Synchronization synchronization, final ParticipationFeederRunner parent) {
-      final SyllabusData data = parent.syllabusDataService.fetch();
-      final Map<String, Set<Room>> buildingMap = new HashMap<String, Set<Room>>();
-      final Set<Long> treatedRecordings = new HashSet<Long>();
-      final ModuleFinder moduleFinder = new ModuleFinder(data.getModule(), data.getActivityParent(), data.getActivity());
-      final String sourceDescription = data.getSourceDescription();
-      Option<SchedulingSource> schedulingSource;
-      if (StringUtils.isNotBlank(sourceDescription)) {
-        schedulingSource = Option.some(new SchedulingSource(sourceDescription));
-      } else {
-        schedulingSource = none();
-      }
-      final HarvestStats stats = new HarvestStats();
-      // limit the amount of harvested recordings for testing
-      final Option<Integer> limitRecordings = none();
     }
 
     /** Run the actual harvest. */
