@@ -270,12 +270,14 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
             }
           }
           if (!localElementStore.copy(found, storagePath)) {
+            logger.info("The asset {} is not available on the local store ({})", found, localElementStore.getStoreType());
             boolean result = false;
             for (String remoteStoreKey : remoteStores.keySet()) {
+              logger.info("seaching in remote Store {} ", remoteStoreKey);
               ElementStore remoteStore = remoteStores.get(remoteStoreKey);
-                if (remoteStore.copy(found, storagePath)) {
-                  result = true;
-                  break;
+              if (remoteStore.copy(found, storagePath)) {
+                result = true;
+                break;
               }
             }
             if (!result) {
