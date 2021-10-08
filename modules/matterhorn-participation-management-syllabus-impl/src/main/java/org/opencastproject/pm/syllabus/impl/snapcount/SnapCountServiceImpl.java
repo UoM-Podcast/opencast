@@ -21,9 +21,9 @@
 
 package org.opencastproject.pm.syllabus.impl.snapcount;
 
-import static org.opencastproject.kernel.mail.EmailAddress.emailAddress;
 import static org.opencastproject.pm.api.Course.EmailStatus;
 import static org.opencastproject.util.OsgiUtil.getCfg;
+import static org.opencastproject.util.OsgiUtil.getOptCfgAsInt;
 import static org.opencastproject.util.data.Option.some;
 import static org.opencastproject.util.data.VCell.ocell;
 
@@ -83,13 +83,28 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   private ParticipationFeederRunner pmRunner;
   private final VCell<Option<SecurityContext>> secCtx = ocell();
   private EmailSender emailSenderService;
-  private List<EmailAddress> errorRecipients = new ArrayList<EmailAddress>();
 
   private boolean initialHarvest = false;
   private boolean running = false;
 
-  /** The configuration key to use for determining error recipients address */
-  public static final String ERROR_EMAIL_ADDRESS_CONFIG = "error.email.address";
+  /** Configuration keys */
+  public static final String RECORDINGS_THRESHOLD_CHANGED_CONFIG = "recordings.threshold.changed";
+  public static final String RECORDINGS_THRESHOLD_DELETED_CONFIG = "recordings.threshold.deleted";
+  public static final String ERROR_EMAIL_FROM_NAME_CONFIG = "error.email.from.name";
+  public static final String ERROR_EMAIL_FROM_ADDRESS_CONFIG = "error.email.from.address";
+  public static final String ERROR_EMAIL_TO_ADDRESS_CONFIG = "error.email.to.address";
+
+  /** Configuration defaults */
+  public static final int RECORDINGS_THRESHOLD_CHANGED_DEFAULT = 200;
+  public static final int RECORDINGS_THRESHOLD_DELETED_DEFAULT = 100;
+
+  /** Configuration values */
+  private int recordingsThresholdChanged = RECORDINGS_THRESHOLD_CHANGED_DEFAULT;
+  private int recordingsThresholdDeleted = RECORDINGS_THRESHOLD_DELETED_DEFAULT;
+  private Person emailCreator;
+  private EmailAddress emailSender;
+  private List<EmailAddress> errorRecipients = new ArrayList<EmailAddress>();
+
 
   /** OSGi container callback. */
   public void setSyllabusDataService(SyllabusDataService syllabusDataService) {
@@ -170,10 +185,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   @Override
   public void verifyParticipationFeeder() {
     User user = SecurityUtil.createSystemUser(systemUser, new DefaultOrganization());
-    // FIXME: This should be configured from file
-    Person creator = Person.person("Podcast Service", "podcast-service@manchester.ac.uk");
-    MessageSignature msgSign = MessageSignature.messageSignature("admin", user,
-      emailAddress(creator.getEmail(), creator.getName()), "Send by admin");
+    MessageSignature msgSign = MessageSignature.messageSignature("admin", user, emailSender, "Sent by admin");
 
     logger.info("START: Verify participation harvest ####################################");
 
@@ -193,7 +205,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
       int totalSplusRecordings = stats.getTotal();
 
       if (!initialHarvest) {
-        if ((storedTotalRecordings - totalSplusRecordings) > 100) {
+        if ((storedTotalRecordings - totalSplusRecordings) > recordingsThresholdChanged) {
           String body = " The  number of recordings in the S+ database is significantly \n "
                   + "smaller that the number of recordings in the Matterhorn Database:\n\n"
                   + "stored total recordings: " + storedTotalRecordings + "\n\n" //471
@@ -204,14 +216,14 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
           MessageTemplate tmpl = new MessageTemplate("invitation", user,
               "Error Syncing Syllabus - not enough entries in S+ DB",
               body);
-          Message errorMessage = new Message(creator, tmpl, msgSign);
+          Message errorMessage = new Message(emailCreator, tmpl, msgSign);
           emailSenderService.sendErrorMessage(errorMessage, errorRecipients);
 
           running = false;
           return;
         }
 
-        if (stats.getDeleted() > 200) {
+        if (stats.getDeleted() > recordingsThresholdDeleted) {
           // send email and exit
           // respb.type("Trying to delete too many Recordings -- please verify");
           String body = "The Synchronization with S+ attempts to delete a large number \n "
@@ -224,7 +236,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
           MessageTemplate tmpl = new MessageTemplate("invitation", user,
               "Error Syncing Syllabus - Trying to delete too many Recordings",
               body);
-          Message errorMessage = new Message(creator, tmpl, msgSign);
+          Message errorMessage = new Message(emailCreator, tmpl, msgSign);
           emailSenderService.sendErrorMessage(errorMessage, errorRecipients);
 
           running = false;
@@ -257,9 +269,17 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   @Override
   public synchronized void updated(Dictionary properties) throws ConfigurationException {
     if (properties != null) {
-      // read configuration
-      String email = getCfg(properties, ERROR_EMAIL_ADDRESS_CONFIG);
-      logger.info("Sending Snapcount error messages to {} ",email);
+      // thresholds
+      recordingsThresholdChanged = getOptCfgAsInt(properties, RECORDINGS_THRESHOLD_CHANGED_CONFIG).getOrElse(RECORDINGS_THRESHOLD_CHANGED_DEFAULT);
+      recordingsThresholdDeleted = getOptCfgAsInt(properties, RECORDINGS_THRESHOLD_DELETED_CONFIG).getOrElse(RECORDINGS_THRESHOLD_DELETED_DEFAULT);
+      // email from
+      String sender = getCfg(properties, ERROR_EMAIL_FROM_NAME_CONFIG);
+      String email = getCfg(properties, ERROR_EMAIL_FROM_ADDRESS_CONFIG);
+      emailCreator = Person.person(sender, email);
+      emailSender = EmailAddress.emailAddress(email, sender);
+      // email to
+      email = getCfg(properties, ERROR_EMAIL_TO_ADDRESS_CONFIG);
+      errorRecipients.clear();
       errorRecipients.add(new EmailAddress(email, ""));
     }
   }
