@@ -41,4 +41,6 @@ public interface SnapCountService {
 
     HashMap<String,String> getStats();
 
+    boolean isRunning();
+
 }

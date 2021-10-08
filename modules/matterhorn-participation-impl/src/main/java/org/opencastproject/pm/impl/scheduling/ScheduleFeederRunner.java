@@ -292,6 +292,8 @@ public class ScheduleFeederRunner {
     private void execute(final ScheduleFeederRunner parent) {
       final Properties caConfig = parent.getCaptureAgentConfig();
       final Map<String, String> wfProperties = parent.getWorkflowProperties();
+
+      logger.info("START: Participation Management scheduling #######################");
       for (final SecurityContext secCtx : parent.secCtx.get()) {
         secCtx.runInContext(new Effect0() {
           @Override
@@ -301,7 +303,7 @@ public class ScheduleFeederRunner {
 
             List<Tuple<Date, Date>> syncIntervals = getSyncIntervals(from, until);
             logger.info(
-                    "Start scheduling of recordings between {} and {} (scheduling will be done in {} cycles)",
+                    "Scheduling of recordings between {} and {} (scheduling will be done in {} cycles)",
                     new Object[] { from, until, syncIntervals.size() });
 
             for (Tuple<Date, Date> interval : syncIntervals) {
@@ -332,9 +334,10 @@ public class ScheduleFeederRunner {
 
           }
         });
-        logger.info("Participation Management scheduling finished");
 
-        if (null != parent.snapCountService) {
+        logger.info("END: Participation Management scheduling #########################");
+
+        if (null != parent.snapCountService && parent.snapCountService.isRunning()) {
           secCtx.runInContext(new Effect0() {
             @Override
             public void run() {

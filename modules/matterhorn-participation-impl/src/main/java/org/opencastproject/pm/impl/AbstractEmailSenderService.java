@@ -229,7 +229,7 @@ public abstract class AbstractEmailSenderService implements EmailSender {
     int i = 0;
     int limit = -1; // -1 no limit
     EmailStatus emailState = EmailStatus.UNSENT;
-    logger.info(format("######## Start sending %d invitations using %s", recipients.size(), message.getTemplate()));
+    logger.info(format("START: sending %d invitations using %s ########", recipients.size(), message.getTemplate()));
 
     if (getMode().getType() != Mode.Type.SMTP) {
       limit = ((Mode.TestMode)getMode()).getLimitRecordings();
@@ -327,7 +327,7 @@ public abstract class AbstractEmailSenderService implements EmailSender {
         break;
       }
     }
-    logger.info(format("Finished sending of %d invitations using %s ########", recipients.size(), message.getTemplate()));
+    logger.info(format("END: sent %d invitations using %s ########", recipients.size(), message.getTemplate()));
   }
 
   /** Transport. */
