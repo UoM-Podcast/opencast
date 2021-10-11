@@ -74,7 +74,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   private SyllabusDataService syllabusDataService;
   private ParticipationManagementDatabase participationDatabase;
   private SecurityService securityService;
-  private ScheduleFeederService matterhornSyncService;
+  private ScheduleFeederService scheduleFeederService;
   private OrganizationDirectoryService organizationDirectoryService;
   private String systemUser;
   private HashMap<String, String> snapCountStats = new HashMap<String,String>();
@@ -128,7 +128,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
 
   /** OSGi container callback. */
   public void setScheduleFeederService(ScheduleFeederService scheduleFeederService) {
-    this.matterhornSyncService = scheduleFeederService;
+    this.scheduleFeederService = scheduleFeederService;
   }
 
   /** OSGi DI */
@@ -143,7 +143,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
 
   /** OSGi container callback. */
   public void unsetScheduleFeederService(ScheduleFeederService scheduleFeederService) {
-    this.matterhornSyncService = null;
+    this.scheduleFeederService = null;
   }
 
   /** OSGi container callback. */
@@ -184,72 +184,58 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
 
   @Override
   public void verifyParticipationFeeder() {
-    User user = SecurityUtil.createSystemUser(systemUser, new DefaultOrganization());
-    MessageSignature msgSign = MessageSignature.messageSignature("admin", user, emailSender, "Sent by admin");
-
     logger.info("START: Verify participation harvest ####################################");
 
-    final Organization org;
-    org = organizationDirectoryService.getOrganizations().get(0);
+    final Organization org = organizationDirectoryService.getOrganizations().get(0);
     secCtx.set(some(new SecurityContext(securityService, org, SecurityUtil.createSystemUser(systemUser, org))));
-    try {
-      HarvestStats stats = pmRunner.getLastHarvestStats();
 
-      long storedTotalRecordings = participationDatabase.countTotalRecordings();
-      snapCountStats.put("tab.dashboard.snap.stats.total", Long.toString(stats.getTotal()));
-      snapCountStats.put("tab.dashboard.snap.stats.new", Integer.toString(stats.getNew()));
-      snapCountStats.put("tab.dashboard.snap.stats.updated", Integer.toString(stats.getUpdated()));
-      snapCountStats.put("tab.dashboard.snap.stats.unchanged", Integer.toString(stats.getNotModified()));
-      snapCountStats.put("tab.dashboard.snap.stats.deleted", Integer.toString(stats.getDeleted()));
-      logger.info("stats of S+ sync :" + snapCountStats);
-      int totalSplusRecordings = stats.getTotal();
+    HarvestStats stats = pmRunner.getLastHarvestStats();
 
-      if (!initialHarvest) {
-        if ((storedTotalRecordings - totalSplusRecordings) > recordingsThresholdChanged) {
-          String body = " The  number of recordings in the S+ database is significantly \n "
-                  + "smaller that the number of recordings in the Matterhorn Database:\n\n"
-                  + "stored total recordings: " + storedTotalRecordings + "\n\n" //471
-                  + "total S+ Recordings: " + totalSplusRecordings + "\n\n" //475
-                  + "Please run MH update manually!";
-          logger.error("Error Syncing Syllabus - not enough entries in S+ DB");
-          logger.error(body);
-          MessageTemplate tmpl = new MessageTemplate("invitation", user,
-              "Error Syncing Syllabus - not enough entries in S+ DB",
-              body);
-          Message errorMessage = new Message(emailCreator, tmpl, msgSign);
-          emailSenderService.sendErrorMessage(errorMessage, errorRecipients);
+    snapCountStats.put("tab.dashboard.snap.stats.total", Long.toString(stats.getTotal()));
+    snapCountStats.put("tab.dashboard.snap.stats.new", Integer.toString(stats.getNew()));
+    snapCountStats.put("tab.dashboard.snap.stats.updated", Integer.toString(stats.getUpdated()));
+    snapCountStats.put("tab.dashboard.snap.stats.unchanged", Integer.toString(stats.getNotModified()));
+    snapCountStats.put("tab.dashboard.snap.stats.deleted", Integer.toString(stats.getDeleted()));
+    logger.info("Syllabus+ sync stats:" + snapCountStats);
 
-          running = false;
-          return;
-        }
+    if (!initialHarvest) {
+      Boolean error = false;
+      String body = "<div>There are large descrepencies between the current and previous Syllabus+ synchronizations to Participation Management databases."
+          + "Please review and run the Participation Management to Opencast Schedule synchronization manually if required.</div>";
 
-        if (stats.getDeleted() > recordingsThresholdDeleted) {
-          // send email and exit
-          // respb.type("Trying to delete too many Recordings -- please verify");
-          String body = "The Synchronization with S+ attempts to delete a large number \n "
-                  + "of recordings in the Matterhorn Database:\n\n"
-                  + "stored total recordings: " + storedTotalRecordings + "\n\n"
-                  + "total S+ Recordings: " + totalSplusRecordings + "\n\n"
-                  + "Please run MH update manually!";
-          logger.error("Error Syncing Syllabus - Trying to delete too many Recordings");
-          logger.error(body);
-          MessageTemplate tmpl = new MessageTemplate("invitation", user,
-              "Error Syncing Syllabus - Trying to delete too many Recordings",
-              body);
-          Message errorMessage = new Message(emailCreator, tmpl, msgSign);
-          emailSenderService.sendErrorMessage(errorMessage, errorRecipients);
-
-          running = false;
-          return;
-        }
+      if (stats.getUpdated() > recordingsThresholdChanged) {
+        error = true;
+        body += "<div>The number of recordings in the Participation Management database has changed by more than " + recordingsThresholdChanged + "</div>"
+            + "<ul><li>Changed recordings: " + stats.getUpdated() + "</li>"
+            + "<li>Total recordings: " + stats.getTotal() + "</li></ul>";
+        logger.error("Syllabus+ to PM synchronization: too many were recording changed. Opencast Schedule synchronization not run");
       }
 
-      matterhornSyncService.synchronize();
-    } catch (ParticipationManagementDatabaseException ex) {
-      logger.error("Database Problem", ex);
-    } finally {
-      logger.info("END: Verify participation harvest ####################################");
+      if (stats.getDeleted() > recordingsThresholdDeleted) {
+        error = true;
+        body = "<div>The number of recordings <b>marked</b> as deleted in the Participation Management database is more than " + recordingsThresholdDeleted + "</div>"
+            + "<ul><li>Deleted recordings: " + stats.getDeleted() + "</li>"
+            + "<li>Total recordings: " + stats.getTotal() + "</li></ul>";
+        logger.error("Syllabus+ to PM synchronization: too many were recordings marked deleted. Opencast Schedule synchronization not run");
+      }
+
+      if (error)  {
+        User user = SecurityUtil.createSystemUser(systemUser, new DefaultOrganization());
+        MessageSignature msgSign = MessageSignature.messageSignature("admin", user, emailSender, "Sent by admin");
+        MessageTemplate tmpl = new MessageTemplate("synchronization warning", user,
+            "ATTENTION: Syllabus+ synchronization descrepencies", body);
+        Message errorMessage = new Message(emailCreator, tmpl, msgSign);
+        emailSenderService.sendErrorMessage(errorMessage, errorRecipients);
+
+        running = false;
+        return;
+      }
     }
+
+    logger.info("END: Verify participation harvest ####################################");
+
+    // Synchronize PM to OC schedule
+    scheduleFeederService.synchronize();
   }
 
   @Override
