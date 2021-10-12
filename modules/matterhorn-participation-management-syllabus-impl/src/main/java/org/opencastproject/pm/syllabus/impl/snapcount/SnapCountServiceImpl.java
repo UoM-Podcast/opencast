@@ -186,11 +186,7 @@ public class SnapCountServiceImpl implements ManagedService, SnapCountService {
   public void verifyParticipationFeeder() {
     logger.info("START: Verify participation harvest ####################################");
 
-    final Organization org = organizationDirectoryService.getOrganizations().get(0);
-    secCtx.set(some(new SecurityContext(securityService, org, SecurityUtil.createSystemUser(systemUser, org))));
-
     HarvestStats stats = pmRunner.getLastHarvestStats();
-
     snapCountStats.put("tab.dashboard.snap.stats.total", Long.toString(stats.getTotal()));
     snapCountStats.put("tab.dashboard.snap.stats.new", Integer.toString(stats.getNew()));
     snapCountStats.put("tab.dashboard.snap.stats.updated", Integer.toString(stats.getUpdated()));
