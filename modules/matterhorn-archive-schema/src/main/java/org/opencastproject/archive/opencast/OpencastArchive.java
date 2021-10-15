@@ -449,9 +449,27 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         logger.debug("Content of asset {} with checksum {} already exists in {}",
                 existingAsset.getAssetId(), e.getChecksum(), store.getStoreType());
         if (!store.copy(existingAsset, storagePath)) {
-          throw new ArchiveException(
-                  format("An element with checksum %s has already been archived but trying to copy or link asset %s to it failed",
-                          e.getChecksum(), existingAsset));
+          logger.info("The asset {} is not available on the curent store ({})", existingAsset, store.getStoreType());
+          logger.info("seaching in local Store {} ", store.getStoreType());
+          boolean result = localElementStore.copy(existingAsset, storagePath);
+          if (!result) {
+            for (String remoteStoreKey : remoteStores.keySet()) {
+              logger.info("seaching in remote Store {} ", remoteStoreKey);
+              ElementStore remoteStore = remoteStores.get(remoteStoreKey);
+              if (remoteStore.copy(existingAsset, storagePath)) {
+                result = true;
+                break;
+              }
+            }
+          }
+          if (!result) {
+            logger.error("The asset {} is not available on the local store ({})"
+                  + " or any of the connected filestores {}",
+                  existingAsset, localElementStore.getStoreType(), remoteStores.keySet());
+            throw new ArchiveException(
+                format("An element with checksum %s has already been archived but trying to copy or link asset %s to it failed",
+                        e.getChecksum(), existingAsset));
+          }
         }
       } else {
         try {
@@ -510,10 +528,10 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       String manifestFileName = null;
       try {
         inputStreamOpt = currentStore.get(pathToManifest);
-        if (inputStreamOpt.isNone()) // This should never happen because it has been tested before
+        if (inputStreamOpt.isNone()) { // This should never happen because it has been tested before
           throw new NotFoundException(
                   format("Unexpected error. Manifest %s not found in current asset store", manifestBaseName));
-
+        }
         inputStream = inputStreamOpt.get();
         manifestFileName = UUID.randomUUID().toString() + ".xml";
         URI manifestTmpUri = getWorkspace().putInCollection("archive", manifestFileName, inputStream);
