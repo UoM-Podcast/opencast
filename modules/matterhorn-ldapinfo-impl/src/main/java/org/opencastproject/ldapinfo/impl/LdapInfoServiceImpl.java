@@ -34,8 +34,12 @@ import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
@@ -58,14 +62,20 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
   /** The configuration key to use to contact the LDAP server*/
   public static final String OPT_LDAP_INFO_SERVER_URL_ENABLED = "enabled";
 
-  /** The configuration key to use to contact the LDAP server*/
+  /** The configuration key to use to contact the LDAP informatione server*/
   public static final String OPT_LDAP_INFO_SERVER_URL = "ldap.url.infoserver";
+
+  /** The configuration key to use to contact the LDAP directory server*/
+  public static final String OPT_LDAP_DIR_SERVER_URL = "ldap.dir.url.infoserver";
 
   /** The LDAP tag that contains the spotId */
   public static final String OPT_LDAP_SPOT_ID_TAG = "ldap.tag.spotId";
 
   /** The LDAP tag that contains the group membership information */
   public static final String OPT_LDAP_GROUP_MEMBERSHIP_TAG = "ldap.tag.group";
+
+  /** The LDAP directory tags that should be returned by the inquiry */
+  public static final String OPT_LDAP_DIRECTORY_TAGS = "ldap.dir.tags.directoryInfo";
 
   /** The module specific logger */
   private static final Logger logger = LoggerFactory.getLogger(LdapInfoServiceImpl.class);
@@ -74,9 +84,13 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
 
   private String ldapInfoServer = "ldap://ldap.university.org";
 
+  private String ldapDirServer = "ldap://dir.university.org";
+
   private String spotIdTag = "spotId";
 
   private String groupMembershipTag = "group";
+
+  private String [] dirInfoTags = null;
 
   public void activate(final ComponentContext cc) {
     logger.info("Activating {}", this.getClass().getName());
@@ -110,7 +124,28 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
       logger.warn("No LDAP information server configured, using '{}'", ldapInfoServer);
     }
 
-    // LDAP tag containing the spotId 
+    // LDAP directory server
+    Option<String> dirServer = getOptCfg(properties, OPT_LDAP_DIR_SERVER_URL);
+    if (dirServer.isSome()) {
+      ldapDirServer = dirServer.get();
+      logger.info("The LDAP directory server is '{}'", ldapDirServer);
+    } else {
+      ldapDirServer = ldapInfoServer;
+      logger.warn("No LDAP directory server configured, using the LDAP information server'{}'", ldapDirServer);
+    }
+
+    // LDAP directory tags
+    Option<String> dirItems = getOptCfg(properties, OPT_LDAP_DIRECTORY_TAGS);
+    if (dirItems.isSome()) {
+      String items = dirItems.get();
+      dirInfoTags = items.split(",");
+      logger.info("The LDAP directory inquiry will return {}", dirInfoTags);
+    } else {
+      logger.warn("No dirctoryInformation tags specified, the directoyInfo"
+        + " endpoint will return empty results."
+        + " Configure * to get the complete information");
+    }
+      // LDAP tag containing the spotId 
     Option<String> spotId = getOptCfg(properties, OPT_LDAP_SPOT_ID_TAG);
     if (spotId.isSome()) {
       spotIdTag = spotId.get();
@@ -128,6 +163,57 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
       logger.warn("No LDAP groupMembership tag configured, using '{}'", groupMembershipTag);
     }
   }
+
+  private Map<String ,List<String>> queryDirLdap(String spotId) throws LdapInfoException {
+    Hashtable env = new Hashtable();
+    HashMap<String, List<String>> out = new HashMap<>();
+    DirContext dctx = null;
+    env.put(Context.INITIAL_CONTEXT_FACTORY, LDAP_CONTEXT_FACTORY);
+    env.put(Context.PROVIDER_URL, ldapDirServer);
+    try {
+      dctx = new InitialDirContext(env);
+    } catch (NamingException e) {
+      throw(new LdapInfoException(e));
+    }
+    SearchControls sc = new SearchControls();
+    sc.setReturningAttributes(null);
+    sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
+    String base = "";//ou=People,o=University of Manchester,c=GB";
+    String filter = spotIdTag + "=" + spotId;
+    try {
+      NamingEnumeration results = dctx.search(base, filter, sc);
+      while (results.hasMore()) {
+        SearchResult sr = (SearchResult) results.next();
+        Attributes attrs = sr.getAttributes();
+        NamingEnumeration<String> attrIds = attrs.getIDs();
+        while (attrIds.hasMore()) {
+          String id = attrIds.next();
+          for (String dirItem: dirInfoTags) {
+            if (id.toLowerCase().matches(dirItem.toLowerCase())) {
+              Attribute att = attrs.get(id);
+              ArrayList<String> outList = new ArrayList<>();
+              for (int i = 0; i < att.size(); i++) {
+                String attItem = (String) att.get(i);
+                outList.add(attItem.trim());
+              }
+              out.put(id, outList);
+            }
+          }
+        }
+      }
+    } catch (NamingException e) {
+      throw(new LdapInfoException(e));
+    } finally {
+      try {
+        dctx.close();
+      } catch (NamingException ex) {
+        logger.error("dctx.close threw", ex);
+        throw(new LdapInfoException(ex));
+      }
+    }
+    return out;
+  }
+
 
   private String queryLdap(String username, String attribute, String value) throws LdapInfoException {
     Hashtable env = new Hashtable();
@@ -215,6 +301,25 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
     logger.debug("{} isMemberOf {}", username, group);
     String out = queryLdap(username, groupMembershipTag , group);
     return "true".equals(out);
+  }
+
+  /**
+   * Get the LDAP directory information for a user by spotId the fields to be
+   * returned are configured in the config file (regex matching is permitted)
+   * @param spotId
+   *          the spotId to look up
+   * @return map of directory information
+   * @throws org.opencastproject.ldapinfo.api.LdapInfoException
+   */
+  @Override
+  public Map<String,List<String>> getDirectoryInformation(String spotId) throws LdapInfoException {
+    Map<String,List<String>> directoryInformation = null;
+    if (!ldapInfoServerEnabled) {
+      throw new LdapInfoException("LDAP Information Server disabled");
+    }
+    Map<String,List<String>> res = queryDirLdap(spotId);
+    logger.debug("LDAP information for {}: \n {}",spotId, res);
+    return res;
   }
 
 }

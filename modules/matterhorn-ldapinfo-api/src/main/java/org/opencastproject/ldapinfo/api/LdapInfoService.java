@@ -21,6 +21,9 @@
 
 package org.opencastproject.ldapinfo.api;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * Api for the LDAP Information Service
  * 
@@ -36,6 +39,16 @@ public interface LdapInfoService {
    * @throws org.opencastproject.ldapinfo.api.LdapInfoException
    */
   String getSpotId(String username) throws LdapInfoException;
+
+  /**
+   * Get the LDAP directory information for a user by spotId the fields to be
+   * returned are configured in the config file (regex matching is permitted)
+   * @param spotId
+   *          the spotId to look up
+   * @return map of directory information
+   * @throws org.opencastproject.ldapinfo.api.LdapInfoException
+   */
+  Map<String,List<String>> getDirectoryInformation(String spotId) throws LdapInfoException;
 
   /**
    * Check the group membership of a given user.
