@@ -99,7 +99,8 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   private static final Logger logger = LoggerFactory.getLogger(OpencastArchive.class);
   private final SolrRequester solrRequester;
   private final SolrIndexManager solrIndex;
-  private Map<String, RemoteElementStore> remoteStores = new LinkedHashMap<String, RemoteElementStore>();
+  private final Map<String, RemoteElementStore> remoteStores = new LinkedHashMap<String, RemoteElementStore>();
+  private final Map<String, ElementStore> allStores = new LinkedHashMap<String, ElementStore>();
   private ElementStore localElementStore = null;
   private UriRewriter uriRewriter = null;
 
@@ -112,6 +113,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
     this.solrIndex = solrIndex;
     this.solrRequester = solrRequester;
     localElementStore = elementStore;
+    allStores.put(elementStore.getStoreType(), elementStore);
   }
 
   @Override
@@ -220,9 +222,11 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
           if (p.isGranted()) {
             final MediaPackage mp = p.getGranted().getMediaPackage();
             for (MediaPackageElement mpe : option(mp.getElementById(mpElemId))) {
-              ElementStore store = getElementStore(p.getGranted().getStoreId()).get();
-              for (InputStream stream : store.get(spath(getOrgId(), mpId, version, mpElemId))) {
-                return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize()));
+              for (ElementStore store : allStores.values()) {
+                for (InputStream stream : store.get(spath(getOrgId(), mpId, version, mpElemId))) {
+                  logger.info("found for MPE: {} in Store: {}", mpElemId, store.getStoreType());
+                  return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize()));
+                }
               }
             }
             // mediapackage element does not exist
@@ -262,31 +266,25 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
               //Note that we're copying the *previous* version here
               Option<Episode> lastVersionEpisode = getLatestEpisodeById(mpId);
               final PartialMediaPackage lastVersionMP = mkPartial(lastVersionEpisode.get().getMediaPackage());
-
               copyElementsToStore(lastVersionMP, orgId, lastVersion, localElementStore);
               getPersistence().setStorageLocation(mpId, lastVersion, localElementStore.getStoreType());
             } catch (IOException ex) {
               throw new ArchiveException(ex);
             }
           }
-          if (!localElementStore.copy(found, storagePath)) {
-            logger.info("The asset {} is not available on the local store ({})", found, localElementStore.getStoreType());
-            boolean result = false;
-            for (String remoteStoreKey : remoteStores.keySet()) {
-              logger.info("seaching in remote Store {} ", remoteStoreKey);
-              ElementStore remoteStore = remoteStores.get(remoteStoreKey);
-              if (remoteStore.copy(found, storagePath)) {
-                result = true;
-                break;
-              }
+          boolean result = false;
+          for (ElementStore store: allStores.values()) {
+            if (store.copy(found, storagePath)) {
+              result = true;
+              logger.info("The asset {} is located on store ({})", found, store.getStoreType());
+              break;
             }
-            if (!result) {
-              logger.error("The asset {} is not available on the local store ({})"
-                    + " or any of the connected filestores {}",
-                    found, localElementStore.getStoreType(), remoteStores.keySet());
-              throw new ArchiveException("An asset with checksum " + e.getChecksum().toString() + " has"
+          }
+          if (!result) {
+            logger.error("The asset {} is not available on any of the connected filestores {}",
+                  found, localElementStore.getStoreType(), allStores.keySet());
+            throw new ArchiveException("An asset with checksum " + e.getChecksum().toString() + " has"
                     + " already been archived but trying to copy or link asset " + found + " failed");
-            }
           }
         }
 
@@ -326,13 +324,15 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   }
 
   public void addRemoteElementStore(RemoteElementStore elementStore) {
-    if (elementStore.getStoreType() != ElementStore.DISABLED_STORE_TYPE) {
+    if (!ElementStore.DISABLED_STORE_TYPE.equals(elementStore.getStoreType())) {
       remoteStores.put(elementStore.getStoreType(), elementStore);
+      allStores.put(elementStore.getStoreType(),elementStore);
     }
   }
 
   public void removeRemoteElementStore(RemoteElementStore elementStore) {
     remoteStores.remove(elementStore.getStoreType());
+    allStores.remove(elementStore.getStoreType());
   }
 
   public Option<ElementStore> getRemoteElementStore(String id) {
@@ -448,24 +448,16 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         final StoragePath existingAsset = existingAssetOpt.get();
         logger.debug("Content of asset {} with checksum {} already exists in {}",
                 existingAsset.getAssetId(), e.getChecksum(), store.getStoreType());
-        if (!store.copy(existingAsset, storagePath)) {
-          logger.info("The asset {} is not available on the curent store ({})", existingAsset, store.getStoreType());
-          logger.info("seaching in local Store {} ", store.getStoreType());
-          boolean result = localElementStore.copy(existingAsset, storagePath);
-          if (!result) {
-            for (String remoteStoreKey : remoteStores.keySet()) {
-              logger.info("seaching in remote Store {} ", remoteStoreKey);
-              ElementStore remoteStore = remoteStores.get(remoteStoreKey);
-              if (remoteStore.copy(existingAsset, storagePath)) {
-                result = true;
-                break;
-              }
-            }
+        boolean result = false;
+        for (ElementStore elemStore : allStores.values()) {
+          if (elemStore.copy(existingAsset, storagePath)) {
+            logger.info("The asset {} is located on store ({})", existingAsset, elemStore.getStoreType());
+            result = true;
+            break;
           }
           if (!result) {
-            logger.error("The asset {} is not available on the local store ({})"
-                  + " or any of the connected filestores {}",
-                  existingAsset, localElementStore.getStoreType(), remoteStores.keySet());
+            logger.error("The asset {} is not available on any of the connected filestores {}",
+                  existingAsset, allStores.keySet());
             throw new ArchiveException(
                 format("An element with checksum %s has already been archived but trying to copy or link asset %s to it failed",
                         e.getChecksum(), existingAsset));
@@ -638,7 +630,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return getPersistence().getEpisode(mediapackageId);
     } catch (ArchiveDbException e) {
       logger.error("Error finding " + mediapackageId, e);
-      return new LinkedList<Episode>();
+      return new LinkedList<>();
     }
   }
 
@@ -655,7 +647,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return getPersistence().getEpisodes(start, end);
     } catch (ArchiveDbException e) {
       logger.error("Error finding episodes between " + start + " and " + end);
-      return new LinkedList<Episode>();
+      return new LinkedList<>();
     }
   }
 
@@ -664,7 +656,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return getPersistence().getEpisodes(start, end);
     } catch (ArchiveDbException e) {
       logger.error("Error finding episodes between " + start + " and " + end);
-      return new LinkedList<Episode>();
+      return new LinkedList<>();
     }
   }
 }
