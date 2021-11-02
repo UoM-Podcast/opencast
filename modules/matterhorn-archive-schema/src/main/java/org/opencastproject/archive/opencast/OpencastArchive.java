@@ -100,6 +100,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   private final SolrRequester solrRequester;
   private final SolrIndexManager solrIndex;
   private final Map<String, RemoteElementStore> remoteStores = new LinkedHashMap<String, RemoteElementStore>();
+  // list of all the known stores starting with localSore followed by remoteStores
   private final Map<String, ElementStore> allStores = new LinkedHashMap<String, ElementStore>();
   private ElementStore localElementStore = null;
   private UriRewriter uriRewriter = null;
@@ -211,7 +212,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   }
 
   /* Begin Remote Asset Storage Overrides */
-  //Override to get files from whichever store they're stored in, rather than assuming the local store
+  // Override to get files from whichever store they're stored in, rather than assuming the local store
   @Override
   public Option<ArchivedMediaPackageElement> get(final String mpId, final String mpElemId, final Version version)
           throws ArchiveException {
@@ -224,7 +225,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
             for (MediaPackageElement mpe : option(mp.getElementById(mpElemId))) {
               for (ElementStore store : allStores.values()) {
                 for (InputStream stream : store.get(spath(getOrgId(), mpId, version, mpElemId))) {
-                  logger.info("found for MPE: {} in Store: {}", mpElemId, store.getStoreType());
+                  logger.debug("found for MPE: {} in Store: {}", mpElemId, store.getStoreType());
                   return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize()));
                 }
               }
@@ -273,6 +274,8 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
             }
           }
           boolean result = false;
+          // trying to copy from the store it is in to the localStore
+          // assuming allStores as [ localStore, remoteStores[] ]
           for (ElementStore store: allStores.values()) {
             if (store.copy(found, storagePath)) {
               result = true;
@@ -449,6 +452,8 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         logger.debug("Content of asset {} with checksum {} already exists in {}",
                 existingAsset.getAssetId(), e.getChecksum(), store.getStoreType());
         boolean result = false;
+        // trying to copy from the store it is in to the localStore
+        // assuming allStores as [ localStore, remoteStores[] ]
         for (ElementStore elemStore : allStores.values()) {
           if (elemStore.copy(existingAsset, storagePath)) {
             logger.info("The asset {} is located on store ({})", existingAsset, elemStore.getStoreType());
