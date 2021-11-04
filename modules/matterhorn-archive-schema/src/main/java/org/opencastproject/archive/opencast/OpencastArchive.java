@@ -273,21 +273,24 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
               throw new ArchiveException(ex);
             }
           }
-          boolean result = false;
-          // trying to copy from the store it is in to the localStore
-          // assuming allStores as [ localStore, remoteStores[] ]
-          for (ElementStore store: allStores.values()) {
-            if (store.copy(found, storagePath)) {
-              result = true;
-              logger.info("The asset {} is located on store ({})", found, store.getStoreType());
-              break;
+          if (!localElementStore.copy(found, storagePath)) {
+            logger.info("The asset {} is not available on the local store ({})", found, localElementStore.getStoreType());
+            boolean result = false;
+            for (String remoteStoreKey : remoteStores.keySet()) {
+              logger.info("seaching in remote Store {} ", remoteStoreKey);
+              ElementStore remoteStore = remoteStores.get(remoteStoreKey);
+              if (remoteStore.copy(found, storagePath)) {
+                result = true;
+                break;
+              }
             }
-          }
-          if (!result) {
-            logger.error("The asset {} is not available on any of the connected filestores {}",
-                  found, localElementStore.getStoreType(), allStores.keySet());
-            throw new ArchiveException("An asset with checksum " + e.getChecksum().toString() + " has"
+            if (!result) {
+              logger.error("The asset {} is not available on the local store ({})"
+                    + " or any of the connected filestores {}",
+                    found, localElementStore.getStoreType(), remoteStores.keySet());
+              throw new ArchiveException("An asset with checksum " + e.getChecksum().toString() + " has"
                     + " already been archived but trying to copy or link asset " + found + " failed");
+            }
           }
         }
 
@@ -327,7 +330,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   }
 
   public void addRemoteElementStore(RemoteElementStore elementStore) {
-    if (!ElementStore.DISABLED_STORE_TYPE.equals(elementStore.getStoreType())) {
+    if (elementStore.getStoreType() != ElementStore.DISABLED_STORE_TYPE) {
       remoteStores.put(elementStore.getStoreType(), elementStore);
       allStores.put(elementStore.getStoreType(),elementStore);
     }
@@ -451,18 +454,24 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         final StoragePath existingAsset = existingAssetOpt.get();
         logger.debug("Content of asset {} with checksum {} already exists in {}",
                 existingAsset.getAssetId(), e.getChecksum(), store.getStoreType());
-        boolean result = false;
-        // trying to copy from the store it is in to the localStore
-        // assuming allStores as [ localStore, remoteStores[] ]
-        for (ElementStore elemStore : allStores.values()) {
-          if (elemStore.copy(existingAsset, storagePath)) {
-            logger.info("The asset {} is located on store ({})", existingAsset, elemStore.getStoreType());
-            result = true;
-            break;
+        if (!store.copy(existingAsset, storagePath)) {
+          logger.info("The asset {} is not available on the curent store ({})", existingAsset, store.getStoreType());
+          logger.info("seaching in local Store {} ", store.getStoreType());
+          boolean result = localElementStore.copy(existingAsset, storagePath);
+          if (!result) {
+            for (String remoteStoreKey : remoteStores.keySet()) {
+              logger.info("seaching in remote Store {} ", remoteStoreKey);
+              ElementStore remoteStore = remoteStores.get(remoteStoreKey);
+              if (remoteStore.copy(existingAsset, storagePath)) {
+                result = true;
+                break;
+              }
+            }
           }
           if (!result) {
-            logger.error("The asset {} is not available on any of the connected filestores {}",
-                  existingAsset, allStores.keySet());
+            logger.error("The asset {} is not available on the local store ({})"
+                  + " or any of the connected filestores {}",
+                  existingAsset, localElementStore.getStoreType(), remoteStores.keySet());
             throw new ArchiveException(
                 format("An element with checksum %s has already been archived but trying to copy or link asset %s to it failed",
                         e.getChecksum(), existingAsset));
@@ -635,7 +644,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return getPersistence().getEpisode(mediapackageId);
     } catch (ArchiveDbException e) {
       logger.error("Error finding " + mediapackageId, e);
-      return new LinkedList<>();
+      return new LinkedList<Episode>();
     }
   }
 
@@ -652,7 +661,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return getPersistence().getEpisodes(start, end);
     } catch (ArchiveDbException e) {
       logger.error("Error finding episodes between " + start + " and " + end);
-      return new LinkedList<>();
+      return new LinkedList<Episode>();
     }
   }
 
@@ -661,7 +670,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
       return getPersistence().getEpisodes(start, end);
     } catch (ArchiveDbException e) {
       logger.error("Error finding episodes between " + start + " and " + end);
-      return new LinkedList<>();
+      return new LinkedList<Episode>();
     }
   }
 }
