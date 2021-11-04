@@ -99,9 +99,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   private static final Logger logger = LoggerFactory.getLogger(OpencastArchive.class);
   private final SolrRequester solrRequester;
   private final SolrIndexManager solrIndex;
-  private final Map<String, RemoteElementStore> remoteStores = new LinkedHashMap<String, RemoteElementStore>();
-  // list of all the known stores starting with localSore followed by remoteStores
-  private final Map<String, ElementStore> allStores = new LinkedHashMap<String, ElementStore>();
+  private Map<String, RemoteElementStore> remoteStores = new LinkedHashMap<String, RemoteElementStore>();
   private ElementStore localElementStore = null;
   private UriRewriter uriRewriter = null;
 
@@ -114,7 +112,6 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
     this.solrIndex = solrIndex;
     this.solrRequester = solrRequester;
     localElementStore = elementStore;
-    allStores.put(elementStore.getStoreType(), elementStore);
   }
 
   @Override
@@ -212,7 +209,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   }
 
   /* Begin Remote Asset Storage Overrides */
-  // Override to get files from whichever store they're stored in, rather than assuming the local store
+  //Override to get files from whichever store they're stored in, rather than assuming the local store
   @Override
   public Option<ArchivedMediaPackageElement> get(final String mpId, final String mpElemId, final Version version)
           throws ArchiveException {
@@ -223,11 +220,9 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
           if (p.isGranted()) {
             final MediaPackage mp = p.getGranted().getMediaPackage();
             for (MediaPackageElement mpe : option(mp.getElementById(mpElemId))) {
-              for (ElementStore store : allStores.values()) {
-                for (InputStream stream : store.get(spath(getOrgId(), mpId, version, mpElemId))) {
-                  logger.debug("found for MPE: {} in Store: {}", mpElemId, store.getStoreType());
-                  return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize()));
-                }
+              ElementStore store = getElementStore(p.getGranted().getStoreId()).get();
+              for (InputStream stream : store.get(spath(getOrgId(), mpId, version, mpElemId))) {
+                return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize()));
               }
             }
             // mediapackage element does not exist
@@ -267,6 +262,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
               //Note that we're copying the *previous* version here
               Option<Episode> lastVersionEpisode = getLatestEpisodeById(mpId);
               final PartialMediaPackage lastVersionMP = mkPartial(lastVersionEpisode.get().getMediaPackage());
+
               copyElementsToStore(lastVersionMP, orgId, lastVersion, localElementStore);
               getPersistence().setStorageLocation(mpId, lastVersion, localElementStore.getStoreType());
             } catch (IOException ex) {
@@ -332,13 +328,11 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
   public void addRemoteElementStore(RemoteElementStore elementStore) {
     if (elementStore.getStoreType() != ElementStore.DISABLED_STORE_TYPE) {
       remoteStores.put(elementStore.getStoreType(), elementStore);
-      allStores.put(elementStore.getStoreType(),elementStore);
     }
   }
 
   public void removeRemoteElementStore(RemoteElementStore elementStore) {
     remoteStores.remove(elementStore.getStoreType());
-    allStores.remove(elementStore.getStoreType());
   }
 
   public Option<ElementStore> getRemoteElementStore(String id) {
