@@ -59,14 +59,20 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
   /** The LDAP context factory */
   public static final String LDAP_CONTEXT_FACTORY = "com.sun.jndi.ldap.LdapCtxFactory";
 
-  /** The configuration key to use to contact the LDAP server*/
+  /** The configuration key to verify if the LDAP server module should be used*/
   public static final String OPT_LDAP_INFO_SERVER_URL_ENABLED = "enabled";
 
-  /** The configuration key to use to contact the LDAP informatione server*/
+  /** The configuration key for LDAP information server URL */
   public static final String OPT_LDAP_INFO_SERVER_URL = "ldap.url.infoserver";
 
-  /** The configuration key to use to contact the LDAP directory server*/
+  /** The configuration key for the search base on the LDAP information server*/
+  public static final String OPT_LDAP_INFO_SERVER_BASE = "ldap.base.infoserver";
+
+  /** The configuration key for the LDAP directory server URL */
   public static final String OPT_LDAP_DIR_SERVER_URL = "ldap.dir.url.infoserver";
+
+  /** The configuration key for the search base on the LDAP directory server*/
+  public static final String OPT_LDAP_DIR_SERVER_BASE = "ldap.dir.base.infoserver";
 
   /** The LDAP tag that contains the spotId */
   public static final String OPT_LDAP_SPOT_ID_TAG = "ldap.tag.spotId";
@@ -74,7 +80,7 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
   /** The LDAP tag that contains the group membership information */
   public static final String OPT_LDAP_GROUP_MEMBERSHIP_TAG = "ldap.tag.group";
 
-  /** The LDAP directory tags that should be returned by the inquiry */
+  /** The LDAP directory tags that should be returned for the query */
   public static final String OPT_LDAP_DIRECTORY_TAGS = "ldap.dir.tags.directoryInfo";
 
   /** The module specific logger */
@@ -82,15 +88,21 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
 
   private boolean ldapInfoServerEnabled = false;
 
-  private String ldapInfoServer = "ldap://ldap.university.org";
+  private String ldapInfoServer = null;
 
-  private String ldapDirServer = "ldap://dir.university.org";
+  private String ldapInfoServerBase = "";
 
-  private String spotIdTag = "spotId";
+  private String ldapDirServer = null;
 
-  private String groupMembershipTag = "group";
+  private String ldapDirServerBase = "";
+
+  private String spotIdTag = null;
+
+  private String groupMembershipTag = null;
 
   private String [] dirInfoTags = null;
+
+  private String dirInfoRegex = "";
 
   public void activate(final ComponentContext cc) {
     logger.info("Activating {}", this.getClass().getName());
@@ -139,13 +151,18 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
     if (dirItems.isSome()) {
       String items = dirItems.get();
       dirInfoTags = items.split(",");
-      logger.info("The LDAP directory inquiry will return {}", dirInfoTags);
+      logger.info("The LDAP directory query will return {}", dirInfoTags);
+      String sep = "";
+      for (String tag: dirInfoTags) {
+        dirInfoRegex += sep + tag.trim().toLowerCase();
+        sep = "|";
+      }
     } else {
       logger.warn("No dirctoryInformation tags specified, the directoyInfo"
         + " endpoint will return empty results."
         + " Configure * to get the complete information");
     }
-      // LDAP tag containing the spotId 
+    // LDAP tag containing the spotId 
     Option<String> spotId = getOptCfg(properties, OPT_LDAP_SPOT_ID_TAG);
     if (spotId.isSome()) {
       spotIdTag = spotId.get();
@@ -178,26 +195,22 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
     SearchControls sc = new SearchControls();
     sc.setReturningAttributes(null);
     sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
-    String base = "";//ou=People,o=University of Manchester,c=GB";
     String filter = spotIdTag + "=" + spotId;
     try {
-      NamingEnumeration results = dctx.search(base, filter, sc);
+      NamingEnumeration results = dctx.search(ldapDirServerBase, filter, sc);
       while (results.hasMore()) {
         SearchResult sr = (SearchResult) results.next();
-        Attributes attrs = sr.getAttributes();
-        NamingEnumeration<String> attrIds = attrs.getIDs();
-        while (attrIds.hasMore()) {
-          String id = attrIds.next();
-          for (String dirItem: dirInfoTags) {
-            if (id.toLowerCase().matches(dirItem.toLowerCase())) {
-              Attribute att = attrs.get(id);
-              ArrayList<String> outList = new ArrayList<>();
-              for (int i = 0; i < att.size(); i++) {
-                String attItem = (String) att.get(i);
-                outList.add(attItem.trim());
-              }
-              out.put(id, outList);
+        NamingEnumeration<Attribute> attrs = (NamingEnumeration<Attribute>)sr.getAttributes().getAll();
+        while (attrs.hasMore()) {
+          Attribute att = attrs.next();
+          String id = att.getID().toLowerCase();
+          if (id.matches(dirInfoRegex)) {
+            NamingEnumeration<String> vals = (NamingEnumeration<String>) att.getAll();
+            ArrayList<String> outList = new ArrayList<>();
+            while (vals.hasMore()) {
+              outList.add(vals.next().trim());
             }
+            out.put(id, outList);
           }
         }
       }
@@ -207,7 +220,7 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
       try {
         dctx.close();
       } catch (NamingException ex) {
-        logger.error("dctx.close threw", ex);
+        logger.error("Can’t close LDAP connection to {}: {}", ldapDirServer, ex);
         throw(new LdapInfoException(ex));
       }
     }
@@ -233,11 +246,10 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
     String[] attributeFilter = { attribute };
     sc.setReturningAttributes(attributeFilter);
     sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
-    String base = "";
     String filter = "cn=" + username;
     String out = "";
     try {
-      NamingEnumeration results = dctx.search(base, filter, sc);
+      NamingEnumeration results = dctx.search(ldapInfoServerBase, filter, sc);
       while (results.hasMore()) {
         SearchResult sr = (SearchResult) results.next();
         Attributes attrs = sr.getAttributes();
@@ -255,7 +267,7 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
       try {
         dctx.close();
       } catch (NamingException ex) {
-        logger.error("dctx.close threw", ex);
+        logger.error("Can’t close LDAP connection to {} : {}",ldapInfoServer , ex);
         throw(new LdapInfoException(ex));
       }
     }
@@ -313,7 +325,6 @@ public class LdapInfoServiceImpl implements ManagedService, LdapInfoService {
    */
   @Override
   public Map<String,List<String>> getDirectoryInformation(String spotId) throws LdapInfoException {
-    Map<String,List<String>> directoryInformation = null;
     if (!ldapInfoServerEnabled) {
       throw new LdapInfoException("LDAP Information Server disabled");
     }
