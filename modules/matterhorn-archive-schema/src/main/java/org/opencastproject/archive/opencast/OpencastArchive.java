@@ -279,7 +279,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
           for (ElementStore store: allStores.values()) {
             if (store.copy(found, storagePath)) {
               result = true;
-              logger.info("The asset {} is located on store ({})", found, store.getStoreType());
+              logger.debug("The asset {} is located on store ({})", found, store.getStoreType());
               break;
             }
           }
@@ -456,7 +456,7 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
         // assuming allStores as [ localStore, remoteStores[] ]
         for (ElementStore elemStore : allStores.values()) {
           if (elemStore.copy(existingAsset, storagePath)) {
-            logger.info("The asset {} is located on store ({})", existingAsset, elemStore.getStoreType());
+            logger.debug("The asset {} is located on store ({})", existingAsset, elemStore.getStoreType());
             result = true;
             break;
           }
