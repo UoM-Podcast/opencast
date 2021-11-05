@@ -460,13 +460,13 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
             result = true;
             break;
           }
-          if (!result) {
-            logger.error("The asset {} is not available on any of the connected filestores {}",
-                  existingAsset, allStores.keySet());
-            throw new ArchiveException(
-                format("An element with checksum %s has already been archived but trying to copy or link asset %s to it failed",
-                        e.getChecksum(), existingAsset));
-          }
+        }
+        if (!result) {
+          logger.error("The asset {} is not available on any of the connected filestores {}",
+                existingAsset, allStores.keySet());
+          throw new ArchiveException(
+              format("An element with checksum %s has already been archived but trying to copy or link asset %s to it failed",
+                      e.getChecksum(), existingAsset));
         }
       } else {
         try {
