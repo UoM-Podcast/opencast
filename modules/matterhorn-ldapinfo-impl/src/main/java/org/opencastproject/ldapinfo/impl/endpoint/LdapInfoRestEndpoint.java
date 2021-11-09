@@ -29,8 +29,12 @@ import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
+import com.google.gson.Gson;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.FormParam;
@@ -95,6 +99,32 @@ public class LdapInfoRestEndpoint {
       return Response.status(Status.SERVICE_UNAVAILABLE).build();
     }
     return Response.ok().entity(spotId).build();
+  }
+
+  @GET
+  @Path("users/{spotid}/directoryInfo.json")
+  @Produces({MediaType.APPLICATION_OCTET_STREAM, MediaType.APPLICATION_JSON})
+  @RestQuery(name = "ldapInfo", description = "Get the ldap Directory information for the given spotid",
+      pathParameters = { @RestParameter(description = "The spotId that should be queried", isRequired = true, name = "spotid", type = RestParameter.Type.STRING) },
+      reponses = {
+        @RestResponse(description = "The request was processed succesfully.", responseCode = HttpServletResponse.SC_OK),
+        @RestResponse(description = "LDAP server not available", responseCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE),
+        @RestResponse(description = "spotId not found", responseCode = HttpServletResponse.SC_NOT_FOUND) },
+      returnDescription = "JSON map of directory information for the spotId.")
+  public Response getEduPersonEntitlements(@PathParam("spotid") String spotId) {
+    Map dirInfo;
+    try {
+      dirInfo = ldapInfoService.getDirectoryInformation(spotId);
+      if (null == dirInfo) {
+        return Response.status(Status.NOT_FOUND).build();
+      }
+    } catch (LdapInfoException ex) {
+      logger.error("ldapinfo get SpotId threw: {}", ex.getMessage());
+      logger.debug("Stacktrace:",ex);
+      return Response.status(Status.SERVICE_UNAVAILABLE).build();
+    }
+    String json = new Gson().toJson(dirInfo);
+    return Response.ok(json).type(MediaType.APPLICATION_JSON).build();
   }
 
   /**
