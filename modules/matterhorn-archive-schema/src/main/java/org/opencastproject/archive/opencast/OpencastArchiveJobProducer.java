@@ -212,8 +212,8 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
    */
   protected String internalMoveById(final String mpId, final String targetStorage) {
     List<Episode> episodes = archive.getEpisodesById(mpId);
-    List<Job> subjobs = spawnSubjobs(episodes, targetStorage);
-    return Integer.toString(subjobs.size());
+    String result = moveEpisodes(episodes, targetStorage);
+    return result;
   }
 
 
@@ -259,8 +259,8 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
    */
   protected String internalMoveByDate(final Date start, final Date end, final String targetStorage) {
     List<Episode> episodes = archive.getEpisodesByDate(start, end);
-    List<Job> subjobs = spawnSubjobs(episodes, targetStorage);
-    return Integer.toString(subjobs.size());
+    String result = moveEpisodes(episodes, targetStorage);
+    return result;
   }
 
   /**
@@ -311,26 +311,35 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
    */
   protected String internalMoveByIdAndDate(final String mpId, final Date start, final Date end, final String targetStorage) {
     List<Episode> episodes = archive.getEpisodesByIdAndDate(mpId, start, end);
-    List<Job> subjobs = spawnSubjobs(episodes, targetStorage);
-    return Integer.toString(subjobs.size());
+    String result = moveEpisodes(episodes, targetStorage);
+    return result;
   }
 
   /**
-   * Spawns the subjobs based on the stream of records
+   * Moves all episodes in list to the targetStore
    *
    * @param episodes
    *  The list of episodes to move to the new target storage
    * @param targetStorage
    *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
    * @return
-   *  The set of subjobs
+   *  The Status string reporting the number of episodes succeeded and failed
    */
-  private List<Job> spawnSubjobs(final List<Episode> episodes, final String targetStorage) {
-    List<Job> jobs = new LinkedList<>();
+  private String moveEpisodes(final List<Episode> episodes, final String targetStorage) {
+    int success = 0;
+    int failed = 0;
     for (Episode e : episodes) {
-      jobs.add(moveByIdAndVersion(e.getVersion(), e.getMediaPackage().getIdentifier().toString(), targetStorage));
+      try {
+        internalMoveByIdAndVersion(e.getVersion(), e.getMediaPackage().getIdentifier().toString(), targetStorage);
+        success++;
+      } catch (NotFoundException ex) {
+        failed++;
+        logger.warn(ex.getMessage());
+      }
     }
-    return jobs;
+    String result = (success > 0) ? Integer.toString(success) + " OK " : "";
+    result += (failed > 0) ? Integer.toString(failed) + " FAILED " : "";
+    return result;
   }
 
   protected void setServiceRegistry(ServiceRegistry serviceRegistry) {
