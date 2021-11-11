@@ -131,14 +131,16 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
   }
 
   /**
-   * Spawns a job to move a single snapshot from its current storage to a new target storage location
+   * Spawns a job to move a single mediapackage from its current storage to a
+   * new target storage location
    *
    * @param version
    *  The {@link Version} to move
    * @param mpId
-   *  The mediapackage ID of the snapshot to move
+   *  The mediapackage ID of the mediapackage to move
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID
+   *  where the mediapackage should be moved
    * @return
    */
   public Job moveByIdAndVersion(final Version version, final String mpId, final String targetStorage) {
@@ -163,9 +165,10 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
    * @param version
    *  The {@link Version} to move
    * @param mpId
-   *  The mediapackage ID of the snapshot to move
+   *  The mediapackage ID of the mediapackage to move
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID
+   *  where the mediapackage should be moved
    * @return
    *  The string "OK"
    * @throws NotFoundException
@@ -177,12 +180,14 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
   }
 
   /**
-   * Spawns a job to move a all snapshots of a mediapackage from their current storage to a new target storage location
+   * Spawns a job to move a all archive versions of a mediapackage from their
+   * current storage to a new target storage location
    *
    * @param mpId
    *  The mediapackage ID of the snapshot to move
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID 
+   *  where the mediapackages should be moved
    * @return
    *  The {@link Job}
    */
@@ -201,14 +206,16 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
   }
 
   /**
-   * Spawns subjobs on a per-snapshot level to move the appropriate snapshots to their new home
+   * Moves all appropriate archive episodes to their new home
    *
    * @param mpId
-   *  The mediapackage ID of the snapshot to move
+   *  The mediapackage ID of the archive episode to move
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore}
+   *  ID where the mediapackages should be moved
    * @return
-   *  The number of subjobs spawned
+   *  The String containing the number of successful and failed moves
+   *  [<> OK ][<> FAILED ]
    */
   protected String internalMoveById(final String mpId, final String targetStorage) {
     List<Episode> episodes = archive.getEpisodesById(mpId);
@@ -218,14 +225,16 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
 
 
   /**
-   * Spawns a job to move a all snapshots taken between two points from their current storage to a new target storage location
+   * Spawns a job to move a all move a all archive versions created between two
+   * points from their current storage to a new target storage location
    *
    * @param start
    *  The start {@link Date}
    * @param end
    *  The end {@link Date}
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID
+   *  where the mediapackages should be moved
    * @return
    *  The {@link Job}
    */
@@ -246,16 +255,18 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
   }
 
   /**
-   * Spawns subjobs on a per-snapshot level to move the appropriate snapshots to their new home
+   * Moves all appropriate archive episodes to their new home
    *
    * @param start
    *  The start {@link Date}
    * @param end
    *  The end {@link Date}
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID
+   *  where the mediapackages should be moved
    * @return
-   *  The number of subjobs spawned
+   *  The String containing the number of successful and failed moves
+   *  [<> OK ][<> FAILED ]
    */
   protected String internalMoveByDate(final Date start, final Date end, final String targetStorage) {
     List<Episode> episodes = archive.getEpisodesByDate(start, end);
@@ -264,7 +275,8 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
   }
 
   /**
-   * Spawns a job to move a all snapshots of a given mediapackage taken between two points from their current storage to a new target storage location
+   * Spawns a job to move a all versions of a given mediapackage taken between 
+   * two points from their current storage to a new target storage location
    *
    * @param mpId
    *  The mediapackage ID of the snapshot to move
@@ -273,7 +285,8 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
    * @param end
    *  The end {@link Date}
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID 
+   *  where the mediapackages should be moved
    * @return
    *  The {@link Job}
    */
@@ -296,7 +309,7 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
   }
 
   /**
-   * Spawns subjobs on a per-snapshot level to move the appropriate snapshots to their new home
+   * Moves all appropriate archive episodes to their new home
    *
    * @param mpId
    *  The mediapackage ID of the snapshot to move
@@ -305,9 +318,11 @@ public class OpencastArchiveJobProducer extends AbstractJobProducer {
    * @param end
    *  The end {@link Date}
    * @param targetStorage
-   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID where the snapshot should be moved
+   *  The {@link org.opencastproject.archive.base.storage.RemoteElementStore} ID
+   *  where the snapshot should be moved
    * @return
-   *  The number of subjobs spawned
+   *  The String containing the number of successful and failed moves
+   *  [<> OK ][<> FAILED ]
    */
   protected String internalMoveByIdAndDate(final String mpId, final Date start, final Date end, final String targetStorage) {
     List<Episode> episodes = archive.getEpisodesByIdAndDate(mpId, start, end);
