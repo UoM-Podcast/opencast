@@ -38,7 +38,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.cm.ManagedService;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +58,7 @@ import javax.net.ssl.SSLContext;
  * Implements a HttpClient which makes requests to a specified host
  * using a client SSL certificate and Digest authentication
  */
-public class RemoteAccessHttpsClient implements ManagedService {
+public class RemoteAccessHttpsClient {
   protected static Logger logger = LoggerFactory.getLogger(RemoteAccessHttpsClient.class);
 
   public static final String REMOTE_HOST_PROPERTY = "remote.host";
@@ -81,11 +80,13 @@ public class RemoteAccessHttpsClient implements ManagedService {
   private UsernamePasswordCredentials credentials;
   private SSLContext sslContext;
 
-  public void activate(ComponentContext cc) {
+  public void activate(ComponentContext cc) throws ConfigurationException {
+    modified(cc);
   }
 
-  @Override
-  public void updated(Dictionary<String, ?> properties) throws ConfigurationException {
+  public void modified(ComponentContext cc) throws ConfigurationException {
+    Dictionary<String,?> properties = cc.getProperties();
+
     remoteHost = getCfg(properties, REMOTE_HOST_PROPERTY);
     String user = getCfg(properties, REMOTE_USER_PROPERTY);
     String pass = getCfg(properties, REMOTE_PASS_PROPERTY);

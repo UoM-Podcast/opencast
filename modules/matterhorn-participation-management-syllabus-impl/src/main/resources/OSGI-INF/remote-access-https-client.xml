@@ -2,12 +2,12 @@
 <scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0"
                name="org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient"
                immediate="true"
-               activate="activate">
+               activate="activate"
+               modified="modified">
   <implementation class="org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient" />
   <property name="service.pid" value="org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient" />
   <property name="service.description" value="Remote Access HTTPS Client" />
   <service>
-    <provide interface="org.osgi.service.cm.ManagedService" />
     <provide interface="org.opencastproject.pm.syllabus.impl.security.RemoteAccessHttpsClient" />
   </service>
 </scr:component>
