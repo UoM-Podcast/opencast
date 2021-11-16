@@ -139,16 +139,16 @@ public class DassRequirementServicePublisher extends SimpleServicePublisher {
 
           @Override
           public List<String> getIds(RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/providers/%s/resources/%s?requirement=%s",
-                client.getRemoteBaseAddress() + remoteEndpoint, providerName, resource, requirement);
+            String url = String.format("%s%s/providers/%s/resources/%s?requirement=%s",
+                client.getRemoteBaseAddress(), remoteEndpoint, providerName, resource, requirement);
 
             return RemoteObjectUtil.getResponseAsObject(client, url);
           }
 
           @Override
           public Boolean checkId(String id, RequirementService.Resource resource, RequirementService.Requirement requirement) throws RequirementServiceException {
-            String url = String.format("%s/providers/%s/resources/%s?requirement=%s&id=%s",
-                client.getRemoteBaseAddress() + remoteEndpoint, providerName, resource, requirement, id);
+            String url = String.format("%s%s/providers/%s/resources/%s?requirement=%s&id=%s",
+                client.getRemoteBaseAddress(), remoteEndpoint, providerName, resource, requirement, id);
 
             List<String> resources = RemoteObjectUtil.getResponseAsObject(client, url);
             if (resources != null && !resources.isEmpty()) {
