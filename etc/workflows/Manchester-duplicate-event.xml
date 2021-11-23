@@ -52,6 +52,11 @@
       <configurations>
         <configuration key="workflow-definition">manchester</configuration>
         <configuration key="media-package-key">duplicate_media_package_id</configuration>
+
+        <configuration key="manchester-editRecording">true</configuration>
+        <configuration key="manchester-emailAddresses">user@university.org</configuration>
+        <configuration key="manchester-publishCompositeEncode">mp4-h264-fmv.single</configuration>
+
       </configurations>
     </operation>
 
