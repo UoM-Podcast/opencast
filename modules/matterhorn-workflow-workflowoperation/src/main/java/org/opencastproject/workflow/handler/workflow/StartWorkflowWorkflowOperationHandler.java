@@ -60,8 +60,6 @@ public class StartWorkflowWorkflowOperationHandler extends AbstractWorkflowOpera
   /** Name of the configuration option that provides the workflow definition ID */
   public static final String WORKFLOW_DEFINITION = "workflow-definition";
 
-  public static final String WORKFLOW_DEFAULTS = "workflow-defaults";
-
   /** The archive service */
   private Archive<?> archiveService = null;
 
