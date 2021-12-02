@@ -42,6 +42,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This WOH starts a new workflow for given media package.
@@ -98,6 +100,15 @@ public class StartWorkflowWorkflowOperationHandler extends AbstractWorkflowOpera
     final String configuredMediaPackageIdKey = trimToEmpty(operation.getConfiguration(MEDIA_PACKAGE_ID_KEY));
     final String configuredWorkflowDefinition = trimToEmpty(operation.getConfiguration(WORKFLOW_DEFINITION));
     final ArrayList<String> mps = new ArrayList<>();
+    final Map<String, String> parameters = new HashMap<>();
+
+    for (String key : operation.getConfigurationKeys()) {
+      if (key.startsWith(configuredWorkflowDefinition + "-")) {
+        String value = trimToEmpty(operation.getConfiguration(key));
+        parameters.put(key.substring(configuredWorkflowDefinition.length() + 1), value);
+      }
+    }
+
     // Get workflow parameter
     if (configuredMediaPackageID.isEmpty()) {
       for (String key : workflowInstance.getConfigurationKeys()) {
@@ -117,7 +128,7 @@ public class StartWorkflowWorkflowOperationHandler extends AbstractWorkflowOpera
       // Start workflow
       logger.info("Starting '{}' workflow for media packages '{}'", configuredWorkflowDefinition,
               mps);
-      archiveService.applyWorkflow(ConfiguredWorkflow.workflow(workflowDefinition),
+      archiveService.applyWorkflow(ConfiguredWorkflow.workflow(workflowDefinition, parameters),
             mpElementProvider.getUriRewriter(), mps);
     } catch (ArchiveException e) {
         logger.warn("Unable to start workflow '{}' on archived media package '{}': {}",
