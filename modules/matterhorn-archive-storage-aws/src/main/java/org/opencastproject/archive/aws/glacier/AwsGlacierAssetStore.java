@@ -70,7 +70,7 @@ import java.util.Date;
 import java.util.Dictionary;
 import java.util.List;
 
-public class AwsGlacierAssetStore extends AwsAbstractArchive implements RemoteElementStore {
+public class AwsGlacierAssetStore extends AwsAbstractArchive {
 
   // Since Glacier does not do versioning the say S3 does, we use a static version string instead
   public static final String GLACIER_VERSION = "GLACIER";

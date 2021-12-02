@@ -497,7 +497,11 @@ public abstract class ArchiveBase<RS extends ResultSet> extends AbstractIndexPro
             final MediaPackage mp = p.getGranted().getMediaPackage();
             for (MediaPackageElement mpe : option(mp.getElementById(mpElemId))) {
               for (InputStream stream : elementStore.get(spath(getOrgId(), mpId, version, mpElemId))) {
-                return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize()));
+                long wait = 0;
+                if (stream == ElementStore.streamNotReady) {
+                  wait = elementStore.getReadyEstimate(spath(getOrgId(), mpId, version, mpElemId));
+                }
+                return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize(), wait));
               }
             }
             // mediapackage element does not exist

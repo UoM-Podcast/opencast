@@ -213,12 +213,17 @@ public abstract class ArchiveRestEndpointBase<RS extends ResultSet> extends Abst
         if (StringUtils.isNotBlank(ifNoneMatch))
           return Response.notModified().build();
         for (ArchivedMediaPackageElement element : getArchive().get(mediaPackageID, mediaPackageElementID, Version.version(version))) {
-          final InputStream inputStream = element.getInputStream();
-          final Option<MimeType> mimeType = option(element.getMimeType());
-          final String fileName = mediaPackageElementID.concat(".").concat(mimeType.bind(suffix).getOrElse("unknown"));
-          // Write the file contents back
-          return RestUtil.R.ok(inputStream, mimeType.map(MimeTypeUtil.toString),
-                  element.getSize() > 0 ? some(element.getSize()) : Option.<Long> none(), some(fileName));
+          if (element.getWait() == 0) {
+            final InputStream inputStream = element.getInputStream();
+            final Option<MimeType> mimeType = option(element.getMimeType());
+            final String fileName = mediaPackageElementID.concat(".").concat(mimeType.bind(suffix).getOrElse("unknown"));
+            // Write the file contents back
+            return RestUtil.R.ok(inputStream, mimeType.map(MimeTypeUtil.toString),
+                    element.getSize() > 0 ? some(element.getSize()) : Option.<Long> none(), some(fileName));
+          } else {
+            // Signal that retrival has been initiated/in progress
+            return Response.status(Response.Status.ACCEPTED).header("token", "wait:" + element.getWait()).build();
+          }
         }
         // none
         return notFound();

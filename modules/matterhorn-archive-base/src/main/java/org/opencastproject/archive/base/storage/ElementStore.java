@@ -42,6 +42,15 @@ public interface ElementStore extends StorageUsage {
   /** Configuration key for the archive root directory */
   String CONFIG_ARCHIVE_ROOT_DIR = "org.opencastproject.episode.rootdir";
 
+  long ELEMENT_READY_POLL = 600000; // 10mns
+
+  InputStream streamNotReady = new InputStream() {
+    @Override
+    public int read() {
+        return -1;  // end of stream
+    }
+  };
+
   /** Add the content of <code>soure</code> under the given path. */
   void put(StoragePath path, Source source) throws ElementStoreException;
 
@@ -71,4 +80,12 @@ public interface ElementStore extends StorageUsage {
    * @return store type
    */
   String getStoreType();
+
+  /**
+   * Returns an estimate in millisecs of when the element stream might be ready to read
+   * @param path to element
+   * @return
+   * @throws ElementStoreException
+   */
+  long getReadyEstimate(StoragePath path) throws ElementStoreException;
 }

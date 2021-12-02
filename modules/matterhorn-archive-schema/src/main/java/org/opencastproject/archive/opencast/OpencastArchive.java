@@ -226,7 +226,11 @@ public final class OpencastArchive extends ArchiveBase<OpencastResultSet> {
               for (ElementStore store : allStores.values()) {
                 for (InputStream stream : store.get(spath(getOrgId(), mpId, version, mpElemId))) {
                   logger.debug("found for MPE: {} in Store: {}", mpElemId, store.getStoreType());
-                  return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize()));
+                  long wait = 0;
+                  if (stream == ElementStore.streamNotReady) {
+                    wait = store.getReadyEstimate(spath(getOrgId(), mpId, version, mpElemId));
+                  }
+                  return some(new ArchivedMediaPackageElement(stream, mpe.getMimeType(), mpe.getSize(), wait));
                 }
               }
             }

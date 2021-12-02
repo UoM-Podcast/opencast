@@ -30,11 +30,20 @@ public class ArchivedMediaPackageElement {
   private final InputStream inputStream;
   private final MimeType mimeType;
   private final long size;
+  private final long wait;
 
   public ArchivedMediaPackageElement(InputStream inputStream, MimeType mimeType, long size) {
     this.inputStream = inputStream;
     this.mimeType = mimeType;
     this.size = size;
+    this.wait = 0;
+  }
+
+  public ArchivedMediaPackageElement(InputStream inputStream, MimeType mimeType, long size, long wait) {
+    this.inputStream = inputStream;
+    this.mimeType = mimeType;
+    this.size = size;
+    this.wait = wait;
   }
 
   /**
@@ -57,5 +66,13 @@ public class ArchivedMediaPackageElement {
   /** Return the number of bytes that are occupied by this media package element. */
   public long getSize() {
     return size;
+  }
+
+  /**
+   * Return the number of milliseconds to wait until the element might be ready to read
+   * 0 means ready now.
+   */
+  public long getWait() {
+    return wait;
   }
 }

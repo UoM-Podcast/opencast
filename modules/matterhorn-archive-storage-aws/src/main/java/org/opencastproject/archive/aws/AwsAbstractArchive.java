@@ -55,6 +55,10 @@ public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
   /** The default AWS region name */
   public static final String DEFAULT_AWS_REGION = "us-east-1";
 
+  /** Glacier restore defaults "Best Practice" */
+  protected static final long RESTORE_MIN_WAIT = 1080000; // 3h
+  protected static final long RESTORE_POLL = 900000; // 15m
+
   /** Log facility */
   private static final Logger logger = LoggerFactory.getLogger(AwsAbstractArchive.class);
 
@@ -216,6 +220,9 @@ public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
     }
   }
 
+  /**
+   * Return valid inputStream or null if asset not yet restored
+   */
   protected abstract InputStream getObject(AwsAssetMapping map) throws ElementStoreException;
 
   /** @see org.opencastproject.archive.base.storage.ElementStore#delete(DeletionSelector) */
@@ -245,4 +252,8 @@ public abstract class AwsAbstractArchive extends AbstractRemoteElementStore {
   }
 
   protected abstract void deleteObject(AwsAssetMapping map) throws ElementStoreException;
+
+  public long getReadyEstimate(StoragePath path) throws ElementStoreException {
+    return RESTORE_POLL;
+  }
 }

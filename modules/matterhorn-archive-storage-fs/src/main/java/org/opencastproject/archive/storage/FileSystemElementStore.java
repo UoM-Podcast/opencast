@@ -293,4 +293,10 @@ public class FileSystemElementStore implements ElementStore {
   public String getStoreType() {
     return storeType;
   }
+
+  @Override
+  public long getReadyEstimate(StoragePath path) throws ElementStoreException {
+    // Use default
+    return ElementStore.ELEMENT_READY_POLL;
+  }
 }
