@@ -70,14 +70,17 @@ import java.util.Date;
 import java.util.Dictionary;
 import java.util.List;
 
-public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElementStore {
+public class AwsS3AssetStore extends AwsAbstractArchive {
 
   /** Log facility */
   private static final Logger logger = LoggerFactory.getLogger(AwsS3AssetStore.class);
 
   private static final Tag freezable = new Tag("Freezable", "true");
-  private static final Integer RESTORE_MIN_WAIT = 1080000; // 3h
-  private static final Integer RESTORE_POLL = 900000; // 15m
+
+  // Constants
+  public static final String RESTORE_STATUS_NONE = "NONE";
+  public static final String RESTORE_STATUS_STARTED = "RESTORING";
+  public static final String RESTORE_STATUS_COMPLETED = "RESTORED";
 
   // Service configuration
   public static final String AWS_S3_ENABLED = "org.opencastproject.archive.aws.s3.enabled";
@@ -339,19 +342,30 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
   }
 
   /**
-   *
+   * Return valid inputStream or null if asset not yet restored
    */
   @Override
   protected InputStream getObject(AwsAssetMapping map) {
-    return getObject(map.getObjectKey()).getObjectContent();
+    S3Object object = getObject(map.getObjectKey());
+
+    if (null != object) {
+      return object.getObjectContent();
+    } else {
+      return streamNotReady;
+    }
   }
 
   private S3Object getObject(String objectName) {
     String storageClassId = getObjectStorageClass(objectName);
 
     if ("GLACIER".equals(storageClassId)) {
-      // restore object and wait until available if necessary
-      restoreGlacierObject(objectName, restorePeriod, true);
+      restoreGlacierObject(objectName, restorePeriod, false);
+
+      // Flag that the stream is not yet ready
+      if (s3.getObjectMetadata(bucketName, objectName).getRestoreExpirationTime() == null) {
+        logger.debug("Object {} is still restoring from Glacier class storage", objectName);
+        return null;
+      }
     }
 
     return s3.getObject(bucketName, objectName);
@@ -363,15 +377,15 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
       Date expirationTime = s3.getObjectMetadata(bucketName, map.getObjectKey()).getRestoreExpirationTime();
       if (expirationTime != null) {
-        return String.format("RESTORED,%s", expirationTime.toString());
+        return String.format("%s,%s", RESTORE_STATUS_COMPLETED, expirationTime.toString());
       }
 
       Boolean prevOngoingRestore = s3.getObjectMetadata(bucketName, map.getObjectKey()).getOngoingRestore();
       if (prevOngoingRestore != null && prevOngoingRestore) {
-        return "RESTORING";
+        return RESTORE_STATUS_STARTED;
       }
 
-      return "NONE";
+      return RESTORE_STATUS_NONE;
     } catch (AwsAssetDatabaseException | IllegalArgumentException e) {
       throw new ElementStoreException(e);
     }
@@ -392,7 +406,7 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
     }
   }
 
-  private void restoreGlacierObject(String objectName, Integer objectRestorePeriod, Boolean wait) {
+  private void restoreGlacierObject(String objectName, Integer objectRestorePeriod, Boolean wait) throws ElementStoreException {
     Boolean prevOngoingRestore = s3.getObjectMetadata(bucketName, objectName).getOngoingRestore();
     RestoreObjectResult restoreResult;
 
@@ -402,34 +416,36 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
       // increase the expiration time
       RestoreObjectRequest requestRestore = new RestoreObjectRequest(bucketName, objectName, objectRestorePeriod);
       restoreResult = s3.restoreObjectV2(requestRestore);
-      logger.debug("Requesting restore result {}", restoreResult.toString());
+      logger.debug("Requesting restore, result {}", restoreResult.toString());
+      logger.info("Initiated restoring of object {} from Glacier class storage", objectName);
     }
 
     if (s3.getObjectMetadata(bucketName, objectName).getRestoreExpirationTime() == null) {
-      logger.info("Restoring object {} from Glacier class storage", objectName);
-
-      // Just initiate restore?
-      if (!wait) {
-        return;
-      }
-
-      // Wait min restore time and then poll ofter that
-      try {
-        // Check as restore might have already been initiated
-        if (prevOngoingRestore != null && !prevOngoingRestore) {
-          Thread.sleep(RESTORE_MIN_WAIT);
+      // only wait for object if requested to do so, eg workspace will doing it's own polling
+      if (wait) {
+        try {
+          waitForRestoredGlacierObject(objectName, prevOngoingRestore);
+          logger.info("Object {} has been restored from Glacier class storage, for {} days", objectName, objectRestorePeriod);
+        } catch (InterruptedException e) {
+          logger.error("Object {} has not yet been restored from Glacier class storage, polling interrupted", objectName);
+          throw new ElementStoreException(e);
         }
-
-        while (s3.getObjectMetadata(bucketName, objectName).getOngoingRestore()) {
-          Thread.sleep(RESTORE_POLL);
-        }
-
-        logger.info("Object {} has been restored from Glacier class storage, for {} days", objectName, objectRestorePeriod);
-      } catch (InterruptedException e) {
-        logger.error("Object {} has not yet been restored from Glacier class storage", objectName);
       }
     } else {
       logger.info("Object {} has already been restored, further extended by {} days", objectName, objectRestorePeriod);
+    }
+  }
+
+  void waitForRestoredGlacierObject(String objectName, Boolean prevOngoingRestore) throws InterruptedException {
+    // Wait min restore time and then poll ofter that
+    // Check as restore might have already been initiated
+    if (prevOngoingRestore == null) {
+      Thread.sleep(RESTORE_MIN_WAIT);
+    }
+
+    while (s3.getObjectMetadata(bucketName, objectName).getOngoingRestore()) {
+      logger.debug("Object {} is still restoring from Glacier class storage", objectName);
+      Thread.sleep(RESTORE_POLL);
     }
   }
 
@@ -465,5 +481,11 @@ public class AwsS3AssetStore extends AwsAbstractArchive implements RemoteElement
 
   void setStoreType(String storeType) {
     this.storeType = storeType;
+  }
+
+  @Override
+  public long getReadyEstimate(StoragePath path) throws ElementStoreException {
+    // TODO: Determine if the restore was just initiated
+    return RESTORE_POLL;
   }
 }
