@@ -106,6 +106,11 @@ public final class WorkspaceImpl implements Workspace {
   public static final String WORKSPACE_CLEANUP_PERIOD_KEY = "org.opencastproject.workspace.cleanup.period";
   /** Configuration key for garbage collection max age. */
   public static final String WORKSPACE_CLEANUP_MAX_AGE_KEY = "org.opencastproject.workspace.cleanup.max.age";
+  /** Configuration key for source not ready polling. */
+  public static final String WORKSPACE_SOURCE_WAIT_PERIOD_KEY = "org.opencastproject.workspace.source.wait.period";
+
+  /** Default configuration value for source not ready polling. */
+  public static final Integer WORKSPACE_SOURCE_WAIT_PERIOD_DEFAULT = 60000;
 
   /** Workspace JMX type */
   private static final String JMX_WORKSPACE_TYPE = "Workspace";
@@ -125,6 +130,7 @@ public final class WorkspaceImpl implements Workspace {
   private int maxAgeInSeconds = -1;
   private int garbageCollectionPeriodInSeconds = -1;
   private boolean linkingEnabled = false;
+  private int sourceWaitPeriod = WORKSPACE_SOURCE_WAIT_PERIOD_DEFAULT;
 
   private TrustedHttpClient trustedHttpClient;
 
@@ -256,6 +262,19 @@ public final class WorkspaceImpl implements Workspace {
         logger.warn("Invalid configuration for workspace garbage collection max age ({}={})",
                 WORKSPACE_CLEANUP_MAX_AGE_KEY, age);
       }
+    }
+
+    // Polling for unready sources
+    if (ensureContextProp(cc, WORKSPACE_SOURCE_WAIT_PERIOD_KEY)) {
+      String age = cc.getBundleContext().getProperty(WORKSPACE_SOURCE_WAIT_PERIOD_KEY);
+      try {
+        sourceWaitPeriod = Integer.parseInt(age);
+      } catch (NumberFormatException e) {
+        logger.warn("Invalid configuration for workspace source wait period ({}={})",
+            WORKSPACE_SOURCE_WAIT_PERIOD_KEY, age);
+      }
+    } else {
+      sourceWaitPeriod = WORKSPACE_SOURCE_WAIT_PERIOD_DEFAULT;
     }
 
     registeredMXBean = JmxUtil.registerMXBean(workspaceBean, JMX_WORKSPACE_TYPE);
@@ -461,7 +480,20 @@ public final class WorkspaceImpl implements Workspace {
         // left: file will be ready later
         for (String token : a.left()) {
           get = createGetRequest(src, dst, tuple("token", token));
-          sleep(60000);
+          // check if token indicates how long to sleep for
+          // for which token must have format "wait:1000000"
+          if (StringUtils.startsWith(token, "wait:")) {
+            String wait = token.substring(5);
+            try {
+              logger.debug("Requested to wait {}ms for source {}", wait, src.toString());
+              sleep(Integer.parseInt(wait));
+            } catch (NumberFormatException e) {
+              logger.error("Wait period for source {} can not be parsed, using default {}ms", src.toString(), sourceWaitPeriod);
+              sleep(sourceWaitPeriod);
+            }
+          } else {
+            sleep(sourceWaitPeriod);
+          }
         }
       }
       // left: an exception occurred
