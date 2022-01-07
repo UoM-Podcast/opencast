@@ -96,7 +96,7 @@
   </feature>
 
   <feature name="manchester-ext-core">
-    <bundle>mvn:org.graylog2/gelfj/1.1.14</bundle>
+    <bundle>mvn:org.graylog2/gelfj/1.1.16</bundle>
   </feature>
 
   <feature name="opencast-core">
