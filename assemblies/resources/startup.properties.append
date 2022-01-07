@@ -2,4 +2,4 @@
 mvn\:org.apache.felix/org.apache.felix.metatype/1.1.2 = 5
 
 # Bundles to be started specifically for Manchester
-mvn\:org.graylog2/gelfj/1.1.14 = 7
+mvn\:org.graylog2/gelfj/1.1.16 = 7
