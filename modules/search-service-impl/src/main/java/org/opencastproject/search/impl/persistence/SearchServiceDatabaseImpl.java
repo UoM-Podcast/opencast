@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -25,6 +25,7 @@ import static org.opencastproject.db.Queries.namedQuery;
 import static org.opencastproject.security.api.Permissions.Action.CONTRIBUTE;
 import static org.opencastproject.security.api.Permissions.Action.READ;
 import static org.opencastproject.security.api.Permissions.Action.WRITE;
+import static org.opencastproject.security.api.SecurityConstants.GLOBAL_CAPTURE_AGENT_ROLE;
 
 import org.opencastproject.db.DBSession;
 import org.opencastproject.db.DBSessionFactory;
@@ -56,11 +57,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -166,20 +166,24 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
         }
 
         // Ensure this user is allowed to delete this episode
+        User currentUser = securityService.getUser();
+        Organization currentOrg = securityService.getOrganization();
+        MediaPackage searchMp = MediaPackageParser.getFromXml(searchEntity.get().getMediaPackageXML());
         String accessControlXml = searchEntity.get().getAccessControl();
-        if (accessControlXml != null) {
+
+        // allow ca users to retract live publications without putting them into the ACL
+        if (!(searchMp.isLive() && currentUser.hasRole(GLOBAL_CAPTURE_AGENT_ROLE))
+            && accessControlXml != null) {
           AccessControlList acl = AccessControlParser.parseAcl(accessControlXml);
-          User currentUser = securityService.getUser();
-          Organization currentOrg = securityService.getOrganization();
           if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, WRITE.toString())) {
             throw new UnauthorizedException(currentUser + " is not authorized to delete media package "
                 + mediaPackageId);
           }
-
-          searchEntity.get().setDeletionDate(deletionDate);
-          searchEntity.get().setModificationDate(deletionDate);
-          em.merge(searchEntity.get());
         }
+
+        searchEntity.get().setDeletionDate(deletionDate);
+        searchEntity.get().setModificationDate(deletionDate);
+        em.merge(searchEntity.get());
       });
     } catch (NotFoundException e) {
       throw e;
@@ -210,7 +214,7 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
    * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#getAllMediaPackages()
    */
   @Override
-  public Iterator<Tuple<MediaPackage, String>> getAllMediaPackages() throws SearchServiceDatabaseException {
+  public Stream<Tuple<MediaPackage, String>> getAllMediaPackages() throws SearchServiceDatabaseException {
     List<SearchEntity> searchEntities;
     try {
       searchEntities = db.exec(namedQuery.findAll("Search.findAll", SearchEntity.class));
@@ -219,17 +223,21 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
       throw new SearchServiceDatabaseException(e);
     }
 
-    List<Tuple<MediaPackage, String>> mediaPackageList = new LinkedList<>();
     try {
-      for (SearchEntity entity : searchEntities) {
-        MediaPackage mediaPackage = MediaPackageParser.getFromXml(entity.getMediaPackageXML());
-        mediaPackageList.add(Tuple.tuple(mediaPackage, entity.getOrganization().getId()));
-      }
+      return searchEntities.stream()
+            .map(entity -> {
+              try {
+                MediaPackage mediaPackage = MediaPackageParser.getFromXml(entity.getMediaPackageXML());
+                return Tuple.tuple(mediaPackage, entity.getOrganization().getId());
+              } catch (Exception e) {
+                logger.error("Could not parse series entity: {}", e.getMessage());
+                throw new RuntimeException(e);
+              }
+            });
     } catch (Exception e) {
       logger.error("Could not parse series entity: {}", e.getMessage());
       throw new SearchServiceDatabaseException(e);
     }
-    return mediaPackageList.iterator();
   }
 
   /**
@@ -337,7 +345,7 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
         } else {
           // Ensure this user is allowed to update this media package
           String accessControlXml = entity.get().getAccessControl();
-          if (accessControlXml != null) {
+          if (accessControlXml != null && entity.get().getDeletionDate() == null) {
             AccessControlList accessList = AccessControlParser.parseAcl(accessControlXml);
             User currentUser = securityService.getUser();
             Organization currentOrg = securityService.getOrganization();

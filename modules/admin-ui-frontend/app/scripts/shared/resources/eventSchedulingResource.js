@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -62,12 +62,16 @@ angular.module('adminNg.resources')
         if (angular.isDefined(data)) {
           start = JsHelper.toZuluTimeString(data.entries.start);
           end = JsHelper.toZuluTimeString(data.entries.start, data.entries.duration);
-          result = $.param({scheduling: angular.toJson({
-            agentId: data.entries.agentId,
-            start: start,
-            end: end,
-            agentConfiguration: data.entries.agentConfiguration,
-          })});
+          result = $.param({
+            scheduling: angular.toJson({
+              agentId: data.entries.agentId,
+              start: start,
+              end: end,
+              agentConfiguration: data.entries.agentConfiguration,
+              previousAgentId: data.previousId,
+              previousEntries: data.previousEntries
+            })
+          });
         }
 
         return result;

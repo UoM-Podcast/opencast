@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -209,6 +209,21 @@ public class WorkflowServiceRemoteImpl extends RemoteBase implements WorkflowSer
   @Override
   public boolean mediaPackageHasActiveWorkflows(String mediaPackageId) throws WorkflowDatabaseException {
     HttpGet get = new HttpGet("/mediaPackage/" + mediaPackageId + "/hasActiveWorkflows");
+    HttpResponse response = getResponse(get);
+    try {
+      if (response != null)
+        return Boolean.parseBoolean(response.getEntity().getContent().toString());
+    } catch (Exception e) {
+      throw new WorkflowDatabaseException(e);
+    } finally {
+      closeConnection(response);
+    }
+    throw new WorkflowDatabaseException("Workflow instances can not be loaded from a remote workflow service");
+  }
+
+  @Override
+  public boolean userHasActiveWorkflows(String userId) throws WorkflowDatabaseException {
+    HttpGet get = new HttpGet("/user/" + userId + "/hasActiveWorkflows");
     HttpResponse response = getResponse(get);
     try {
       if (response != null)

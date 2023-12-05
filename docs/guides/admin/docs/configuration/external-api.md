@@ -125,6 +125,12 @@ directly in the Opencast administrative user interface.
 |ROLE_API_WORKFLOW_INSTANCE_DELETE   |DELETE |/api/workflow/\*                                          |
 |ROLE_API_WORKFLOW_DEFINITION_VIEW   |GET    |/api/workflow-definitions<br>/api/workflow-definitions/\* |
 
+**Listprovider API**
+
+| ROLE                        |METHOD | URL                |
+|-----------------------------|-------|--------------------|
+| ROLE_API_LISTPROVIDERS_VIEW |GET    | /api/listproviders |
+
 **User- and Role-switching**
 
 The External API supports user- and role-switching, i.e. it is possible to perform requests on behalf of another
@@ -150,4 +156,4 @@ creates publication elements that do not just contain a single URL to the public
 but also contain URLs for each of the attachments and tracks that have been published.
 
 **Note:** Secure access to distribution artefacts requires stream security to be enabled,
-see [Stream Security Configuration](stream-security.md).
+see [Stream Security Configuration](stream-security/stream-security-config.md).

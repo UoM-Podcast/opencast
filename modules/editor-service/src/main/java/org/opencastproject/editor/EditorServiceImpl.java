@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -33,6 +33,7 @@ import org.opencastproject.editor.api.EditingData;
 import org.opencastproject.editor.api.EditorService;
 import org.opencastproject.editor.api.EditorServiceException;
 import org.opencastproject.editor.api.ErrorStatus;
+import org.opencastproject.editor.api.LockData;
 import org.opencastproject.editor.api.SegmentData;
 import org.opencastproject.editor.api.TrackData;
 import org.opencastproject.editor.api.TrackSubData;
@@ -147,6 +148,7 @@ public class EditorServiceImpl implements EditorService {
   /** Tag that marks workflow for being used from the editor tool */
   private static final String EDITOR_WORKFLOW_TAG = "editor";
 
+  private static EditorLock editorLock;
 
   private long expireSeconds = UrlSigningServiceOsgiUtil.DEFAULT_URL_SIGNING_EXPIRE_DURATION;
 
@@ -188,6 +190,8 @@ public class EditorServiceImpl implements EditorService {
   private static final String DEFAULT_THUMBNAIL_SUBTYPE = "player+preview";
   private static final String DEFAULT_THUMBNAIL_WF_PROPERTY = "thumbnail_edited";
   private static final List<MediaPackageElementFlavor> DEFAULT_THUMBNAIL_PRIORITY_FLAVOR = new ArrayList<>();
+  private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 300; // ( 5 mins )
+  private static final int DEFAULT_LOCK_REFRESH_SECONDS = 60;  // ( 1 min )
 
   public static final String OPT_PREVIEW_SUBTYPE = "preview.subtype";
   public static final String OPT_PREVIEW_TAG = "preview.tag";
@@ -201,6 +205,13 @@ public class EditorServiceImpl implements EditorService {
   public static final String OPT_THUMBNAIL_WF_PROPERTY = "thumbnail.workflow.property";
   public static final String OPT_THUMBNAIL_PRIORITY_FLAVOR = "thumbnail.priority.flavor";
   public static final String OPT_LOCAL_PUBLICATION = "publication.local";
+  public static final String OPT_LOCK_ENABLED = "lock.enable";
+  public static final String OPT_LOCK_TIMEOUT = "lock.release.after.seconds";
+  public static final String OPT_LOCK_REFRESH = "lock.refresh.after.seconds";
+
+  private Boolean lockingActive;
+  private int lockRefresh = DEFAULT_LOCK_REFRESH_SECONDS;
+  private int lockTimeout = DEFAULT_LOCK_TIMEOUT_SECONDS;
 
   private final Set<String> smilCatalogTagSet = new HashSet<>();
 
@@ -323,6 +334,7 @@ public class EditorServiceImpl implements EditorService {
 
     // Preview Video subtype
     previewVideoSubtype =  Objects.toString(properties.get(OPT_PREVIEW_VIDEO_SUBTYPE), DEFAULT_PREVIEW_VIDEO_SUBTYPE);
+
     logger.debug("Preview video subtype set to '{}'", previewVideoSubtype);
 
     // Flavor for captions
@@ -359,6 +371,25 @@ public class EditorServiceImpl implements EditorService {
       }
     }
     logger.debug("Thumbnail track priority set to '{}'", thumbnailSourcePrimary);
+
+    lockingActive = Boolean.parseBoolean(StringUtils.trimToEmpty((String) properties.get(OPT_LOCK_ENABLED)));
+
+    try {
+      lockTimeout = Integer.parseUnsignedInt(
+           Objects.toString(properties.get(OPT_LOCK_TIMEOUT)));
+    } catch (NumberFormatException e) {
+      logger.info("Configuration {} contains invalid value, defaulting to {}", OPT_LOCK_TIMEOUT, lockTimeout);
+    }
+
+    try {
+      lockRefresh = Integer.parseUnsignedInt(
+            Objects.toString(properties.get(OPT_LOCK_REFRESH)));
+    } catch (NumberFormatException e) {
+      logger.info("Configuration {} contains invalid value, defaulting to {}", OPT_LOCK_REFRESH, lockRefresh);
+    }
+
+    editorLock = new EditorLock(lockTimeout);
+
   }
 
   /**
@@ -514,15 +545,6 @@ public class EditorServiceImpl implements EditorService {
    */
   private MediaPackage addSubtitleTrack(MediaPackage mediaPackage, List<EditingData.Subtitle> subtitles)
           throws IOException, IllegalArgumentException {
-    // Check if any of the provided subtitles fail to match the designated flavor
-    for (EditingData.Subtitle subtitle : subtitles) {
-      if (!subtitle.getFlavor().matches(captionsFlavor)) {
-        throw new IllegalArgumentException(
-                "Given subtitle flavor " + subtitle.getFlavor().toString() + " does match caption flavor "
-                        + captionsFlavor);
-      }
-    }
-
     for (EditingData.Subtitle subtitle : subtitles) {
       // Generate ID for new tracks
       String subtitleId = UUID.randomUUID().toString();
@@ -530,7 +552,7 @@ public class EditorServiceImpl implements EditorService {
 
       // Check if subtitle already exists
       for (Track t : mediaPackage.getTracks()) {
-        if (t.getFlavor().matches(subtitle.getFlavor())) {
+        if (t.getIdentifier().matches(subtitle.getId())) {
           logger.debug("Set Identifier for Subtitle-Track to: {}", t.getIdentifier());
           subtitleId = t.getIdentifier();
           trackId = t.getIdentifier();
@@ -553,14 +575,20 @@ public class EditorServiceImpl implements EditorService {
         // If not exists, create new Track
         if (track == null) {
           MediaPackageElementBuilder mpeBuilder = MediaPackageElementBuilderFactory.newInstance().newElementBuilder();
-          track = (Track) mpeBuilder.elementFromURI(subtitleUri, MediaPackageElement.Type.Track, subtitle.getFlavor());
+          // TODO: Figure out which flavor new subtitles from the editor should have
+          track = (Track) mpeBuilder.elementFromURI(subtitleUri, MediaPackageElement.Type.Track,
+                  new MediaPackageElementFlavor(captionsFlavor.getType(),"source"));
           mediaPackage.add(track);
-          logger.info("Creating new track for flavor: " + track.getFlavor());
+          logger.info("Creating new subtitle track " + track.getIdentifier() + " with tags "
+                  + track.getTags().toString());
         }
 
         track.setURI(subtitleUri);
         track.setIdentifier(subtitleId);
         track.setChecksum(null);
+        for (String tag : subtitle.getTags()) {
+          track.addTag(tag);
+        }
 
         if (oldTrackURI != null && oldTrackURI != subtitleUri) {
           // Delete the old files from the working file repository and workspace if they were in there
@@ -875,6 +903,24 @@ public class EditorServiceImpl implements EditorService {
   }
 
   @Override
+  public void lockMediaPackage(final String mediaPackageId, LockData lockRequest) throws EditorServiceException {
+    // Does mediaPackage exist
+    getEvent(mediaPackageId);
+
+    // Try to get lock, throws Exception if not owner
+    editorLock.lock(mediaPackageId, lockRequest);
+  }
+
+  @Override
+  public void unlockMediaPackage(final String mediaPackageId, LockData lockRequest) throws EditorServiceException {
+    // Does mediaPackage exist
+    getEvent(mediaPackageId);
+
+    // Try to release lock, throws Exception if not owner
+    editorLock.unlock(mediaPackageId, lockRequest);
+  }
+
+  @Override
   public EditingData getEditData(final String mediaPackageId) throws EditorServiceException, UnauthorizedException {
 
     Event event = getEvent(mediaPackageId);
@@ -935,7 +981,7 @@ public class EditorServiceImpl implements EditorService {
       try {
         File subtitleFile = workspace.get(t.getURI());
         String subtitleString = FileUtils.readFileToString(subtitleFile, StandardCharsets.UTF_8);
-        subtitles.add(new EditingData.Subtitle(t.getFlavor(), subtitleString));
+        subtitles.add(new EditingData.Subtitle(t.getIdentifier(), subtitleString, t.getTags()));
       } catch (NotFoundException | IOException e) {
         errorExit("Could not read subtitle from file", mediaPackageId, ErrorStatus.UNKNOWN);
       }
@@ -958,12 +1004,26 @@ public class EditorServiceImpl implements EditorService {
       final TrackSubData video = new TrackSubData(track.hasVideo(), videoPreview,
                         videoEnable);
 
-      final String thumbnailURI = Arrays.stream(internalPub.getAttachments())
-              .filter(attachment -> attachment.getFlavor().getType().equals(track.getFlavor().getType()))
-              .filter(attachment -> attachment.getFlavor().getSubtype().equals(getThumbnailSubtype()))
-              .map(MediaPackageElement::getURI).map(this::signIfNecessary)
-              .findAny()
-              .orElse(null);
+      // Get thumbnail from archive
+      // If a thumbnail got generated in the frontend, it will be saved to the archive. So if no workflow runs,
+      // the saved, thumbnail will not show up in the frontend if we get it from the internal publication
+      String thumbnailURI = Arrays.stream(mp.getAttachments())
+          .filter(attachment -> attachment.getFlavor().getType().equals(track.getFlavor().getType()))
+          .filter(attachment -> attachment.getFlavor().getSubtype().equals(getThumbnailSubtype()))
+          .map(MediaPackageElement::getURI).map(this::signIfNecessary)
+          .findAny()
+          .orElse(null);
+
+      // If thumbnail is not in archive, try getting it from the internal publication
+      // Because our default workflows don't save thumbnails in the archive but only publish them.
+      if (thumbnailURI == null) {
+        thumbnailURI = Arrays.stream(internalPub.getAttachments())
+            .filter(attachment -> attachment.getFlavor().getType().equals(track.getFlavor().getType()))
+            .filter(attachment -> attachment.getFlavor().getSubtype().equals(getThumbnailSubtype()))
+            .map(MediaPackageElement::getURI).map(this::signIfNecessary)
+            .findAny()
+            .orElse(null);
+      }
 
       final int priority = thumbnailSourcePrimary.indexOf(track.getFlavor());
 
@@ -980,8 +1040,11 @@ public class EditorServiceImpl implements EditorService {
             .map(Attachment::getURI).map(this::signIfNecessary)
             .collect(Collectors.toList());
 
+    User user = securityService.getUser();
+
     return new EditingData(segments, tracks, workflows, mp.getDuration(), mp.getTitle(), event.getRecordingStartDate(),
-            event.getSeriesId(), event.getSeriesName(), workflowActive, waveformList, subtitles, localPublication);
+            event.getSeriesId(), event.getSeriesName(), workflowActive, waveformList, subtitles, localPublication,
+            lockingActive, lockRefresh, user);
   }
 
 

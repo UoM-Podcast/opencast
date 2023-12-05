@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -22,22 +22,24 @@
 
 angular.module('adminNg.services')
 .factory('NewSeriesAccess', ['ResourcesListResource', 'SeriesAccessResource', 'AuthService', 'RolesResource',
-  'Notifications', '$timeout',
-  function (ResourcesListResource, SeriesAccessResource, AuthService, RolesResource, Notifications, $timeout) {
+  'UserResource', 'UsersResource', 'Notifications', '$timeout',
+  function (ResourcesListResource, SeriesAccessResource, AuthService, RolesResource, UserResource, UsersResource,
+    Notifications, $timeout) {
     var Access = function () {
 
       var me = this,
           NOTIFICATION_CONTEXT = 'series-acl',
           aclNotification,
-          createPolicy = function (role) {
+          createPolicy = function (role, read, write, actionValues) {
             return {
               role  : role,
-              read  : false,
-              write : false,
+              read  : read !== undefined ? read : false,
+              write : write !== undefined ? write : false,
               actions : {
                 name : 'new-series-acl-actions',
-                value : []
-              }
+                value : actionValues !== undefined ? actionValues : [],
+              },
+              user: undefined,
             };
           },
           checkNotification = function () {
@@ -67,9 +69,9 @@ angular.module('adminNg.services')
           },
           addUserRolePolicy = function (policies) {
             if (angular.isDefined(AuthService.getUserRole())) {
-              var currentUserPolicy = createPolicy(AuthService.getUserRole());
-              currentUserPolicy.read = true;
-              currentUserPolicy.write = true;
+              var currentUserPolicy = createPolicy(AuthService.getUserRole(), true, true,
+                me.aclCreateDefaults['default_actions']);
+              currentUserPolicy.userRole = currentUserPolicy.role;
               policies.push(currentUserPolicy);
             }
             return policies;
@@ -78,14 +80,37 @@ angular.module('adminNg.services')
       me.ud = {};
       me.ud.id = {};
       me.ud.policies = [];
-      // Add the current user's role to the ACL upon the first startup
-      me.ud.policies = addUserRolePolicy(me.ud.policies);
+      me.ud.policiesUser = [];
       me.ud.baseAcl = {};
 
-      this.changeBaseAcl = function () {
+      this.changeBaseAcl = function (id) {
+        // Get the policies which should persist on template change
+        var allPolicies = this.getAllPolicies();
+        var remainingPolicies = allPolicies.filter(policy => (
+          me.aclCreateDefaults['keep_on_template_switch_role_prefixes'].some(
+            pattern => policy.role.startsWith(pattern)
+          )
+        ));
+
+        var remainingACEs = [];
+        angular.forEach(remainingPolicies, function (policy) {
+          if (policy.read) {
+            remainingACEs.push({role: policy.role, action: 'read', allow: true});
+          }
+          if (policy.write) {
+            remainingACEs.push({role: policy.role, action: 'write', allow: true});
+          }
+          for (const action of policy.actions.value) {
+            remainingACEs.push({role: policy.role, action: action, allow: true});
+          }
+        });
+
+        me.ud.id = id;
         var newPolicies = {};
         me.ud.baseAcl = SeriesAccessResource.getManagedAcl({id: me.ud.id}, function () {
-          angular.forEach(me.ud.baseAcl.acl.ace, function (acl) {
+          var combine = me.ud.baseAcl.acl.ace.concat(remainingACEs);
+
+          angular.forEach(combine, function (acl) {
             var policy = newPolicies[acl.role];
 
             if (angular.isUndefined(policy)) {
@@ -99,28 +124,90 @@ angular.module('adminNg.services')
           });
 
           me.ud.policies = [];
+          me.ud.policiesUser = [];
           // After loading an ACL template add the user's role to the top of the ACL list if it isn't included
           if (angular.isDefined(AuthService.getUserRole())
-              && !angular.isDefined(newPolicies[AuthService.getUserRole()])) {
-            me.ud.policies = addUserRolePolicy(me.ud.policies);
+            && !angular.isDefined(newPolicies[AuthService.getUserRole()])) {
+            me.ud.policiesUser = addUserRolePolicy(me.ud.policiesUser);
           }
-
           angular.forEach(newPolicies, function (policy) {
-            me.ud.policies.push(policy);
+            if (!policy.role.startsWith(me.roleUserPrefix)) {
+              me.ud.policies.push(policy);
+            }
           });
 
-          me.ud.id = '';
+          angular.forEach(newPolicies, function (policy) {
+            if (policy.role.startsWith(me.roleUserPrefix)) {
+              var id = policy.role.split(me.roleUserPrefix).pop();
+              // FIXMe: If roles are sanitized, WE CANNOT derive the user from their user role,
+              //  because the user roles are converted to uppercase, while usernames are case sensitive.
+              //  This is a terrible workaround, because usernames are usually all lowercase anyway.
+              if (me.aclCreateDefaults['sanitize']) {
+                id = id.toLowerCase();
+              }
+
+              UserResource.get({ username: id }).$promise.then(function (data) {
+                policy.user = data;
+                me.ud.policiesUser.push(policy);
+                // Did we get a user not present in Opencast (e.g. LDAP)? Add it to the list!
+                if (me.users.map(user => user.id).indexOf(id) == -1) {
+                  if (me.aclCreateDefaults['sanitize']) {
+                    // FixMe: See the FixMe above pertaining to sanitize
+                    data.userRole = me.roleUserPrefix + id.replace(/\W/g, '_').toUpperCase();
+                  } else {
+                    data.userRole = me.roleUserPrefix + id;
+                  }
+                  me.users.push(data);
+                }
+              });
+
+              me.ud.policiesUser.push(policy);
+            }
+          });
         });
       };
 
-      this.addPolicy = function () {
-        me.ud.policies.push(createPolicy());
+      this.filterUserRoles = function (item) {
+        if (!item) {
+          return true;
+        }
+        return !item.includes(me.roleUserPrefix);
       };
 
-      this.deletePolicy = function (policyToDelete) {
+      this.userToStringForDetails = function (user) {
+        if (!user) {
+          return undefined;
+        }
+
+        if (!(user.name || user.username) && user.userRole) {
+          return user.userRole;
+        }
+
+        var n = user.name ? user.name : user.username;
+        var e = user.email ? '<' + user.email + '>' : '';
+
+        return n + ' ' + e;
+      };
+
+      this.getAllPolicies = function () {
+        return [].concat(me.ud.policies, me.ud.policiesUser);
+      };
+
+      // E.g. model === $scope.policies
+      this.addPolicy = function (model) {
+        model.push(createPolicy(
+          undefined,
+          me.aclCreateDefaults['read_enabled'],
+          me.aclCreateDefaults['write_enabled'],
+          me.aclCreateDefaults['default_actions']
+        ));
+      };
+
+      // E.g. model === $scope.policies
+      this.deletePolicy = function (model, policyToDelete) {
         var index;
 
-        angular.forEach(me.ud.policies, function (policy, idx) {
+        angular.forEach(model, function (policy, idx) {
           if (policy.role === policyToDelete.role &&
                     policy.write === policyToDelete.write &&
                     policy.read === policyToDelete.read) {
@@ -129,7 +216,7 @@ angular.module('adminNg.services')
         });
 
         if (angular.isDefined(index)) {
-          me.ud.policies.splice(index, 1);
+          model.splice(index, 1);
         }
       };
 
@@ -137,7 +224,7 @@ angular.module('adminNg.services')
         var hasRights = false,
             rulesValid = true;
 
-        angular.forEach(me.ud.policies, function (policy) {
+        angular.forEach(this.getAllPolicies(), function (policy) {
           if (policy.read && policy.write) {
             hasRights = true;
           }
@@ -167,13 +254,69 @@ angular.module('adminNg.services')
         });
       });
 
+      me.aclCreateDefaults = ResourcesListResource.get({ resource: 'ACL.DEFAULTS'}, function(data) {
+        angular.forEach(data, function (value, key) {
+          if (key.charAt(0) !== '$') {
+            me.aclCreateDefaults[key] = value;
+          }
+        });
+
+        me.aclCreateDefaults['read_enabled'] = me.aclCreateDefaults['read_enabled'] !== undefined
+          ? (me.aclCreateDefaults['read_enabled'].toLowerCase() === 'true') : true;
+        me.aclCreateDefaults['write_enabled'] = me.aclCreateDefaults['write_enabled'] !== undefined
+          ? (me.aclCreateDefaults['write_enabled'].toLowerCase() === 'true') : false;
+        me.aclCreateDefaults['read_readonly'] = me.aclCreateDefaults['read_readonly'] !== undefined
+          ? (me.aclCreateDefaults['read_readonly'].toLowerCase() === 'true') : true;
+        me.aclCreateDefaults['write_readonly'] = me.aclCreateDefaults['write_readonly'] !== undefined
+          ? (me.aclCreateDefaults['write_readonly'].toLowerCase() === 'true') : false;
+        me.aclCreateDefaults['default_actions'] = me.aclCreateDefaults['default_actions'] !== undefined
+          ? me.aclCreateDefaults['default_actions'].split(',') : [];
+
+
+        me.roleUserPrefix = me.aclCreateDefaults['role_user_prefix'] !== undefined
+          ? me.aclCreateDefaults['role_user_prefix']
+          : 'ROLE_USER_';
+        me.aclCreateDefaults['sanitize'] = me.aclCreateDefaults['sanitize'] !== undefined
+          ? (me.aclCreateDefaults['sanitize'].toLowerCase() === 'true') : true;
+        me.aclCreateDefaults['keep_on_template_switch_role_prefixes'] =
+          me.aclCreateDefaults['keep_on_template_switch_role_prefixes'] !== undefined
+            ? me.aclCreateDefaults['keep_on_template_switch_role_prefixes'].split(',') : [];
+
+        // Add the current user's role to the ACL upon the first startup - but only after defaults have loaded
+        me.ud.policiesUser = addUserRolePolicy(me.ud.policiesUser);
+      });
+
       me.roles = RolesResource.queryNameOnly({limit: -1, target: 'ACL'});
+
+      me.users = UsersResource.query({limit: 2147483647});
+      me.users.$promise.then(function () {
+        me.aclCreateDefaults.$promise.then(function () {
+          var newUsers = [];
+          angular.forEach(me.users.rows, function(user) {
+            if (me.aclCreateDefaults['sanitize']) {
+              // FixMe: See the FixMe above pertaining to sanitize
+              user.userRole = me.roleUserPrefix + user.username.replace(/\W/g, '_').toUpperCase();
+            } else {
+              user.userRole = me.roleUserPrefix + user.username;
+            }
+            newUsers.push(user);
+          });
+          me.users = newUsers;
+        });
+      });
 
       this.getMatchingRoles = function (value) {
         RolesResource.queryNameOnly({query: value, target: 'ACL'}).$promise.then(function (data) {
           angular.forEach(data, function(newRole) {
             if (me.roles.indexOf(newRole) == -1) {
               me.roles.unshift(newRole);
+
+              // So we can have user roles that match custom role patterns
+              if (newRole.startsWith(me.roleUserPrefix) ) {
+                var user = {};
+                user.userRole = newRole;
+                me.users.push(user);
+              }
             }
           });
         });
@@ -182,13 +325,12 @@ angular.module('adminNg.services')
       this.reset = function () {
         me.ud = {
           id: {},
-          policies: []
+          policies: [],
+          policiesUser: [],
         };
         // Add the user's role upon resetting
-        me.ud.policies = addUserRolePolicy(me.ud.policies);
+        me.ud.policiesUser = addUserRolePolicy(me.ud.policiesUser);
       };
-
-      this.reset();
     };
 
     return new Access();

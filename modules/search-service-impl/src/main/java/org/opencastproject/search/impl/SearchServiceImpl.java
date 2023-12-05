@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -22,6 +22,7 @@
 package org.opencastproject.search.impl;
 
 import static org.opencastproject.security.api.SecurityConstants.GLOBAL_ADMIN_ROLE;
+import static org.opencastproject.security.api.SecurityConstants.GLOBAL_CAPTURE_AGENT_ROLE;
 
 import org.opencastproject.job.api.AbstractJobProducer;
 import org.opencastproject.job.api.Job;
@@ -92,11 +93,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Dictionary;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * A Solr-based {@link SearchService} implementation.
@@ -473,7 +475,14 @@ public final class SearchServiceImpl extends AbstractJobProducer implements Sear
   public boolean deleteSynchronously(final String mediaPackageId) throws SearchException {
     SearchResult result;
     try {
-      result = solrRequester.getForWrite(new SearchQuery().withId(mediaPackageId));
+      SearchQuery q = new SearchQuery().withId(mediaPackageId);
+      User user = securityService.getUser();
+      // allow ca users to retract live publications without putting them into the ACL
+      if (user.hasRole(GLOBAL_CAPTURE_AGENT_ROLE)) {
+        result = solrRequester.getForAdministrativeRead(q); // action doesn't matter here
+      } else {
+        result = solrRequester.getForWrite(q); // also checks admin rights which are always part of the ACL in search
+      }
       if (result.getItems().length == 0) {
         logger.warn("Can not delete mediapackage {}, which is not available for the current user to delete from the "
                     + "search index.", mediaPackageId);
@@ -606,22 +615,21 @@ public final class SearchServiceImpl extends AbstractJobProducer implements Sear
 
     if (instancesInSolr == 0L) {
       logger.info("No search index found");
-      Iterator<Tuple<MediaPackage, String>> mediaPackages;
-      int total = 0;
+      Stream<Tuple<MediaPackage, String>> mediaPackages;
+      AtomicInteger total = new AtomicInteger(0);
       try {
-        total = persistence.countMediaPackages();
+        total.addAndGet(persistence.countMediaPackages());
         logger.info("Starting population of search index from {} items in database", total);
         mediaPackages = persistence.getAllMediaPackages();
       } catch (SearchServiceDatabaseException e) {
         logger.error("Unable to load the search entries: {}", e.getMessage());
         throw new ServiceException(e.getMessage());
       }
-      int errors = 0;
-      int current = 0;
-      while (mediaPackages.hasNext()) {
-        current++;
+      AtomicInteger errors = new AtomicInteger(0);
+      AtomicInteger current = new AtomicInteger(0);
+      mediaPackages.forEach(episode -> {
+        current.incrementAndGet();
         try {
-          final Tuple<MediaPackage, String> episode = mediaPackages.next();
           final MediaPackage mediaPackage = episode.getA();
           final String mediaPackageId = mediaPackage.getIdentifier().toString();
           final Organization organization = organizationDirectory.getOrganization(episode.getB());
@@ -646,19 +654,20 @@ public final class SearchServiceImpl extends AbstractJobProducer implements Sear
             logger.warn("Trying to re-index search index later. Aborting for now.");
             return;
           }
-          errors++;
+          errors.incrementAndGet();
         } finally {
           securityService.setOrganization(null);
           securityService.setUser(null);
         }
 
         // log progress
-        if (current % 100 == 0) {
-          logger.info("Indexing search {}/{} ({} percent done)", current, total, current * 100 / total);
+        if (current.get() % 100 == 0) {
+          logger.info("Indexing search {}/{} ({} percent done)", current.get(), total.get(),
+              current.get() * 100 / total.get());
         }
-      }
-      if (errors > 0) {
-        logger.error("Skipped {} erroneous search entries while populating the search index", errors);
+      });
+      if (errors.get() > 0) {
+        logger.error("Skipped {} erroneous search entries while populating the search index", errors.get());
       }
       logger.info("Finished populating search index");
     }

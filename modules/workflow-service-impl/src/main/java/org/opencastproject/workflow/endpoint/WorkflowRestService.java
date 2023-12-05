@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -285,6 +285,7 @@ public class WorkflowRestService extends AbstractJobProducerEndpoint {
       throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
     }
   }
+
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   @Path("mediaPackage/{id}/hasActiveWorkflows")
@@ -343,6 +344,26 @@ public class WorkflowRestService extends AbstractJobProducerEndpoint {
       }
 
     } catch (WorkflowException | UnauthorizedException e) {
+      throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  @Path("user/{id}/hasActiveWorkflows")
+  @RestQuery(name = "userhasactiveworkflows", description = "Returns if there are currently workflow(s) running that"
+          + "were started by the given user",
+          returnDescription = "Returns if there are currently workflow(s) running that were started by the given user "
+                  + "as a boolean.",
+          pathParameters = {
+                  @RestParameter(name = "id", isRequired = true, description = "The user identifier", type = STRING) },
+          responses = {
+                  @RestResponse(responseCode = SC_OK, description = "Whether there are active workflow for the user.")})
+  public Response userHasActiveWorkflows(@PathParam("id") String userId) {
+    try {
+      return Response.ok(Boolean.toString(service.userHasActiveWorkflows(userId))).build();
+
+    } catch (WorkflowDatabaseException e) {
       throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
     }
   }

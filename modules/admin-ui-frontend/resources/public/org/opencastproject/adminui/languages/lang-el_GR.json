@@ -28,7 +28,7 @@
    "YES": "Ναί",
    "COPY": "Αντιγραφή στο πρόχειρο",
    "MONITOR": {
-      "REGISTRATION": "Το Opencast έστειλε μια ενημέρωση εγγραφής σε περισσότερο από μία εβδομάδα"
+      "REGISTRATION": "Απαρχαιωμένη έκδοση"
    },
    "LTI": {
       "ERROR_LOADING_METADATA": "Σφάλμα στην φόρτωση των μεταδεδομένων της εκδήλωσης. Παρακαλώ προσπαθείστε αργότερα.",
@@ -43,7 +43,7 @@
       "VIDEOFILE": " Αρχείο Βίντεο",
       "VIDEOFILE_DESCRIPTION": "Επιλογή αρχείου βίντεο για μεταφόρτωση",
       "CAPTION": "Λεζάντες",
-      "CAPTION_DESCRIPTION": "Αρχείο υπότιτλων; Υποστηρίζεται τύπος αρχείου VTT ή dfxp",
+      "CAPTION_DESCRIPTION": "Caption file in VTT format",
       "UPLOAD": "Μεταφόρτωση",
       "UPLOADING": "Αποστολή...",
       "EDIT": "Αποθήκευση",
@@ -148,6 +148,17 @@
       "REST_DOC": "Εγχειρίδιο REST API",
       "HOTKEY_CHEAT_SHEET": "Συντομεύσεις πληκτρολογίου",
       "ADOPTER_REGISTRATION": "Εγγραφή adopter"
+   },
+   "REBUILD": {
+      "TITLE": "Αναδόμηση Ευρετηρίου",
+      "WARNING": "Προσοχή!",
+      "HEADER": "Αναδημιουργία ευρετηρίου σε εξέλιξη!",
+      "THEME_SERVICE": "Υπηρεσία Θέματος",
+      "SERIES_SERVICE": "Υπηρεσία Σειράς",
+      "SCHEDULER_SERVICE": "Υπηρεσία Χρονοδιαγράμματος",
+      "ASSETMANAGER_SERVICE": "Υπηρεσία Διαχειριστή Αντικειμένων",
+      "COMMENTS_SERVICE": "Υπηρεσία Σχολίων",
+      "WORKFLOW_SERVICE": "Υπηρεσία Ροής Εργασίας"
    },
    "NOTIFICATIONS": {
       "ACL_ADDED": "H πολιτική πρόσβασης έχει δημιουργηθεί",
@@ -530,6 +541,10 @@
                      "SHORT": "Παρουσιαστής",
                      "DETAIL": "Το αρχείο περιέχει μια καταγραφή ενός προσώπου μιλώντας σε ένα ακροατήριο."
                   },
+                  "SUBTITLES": {
+                     "SHORT": "Subtitles",
+                     "DETAIL": "The text file contains the words spoken in the video(s) above."
+                  },
                   "AUDIO_ONLY": {
                      "SHORT": "Μόνο αρχείου ήχου",
                      "DETAIL": "Το αρχείο περιέχει μόνο ήχο."
@@ -573,8 +588,7 @@
                "NO_OPTIONS": "Δεν καθορίστηκε λίστα επιλογών αντικειμένων σε αυτό το τμήμα της ιστοσελίδας!",
                "OPTION": {
                   "CLASS_HANDOUT_NOTES": "Ενημερωτικές σημειώσεις κλάσης",
-                  "CAPTIONS_DFXP": "Υπότιτλοι DFXP",
-                  "CAPTIONS_WEBVTT": "Υπότιτλοι WebVTT",
+                  "SUBTITLES": "Subtitles",
                   "PREVIEW_IMAGE": "Προεπισκόπηση εικόνας",
                   "SMIL": "Κατάλογος Smil",
                   "TRACK_PARTS": "Παρακολούθηση τμημάτων"
@@ -894,11 +908,23 @@
                   "ADDITIONAL_ACTIONS": "Πρόσθετες ενέργειες",
                   "ACTION": "Ενέργειες",
                   "NEW": "Νέα πολιτική",
-                  "DETAILS": "Λεπτομέρειες"
+                  "NEW_USER": "Νέος χρήστης",
+                  "DETAILS": "Ρόλοι μη χρηστών",
+                  "USER": "Χρήστης",
+                  "USERS": "Χρήστες που είναι εξουσιοδοτημένοι για την εκδήλωση",
+                  "NONEXISTENT_USER": "Μη υπάρχων χρήστης",
+                  "HELP": {
+                     "READ": "Θέτοντας δικαιώματα ανάγνωσης, η εκδήλωση γίνεται ορατή για τον επιλεγμένο χρήστη",
+                     "WRITE": "Ρυθμίζοντας δικαιώματα εγγραφής, ο επιλεγμένος χρήστης μπορεί να επεξεργαστεί την εκδήλωση"
+                  }
                },
                "ROLES": {
                   "LABEL": "Επιλέξτε ένα ρόλο",
                   "EMPTY": "Κανένας ρόλος δεν βρέθηκε"
+               },
+               "USERS": {
+                  "LABEL": "Επιλέξτε χρήστη ",
+                  "EMPTY": "Δεν βρέθηκαν χρήστες"
                }
             },
             "COMMENTS": {
@@ -1116,11 +1142,22 @@
                   "ADDITIONAL_ACTIONS": "Πρόσθετες ενέργειες",
                   "ACTION": "Ενέργειες",
                   "NEW": "Νέα πολιτική",
-                  "DETAILS": "Λεπτομέρειες"
+                  "NEW_USER": "Νέος χρήστης",
+                  "DETAILS": "Ρόλοι μη χρηστών",
+                  "USER": "Χρήστης",
+                  "USERS": "Χρήστες που είναι εξουσιοδοτημένοι για τη σειρά",
+                  "HELP": {
+                     "READ": "Με τον ορισμό δικαιωμάτων ανάγνωσης, η σειρά γίνεται ορατή για τον επιλεγμένο χρήστη",
+                     "WRITE": "Με τη ρύθμιση δικαιωμάτων εγγραφής, ο επιλεγμένος χρήστης μπορεί να επεξεργαστεί τη σειρά"
+                  }
                },
                "ROLES": {
                   "LABEL": "Επιλέξτε ένα ρόλο",
                   "EMPTY": "Κανένας ρόλος δεν βρέθηκε"
+               },
+               "USERS": {
+                  "LABEL": "Επιλέξτε χρήστη ",
+                  "EMPTY": "Δεν βρέθηκαν χρήστες"
                }
             },
             "THEME": {
@@ -1194,17 +1231,29 @@
                   "ADDITIONAL_ACTIONS": "Πρόσθετες ενέργειες",
                   "ACTION": "Ενέργειες",
                   "NEW": "Νέα πολιτική",
-                  "DETAILS": "Λεπτομέρειες",
-                  "REPLACE_EVENT_ACLS": "Αποθήκευση & ενημέρωση δικαιωμάτων εκδήλωσης",
+                  "DETAILS": "Ρόλοι μη χρηστών",
+                  "REPLACE_EVENT_ACLS": "Ενημέρωση δικαιωμάτων εκδήλωσης",
                   "REPLACE_EVENT_ACLS_HINT": "Επιβεβαίωση ότι όλες οι εκδηλώσεις σε αυτή την σειρά έχουν τα ίδια δικαιώματα σε ισχύ",
                   "SAVE_SERIES_ACLS": "Αποθήκευση",
                   "SAVE_SERIES_ACLS_HINT": "Εφαρμογή δικαιωμάτων μόνο στη σειρά",
                   "LOAD_MORE_LIMIT": "Εμφάνιση πολιτικών.",
-                  "LOAD_MORE_LINK": "Φόρτωση περισσοτέρων"
+                  "LOAD_MORE_LINK": "Φόρτωση περισσοτέρων",
+                  "NEW_USER": "Νέος χρήστης",
+                  "USER": "Χρήστης",
+                  "USERS": "Χρήστες που είναι εξουσιοδοτημένοι για τη σειρά",
+                  "NONEXISTENT_USER": "Μη υπάρχων χρήστης",
+                  "HELP": {
+                     "READ": "Με τον ορισμό δικαιωμάτων ανάγνωσης, η σειρά γίνεται ορατή για τον επιλεγμένο χρήστη",
+                     "WRITE": "Με τη ρύθμιση δικαιωμάτων εγγραφής, ο επιλεγμένος χρήστης μπορεί να επεξεργαστεί τη σειρά"
+                  }
                },
                "ROLES": {
                   "LABEL": "Επιλέξτε ένα ρόλο",
                   "EMPTY": "Κανένας ρόλος δεν βρέθηκε"
+               },
+               "USERS": {
+                  "LABEL": "Επιλέξτε χρήστη ",
+                  "EMPTY": "Δεν βρέθηκαν χρήστες"
                }
             },
             "METADATA": {
@@ -1226,7 +1275,7 @@
                "HOMEPAGE": "Αρχική σελίδα",
                "DIRECT_LINK": "Άμεσος σύνδεσμος με τη σειρά",
                "COPY_DIRECT_LINK": "Αντιγραφή στο πρόχειρο",
-               "NOT_MOUNTED": "Αυτή η σειρά δεν περιλαμβάνεται στην δομή  της σελίδας  και μπορεί να είναι προσβάσιμη μόνο χρησιμοποιώντας τον παραπάνω σύνδεσμο.",
+               "NOT_MOUNTED": "This series is currently not included in the page structure, and can only be reached using the direct link above.",
                "PAGES": "Σελίδες στο Tobira που περιέχουν αυτή τη σειρά"
             },
             "EVENTS": {
@@ -1443,12 +1492,23 @@
                   "ADDITIONAL_ACTIONS": "Πρόσθετες ενέργειες",
                   "ACTION": "Ενέργειες",
                   "NEW": "Νέα πολιτική",
-                  "DETAILS": "Λεπτομέρειες",
-                  "DESCRIPTION": "Παρακαλώ επιλέξτε ένα σύνολο προ-διαμορφωμένων πολιτικών ή να προσθέσετε τις ακόλουθες προσαρμοσμένες πολιτικές"
+                  "DETAILS": "Ρόλοι μη χρηστών",
+                  "DESCRIPTION": "Παρακαλώ επιλέξτε ένα σύνολο προ-διαμορφωμένων πολιτικών ή να προσθέσετε τις ακόλουθες προσαρμοσμένες πολιτικές",
+                  "NEW_USER": "Νέος χρήστης",
+                  "USER": "Χρήστης",
+                  "USERS": "Users who are authorized by this access policy",
+                  "HELP": {
+                     "READ": "By setting read permissions, the entity to which this access policy is assigned becomes visible to the selected user.",
+                     "WRITE": "By setting write permissions, the entity to which this access policy is assigned can be modified by the selected user."
+                  }
                },
                "ROLES": {
                   "LABEL": "Επιλέξτε ένα ρόλο",
                   "EMPTY": "Κανένας ρόλος δεν βρέθηκε"
+               },
+               "USERS": {
+                  "LABEL": "Επιλέξτε χρήστη ",
+                  "EMPTY": "Δεν βρέθηκαν χρήστες"
                }
             }
          },
@@ -1481,12 +1541,24 @@
                   "ADDITIONAL_ACTIONS": "Πρόσθετες ενέργειες",
                   "ACTION": "Ενέργειες",
                   "NEW": "Νέα πολιτική",
-                  "DETAILS": "Λεπτομέρειες",
-                  "DESCRIPTION": "Παρακαλώ επιλέξτε ένα σύνολο προ-διαμορφωμένων πολιτικών ή να προσθέσετε τις ακόλουθες προσαρμοσμένες πολιτικές"
+                  "DETAILS": "Ρόλοι μη χρηστών",
+                  "DESCRIPTION": "Παρακαλώ επιλέξτε ένα σύνολο προ-διαμορφωμένων πολιτικών ή να προσθέσετε τις ακόλουθες προσαρμοσμένες πολιτικές",
+                  "NEW_USER": "Νέος χρήστης",
+                  "USER": "Χρήστης",
+                  "USERS": "Users who are authorized by this access policy",
+                  "NONEXISTENT_USER": "Μη υπάρχων χρήστης",
+                  "HELP": {
+                     "READ": "By setting read permissions, the entity to which this access policy is assigned becomes visible to the selected user.",
+                     "WRITE": "By setting write permissions, the entity to which this access policy is assigned can be modified by the selected user."
+                  }
                },
                "ROLES": {
                   "LABEL": "Επιλέξτε ένα ρόλο",
                   "EMPTY": "Κανένας ρόλος δεν βρέθηκε"
+               },
+               "USERS": {
+                  "LABEL": "Επιλέξτε χρήστη ",
+                  "EMPTY": "Δεν βρέθηκαν χρήστες"
                }
             }
          }
@@ -1794,8 +1866,10 @@
       "TRACKS": {
          "DESCRIPTION": "Μπορείτε να αποεπιλέξετε κομμάτια για να τα αποκλείσετε από περαιτέρω επεξεργασία. Παρακαλώ σημειώστε ότι πρέπει να (επαν-) δημοσιεύετε την εκδλήλωση για να εφαρμόσετε τις αλλαγές.",
          "NOTIFICATION": {
-            "NO_VIDEO_TRACK_SELECTED": "Πρέπει να ενεργοποιήσετε τουλάχιστον ένα κομμάτι βίντεο",
-            "NO_AUDIO_TRACK_SELECTED": "Πρέπει να ενεργοποιήσετε τουλάχιστον ένα κομμάτι ήχου"
+            "NO_VIDEO_TRACK_SELECTED_WARNING": "You should probably enable at least one video track",
+            "NO_AUDIO_TRACK_SELECTED_WARNING": "You should probably enable at least one audio track",
+            "TOO_MANY_AUDIO_TRACKS_SELECTED_WARNING": "You probably shouldn't enable more audio than video tracks",
+            "NO_TRACK_SELECTED_ERROR": "You must enable at least one track"
          },
          "TRACK": {
             "HEADER": "Κομμάτι"

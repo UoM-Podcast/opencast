@@ -12,6 +12,7 @@
     Process media files and publish them.
   </description>
   <configuration_panel/>
+  <configuration_panel_json/>
   <state-mappings>
     <state-mapping state="running">EVENTS.EVENTS.STATE_MAPPING.PUBLISHING</state-mapping>
     <state-mapping state="failing">EVENTS.EVENTS.STATE_MAPPING.PUBLISHING</state-mapping>
@@ -58,7 +59,6 @@
       id="snapshot"
       description="Archive publishing information">
       <configurations>
-        <configuration key="source-flavors">captions/*</configuration>
         <configuration key="source-tags">archive</configuration>
       </configurations>
     </operation>

@@ -28,7 +28,7 @@
    "YES": "Sí",
    "COPY": "Copiar en el portapapeles",
    "MONITOR": {
-      "REGISTRATION": "Opencast ha enviado una actualización de registro hace más de una semana"
+      "REGISTRATION": "Out of date"
    },
    "LTI": {
       "ERROR_LOADING_METADATA": "Error al cargar los metadatos del evento. Inténtalo de nuevo más tarde.",
@@ -43,7 +43,7 @@
       "VIDEOFILE": "Archivo de vídeo",
       "VIDEOFILE_DESCRIPTION": "Archivo de vídeo para subir",
       "CAPTION": "Subtítulos",
-      "CAPTION_DESCRIPTION": "Archivo de subtítulos; formatos VTT o dfxp son soportados",
+      "CAPTION_DESCRIPTION": "Archivo de subtítulos en formato VTT",
       "UPLOAD": "Subir",
       "UPLOADING": "Subiendo",
       "EDIT": "Guardar",
@@ -148,6 +148,17 @@
       "REST_DOC": "API REST",
       "HOTKEY_CHEAT_SHEET": "Atajos de Teclado",
       "ADOPTER_REGISTRATION": "Registro de Adopters"
+   },
+   "REBUILD": {
+      "TITLE": "Reconstrucción del índice",
+      "WARNING": "¡Atención!",
+      "HEADER": "¡Reconstrucción del índice en curso!",
+      "THEME_SERVICE": "Theme Service",
+      "SERIES_SERVICE": "Series Service",
+      "SCHEDULER_SERVICE": "Scheduler Service",
+      "ASSETMANAGER_SERVICE": "AssetManager Service",
+      "COMMENTS_SERVICE": "Comments Service",
+      "WORKFLOW_SERVICE": "Workflow Service"
    },
    "NOTIFICATIONS": {
       "ACL_ADDED": "Se ha creado la política de acceso",
@@ -530,6 +541,10 @@
                      "SHORT": "Ponente",
                      "DETAIL": "El archivo contiene la grabación de una persona dirigiéndose a una audiencia."
                   },
+                  "SUBTITLES": {
+                     "SHORT": "Subtítulos",
+                     "DETAIL": "El archivo de texto contiene las palabras habladas en el video anterior."
+                  },
                   "AUDIO_ONLY": {
                      "SHORT": "Solo audio",
                      "DETAIL": "El archivo solo contiene audio."
@@ -573,8 +588,7 @@
                "NO_OPTIONS": "¡No se ha proporcionado una lista de opciones de recursos para esta sección de la página web!",
                "OPTION": {
                   "CLASS_HANDOUT_NOTES": "Notas",
-                  "CAPTIONS_DFXP": "Subtítulos DXFP",
-                  "CAPTIONS_WEBVTT": "Subtítulos WebVTT",
+                  "SUBTITLES": "Subtítulos",
                   "PREVIEW_IMAGE": "Imagen de vista previa",
                   "SMIL": "Catálogo SMIL",
                   "TRACK_PARTS": "Pistas"
@@ -894,11 +908,23 @@
                   "ADDITIONAL_ACTIONS": "Más Acciones",
                   "ACTION": "Acciones",
                   "NEW": "Nueva política",
-                  "DETAILS": "Detalles"
+                  "NEW_USER": "New user",
+                  "DETAILS": "Non-user roles",
+                  "USER": "Usuario",
+                  "USERS": "Users who are authorized for the event",
+                  "NONEXISTENT_USER": "Nonexistent user",
+                  "HELP": {
+                     "READ": "By setting read rights, the event becomes visible for the selected user",
+                     "WRITE": "By setting write rights, the selected user can edit the event"
+                  }
                },
                "ROLES": {
                   "LABEL": "Seleccione un rol",
                   "EMPTY": "No hay roles disponibles"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             },
             "COMMENTS": {
@@ -1116,11 +1142,22 @@
                   "ADDITIONAL_ACTIONS": "Acciones Adicionales",
                   "ACTION": "Acciones",
                   "NEW": "Nueva política",
-                  "DETAILS": "Detalles"
+                  "NEW_USER": "New user",
+                  "DETAILS": "Non-user roles",
+                  "USER": "Usuario",
+                  "USERS": "Users who are authorized for the series",
+                  "HELP": {
+                     "READ": "By setting read rights, the series becomes visible for the selected user",
+                     "WRITE": "By setting write rights, the selected user can edit the series"
+                  }
                },
                "ROLES": {
                   "LABEL": "Seleccione un rol",
                   "EMPTY": "No hay roles disponibles"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             },
             "THEME": {
@@ -1194,17 +1231,29 @@
                   "ADDITIONAL_ACTIONS": "Acciones Adicionales",
                   "ACTION": "Acciones",
                   "NEW": "Nueva política",
-                  "DETAILS": "Detalles",
-                  "REPLACE_EVENT_ACLS": "Guardar y actualizar permisos del evento",
+                  "DETAILS": "Non-user roles",
+                  "REPLACE_EVENT_ACLS": "Actualizar permisos de evento",
                   "REPLACE_EVENT_ACLS_HINT": "Asegúrese de que todos los eventos de esta serie tengan estos permisos en vigor",
                   "SAVE_SERIES_ACLS": "Guardar",
                   "SAVE_SERIES_ACLS_HINT": "Aplicar permisos sólo a series",
                   "LOAD_MORE_LIMIT": "políticas mostradas.",
-                  "LOAD_MORE_LINK": "Cargar más"
+                  "LOAD_MORE_LINK": "Cargar más",
+                  "NEW_USER": "New user",
+                  "USER": "Usuario",
+                  "USERS": "Users who are authorized for the series",
+                  "NONEXISTENT_USER": "Nonexistent user",
+                  "HELP": {
+                     "READ": "By setting read rights, the series becomes visible for the selected user",
+                     "WRITE": "By setting write rights, the selected user can edit the series"
+                  }
                },
                "ROLES": {
                   "LABEL": "Seleccione un rol",
                   "EMPTY": "No hay roles disponibles"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             },
             "METADATA": {
@@ -1226,7 +1275,7 @@
                "HOMEPAGE": "(Página principal)",
                "DIRECT_LINK": "Enlace directo a la serie",
                "COPY_DIRECT_LINK": "Copiar en el portapapeles",
-               "NOT_MOUNTED": "Esta serie no está actualmente incluida en la estructura de la página, y solo se puede alcanzar utilizando el enlace directo de arriba.",
+               "NOT_MOUNTED": "This series is currently not included in the page structure, and can only be reached using the direct link above.",
                "PAGES": "Páginas en Tobira que contienen esta serie"
             },
             "EVENTS": {
@@ -1443,12 +1492,23 @@
                   "ADDITIONAL_ACTIONS": "Acciones Adicionales",
                   "ACTION": "Acciones",
                   "NEW": "Nueva política",
-                  "DETAILS": "Detalles",
-                  "DESCRIPTION": "Por favor, elija un conjunto de políticas preconfigurado o añada políticas personalizadas"
+                  "DETAILS": "Non-user roles",
+                  "DESCRIPTION": "Por favor, elija un conjunto de políticas preconfigurado o añada políticas personalizadas",
+                  "NEW_USER": "New user",
+                  "USER": "Usuario",
+                  "USERS": "Users who are authorized by this access policy",
+                  "HELP": {
+                     "READ": "By setting read permissions, the entity to which this access policy is assigned becomes visible to the selected user.",
+                     "WRITE": "By setting write permissions, the entity to which this access policy is assigned can be modified by the selected user."
+                  }
                },
                "ROLES": {
                   "LABEL": "Seleccione un rol",
                   "EMPTY": "No hay roles disponibles"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             }
          },
@@ -1481,12 +1541,24 @@
                   "ADDITIONAL_ACTIONS": "Acciones Adicionales",
                   "ACTION": "Acciones",
                   "NEW": "Nueva política",
-                  "DETAILS": "Detalles",
-                  "DESCRIPTION": "Por favor, elija un conjunto de políticas preconfigurado o añada políticas personalizadas"
+                  "DETAILS": "Non-user roles",
+                  "DESCRIPTION": "Por favor, elija un conjunto de políticas preconfigurado o añada políticas personalizadas",
+                  "NEW_USER": "New user",
+                  "USER": "Usuario",
+                  "USERS": "Users who are authorized by this access policy",
+                  "NONEXISTENT_USER": "Nonexistent user",
+                  "HELP": {
+                     "READ": "By setting read permissions, the entity to which this access policy is assigned becomes visible to the selected user.",
+                     "WRITE": "By setting write permissions, the entity to which this access policy is assigned can be modified by the selected user."
+                  }
                },
                "ROLES": {
                   "LABEL": "Seleccione un rol",
                   "EMPTY": "No hay roles disponibles"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             }
          }
@@ -1794,8 +1866,10 @@
       "TRACKS": {
          "DESCRIPTION": "Se pueden deseleccionar pistas para que no sigan siendo procesadas. Tenga en cuenta que es necesario (re-)publicar el evento para que los cambios tengan efecto.",
          "NOTIFICATION": {
-            "NO_VIDEO_TRACK_SELECTED": "Debe activar al menos una pista de vídeo",
-            "NO_AUDIO_TRACK_SELECTED": "Debe activar al menos una pista de audio"
+            "NO_VIDEO_TRACK_SELECTED_WARNING": "Debe activar al menos una pista de vídeo",
+            "NO_AUDIO_TRACK_SELECTED_WARNING": "Debe activar al menos una pista de vídeo",
+            "TOO_MANY_AUDIO_TRACKS_SELECTED_WARNING": "You probably shouldn't enable more audio than video tracks",
+            "NO_TRACK_SELECTED_ERROR": "Debe activar al menos una pista"
          },
          "TRACK": {
             "HEADER": "Pista"
@@ -1890,7 +1964,7 @@
          "COMMENTS": {
             "LABEL": "Comentarios",
             "NONE": "Ninguno",
-            "OPEN": "Abrir",
+            "OPEN": "Sin resolver",
             "RESOLVED": "Resuelto"
          },
          "CONTRIBUTORS": {

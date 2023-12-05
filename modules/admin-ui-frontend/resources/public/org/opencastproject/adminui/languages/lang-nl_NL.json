@@ -28,7 +28,7 @@
    "YES": "Ja",
    "COPY": "Naar klembord kopiëren",
    "MONITOR": {
-      "REGISTRATION": "Opencast has sent a registration update in more than a week"
+      "REGISTRATION": "Out of date"
    },
    "LTI": {
       "ERROR_LOADING_METADATA": "Fout bij het laden van de metadata van dit event. Probeer het later aub opnieuw.",
@@ -43,7 +43,7 @@
       "VIDEOFILE": "Videobestand",
       "VIDEOFILE_DESCRIPTION": "Te uploaden videobestand",
       "CAPTION": "Ondertitels",
-      "CAPTION_DESCRIPTION": "Ondersteunde formaten voor ondertiteling: VTT of dfxp",
+      "CAPTION_DESCRIPTION": "Caption file in VTT format",
       "UPLOAD": "Upload",
       "UPLOADING": "Aan het uploaden",
       "EDIT": "Opslaan",
@@ -148,6 +148,17 @@
       "REST_DOC": "REST API documentatie",
       "HOTKEY_CHEAT_SHEET": "Sneltoetsen",
       "ADOPTER_REGISTRATION": "Adopter registratie"
+   },
+   "REBUILD": {
+      "TITLE": "Index Rebuild",
+      "WARNING": "Attention!",
+      "HEADER": "Index rebuild in progress!",
+      "THEME_SERVICE": "Theme Service",
+      "SERIES_SERVICE": "Series Service",
+      "SCHEDULER_SERVICE": "Scheduler Service",
+      "ASSETMANAGER_SERVICE": "AssetManager Service",
+      "COMMENTS_SERVICE": "Comments Service",
+      "WORKFLOW_SERVICE": "Workflow Service"
    },
    "NOTIFICATIONS": {
       "ACL_ADDED": "De toegangspolicy werd aangemaakt",
@@ -530,6 +541,10 @@
                      "SHORT": "Presentator",
                      "DETAIL": "Het bestand bevat een opname van een persoon die een publiek aanspreekt."
                   },
+                  "SUBTITLES": {
+                     "SHORT": "Subtitles",
+                     "DETAIL": "The text file contains the words spoken in the video(s) above."
+                  },
                   "AUDIO_ONLY": {
                      "SHORT": "Enkel audio",
                      "DETAIL": "Het bestand bevat enkel audio."
@@ -573,8 +588,7 @@
                "NO_OPTIONS": "Een lijst met asset opties werd niet verleend voor dit gedeelte van de webpagina!",
                "OPTION": {
                   "CLASS_HANDOUT_NOTES": "Hand-out aantekeningen",
-                  "CAPTIONS_DFXP": "Ondertitels DFXP",
-                  "CAPTIONS_WEBVTT": "Ondertitels WebVTT",
+                  "SUBTITLES": "Subtitles",
                   "PREVIEW_IMAGE": "Afbeelding voor voorvertoning",
                   "SMIL": "Smil catalogus",
                   "TRACK_PARTS": "Bijhouden van onderdelen"
@@ -894,11 +908,23 @@
                   "ADDITIONAL_ACTIONS": "Extra acties",
                   "ACTION": "Acties",
                   "NEW": "Nieuwe policy",
-                  "DETAILS": "Details"
+                  "NEW_USER": "New user",
+                  "DETAILS": "Non-user roles",
+                  "USER": "User",
+                  "USERS": "Users who are authorized for the event",
+                  "NONEXISTENT_USER": "Nonexistent user",
+                  "HELP": {
+                     "READ": "By setting read rights, the event becomes visible for the selected user",
+                     "WRITE": "By setting write rights, the selected user can edit the event"
+                  }
                },
                "ROLES": {
                   "LABEL": "Selecteer een rol",
                   "EMPTY": "Geen rol gevonden"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             },
             "COMMENTS": {
@@ -1116,11 +1142,22 @@
                   "ADDITIONAL_ACTIONS": "Extra acties",
                   "ACTION": "Acties",
                   "NEW": "Nieuwe policy",
-                  "DETAILS": "Details"
+                  "NEW_USER": "New user",
+                  "DETAILS": "Non-user roles",
+                  "USER": "User",
+                  "USERS": "Users who are authorized for the series",
+                  "HELP": {
+                     "READ": "By setting read rights, the series becomes visible for the selected user",
+                     "WRITE": "By setting write rights, the selected user can edit the series"
+                  }
                },
                "ROLES": {
                   "LABEL": "Selecteer een rol",
                   "EMPTY": "Geen rol gevonden"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             },
             "THEME": {
@@ -1194,17 +1231,29 @@
                   "ADDITIONAL_ACTIONS": "Extra acties",
                   "ACTION": "Acties",
                   "NEW": "Nieuwe policy",
-                  "DETAILS": "Details",
-                  "REPLACE_EVENT_ACLS": "Save & update event permissions",
+                  "DETAILS": "Non-user roles",
+                  "REPLACE_EVENT_ACLS": "Permissies bijwerken",
                   "REPLACE_EVENT_ACLS_HINT": "Zorg ervoor dat alle events van deze serie deze permissies hebben",
                   "SAVE_SERIES_ACLS": "Save",
                   "SAVE_SERIES_ACLS_HINT": "Apply permissions only to series",
                   "LOAD_MORE_LIMIT": "beleidsrichtlijnen getoond.",
-                  "LOAD_MORE_LINK": "Laad meer"
+                  "LOAD_MORE_LINK": "Laad meer",
+                  "NEW_USER": "New user",
+                  "USER": "User",
+                  "USERS": "Users who are authorized for the series",
+                  "NONEXISTENT_USER": "Nonexistent user",
+                  "HELP": {
+                     "READ": "By setting read rights, the series becomes visible for the selected user",
+                     "WRITE": "By setting write rights, the selected user can edit the series"
+                  }
                },
                "ROLES": {
                   "LABEL": "Selecteer een rol",
                   "EMPTY": "Geen rol gevonden"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             },
             "METADATA": {
@@ -1226,7 +1275,7 @@
                "HOMEPAGE": "(Homepage)",
                "DIRECT_LINK": "Direct link to series",
                "COPY_DIRECT_LINK": "Copy to clipboard",
-               "NOT_MOUNTED": "This series is currently not included the page structure, and can only be reached using the direct link above.",
+               "NOT_MOUNTED": "This series is currently not included in the page structure, and can only be reached using the direct link above.",
                "PAGES": "Pages in Tobira that contain this series"
             },
             "EVENTS": {
@@ -1443,12 +1492,23 @@
                   "ADDITIONAL_ACTIONS": "Extra acties",
                   "ACTION": "Acties",
                   "NEW": "Nieuwe policy",
-                  "DETAILS": "Details",
-                  "DESCRIPTION": "Kies een vooraf geconfigureerde verzameling beleidsregels of voeg een aangepast beleid hieronder toe"
+                  "DETAILS": "Non-user roles",
+                  "DESCRIPTION": "Kies een vooraf geconfigureerde verzameling beleidsregels of voeg een aangepast beleid hieronder toe",
+                  "NEW_USER": "New user",
+                  "USER": "User",
+                  "USERS": "Users who are authorized by this access policy",
+                  "HELP": {
+                     "READ": "By setting read permissions, the entity to which this access policy is assigned becomes visible to the selected user.",
+                     "WRITE": "By setting write permissions, the entity to which this access policy is assigned can be modified by the selected user."
+                  }
                },
                "ROLES": {
                   "LABEL": "Selecteer een rol",
                   "EMPTY": "Geen rol gevonden"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             }
          },
@@ -1481,12 +1541,24 @@
                   "ADDITIONAL_ACTIONS": "Extra acties",
                   "ACTION": "Acties",
                   "NEW": "Nieuwe policy",
-                  "DETAILS": "Details",
-                  "DESCRIPTION": "Kies een vooraf geconfigureerde verzameling beleidsregels of voeg een aangepast beleid hieronder toe"
+                  "DETAILS": "Non-user roles",
+                  "DESCRIPTION": "Kies een vooraf geconfigureerde verzameling beleidsregels of voeg een aangepast beleid hieronder toe",
+                  "NEW_USER": "New user",
+                  "USER": "User",
+                  "USERS": "Users who are authorized by this access policy",
+                  "NONEXISTENT_USER": "Nonexistent user",
+                  "HELP": {
+                     "READ": "By setting read permissions, the entity to which this access policy is assigned becomes visible to the selected user.",
+                     "WRITE": "By setting write permissions, the entity to which this access policy is assigned can be modified by the selected user."
+                  }
                },
                "ROLES": {
                   "LABEL": "Selecteer een rol",
                   "EMPTY": "Geen rol gevonden"
+               },
+               "USERS": {
+                  "LABEL": "Select a user",
+                  "EMPTY": "No user found"
                }
             }
          }
@@ -1794,8 +1866,10 @@
       "TRACKS": {
          "DESCRIPTION": "Je kan tracks deselecteren om deze uit te sluiten van verdere verwerking. Gelieve rekening te houden met het feit dat je het event opnieuw moet publiceren om de wijzigingen effectief toe te passen.",
          "NOTIFICATION": {
-            "NO_VIDEO_TRACK_SELECTED": "Selecteer ten minste een video track",
-            "NO_AUDIO_TRACK_SELECTED": "Selecteer ten minste een audio track"
+            "NO_VIDEO_TRACK_SELECTED_WARNING": "You should probably enable at least one video track",
+            "NO_AUDIO_TRACK_SELECTED_WARNING": "You should probably enable at least one audio track",
+            "TOO_MANY_AUDIO_TRACKS_SELECTED_WARNING": "You probably shouldn't enable more audio than video tracks",
+            "NO_TRACK_SELECTED_ERROR": "You must enable at least one track"
          },
          "TRACK": {
             "HEADER": "Spoor"

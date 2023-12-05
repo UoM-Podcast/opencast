@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -100,6 +100,7 @@ import org.opencastproject.mediapackage.Publication;
 import org.opencastproject.mediapackage.Track;
 import org.opencastproject.mediapackage.VideoStream;
 import org.opencastproject.mediapackage.track.AudioStreamImpl;
+import org.opencastproject.mediapackage.track.SubtitleStreamImpl;
 import org.opencastproject.mediapackage.track.VideoStreamImpl;
 import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.DublinCoreMetadataCollection;
@@ -124,6 +125,7 @@ import org.opencastproject.security.api.Permissions;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.security.api.User;
+import org.opencastproject.security.api.UserDirectoryService;
 import org.opencastproject.security.urlsigning.exception.UrlSigningException;
 import org.opencastproject.security.urlsigning.service.UrlSigningService;
 import org.opencastproject.security.util.SecurityUtil;
@@ -223,6 +225,8 @@ public abstract class AbstractEventEndpoint {
   public static final String SCHEDULING_START_KEY = "start";
   public static final String SCHEDULING_END_KEY = "end";
   private static final String SCHEDULING_AGENT_CONFIGURATION_KEY = "agentConfiguration";
+  public static final String SCHEDULING_PREVIOUS_AGENTID = "previousAgentId";
+  public static final String SCHEDULING_PREVIOUS_PREVIOUSENTRIES = "previousEntries";
 
   private static final String WORKFLOW_ACTION_STOP = "STOP";
 
@@ -273,6 +277,8 @@ public abstract class AbstractEventEndpoint {
   public abstract Boolean getOnlySeriesWithWriteAccessEventModal();
 
   public abstract Boolean getOnlyEventsWithWriteAccessEventsTab();
+
+  public abstract UserDirectoryService getUserDirectoryService();
 
   /** Default server URL */
   protected String serverUrl = "http://localhost:8080";
@@ -661,7 +667,22 @@ public abstract class AbstractEventEndpoint {
     if (schedulingJson.has(SCHEDULING_AGENT_ID_KEY)) {
       agentId = Opt.some(schedulingJson.getString(SCHEDULING_AGENT_ID_KEY));
       logger.trace("Updating agent id of event '{}' from '{}' to '{}'",
-        event.getIdentifier(), technicalMetadata.getAgentId(), agentId);
+              event.getIdentifier(), technicalMetadata.getAgentId(), agentId);
+    }
+
+    Opt<String> previousAgentId = Opt.none();
+    if (schedulingJson.has(SCHEDULING_PREVIOUS_AGENTID)) {
+      previousAgentId = Opt.some(schedulingJson.getString(SCHEDULING_PREVIOUS_AGENTID));
+    }
+
+    Optional<String> previousAgentInputs = Optional.empty();
+    Optional<String> agentInputs = Optional.empty();
+    if (agentId.isSome() && previousAgentId.isSome()) {
+      Agent previousAgent = getCaptureAgentStateService().getAgent(previousAgentId.get());
+      Agent agent = getCaptureAgentStateService().getAgent(agentId.get());
+
+      previousAgentInputs = Optional.ofNullable(previousAgent.getCapabilities().getProperty(CaptureParameters.CAPTURE_DEVICE_NAMES));
+      agentInputs = Optional.ofNullable(agent.getCapabilities().getProperty(CaptureParameters.CAPTURE_DEVICE_NAMES));
     }
 
     // Check if we are allowed to re-schedule on this agent
@@ -691,6 +712,27 @@ public abstract class AbstractEventEndpoint {
       agentConfiguration = Opt.some(JSONUtils.toMap(schedulingJson.getJSONObject(SCHEDULING_AGENT_CONFIGURATION_KEY)));
       logger.trace("Updating agent configuration of event '{}' id from '{}' to '{}'",
         event.getIdentifier(), technicalMetadata.getCaptureAgentConfiguration(), agentConfiguration);
+    }
+
+    Opt<Map<String, String>> previousAgentInputMethods = Opt.none();
+    if (schedulingJson.has(SCHEDULING_PREVIOUS_PREVIOUSENTRIES)) {
+      previousAgentInputMethods = Opt.some(
+              JSONUtils.toMap(schedulingJson.getJSONObject(SCHEDULING_PREVIOUS_PREVIOUSENTRIES)));
+    }
+
+    // If we had previously selected an agent, and both the old and new agent have the same set of input channels,
+    // copy which input channels are active to the new agent
+    if (previousAgentInputs.isPresent() && previousAgentInputs.isPresent() && agentInputs.isPresent()) {
+      Map<String, String> map = previousAgentInputMethods.get();
+      String mapAsString = map.keySet().stream()
+              .collect(Collectors.joining(","));
+      String previousInputs = mapAsString;
+
+      if (previousAgentInputs.equals(agentInputs)) {
+        final Map<String, String> configMap = new HashMap<>(agentConfiguration.get());
+        configMap.put(CaptureParameters.CAPTURE_DEVICE_NAMES, previousInputs);
+        agentConfiguration = Opt.some(configMap);
+      }
     }
 
     if ((start.isSome() || end.isSome())
@@ -1813,11 +1855,22 @@ public abstract class AbstractEventEndpoint {
         for (WorkflowInstance instance : workflowInstances) {
           long instanceId = instance.getId();
           Date created = instance.getDateCreated();
-          String creatorName = instance.getCreatorName();
+          String submitter = instance.getCreatorName();
+
+          User user = getUserDirectoryService().loadUser(submitter);
+          String submitterName = null;
+          String submitterEmail = null;
+          if (user != null) {
+            submitterName = user.getName();
+            submitterEmail = user.getEmail();
+          }
+
           jsonList.add(obj(f("id", v(instanceId)), f("title", v(instance.getTitle(), Jsons.BLANK)),
                   f("status", v(WORKFLOW_STATUS_TRANSLATION_PREFIX + instance.getState().toString())),
                   f("submitted", v(created != null ? DateTimeSupport.toUTC(created.getTime()) : "", Jsons.BLANK)),
-                  f("submitter", v(creatorName, Jsons.BLANK))));
+                  f("submitter", v(submitter, Jsons.BLANK)),
+                  f("submitterName", v(submitterName, Jsons.BLANK)),
+                  f("submitterEmail", v(submitterEmail, Jsons.BLANK))));
         }
         JObject json = obj(f("results", arr(jsonList)), f("count", v(workflowInstances.size())));
         return okJson(json);
@@ -2160,7 +2213,8 @@ public abstract class AbstractEventEndpoint {
     } catch (Exception e) {
       logger.error("Unable to parse access policy", e);
     }
-    Option<ManagedAcl> currentAcl = AccessInformationUtil.matchAcls(acls, activeAcl);
+    Option<ManagedAcl> currentAcl = AccessInformationUtil.matchAclsLenient(acls, activeAcl,
+            getAdminUIConfiguration().getMatchManagedAclRolePrefixes());
 
     JSONObject episodeAccessJson = new JSONObject();
     episodeAccessJson.put("current_acl", currentAcl.isSome() ? currentAcl.get().getId() : 0L);
@@ -2280,7 +2334,8 @@ public abstract class AbstractEventEndpoint {
                   f("title", v(nul(wflDef.getTitle()).getOr(""))),
                   f("description", v(nul(wflDef.getDescription()).getOr(""))),
                   f("displayOrder", v(wflDef.getDisplayOrder())),
-                  f("configuration_panel", v(nul(wflDef.getConfigurationPanel()).getOr("")))));
+                  f("configuration_panel", v(nul(wflDef.getConfigurationPanel()).getOr(""))),
+                  f("configuration_panel_json", v(nul(wflDef.getConfigurationPanelJson()).getOr("")))));
         }
       }
     } catch (WorkflowDatabaseException e) {
@@ -2698,6 +2753,7 @@ public abstract class AbstractEventEndpoint {
     fields.add(f("duration", v(track.getDuration(), BLANK)));
     fields.add(f("has_audio", v(track.hasAudio())));
     fields.add(f("has_video", v(track.hasVideo())));
+    fields.add(f("has_subtitle", v(track.hasSubtitle())));
     fields.add(f("streams", obj(streamsToJSON(track.getStreams()))));
     return obj(fields);
   }
@@ -2706,6 +2762,7 @@ public abstract class AbstractEventEndpoint {
     List<Field> fields = new ArrayList<>();
     List<JValue> audioList = new ArrayList<>();
     List<JValue> videoList = new ArrayList<>();
+    List<JValue> subtitleList = new ArrayList<>();
     for (org.opencastproject.mediapackage.Stream stream : streams) {
       // TODO There is a bug with the stream ids, see MH-10325
       if (stream instanceof AudioStreamImpl) {
@@ -2734,12 +2791,19 @@ public abstract class AbstractEventEndpoint {
         video.add(f("scantype", v(videoStream.getScanType(), BLANK)));
         video.add(f("scanorder", v(videoStream.getScanOrder(), BLANK)));
         videoList.add(obj(video));
+      } else if (stream instanceof SubtitleStreamImpl) {
+        List<Field> subtitle = new ArrayList<>();
+        SubtitleStreamImpl subtitleStream = (SubtitleStreamImpl) stream;
+        subtitle.add(f("id", v(subtitleStream.getIdentifier(), BLANK)));
+        subtitle.add(f("type", v(subtitleStream.getFormat(), BLANK)));
+        subtitleList.add(obj(subtitle));
       } else {
-        throw new IllegalArgumentException("Stream must be either audio or video");
+        throw new IllegalArgumentException("Stream must be either audio, video or subtitle");
       }
     }
     fields.add(f("audio", arr(audioList)));
     fields.add(f("video", arr(videoList)));
+    fields.add(f("subtitle", arr(subtitleList)));
     return fields;
   }
 

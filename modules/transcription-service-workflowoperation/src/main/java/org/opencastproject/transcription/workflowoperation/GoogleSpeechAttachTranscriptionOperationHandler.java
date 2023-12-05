@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to The Apereo Foundation under one or more contributor license
  * agreements. See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -23,10 +23,12 @@ package org.opencastproject.transcription.workflowoperation;
 import org.opencastproject.caption.api.CaptionService;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.job.api.JobContext;
+import org.opencastproject.mediapackage.Attachment;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
+import org.opencastproject.mediapackage.Track;
 import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.transcription.api.TranscriptionService;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
@@ -47,8 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 @Component(
     immediate = true,
@@ -69,11 +69,10 @@ public class GoogleSpeechAttachTranscriptionOperationHandler extends AbstractWor
    * Workflow configuration option keys
    */
   static final String TRANSCRIPTION_JOB_ID = "transcription-job-id";
-  static final String TARGET_FLAVOR = "target-flavor";
-  static final String TARGET_TAGS = "target-tags";
   static final String TARGET_CAPTION_FORMAT = "target-caption-format";
   static final String TRANSCRIPTION_LINE_SIZE = "line-size";
   static final String DEFAULT_LINE_SIZE = "100";
+  static final String TARGET_TYPE = "target-element-type";
 
   /**
    * The transcription service
@@ -81,20 +80,6 @@ public class GoogleSpeechAttachTranscriptionOperationHandler extends AbstractWor
   private TranscriptionService service = null;
   private Workspace workspace;
   private CaptionService captionService;
-
-  /**
-   * The configuration options for this handler
-   */
-  private static final SortedMap<String, String> CONFIG_OPTIONS;
-
-  static {
-    CONFIG_OPTIONS = new TreeMap<String, String>();
-    CONFIG_OPTIONS.put(TRANSCRIPTION_JOB_ID, "The job id that identifies the file to be attached");
-    CONFIG_OPTIONS.put(TARGET_FLAVOR, "The target \"flavor\" of the transcription file");
-    CONFIG_OPTIONS.put(TARGET_TAGS, "The target \"tag\" of the transcription file");
-    CONFIG_OPTIONS.put(TARGET_CAPTION_FORMAT, "The target caption format of the transcription file (vtt, dfxp, etc)");
-    CONFIG_OPTIONS.put(TRANSCRIPTION_LINE_SIZE, "Line size of transcription text to display on video");
-  }
 
   @Override
   protected void activate(ComponentContext cc) {
@@ -131,6 +116,23 @@ public class GoogleSpeechAttachTranscriptionOperationHandler extends AbstractWor
 
     String captionFormatOption = StringUtils.trimToNull(operation.getConfiguration(TARGET_CAPTION_FORMAT));
 
+    String typeUnparsed = StringUtils.trimToEmpty(operation.getConfiguration(TARGET_TYPE));
+    MediaPackageElement.Type type = null;
+    if (!typeUnparsed.isEmpty()) {
+      // Case insensitive matching between user input (workflow config key) and enum value
+      for (MediaPackageElement.Type t : MediaPackageElement.Type.values()) {
+        if (t.name().equalsIgnoreCase(typeUnparsed)) {
+          type = t;
+        }
+      }
+      if (type == null || (type != Track.TYPE && type != Attachment.TYPE)) {
+        throw new IllegalArgumentException(String.format("The given type '%s' for mediapackage %s was illegal. Please"
+                + "check the operations' configuration keys.", type, mediaPackage.getIdentifier()));
+      }
+    } else {
+      type = Track.TYPE;
+    }
+
     // Get line size if set
     String lineSize = StringUtils.trimToNull(operation.getConfiguration(TRANSCRIPTION_LINE_SIZE));
     if (StringUtils.isBlank(lineSize)) {
@@ -139,7 +141,8 @@ public class GoogleSpeechAttachTranscriptionOperationHandler extends AbstractWor
 
     try {
       // Get transcription file from the service
-      MediaPackageElement original = service.getGeneratedTranscription(mediaPackage.getIdentifier().toString(), jobId);
+      MediaPackageElement original = service.getGeneratedTranscription(mediaPackage.getIdentifier().toString(), jobId,
+              type);
       MediaPackageElement transcription = original;
 
       // If caption format passed, convert to desired format

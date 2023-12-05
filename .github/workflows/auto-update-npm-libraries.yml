@@ -12,8 +12,9 @@ on:
 jobs:
   update-npm-libs:
     runs-on: ubuntu-latest
+    if: github.repository == 'opencast/opencast'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: prepare git
         run: |
@@ -21,7 +22,7 @@ jobs:
           git config --global user.name 'Update Bot'
 
       - name: use node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: 16.x
 
@@ -45,16 +46,6 @@ jobs:
 
       - name: update runtime-info-ui test libraries
         working-directory: modules/runtime-info-ui
-        run: |
-          set -eu
-          npm install --save --dev eslint@latest eslint-plugin-header@latest html-linter@latest
-          npm audit fix || true
-          npm run eslint
-          npm run html-linter
-          git add package.json package-lock.json
-
-      - name: update runtime-info-ui-ng test libraries
-        working-directory: modules/runtime-info-ui-ng
         run: |
           set -eu
           npm install --save --dev eslint@latest eslint-plugin-header@latest html-linter@latest
