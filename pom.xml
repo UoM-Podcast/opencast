@@ -937,7 +937,7 @@
       <dependency>
         <groupId>org.glassfish.jaxb</groupId>
         <artifactId>jaxb-runtime</artifactId>
-        <version>2.3.3</version>
+        <version>2.3.9</version>
         <exclusions>
           <exclusion>
             <groupId>com.sun.activation</groupId>
@@ -1540,7 +1540,7 @@
       <name>Lars Kiesow</name>
       <email>lkiesow@uos.de</email>
       <url>http://lkiesow.de</url>
-      <organization>ELAN e.V., University of Osnabr&#xFC;ck</organization>
+      <organization>ELAN e.V., University of Osnabrück</organization>
       <organizationUrl>http://www.virtuos.uos.de/</organizationUrl>
       <roles>
         <role>developer</role>
@@ -1567,7 +1567,7 @@
       <name>Michael Stypa</name>
       <email>michael@stypa.info</email>
       <url>http://michael.stypa.info</url>
-      <organization>ELAN e.V., University of Osnabr&#xFC;ck</organization>
+      <organization>ELAN e.V., University of Osnabrück</organization>
       <organizationUrl>http://www.virtuos.uos.de/</organizationUrl>
       <roles>
         <role>developer</role>
@@ -1678,7 +1678,7 @@
       <id>mliradelc</id>
       <name>Maximiliano Lira Del Canto</name>
       <email>mliradel@uni-koeln.de</email>
-      <url></url>
+      <url/>
       <organization>Computer Center - University of Cologne</organization>
       <organizationUrl>https://www.uni-koeln.de</organizationUrl>
       <roles>
@@ -1686,7 +1686,7 @@
       </roles>
       <timezone>Europe/Berlin</timezone>
       <properties>
-        <irc.nick></irc.nick>
+        <irc.nick/>
         <github.nick>mliradelc</github.nick>
       </properties>
     </developer>
