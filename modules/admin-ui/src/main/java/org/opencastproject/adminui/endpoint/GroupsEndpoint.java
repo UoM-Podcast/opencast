@@ -21,10 +21,6 @@
 
 package org.opencastproject.adminui.endpoint;
 
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
 import static java.lang.Math.max;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_CONFLICT;
@@ -33,6 +29,7 @@ import static javax.servlet.http.HttpServletResponse.SC_FORBIDDEN;
 import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.index.service.util.RestUtils.okJsonList;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.INTEGER;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
@@ -56,15 +53,15 @@ import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 import org.opencastproject.util.requests.SortCriterion;
 
-import com.entwinemedia.fn.data.json.Field;
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +73,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.DELETE;
@@ -93,7 +89,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-@Path("/")
+@Path("/admin-ng/groups")
 @RestService(name = "groups", title = "Group service",
   abstractText = "Provides operations for groups",
   notes = { "This service offers the default groups CRUD operations for the admin interface.",
@@ -110,6 +106,7 @@ import javax.ws.rs.core.Response.Status;
                 "opencast.service.path=/admin-ng/groups",
         }
 )
+@JaxrsResource
 public class GroupsEndpoint {
 
   /** The logging facility */
@@ -192,12 +189,13 @@ public class GroupsEndpoint {
 
     Map<String, String> filters = RestUtils.parseFilter(filter);
     Optional<String> optNameFilter = Optional.ofNullable(filters.get(GroupsListQuery.FILTER_NAME_NAME));
+    Optional<String> optRoleFilter = Optional.ofNullable(filters.get(GroupsListQuery.FILTER_ROLE_NAME));
     Optional<String> optTextFilter = Optional.ofNullable(filters.get(GroupsListQuery.FILTER_TEXT_NAME));
 
-    Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
+    ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
 
-    List<JpaGroup> results = jpaGroupRoleProvider.getGroups(optLimit, optOffset, optNameFilter, optTextFilter,
-            sortCriteria);
+    List<JpaGroup> results = jpaGroupRoleProvider.getGroups(optLimit, optOffset, optNameFilter, optRoleFilter,
+        optTextFilter, sortCriteria);
 
     // load users
     List<String> userNames = results.stream().flatMap(item -> item.getMembers().stream())
@@ -205,19 +203,20 @@ public class GroupsEndpoint {
     final Map<String, User> users = new HashMap<>(userNames.size());
     userDirectoryService.loadUsers(userNames).forEachRemaining(user -> users.put(user.getUsername(), user));
 
-    List<JValue> groupsJSON = new ArrayList<>();
+    List<JsonObject> groupsJsonArray = new ArrayList<>();
     for (JpaGroup group : results) {
-      List<Field> fields = new ArrayList<>();
-      fields.add(f("id", v(group.getGroupId())));
-      fields.add(f("name", v(group.getName(), Jsons.BLANK)));
-      fields.add(f("description", v(group.getDescription(), Jsons.BLANK)));
-      fields.add(f("role", v(group.getRole())));
-      fields.add(
-        f("users", membersToJSON(group.getMembers().stream().map(users::get).filter(Objects::nonNull).iterator())));
-      groupsJSON.add(obj(fields));
+      JsonObject groupJson = new JsonObject();
+      groupJson.addProperty("id", group.getGroupId());
+      groupJson.addProperty("name", safeString(group.getName()));
+      groupJson.addProperty("description", safeString(group.getDescription()));
+      groupJson.addProperty("role", group.getRole());
+      groupJson.add("users",
+          membersToJSON(group.getMembers().stream().map(users::get).filter(Objects::nonNull).iterator()));
+
+      groupsJsonArray.add(groupJson);
     }
 
-    long dbTotal = jpaGroupRoleProvider.countTotalGroups(optNameFilter, optTextFilter);
+    long dbTotal = jpaGroupRoleProvider.countTotalGroups(optNameFilter, optRoleFilter, optTextFilter);
     long resultsTotal = optOffset.orElse(0) + results.size();
 
     // groups could've been added or deleted in the meantime, so...
@@ -225,12 +224,12 @@ public class GroupsEndpoint {
     // don't show next page if current page isn't full
     if (!optLimit.isPresent() || results.size() < optLimit.get()) {
       total = resultsTotal;
-    // don't show less than the current results
+      // don't show less than the current results
     } else {
       total = max(dbTotal, resultsTotal);
     }
 
-    return okJsonList(groupsJSON, optOffset, optLimit, total);
+    return okJsonList(groupsJsonArray, optOffset, optLimit, total);
   }
 
   @DELETE
@@ -342,16 +341,22 @@ public class GroupsEndpoint {
       throw new NotFoundException("Group " + groupId + " does not exist.");
     }
 
-    // convert roles
-    List<JValue> rolesJSON = new ArrayList<>();
+    // Convert roles
+    JsonArray rolesJSON = new JsonArray();
     for (String role : group.getRoleNames()) {
-      rolesJSON.add(v(role));
+      rolesJSON.add(role);
     }
 
     Iterator<User> users = userDirectoryService.loadUsers(group.getMembers());
-    return RestUtils.okJson(obj(f("id", v(group.getGroupId())), f("name", v(group.getName(), Jsons.BLANK)),
-      f("description", v(group.getDescription(), Jsons.BLANK)), f("role", v(group.getRole(), Jsons.BLANK)),
-      f("roles", arr(rolesJSON)), f("users", membersToJSON(users))));
+    JsonObject jsonGroup = new JsonObject();
+    jsonGroup.addProperty("id", group.getGroupId());
+    jsonGroup.addProperty("name", safeString(group.getName()));
+    jsonGroup.addProperty("description", safeString(group.getDescription()));
+    jsonGroup.addProperty("role", safeString(group.getRole()));
+    jsonGroup.add("roles", rolesJSON);
+    jsonGroup.add("users", membersToJSON(users));
+
+    return RestUtils.okJson(jsonGroup);
   }
 
   /**
@@ -359,10 +364,11 @@ public class GroupsEndpoint {
    *
    * @param members
    *          the members source
-   * @return a JSON array ({@link JValue}) with the given members
+   * @return a JSON array ({@link JsonArray}) with the given members
    */
-  private JValue membersToJSON(Iterator<User> members) {
-    List<JValue> membersJSON = new ArrayList<>();
+
+  private JsonArray membersToJSON(Iterator<User> members) {
+    JsonArray membersJSON = new JsonArray();
 
     while (members.hasNext()) {
       User user = members.next();
@@ -372,9 +378,13 @@ public class GroupsEndpoint {
         name = user.getName();
       }
 
-      membersJSON.add(obj(f("username", v(user.getUsername())), f("name", v(name))));
+      JsonObject jsonUser = new JsonObject();
+      jsonUser.addProperty("username", user.getUsername());
+      jsonUser.addProperty("name", name);
+
+      membersJSON.add(jsonUser);
     }
 
-    return arr(membersJSON);
+    return membersJSON;
   }
 }

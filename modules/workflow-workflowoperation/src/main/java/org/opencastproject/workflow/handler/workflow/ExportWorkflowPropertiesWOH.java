@@ -20,8 +20,6 @@
  */
 package org.opencastproject.workflow.handler.workflow;
 
-import static com.entwinemedia.fn.Stream.$;
-import static org.opencastproject.workflow.handler.workflow.ImportWorkflowPropertiesWOH.loadPropertiesElementFromMediaPackage;
 import static org.opencastproject.workflow.handler.workflow.ImportWorkflowPropertiesWOH.loadPropertiesFromXml;
 
 import org.opencastproject.job.api.JobContext;
@@ -31,6 +29,7 @@ import org.opencastproject.mediapackage.MediaPackageElementBuilder;
 import org.opencastproject.mediapackage.MediaPackageElementBuilderFactory;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.MediaPackageElements;
+import org.opencastproject.mediapackage.selector.AttachmentSelector;
 import org.opencastproject.util.MimeTypes;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
 import org.opencastproject.workflow.api.ConfiguredTagsAndFlavors;
@@ -40,9 +39,6 @@ import org.opencastproject.workflow.api.WorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
-import com.entwinemedia.fn.fns.Strings;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.osgi.service.component.annotations.Component;
@@ -55,10 +51,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Workflow operation handler for exporting workflow properties.
@@ -96,42 +96,55 @@ public class ExportWorkflowPropertiesWOH extends AbstractWorkflowOperationHandle
           throws WorkflowOperationException {
     logger.info("Start exporting workflow properties for workflow {}", workflowInstance);
     final MediaPackage mediaPackage = workflowInstance.getMediaPackage();
-    final Set<String> keys = $(getOptConfig(workflowInstance, KEYS_PROPERTY)).bind(Strings.splitCsv).toSet();
+    // Parse CSV
+    final Set<String> keys = getOptConfig(workflowInstance, KEYS_PROPERTY)
+        .map(s -> Arrays.stream(s.split("\\s*,\\s*")).collect(Collectors.toSet()))
+        .orElse(Collections.emptySet());
     ConfiguredTagsAndFlavors tagsAndFlavors = getTagsAndFlavors(workflowInstance,
         Configuration.none, Configuration.none, Configuration.many, Configuration.many);
     List<MediaPackageElementFlavor> targetFlavorList = tagsAndFlavors.getTargetFlavors();
     if (targetFlavorList.isEmpty()) {
       targetFlavorList.add(DEFAULT_TARGET_FLAVOR);
     }
-    final List<String> targetTags = tagsAndFlavors.getTargetTags();
+    final ConfiguredTagsAndFlavors.TargetTags targetTags = tagsAndFlavors.getTargetTags();
     final MediaPackageElementFlavor targetFlavor = targetFlavorList.get(0);
 
     // Read optional existing workflow properties from mediapackage
     Properties workflowProps = new Properties();
-    Opt<Attachment> existingPropsElem = loadPropertiesElementFromMediaPackage(targetFlavor, mediaPackage);
-    if (existingPropsElem.isSome()) {
+    AttachmentSelector attachmentSelector = new AttachmentSelector();
+    attachmentSelector.addFlavor(targetFlavor);
+    Collection<Attachment> attachments = attachmentSelector.select(mediaPackage, false);
+    Optional<Attachment> existingPropsElem = Optional.empty();
+    if (attachments.size() == 1) {
+      existingPropsElem = Optional.of(attachments.iterator().next());
       workflowProps = loadPropertiesFromXml(workspace, existingPropsElem.get().getURI());
 
       // Remove specified keys
-      for (String key : keys)
+      for (String key : keys) {
         workflowProps.remove(key);
+      }
     }
 
     // Extend with specified properties
     for (String key : workflowInstance.getConfigurationKeys()) {
-      if (keys.isEmpty() || keys.contains(key))
+      if (keys.isEmpty() || keys.contains(key)) {
         workflowProps.put(key, workflowInstance.getConfiguration(key));
+      }
     }
 
     // Store properties as an attachment
     Attachment attachment;
     try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       workflowProps.storeToXML(out, null, "UTF-8");
-      String elementId = UUID.randomUUID().toString();
-      URI uri = workspace.put(mediaPackage.getIdentifier().toString(), elementId, EXPORTED_PROPERTIES_FILENAME,
-              new ByteArrayInputStream(out.toByteArray()));
       MediaPackageElementBuilder builder = MediaPackageElementBuilderFactory.newInstance().newElementBuilder();
-      attachment = (Attachment) builder.elementFromURI(uri, Attachment.TYPE, targetFlavor);
+      attachment = (Attachment) builder.newElement(Attachment.TYPE, targetFlavor);
+      attachment.generateIdentifier();
+      URI uri = workspace.put(
+          mediaPackage.getIdentifier().toString(),
+          attachment.getIdentifier(),
+          EXPORTED_PROPERTIES_FILENAME,
+          new ByteArrayInputStream(out.toByteArray()));
+      attachment.setURI(uri);
       attachment.setMimeType(MimeTypes.XML);
     } catch (IOException e) {
       logger.error("Unable to store workflow properties as Attachment with flavor '{}':", targetFlavorList.get(0), e);
@@ -139,14 +152,12 @@ public class ExportWorkflowPropertiesWOH extends AbstractWorkflowOperationHandle
     }
 
     // Add the target tags
-    for (String tag : targetTags) {
-      logger.trace("Tagging with '{}'", tag);
-      attachment.addTag(tag);
-    }
+    applyTargetTagsToElement(targetTags, attachment);
 
     // Update attachment
-    if (existingPropsElem.isSome())
+    if (existingPropsElem.isPresent()) {
       mediaPackage.remove(existingPropsElem.get());
+    }
     mediaPackage.add(attachment);
 
     logger.info("Added properties from {} as Attachment with flavor {}", workflowInstance, targetFlavorList.get(0));

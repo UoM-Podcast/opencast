@@ -43,9 +43,6 @@ import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.metadata.dublincore.DublinCoreCatalogService;
 import org.opencastproject.metadata.dublincore.DublinCoreUtil;
 import org.opencastproject.search.api.SearchException;
-import org.opencastproject.search.api.SearchQuery;
-import org.opencastproject.search.api.SearchResult;
-import org.opencastproject.search.api.SearchResultItem;
 import org.opencastproject.search.api.SearchService;
 import org.opencastproject.security.api.AclScope;
 import org.opencastproject.security.api.AuthorizationService;
@@ -201,7 +198,6 @@ public class SearchUpdatedEventHandler {
     // A series or its ACL has been updated. Find any mediapackages with that series, and update them.
     logger.debug("Handling {}", seriesItem);
     String seriesId = seriesItem.getSeriesId();
-    int jobBarrierPollingRate = 100;    // in ms
 
     // We must be an administrative user to make this query
     final User prevUser = securityService.getUser();
@@ -209,27 +205,24 @@ public class SearchUpdatedEventHandler {
     try {
       securityService.setUser(SecurityUtil.createSystemUser(systemAccount, prevOrg));
 
-      SearchQuery q = new SearchQuery().withSeriesId(seriesId).withLimit(-1);
-      SearchResult result = searchService.getForAdministrativeRead(q);
-
-      for (SearchResultItem item : result.getItems()) {
-        MediaPackage mp = item.getMediaPackage();
-        Organization org = organizationDirectoryService.getOrganization(item.getOrganization());
+      for (var seriesData: searchService.getSeries(seriesId)) {
+        var mp = seriesData.getRight();
+        Organization org = seriesData.getLeft();
         securityService.setOrganization(org);
 
         // If the security policy has been updated, make sure to distribute that change
         // to the distribution channels as well
         if (SeriesItem.Type.UpdateAcl.equals(seriesItem.getType())) {
-          if (seriesItem.getOverrideEpisodeAcl()) {
+          if (Boolean.TRUE.equals(seriesItem.getOverrideEpisodeAcl())) {
 
             MediaPackageElement[] distributedEpisodeAcls = mp.getElementsByFlavor(XACML_POLICY_EPISODE);
-            authorizationService.removeAcl(mp, AclScope.Episode);
-
             for (MediaPackageElement distributedEpisodeAcl : distributedEpisodeAcls) {
               List<MediaPackageElement> mpes = distributionService.retractSync(CHANNEL_ID, mp,
                       distributedEpisodeAcl.getIdentifier());
               if (mpes == null) {
                 logger.error("Unable to retract episode XACML {}", distributedEpisodeAcl.getIdentifier());
+              } else {
+                authorizationService.removeAcl(mp, AclScope.Episode);
               }
             }
           }
@@ -291,6 +284,10 @@ public class SearchUpdatedEventHandler {
 
         // Update the search index with the modified mediapackage
         searchService.addSynchronously(mp);
+      }
+      //We remove the episode->series links above, which effectively orphaned the series in the index, now we remove it
+      if (SeriesItem.Type.Delete.equals(seriesItem.getType())) {
+        searchService.deleteSeries(seriesId);
       }
     } catch (SearchException e) {
       logger.warn("Unable to find mediapackages for series {} in search: {}", seriesItem, e.getMessage());

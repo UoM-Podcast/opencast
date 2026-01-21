@@ -63,7 +63,19 @@
             "presenter/player+preview",
             "presentation/player+preview"
         ],
-        "theme": "custom_theme"
+        "theme": "custom_theme",
+        "hideTimeLineOnLive": false,
+        "preventVideoDownload": false,
+        "audioOnlyHTMLPlayer": false,
+        "videoCanvas": {
+            "video360": {
+               "flavor": "*/delivery+360",
+               "tag": "video360"
+            },
+            "video": {
+               "flavor": "*/delivery"
+            }
+        }
     },
 
     "cookieConsent": [
@@ -94,6 +106,14 @@
     ],
 
     "plugins": {
+       "es.upv.paella.video360Canvas": {
+            "enabled": true,
+            "maxZoom": 2,
+            "minZoom": 0.5,
+            "speedX": 0.4,
+            "speedY": 0.4,
+            "order": 0
+        },
         "/* layout plugins */": "*********************************************************",
         "es.upv.paella.singleVideo": {
             "enabled": true,
@@ -265,8 +285,12 @@
                 }
             }
         },
-        "es.upv.paella.mp4VideoFormat": {
+        "es.upv.paella.mp4MultiQualityVideoFormat": {
             "enabled": true,
+            "order": 1
+        },
+        "es.upv.paella.mp4VideoFormat": {
+            "enabled": false,
             "order": 1
         },
         "es.upv.paella.htmlVideoFormat": {
@@ -412,7 +436,7 @@
 
             "downloadFlavors": false,
             "downloadTags": false,
-            "downloadMimeTypes": ["audio/m4a", "video/mp4"],
+            "downloadMimeTypes": ["audio/m4a", "video/mp4", "text/vtt"],
 
             "enableOnLicenses": [
                 "CC-BY",
@@ -462,7 +486,7 @@
 
         "/* videocontainer toolbar */": "*********************************************************",
         "org.opencast.paella.loginPlugin": {
-            "enabled": true,
+            "enabled": false,
             "side": "right",
             "parentContainer": "videoContainer",
             "order": 10,
@@ -470,7 +494,7 @@
         },
 
         "org.opencast.paella.editorPlugin": {
-            "enabled": true,
+            "enabled": false,
             "side": "right",
             "parentContainer": "videoContainer",
             "order": 20,
@@ -481,7 +505,7 @@
         },
 
         "org.opencast.paella.episodesFromSeries": {
-            "enabled": true,
+            "enabled": false,
             "side": "right",
             "parentContainer": "videoContainer",
             "order": 30,
@@ -510,7 +534,7 @@
 
         "es.upv.paella.zoomPlugin": {
             "enabled": true,
-            "order": 0,
+            "order": 1,
             "maxZoom": 400,
             "showButtons": true,
             "target": "presenter"
@@ -518,7 +542,7 @@
 
         "es.upv.paella.videoCanvas": {
             "enabled": true,
-            "order": 1
+            "order": 2
         },
 
         "es.upv.paella.audioCanvas": {
@@ -587,7 +611,6 @@
                 "SEEK",
                 "FULLSCREEN_CHANGED",
                 "VOLUME_CHANGED",
-                "TIMEUPDATE",
                 "CAPTIONS_CHANGED",
                 "BUTTON_PRESS",
                 "SHOW_POPUP",
@@ -631,13 +654,18 @@
             ],
             "server": "//matomo.server.com/",
             "siteId": "1",
+            "trackerUrl": {
+                "php": "matomo.php",
+                "js": "matomo.js"
+            },
             "matomoGlobalLoaded": false,
+            "mediaAnalyticsTitle": "${videoId}",
             "cookieType": "tracking",
             "logUserId": true,
             "events": {
                 "category": "PaellaPlayer",
                 "action": "${event}",
-                "name": "${videoId}"
+                "name": "${eventData}"
             },
             "customDimensions": {
                 "1": "${videoId}",

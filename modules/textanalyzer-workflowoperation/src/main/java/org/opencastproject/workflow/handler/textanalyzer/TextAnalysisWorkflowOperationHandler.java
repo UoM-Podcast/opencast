@@ -59,6 +59,7 @@ import org.opencastproject.textanalyzer.api.TextAnalyzerException;
 import org.opencastproject.textanalyzer.api.TextAnalyzerService;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
+import org.opencastproject.workflow.api.ConfiguredTagsAndFlavors;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowOperationException;
 import org.opencastproject.workflow.api.WorkflowOperationHandler;
@@ -171,6 +172,9 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
           throws WorkflowOperationException {
     logger.debug("Running segments preview workflow operation on {}", workflowInstance);
 
+    ConfiguredTagsAndFlavors tagsAndFlavors = getTagsAndFlavors(
+        workflowInstance, Configuration.many, Configuration.many, Configuration.many, Configuration.none);
+
     // Check if there is an mpeg-7 catalog containing video segments
     MediaPackage src = (MediaPackage) workflowInstance.getMediaPackage().clone();
     Catalog[] segmentCatalogs = src.getCatalogs(MediaPackageElements.SEGMENTS);
@@ -180,7 +184,7 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
     }
 
     try {
-      return extractVideoText(src, workflowInstance.getCurrentOperation());
+      return extractVideoText(src, workflowInstance.getCurrentOperation(), tagsAndFlavors);
     } catch (Exception e) {
       throw new WorkflowOperationException(e);
     }
@@ -199,16 +203,16 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
    * @throws WorkflowOperationException
    */
   protected WorkflowOperationResult extractVideoText(final MediaPackage mediaPackage,
-          WorkflowOperationInstance operation) throws EncoderException, InterruptedException, ExecutionException,
-          IOException, NotFoundException, MediaPackageException, TextAnalyzerException, WorkflowOperationException,
-          ServiceRegistryException {
+          WorkflowOperationInstance operation, ConfiguredTagsAndFlavors tagsAndFlavors) throws EncoderException,
+          InterruptedException, ExecutionException, IOException, NotFoundException, MediaPackageException,
+          TextAnalyzerException, WorkflowOperationException, ServiceRegistryException {
     long totalTimeInQueue = 0;
 
-    List<String> sourceTagSet = asList(operation.getConfiguration("source-tags"));
-    List<String> targetTagSet = asList(operation.getConfiguration("target-tags"));
+    List<String> sourceTagSet = tagsAndFlavors.getSrcTags();
+    ConfiguredTagsAndFlavors.TargetTags targetTagSet = tagsAndFlavors.getTargetTags();
 
     // Select the catalogs according to the tags
-    Map<Catalog, Mpeg7Catalog> catalogs = loadSegmentCatalogs(mediaPackage, operation);
+    Map<Catalog, Mpeg7Catalog> catalogs = loadSegmentCatalogs(mediaPackage, operation, tagsAndFlavors);
 
     // Was there at least one matching catalog
     if (catalogs.size() == 0) {
@@ -373,14 +377,12 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
           mediaPackage.remove(segmentCatalog);
           workspace.delete(segmentCatalog.getURI());
         } catch (Exception e) {
-          logger.warn("Unable to delete segment catalog {}: {}", segmentCatalog.getURI(), e);
+          logger.warn("Unable to delete segment catalog {}", segmentCatalog.getURI(), e);
         }
 
         // Add flavor and target tags
         catalog.setFlavor(MediaPackageElements.TEXTS);
-        for (String tag : targetTagSet) {
-          catalog.addTag(tag);
-        }
+        applyTargetTagsToElement(targetTagSet, catalog);
       } finally {
         // Remove images that were created for text extraction
         logger.debug("Removing temporary images");
@@ -388,7 +390,7 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
           try {
             workspace.delete(image.getURI());
           } catch (Exception e) {
-            logger.warn("Unable to delete temporary image {}: {}", image.getURI(), e);
+            logger.warn("Unable to delete temporary image {}", image.getURI(), e);
           }
         }
         // Remove the temporary text
@@ -405,7 +407,7 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
             }
           } catch (Exception e) {
             if (catalog != null) {
-              logger.warn("Unable to delete temporary text file {}: {}", catalog.getURI(), e);
+              logger.warn("Unable to delete temporary text file {}", catalog.getURI(), e);
             } else {
               logger.warn("Unable to parse textextraction payload of job {}", j.getId());
             }
@@ -453,11 +455,11 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
    *           if there is a problem reading the mpeg7
    */
   protected Map<Catalog, Mpeg7Catalog> loadSegmentCatalogs(MediaPackage mediaPackage,
-          WorkflowOperationInstance operation) throws IOException {
+          WorkflowOperationInstance operation, ConfiguredTagsAndFlavors tagsAndFlavors) throws IOException {
     HashMap<Catalog, Mpeg7Catalog> catalogs = new HashMap<Catalog, Mpeg7Catalog>();
 
-    String sourceFlavor = StringUtils.trimToNull(operation.getConfiguration("source-flavor"));
-    List<String> sourceTagSet = asList(operation.getConfiguration("source-tags"));
+    List<MediaPackageElementFlavor> sourceFlavors = tagsAndFlavors.getSrcFlavors();
+    List<String> sourceTagSet = tagsAndFlavors.getSrcTags();
 
     Catalog[] catalogsWithTags = mediaPackage.getCatalogsByTags(sourceTagSet);
 
@@ -465,12 +467,12 @@ public class TextAnalysisWorkflowOperationHandler extends AbstractWorkflowOperat
       if (!MediaPackageElements.SEGMENTS.equals(mediaPackageCatalog.getFlavor())) {
         continue;
       }
-      if (sourceFlavor != null) {
+      if (sourceFlavors != null) {
         if (mediaPackageCatalog.getReference() == null) {
           continue;
         }
         Track t = mediaPackage.getTrack(mediaPackageCatalog.getReference().getIdentifier());
-        if (t == null || !t.getFlavor().matches(MediaPackageElementFlavor.parseFlavor(sourceFlavor))) {
+        if (t == null || sourceFlavors.stream().noneMatch(flavor -> t.getFlavor().matches(flavor))) {
           continue;
         }
       }

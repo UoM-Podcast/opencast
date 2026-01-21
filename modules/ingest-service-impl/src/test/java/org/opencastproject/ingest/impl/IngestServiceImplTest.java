@@ -30,6 +30,7 @@ import org.opencastproject.mediapackage.Attachment;
 import org.opencastproject.mediapackage.Catalog;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
+import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
 import org.opencastproject.mediapackage.MediaPackageElements;
 import org.opencastproject.mediapackage.MediaPackageParser;
@@ -57,6 +58,7 @@ import org.opencastproject.serviceregistry.api.ServiceRegistryInMemoryImpl;
 import org.opencastproject.util.MimeTypes;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.XmlUtil;
+import org.opencastproject.util.data.Arrays;
 import org.opencastproject.util.data.Either;
 import org.opencastproject.workflow.api.WorkflowDefinition;
 import org.opencastproject.workflow.api.WorkflowDefinitionImpl;
@@ -71,6 +73,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -101,14 +104,13 @@ import java.util.Map;
 
 public class IngestServiceImplTest {
   private IngestServiceImpl service = null;
-  private DublinCoreCatalogService dublinCoreService = null;
   private SeriesService seriesService = null;
   private WorkflowService workflowService = null;
   private WorkflowInstance workflowInstance = null;
   private WorkingFileRepository wfr = null;
   private CloseableHttpResponse httpResponse = null;
-  private CloseableHttpClient credClient = null;
-  private CloseableHttpClient noCredClient = null;
+  private CloseableHttpClient customClient = null;
+  private TrustedHttpClient httpClient;
   private static URI baseDir;
   private static URI urlTrack;
   private static URI urlTrack1;
@@ -272,7 +274,7 @@ public class IngestServiceImplTest {
     EasyMock.expect(httpResponse.getEntity()).andReturn(entity).anyTimes();
     EasyMock.replay(httpResponse);
 
-    TrustedHttpClient httpClient = EasyMock.createNiceMock(TrustedHttpClient.class);
+    httpClient = EasyMock.createNiceMock(TrustedHttpClient.class);
     EasyMock.expect(httpClient.execute((HttpGet) EasyMock.anyObject())).andReturn(httpResponse).anyTimes();
     EasyMock.replay(httpClient);
 
@@ -305,17 +307,6 @@ public class IngestServiceImplTest {
         //These are overriden so that we get mock requests, not *actual* requests
         @Override
         protected CloseableHttpClient getAuthedHttpClient() {
-          CloseableHttpClient client = EasyMock.createMock(CloseableHttpClient.class);
-          try {
-            EasyMock.expect(client.execute((HttpGet) EasyMock.anyObject())).andReturn(httpResponse).anyTimes();
-            client.close();
-            EasyMock.expectLastCall().once();
-          } catch (Exception e) { }
-          EasyMock.replay(client);
-          return client;
-        }
-        @Override
-        protected CloseableHttpClient getNoAuthHttpClient() {
           CloseableHttpClient client = EasyMock.createMock(CloseableHttpClient.class);
           try {
             EasyMock.expect(client.execute((HttpGet) EasyMock.anyObject())).andReturn(httpResponse).anyTimes();
@@ -432,34 +423,30 @@ public class IngestServiceImplTest {
     }
   }
 
-  private void testAuthWhitelist(String url, String regex, boolean shouldFail, boolean shouldSendAuth, boolean shouldTouchMocks) throws Exception {
-    credClient = EasyMock.createNiceMock(CloseableHttpClient.class);
-    noCredClient = EasyMock.createNiceMock(CloseableHttpClient.class);
+  private void testAuthWhitelist(String url, String regex, boolean shouldFail, boolean shouldSendAuth,
+      boolean shouldTouchMocks) throws Exception {
+    customClient = EasyMock.createNiceMock(CloseableHttpClient.class);
+    EasyMock.reset(httpClient);
 
     //There's one case (accessing the filesystem) where we *don't* expect the mocks to be used
     if (shouldTouchMocks) {
       if (shouldSendAuth) {
-        EasyMock.expect(credClient.execute(EasyMock.anyObject())).andReturn(httpResponse).once();
-        credClient.close();
+        EasyMock.expect(customClient.execute(EasyMock.anyObject())).andReturn(httpResponse).once();
+        customClient.close();
         EasyMock.expectLastCall().once();
       } else {
-        EasyMock.expect(noCredClient.execute(EasyMock.anyObject())).andReturn(httpResponse).once();
-        noCredClient.close();
+        EasyMock.expect(httpClient.execute(EasyMock.anyObject())).andReturn(httpResponse).once();
+        httpClient.close(EasyMock.anyObject(HttpResponse.class));
         EasyMock.expectLastCall().once();
       }
     }
-    EasyMock.replay(noCredClient, credClient);
+    EasyMock.replay(httpClient, customClient);
 
     //Recreate the service so we use our own, custom mocks
     service = new IngestServiceImpl() {
       @Override
       protected CloseableHttpClient getAuthedHttpClient() {
-        return credClient;
-      }
-
-      @Override
-      protected CloseableHttpClient getNoAuthHttpClient() {
-        return noCredClient;
+        return customClient;
       }
     };
     setupService();
@@ -480,28 +467,35 @@ public class IngestServiceImplTest {
         Assert.fail("Should not have failed!");
       }
     }
-    EasyMock.verify(credClient, noCredClient);
-    EasyMock.reset(credClient, noCredClient);
+    EasyMock.verify(customClient, httpClient);
+    EasyMock.reset(customClient, httpClient);
   }
 
   @Test
   public void testAuthWhitelist() throws Exception {
-    //Test fetching something from something known to be inside the cluster.  This should use the default service-wide trusted client
+    // Test fetching something from something known to be inside the cluster. This should use the default
+    // service-wide trusted client
     testAuthWhitelist("http://localhost/testfile", "", false, true, false);
 
-    //Clear the whitelist, this should *never* send digest auth when fetching files
+    // Clear the whitelist, this should *never* send digest auth when fetching files
     testAuthWhitelist("http://www.example.org/testfile", "", false, false, true);
-    //Non-matching regex
+    // Non-matching regex
     testAuthWhitelist("http://www.example.org/testfile", "http://localhost.*", true, false, true);
-    //Matching regex
-    testAuthWhitelist("http://www.example.org/testfile", "http://localhost.*|http://www.example.org/.*", false, true, true);
+    // Matching regex
+    testAuthWhitelist("http://www.example.org/testfile", "http://localhost.*|http://www.example.org/.*",
+        false, true, true);
 
-    //Local filesystem should be actively rejected.  This file needs to *not* be in the resources directory (look in the impl for why), and needs to be readable by the user running the test
-    //NB: This is a horrible, horrible hack, but it's the only way I can think of to get *out* of test-classes.  If you try and ../ your way up above that getResource NPEs, as expected.
-    testAuthWhitelist(getClass().getResource("./../../../../").toURI().resolve("../../pom.xml").toString(), ".*", true, false, false);
-    //Test to ensure we can't use '..' to get around filters.  Removing the ".." works as expected, see below
-    testAuthWhitelist(getClass().getResource("./../impl/IngestServiceImplTest.class").toURI().toString(), ".*", true, false, false);
-    testAuthWhitelist(getClass().getResource("./IngestServiceImplTest.class").toURI().toString(), ".*", false, false, false);
+    // Local filesystem should be actively rejected.  This file needs to *not* be in the resources directory
+    // (look in the impl for why), and needs to be readable by the user running the test
+    // NB: This is a horrible, horrible hack, but it's the only way I can think of to get *out* of test-classes.
+    // If you try and ../ your way up above that getResource NPEs, as expected.
+    testAuthWhitelist(getClass().getResource("./../../../../").toURI().resolve("../../pom.xml").toString(), ".*",
+        true, false, false);
+    // Test to ensure we can't use '..' to get around filters.  Removing the ".." works as expected, see below
+    testAuthWhitelist(getClass().getResource("./../impl/IngestServiceImplTest.class").toURI().toString(), ".*",
+        true, false, false);
+    testAuthWhitelist(getClass().getResource("./IngestServiceImplTest.class").toURI().toString(), ".*",
+        false, false, false);
   }
 
 
@@ -570,6 +564,15 @@ public class IngestServiceImplTest {
     properties.put(IngestServiceImpl.ADD_ONLY_NEW_FLAVORS_KEY, "false");
     service.updated(properties);
 
+    // skip series update with mocked dependencies
+    DublinCoreCatalog dcCatalog = EasyMock.createNiceMock(DublinCoreCatalog.class);
+    EasyMock.expect(dcCatalog.getFirst(EasyMock.anyObject())).andReturn(null).once();
+    EasyMock.replay(dcCatalog);
+    DublinCoreCatalogService dcService = EasyMock.createNiceMock(DublinCoreCatalogService.class);
+    EasyMock.expect(dcService.load(EasyMock.anyObject())).andReturn(dcCatalog).once();
+    EasyMock.replay(dcService);
+    service.setDublinCoreService(dcService);
+
     MediaPackage mergedMediaPackage = service.ingest(ingestMediaPackage).getMediaPackage();
     Assert.assertEquals(4, mergedMediaPackage.getTracks().length);
     Track track = mergedMediaPackage.getTrack("track-1");
@@ -600,16 +603,21 @@ public class IngestServiceImplTest {
     MediaPackage ingestMediaPackage = MediaPackageParser
             .getFromXml(IOUtils.toString(getClass().getResourceAsStream("/source-manifest-partial.xml"), "UTF-8"));
 
+    // skip series update with mocked dependencies
+    DublinCoreCatalog dcCatalog = EasyMock.createNiceMock(DublinCoreCatalog.class);
+    EasyMock.expect(dcCatalog.getFirst(EasyMock.anyObject())).andReturn(null).anyTimes();
+    EasyMock.replay(dcCatalog);
+    DublinCoreCatalogService dcService = EasyMock.createNiceMock(DublinCoreCatalogService.class);
+    EasyMock.expect(dcService.load(EasyMock.anyObject())).andReturn(dcCatalog).anyTimes();
+    EasyMock.replay(dcService);
+    service.setDublinCoreService(dcService);
     Dictionary<String, String> properties = new Hashtable<>();
-
     MediaPackage mergedMediaPackage = service.ingest(ingestMediaPackage).getMediaPackage();
-
     // check element skipping
     properties.put(IngestServiceImpl.SKIP_ATTACHMENTS_KEY, "true");
     properties.put(IngestServiceImpl.SKIP_CATALOGS_KEY, "true");
     properties.put(IngestServiceImpl.ADD_ONLY_NEW_FLAVORS_KEY, "true");
     service.updated(properties);
-
     // Existing Opencast mp has 3 catalogs and 1 attachment, the ingest mp has 4 and 2.
     mergedMediaPackage = service.ingest(ingestMediaPackage).getMediaPackage();
     Assert.assertEquals(0, mergedMediaPackage.getCatalogs().length);
@@ -623,6 +631,14 @@ public class IngestServiceImplTest {
     // Test with properties and key is false
     properties.put(IngestServiceImpl.ADD_ONLY_NEW_FLAVORS_KEY, "false");
     service.updated(properties);
+    // skip series update with mocked dependencies
+    DublinCoreCatalog dcCatalog = EasyMock.createNiceMock(DublinCoreCatalog.class);
+    EasyMock.expect(dcCatalog.getFirst(EasyMock.anyObject())).andReturn(null).once();
+    EasyMock.replay(dcCatalog);
+    DublinCoreCatalogService dcService = EasyMock.createNiceMock(DublinCoreCatalogService.class);
+    EasyMock.expect(dcService.load(EasyMock.anyObject())).andReturn(dcCatalog).once();
+    EasyMock.replay(dcService);
+    service.setDublinCoreService(dcService);
     isAddOnlyNew = service.isAddOnlyNew;
     Assert.assertFalse("Updated overwrite property to false", isAddOnlyNew);
     testEpisodeUpdateNewAndExisting();
@@ -655,7 +671,14 @@ public class IngestServiceImplTest {
   @Test
   public void testLegacyMediaPackageId() throws Exception {
     SchedulerService schedulerService = EasyMock.createNiceMock(SchedulerService.class);
-
+    // skip series update with mocked dependencies
+    DublinCoreCatalog dcCatalog = EasyMock.createNiceMock(DublinCoreCatalog.class);
+    EasyMock.expect(dcCatalog.getFirst(EasyMock.anyObject())).andReturn(null).once();
+    EasyMock.replay(dcCatalog);
+    DublinCoreCatalogService dcService = EasyMock.createNiceMock(DublinCoreCatalogService.class);
+    EasyMock.expect(dcService.load(EasyMock.anyObject())).andReturn(dcCatalog).once();
+    EasyMock.replay(dcService);
+    service.setDublinCoreService(dcService);
     Map<String, String> properties = new HashMap<String, String>();
     properties.put(CaptureParameters.INGEST_WORKFLOW_DEFINITION, "sample");
     properties.put("agent-name", "matterhorn-agent");
@@ -805,7 +828,8 @@ public class IngestServiceImplTest {
   }
 
   /**
-   * Test method for {@link org.opencastproject.ingest.impl.IngestServiceImpl#updateSeries(java.net.URI)}
+   * Test method for {@link org.opencastproject.ingest.impl.IngestServiceImpl#updateSeries(
+   * org.opencastproject.mediapackage.MediaPackage)}
    */
   private void testSeriesUpdateNewAndExisting(Dictionary<String, String> properties) throws Exception {
 
@@ -815,25 +839,38 @@ public class IngestServiceImplTest {
     if (properties != null) {
       service.updated(properties);
       try {
-        boolean testForValue = Boolean.parseBoolean(properties.get(IngestServiceImpl.MODIFY_OPENCAST_SERIES_KEY).trim());
+        boolean testForValue = Boolean.parseBoolean(properties.get(IngestServiceImpl.MODIFY_OPENCAST_SERIES_KEY)
+            .trim());
         isUpdateSeries = testForValue;
       } catch (Exception e) {
         // If key or value not found or not boolean, use the default overwrite expectation
       }
     }
+    Catalog dcCatalog = EasyMock.createNiceMock(Catalog.class);
+    EasyMock.expect(dcCatalog.getIdentifier()).andReturn("series-xacml").anyTimes();
+    EasyMock.expect(dcCatalog.getURI()).andReturn(urlCatalog2).anyTimes();
+    EasyMock.replay(dcCatalog);
+    MediaPackage mp = EasyMock.createNiceMock(MediaPackage.class);
+    EasyMock.expect(mp.getCatalogs((MediaPackageElementFlavor) EasyMock.anyObject()))
+        .andReturn(Arrays.array(dcCatalog)).anyTimes();
+    EasyMock.expect(mp.getAttachments(EasyMock.anyObject()))
+        .andReturn(Arrays.array()).anyTimes();
+    EasyMock.expect(mp.getElementsByFlavor(EasyMock.anyObject()))
+        .andReturn(Arrays.array()).anyTimes();
+    EasyMock.replay(mp);
 
     // Get test series dublin core for the mock return value
     File catalogFile = new File(urlCatalog2);
-    if (!catalogFile.exists() || !catalogFile.canRead())
+    if (!catalogFile.exists() || !catalogFile.canRead()) {
       throw new Exception("Unable to access test catalog " + urlCatalog2.getPath());
+    }
     FileInputStream in = new FileInputStream(catalogFile);
     DublinCoreCatalog series = DublinCores.read(in);
     IOUtils.closeQuietly(in);
 
     // Set dublinCore service to return test dublin core
-    dublinCoreService = org.easymock.EasyMock.createNiceMock(DublinCoreCatalogService.class);
-    org.easymock.EasyMock.expect(dublinCoreService.load((InputStream) EasyMock.anyObject())).andReturn(series)
-            .anyTimes();
+    DublinCoreCatalogService dublinCoreService = org.easymock.EasyMock.createNiceMock(DublinCoreCatalogService.class);
+    org.easymock.EasyMock.expect(dublinCoreService.load(EasyMock.anyObject())).andReturn(series).anyTimes();
     org.easymock.EasyMock.replay(dublinCoreService);
     service.setDublinCoreService(dublinCoreService);
 
@@ -846,7 +883,7 @@ public class IngestServiceImplTest {
 
     // This is true or false depending on the isAddOnlyNew value
     Assert.assertEquals("Desire to update series is " + isUpdateSeries + ".",
-            isUpdateSeries, service.updateSeries(urlCatalog2));
+            isUpdateSeries, service.updateSeries(mp));
 
     // Test with mock not found exception
     EasyMock.reset(seriesService);
@@ -857,7 +894,7 @@ public class IngestServiceImplTest {
     service.setSeriesService(seriesService);
 
     // This should be true, i.e. create new series, in all cases
-    Assert.assertEquals("Always create a new series catalog.", true, service.updateSeries(urlCatalog2));
+    Assert.assertEquals("Always create a new series catalog.", true, service.updateSeries(mp));
   }
 
 }

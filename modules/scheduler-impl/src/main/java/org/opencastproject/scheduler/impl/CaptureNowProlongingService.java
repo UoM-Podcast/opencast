@@ -44,8 +44,6 @@ import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.workspace.api.Workspace;
 
-import com.entwinemedia.fn.data.Opt;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -72,9 +70,7 @@ import java.net.URI;
 import java.util.Date;
 import java.util.Dictionary;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 /** Prolong immediate recordings before reaching the end, as long as there are no conflicts */
 @Component(
@@ -229,7 +225,7 @@ public class CaptureNowProlongingService implements ManagedService {
       quartz.unscheduleJob(agentId, TRIGGER_GROUP);
       logger.info("Stopped prolonging capture for agent '{}'", agentId);
     } catch (Exception e) {
-      logger.error("Error stopping Quartz job for agent '{}': {}", agentId, e);
+      logger.error("Error stopping Quartz job for agent '{}'", agentId, e);
     }
   }
 
@@ -322,7 +318,7 @@ public class CaptureNowProlongingService implements ManagedService {
           } catch (NotFoundException e) {
             logger.info("Unable to extend the ad-hoc recording for agent '{}': No ad-hoc recording found", agentId);
           } catch (Exception e) {
-            logger.error("Error extending the ad-hoc recording for agent '{}': {}", agentId, e);
+            logger.error("Error extending the ad-hoc recording for agent '{}'", agentId, e);
           }
         });
       }
@@ -339,7 +335,7 @@ public class CaptureNowProlongingService implements ManagedService {
       } catch (NotFoundException e) {
         logger.warn("Error extending the ad-hoc recording for agent '{}': No ad-hoc recording found", agentId);
       } catch (Exception e) {
-        logger.error("Error extending the ad-hoc recording for agent '{}': {}", agentId, e);
+        logger.error("Error extending the ad-hoc recording for agent '{}'", agentId, e);
       }
     }
 
@@ -360,8 +356,8 @@ public class CaptureNowProlongingService implements ManagedService {
    */
   public MediaPackage getCurrentRecording(String agentId)
           throws NotFoundException, UnauthorizedException, SchedulerException {
-    Opt<MediaPackage> current = schedulerService.getCurrentRecording(agentId);
-    if (current.isNone()) {
+    Optional<MediaPackage> current = schedulerService.getCurrentRecording(agentId);
+    if (current.isEmpty()) {
       logger.warn("Unable to load the current recording for agent '{}': no recording found", agentId);
       throw new NotFoundException("No current recording found for agent '" + agentId + "'");
     }
@@ -401,8 +397,9 @@ public class CaptureNowProlongingService implements ManagedService {
 
     List<MediaPackage> events = schedulerService.findConflictingEvents(agentId, period.getStart(), prolongedEndDate);
     for (MediaPackage conflictMediaPackage : events) {
-      if (eventId.equals(conflictMediaPackage.getIdentifier().toString()))
+      if (eventId.equals(conflictMediaPackage.getIdentifier().toString())) {
         continue;
+      }
 
       Optional<DublinCoreCatalog> conflictingDc = DublinCoreUtil.loadEpisodeDublinCore(workspace, conflictMediaPackage);
       if (conflictingDc.isEmpty()) {
@@ -418,7 +415,8 @@ public class CaptureNowProlongingService implements ManagedService {
               EncodingSchemeUtils.encodePeriod(new DCMIPeriod(period.getStart(), prolongedEndDate), Precision.Second));
 
       logger.info(
-              "A scheduled event is preventing the current recording on agent '{}' to be further extended. Extending to one minute before the conflicting event",
+              "A scheduled event is preventing the current recording on agent '{}' to be further extended. "
+                  + "Extending to one minute before the conflicting event",
               agentId);
       stop(agentId);
       break;
@@ -436,9 +434,9 @@ public class CaptureNowProlongingService implements ManagedService {
       c.setChecksum(null);
     }
 
-    schedulerService.updateEvent(eventId, Opt.<Date> none(), Opt.some(prolongedEndDate), Opt.<String> none(),
-            Opt.<Set<String>> none(), Opt.some(event), Opt.<Map<String, String>> none(),
-            Opt.<Map<String, String>> none());
+    schedulerService.updateEvent(eventId, Optional.empty(), Optional.of(prolongedEndDate), Optional.empty(),
+        Optional.empty(), Optional.of(event), Optional.empty(),
+        Optional.empty());
   }
 
 }

@@ -52,11 +52,9 @@ import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowInstance.WorkflowState;
 import org.opencastproject.workflow.api.WorkflowServiceDatabaseImpl;
 import org.opencastproject.workflow.api.WorkflowStateListener;
-import org.opencastproject.workflow.api.XmlWorkflowParser;
+import org.opencastproject.workflow.api.YamlWorkflowParser;
 import org.opencastproject.workflow.impl.WorkflowServiceImpl.HandlerRegistration;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.IOUtils;
 import org.easymock.EasyMock;
@@ -72,6 +70,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class PauseWorkflowTest {
@@ -115,7 +114,7 @@ public class PauseWorkflowTest {
     service.addWorkflowDefinitionScanner(scanner);
 
     final AssetManager assetManager = createNiceMock(AssetManager.class);
-    EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Opt.none()).anyTimes();
+    EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Optional.empty()).anyTimes();
     EasyMock.replay(assetManager);
     service.setAssetManager(assetManager);
 
@@ -173,8 +172,8 @@ public class PauseWorkflowTest {
     service.setServiceRegistry(serviceRegistry);
     service.activate(null);
 
-    is = PauseWorkflowTest.class.getResourceAsStream("/workflow-definition-pause.xml");
-    def = XmlWorkflowParser.parseWorkflowDefinition(is);
+    is = PauseWorkflowTest.class.getResourceAsStream("/workflow-definition-pause.yaml");
+    def = YamlWorkflowParser.parseWorkflowDefinition(is);
     IOUtils.closeQuietly(is);
 
     SearchResult result = createNiceMock(SearchResult.class);

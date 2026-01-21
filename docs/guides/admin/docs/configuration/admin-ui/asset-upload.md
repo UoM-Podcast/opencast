@@ -38,7 +38,7 @@ Three source types are enabled by default for use in the Admin UI.
       "flavorSubType":"source",\
       "multiple":false,\
       "displayOrder": 2}
-      
+
     EVENTS.EVENTS.NEW.SOURCE.UPLOAD.SUBTITLES={\
         "id": "track_subtitles",\
         "type":"track",\
@@ -65,18 +65,15 @@ download-source-flavors    | comma separated list | A convenience variable that 
 
 Example of variables in a workflow:
 
-```xml
-<!-- Tag any optionally uploaded assets -->
-<operation
-  id="tag"
-  if="${downloadSourceflavorsExist}"
-  exception-handler-workflow="partial-error"
-  description="Tagging uploaded assets for distribution">
-  <configurations>
-    <configuration key="source-flavors">${download-source-flavors}</configuration>
-    <configuration key="target-tags">+engage-download</configuration>
-  </configurations>
-</operation>
+```yaml
+  # Tag any optionally uploaded assets
+  - id: tag
+    if: ${downloadSourceflavorsExist}
+    exception-handler-workflow: partial-error
+    description: Tagging uploaded assets for distribution
+    configurations:
+      - source-flavors: ${download-source-flavors}
+      - target-tags: +engage-download
 ```
 
 How to Enable Preconfigured Asset Options
@@ -122,55 +119,37 @@ publish, and archive uploaded assets on existing events.
 
 Sample `publish-uploaded-assets` workflow:
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<definition xmlns="http://workflow.opencastproject.org">
-  <id>publish-uploaded-assets</id>
-  <title>Publish uploaded assets</title>
-  <tags />
-  <description>Publish uploaded assets</description>
-  <configuration_panel>
-  </configuration_panel>
+```yaml
+id: publish-uploaded-assets
+title: Publish uploaded assets
+description: |-
+  Publish uploaded assets
+operations:
+  # Publish to engage player
+  - id: publish-engage
+    exception-handler-workflow: partial-error
+    description: Update recording in Opencast Media Module
+    configurations:
+      - download-source-flavors:
+          ${download-source-flavors},dublincore/*,security/*
+      - download-source-tags: engage-download
+      - streaming-source-tags: engage-streaming
+      - strategy: merge
+      - check-availability: false
 
-  <operations>
-    <!-- Publish to engage player -->
+# Archive the current state of the mediapackage
+  - id: snapshot
+    description: Archiving new assets
+    configurations:
+      - source-flavors: '*/*'
 
-    <operation
-      id="publish-engage"
-      exception-handler-workflow="partial-error"
-      description="Update recording in Opencast Media Module">
-      <configurations>
-        <configuration key="download-source-flavors">${download-source-flavors},dublincore/*,security/*</configuration>
-        <configuration key="download-source-tags">engage-download</configuration>
-        <configuration key="streaming-source-tags">engage-streaming</configuration>
-        <configuration key="strategy">merge</configuration>
-        <configuration key="check-availability">false</configuration>
-      </configurations>
-    </operation>
-
-    <!-- Archive the current state of the mediapackage -->
-
-    <operation
-      id="snapshot"
-      description="Archiving new assets">
-      <configurations>
-        <configuration key="source-flavors">*/*</configuration>
-      </configurations>
-    </operation>
-
-    <!-- Clean up work artifacts -->
-
-    <operation
-        id="cleanup"
-        fail-on-error="false"
-        description="Remove temporary processing artifacts">
-      <configurations>
-        <configuration key="delete-external">true</configuration>
-        <configuration key="preserve-flavors">security/*</configuration>
-      </configurations>
-    </operation>
-  </operations>
-</definition>
+# Clean up work artifacts
+  - id: cleanup
+    fail-on-error: false
+    description: Remove temporary processing artifacts
+    configurations:
+      - delete-external: true
+      - preserve-flavors: security/*
 ```
 
 How to Upload Assets in the Admin UI
@@ -199,10 +178,7 @@ The following steps will assist you in creating a new asset upload option. New s
 Tasks:
 
 - Modify `etc/listproviders/event.upload.asset.options.properties`
-- For the title of the options displayed in the admin interface, either:
-    - add a translation for the new asset name to
-      `modules/admin-ui-frontend/resources/public/org/opencastproject/adminui/languages/...`
-    - or add a `title` field to the upload specification
+- For the title of the options displayed in the admin interface add a `title` field to the upload specification
 - Add a workflow to publish the uploaded assets to `etc/workflows`
 - Test your changes
 
@@ -237,7 +213,7 @@ Underbars are allowed. CONFIGURATION values are in JSON object format.
 
 Attribute    | Example         | Description
 -------------| ----------------| -----------
-id           | track_presenter | One of "attachment" or "catalog" or "track", underbar (_), unique text (no spaces)
+id           | track_presenter | One of "attachment" or "catalog" or "track", underbar (\_), unique text (no spaces)
 type         | track           | One of "attachment" or "catalog" or "track" to designate asset type (must match id prefix)
 flavorType   | presentation    | The primary flavor type. Used to reference asset in workflows, player, and media module
 flavorSubType| source          | The sub flavor type. Used to identify the sub flavor of this flavor type
@@ -249,39 +225,7 @@ displayOverride.SHORT | 'Video of a Presenter'    | A short source title which o
 displayFallback.SHORT | 'Video of a Presenter'    | A short source title which displays when no translation is found
 displayOverride.DETAIL | 'A recording that showing the lecturer speaking' | A longer source description which overrides all translation
 displayFallback.DETAIL | 'A recording that showing the lecturer speaking' | A longer source description which displays when no translation is found
-accept | 'video/*,.png' | A list of accepted file formats as taken by the HTML \<input\>'s `accept` field. This field is optional. This has to be a list of comma separated values. Each value of the list can either be a IANA MediaType or a file ending.
+accept | 'video/\*,.png' | A list of accepted file formats as taken by the HTML \<input\>'s `accept` field. This field is optional. This has to be a list of comma separated values. Each value of the list can either be a IANA MediaType or a file ending.
 
 
-The parameter key is internationalized as the display text in the admin UI
-ref: modules/admin-ui-frontend/resources/public/org/opencastproject/adminui/languages/
-
-
-### Step 3. Add translation for the new option
-
-The option property key is internationalized for display in the Admin UI.
-Add a translation for the option property when adding new option, otherwise the Admin UI will display the raw key.
-
-The translation language files are located:
-
-    modules/admin-ui-frontend/resources/public/org/opencastproject/adminui/languages/...
-
-Example of US English translation for `EVENTS.EVENTS.NEW.UPLOAD_ASSET.OPTION.SUBTITLES`:
-
-    modules/admin-ui-frontend/resources/public/org/opencastproject/adminui/languages/lang-en_US.json
-
-
-```json
-{
-  ...
-  "EVENTS": {
-    ...
-    "EVENTS": {
-       ...
-       "NEW": {
-        ...
-        "UPLOAD_ASSET": {
-             ...
-            "SUBTITLES" : "Subtitles",
-             ...
-```
-Now you are ready to test and deploy.
+The parameter key is internationalized as the display text in the admin interface.

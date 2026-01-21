@@ -21,6 +21,7 @@
 
 import {
   createElementWithHtmlText,
+  parseWebVTT,
   PopUpButtonPlugin,
   translate
 } from 'paella-core';
@@ -53,7 +54,10 @@ export default class DownloadsPlugin extends PopUpButtonPlugin {
 
   async getDownloadableContent() {
     const episode = await this.player.getEpisode({episodeId: this.player.videoId});
-    const tracks = episode?.mediapackage?.media?.track ?? [];
+    var tracks = episode?.mediapackage?.media?.track ?? [];
+    if (Object.getPrototypeOf(tracks) == Object.prototype) {
+      tracks = [].concat(tracks);
+    }
     // const attachments = episode?.mediapackage?.attachments?.attachment ?? [];
     const downloadable = {};
 
@@ -103,6 +107,7 @@ export default class DownloadsPlugin extends PopUpButtonPlugin {
         type: track.type,
         mimetype: track.mimetype,
         url: track.url,
+        tags: track?.tags?.tag ?? [],
         metadata: {
           video: vmeta,
           audio: ameta
@@ -118,30 +123,90 @@ export default class DownloadsPlugin extends PopUpButtonPlugin {
   }
 
   async getContent() {
+    const log = this.player.log;
+    function downloadTranscript(url) {
+      return async function() {
+        try {
+          const response = await fetch(url);
+          const vttData = await response.text();
+          const vttCues = parseWebVTT(vttData);
+          const vttTranscript = vttCues.cues.map(cue => cue.captions.join('\n')).join('\n');
+
+          var element = document.createElement('a');
+          element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(vttTranscript));
+          element.setAttribute('download', url);
+
+          element.style.display = 'none';
+          document.body.appendChild(element);
+          element.click();
+          document.body.removeChild(element);
+        }
+        catch(e){
+          log.error(`Error downloading transcript: ${e}`);
+        }
+      };
+    }
+
     const container = createElementWithHtmlText(`
         <div class="downloads-plugin">
             <h4>${translate('Available downloads')}</h4>
         </div>`);
     const downloadKeys = Object.keys(this._downloads);
     downloadKeys.forEach(k => {
-      const J = createElementWithHtmlText(`
+      const downloadStreamElem = createElementWithHtmlText(`
         <div class="downloadStream">
-          <div class="title">${k}</div>
+          <div class="title"> </div>
         </div>`, container);
-      const list = createElementWithHtmlText('<ul></ul>', J);
+      downloadStreamElem.querySelector('.title').innerText = k;
+      const downloadStreamElemlist = createElementWithHtmlText('<ul></ul>', downloadStreamElem);
       const streamDownloads = this._downloads[k];
       streamDownloads.forEach(d => {
-        const vmeta = d?.metadata?.video?.res;
-        const ameta = d?.metadata?.audio?.samplingrate ? `${d?.metadata?.audio?.samplingrate} Hz` : null;
-        const meta = vmeta ?? ameta ?? '';
+        if (d.mimetype == 'text/vtt') {
+          let cmeta = '';
+          const lang_tag = d?.tags?.filter(x => x.startsWith('lang:'));
+          if (lang_tag.length > 0) {
+            try {
+              const captions_lang = lang_tag[0].split(':')[1];
+              const languageNames = new Intl.DisplayNames([window.navigator.language], {type: 'language'});
+              cmeta = languageNames.of(captions_lang.replace(/_/g, '-')) || translate('Unknown language');
+            }
+            catch (error) {
+              cmeta = translate('Unknown language');
+            }
+          }
 
-        createElementWithHtmlText(`
-                <li>
-                  <a href="${d.url}" target="_blank">
-                    <span class="mimetype">[${d.mimetype}]</span><span class="res">${meta}</span>
-                  </a>
-                </li>
-            `, list);
+          const elm = createElementWithHtmlText(`
+            <li>
+              <a class="link" download target="_blank">
+                <span class="mimetype"> </span> <span class="res"> </span>
+              </a>
+              <a href="#">
+                <span class="transcript">[transcript]</span>
+              </a>
+            </li>
+          `, downloadStreamElemlist);
+          elm.querySelector('.link').href = d.url;
+          elm.querySelector('.mimetype').innerText = `[${d.mimetype}]`;
+          elm.querySelector('.res').innerText = cmeta;
+          elm.getElementsByTagName('a')[1].onclick = downloadTranscript(d.url);
+        }
+        else {
+          const vmeta = d?.metadata?.video?.res;
+          const ameta = d?.metadata?.audio?.samplingrate ? `${d?.metadata?.audio?.samplingrate} Hz` : null;
+
+          const meta = vmeta ?? ameta ?? '';
+
+          const elm = createElementWithHtmlText(`
+            <li>
+              <a download>
+                <span class="mimetype">[mimetype]</span><span class="res"></span>
+              </a>
+            </li>
+          `, downloadStreamElemlist);
+          elm.querySelector('a').href = d.url;
+          elm.querySelector('.mimetype').innerText = `[${d.mimetype}]`;
+          elm.querySelector('.res').innerText = meta;
+        }
       });
     });
     return container;

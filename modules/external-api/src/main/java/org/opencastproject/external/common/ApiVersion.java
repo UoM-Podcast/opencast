@@ -33,10 +33,12 @@ public enum ApiVersion {
   VERSION_1_7_0(1, 7, 0),
   VERSION_1_8_0(1, 8, 0),
   VERSION_1_9_0(1, 9, 0),
-  VERSION_1_10_0(1, 10, 0);
+  VERSION_1_10_0(1, 10, 0),
+  VERSION_1_11_0(1, 11, 0);
+
 
   /** The most recent version of the External API */
-  public static final ApiVersion CURRENT_VERSION = VERSION_1_10_0;
+  public static final ApiVersion CURRENT_VERSION = VERSION_1_11_0;
 
   private int major;
   private int minor;
@@ -52,10 +54,18 @@ public enum ApiVersion {
   }
 
   public boolean isSmallerThan(ApiVersion other) {
-    if (this.major < other.major) return true;
-    if (this.major > other.major) return false;
-    if (this.minor < other.minor) return true;
-    if (this.minor > other.minor) return false;
+    if (this.major < other.major) {
+      return true;
+    }
+    if (this.major > other.major) {
+      return false;
+    }
+    if (this.minor < other.minor) {
+      return true;
+    }
+    if (this.minor > other.minor) {
+      return false;
+    }
     return this.patch < other.patch;
   }
 

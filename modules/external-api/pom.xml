@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.opencastproject</groupId>
     <artifactId>base</artifactId>
-    <version>16-SNAPSHOT</version>
+    <version>20-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <properties>
@@ -27,6 +27,14 @@
     <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>org.osgi.service.cm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.service.jaxrs</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations</artifactId>
     </dependency>
     <!-- opencast -->
     <dependency>
@@ -173,10 +181,6 @@
       <artifactId>jakarta.xml.bind-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.entwinemedia.common</groupId>
-      <artifactId>functional</artifactId>
-    </dependency>
-    <dependency>
       <groupId>commons-fileupload</groupId>
       <artifactId>commons-fileupload</artifactId>
     </dependency>
@@ -189,6 +193,11 @@
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
       <version>${gson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opencastproject</groupId>
+      <artifactId>opencast-playlists</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <!-- Testing -->
     <dependency>
@@ -244,8 +253,6 @@
         <extensions>true</extensions>
         <configuration>
           <instructions>
-            <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-            <Build-Number>${buildNumber}</Build-Number>
             <Import-Package>
               org.opencastproject.elasticsearch.impl;version=${project.version},
               org.opencastproject.rest;version=${project.version},
@@ -266,11 +273,6 @@
               javax.ws.rs.core;version=2.0.1,
               *
             </Import-Package>
-            <Private-Package>
-              org.opencastproject.external.exception,
-              org.opencastproject.external.util,
-              org.opencastproject.external.util.statistics
-            </Private-Package>
             <Export-Package>
               org.opencastproject.external.api,
               org.opencastproject.external.common,

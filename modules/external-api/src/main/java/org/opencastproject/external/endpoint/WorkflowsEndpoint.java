@@ -20,15 +20,9 @@
  */
 package org.opencastproject.external.endpoint;
 
-import static com.entwinemedia.fn.data.json.Jsons.BLANK;
-import static com.entwinemedia.fn.data.json.Jsons.ZERO;
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
-import static java.time.ZoneOffset.UTC;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNoneBlank;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.util.RestUtil.getEndpointUrl;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.BOOLEAN;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.INTEGER;
@@ -37,7 +31,7 @@ import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 import org.opencastproject.elasticsearch.index.ElasticsearchIndex;
 import org.opencastproject.elasticsearch.index.objects.event.Event;
 import org.opencastproject.external.common.ApiMediaType;
-import org.opencastproject.external.common.ApiResponses;
+import org.opencastproject.external.common.ApiResponseBuilder;
 import org.opencastproject.external.common.ApiVersion;
 import org.opencastproject.index.service.api.IndexService;
 import org.opencastproject.mediapackage.MediaPackage;
@@ -59,9 +53,10 @@ import org.opencastproject.workflow.api.WorkflowOperationInstance;
 import org.opencastproject.workflow.api.WorkflowService;
 import org.opencastproject.workflow.api.WorkflowStateException;
 
-import com.entwinemedia.fn.data.Opt;
-import com.entwinemedia.fn.data.json.Field;
-import com.entwinemedia.fn.data.json.JValue;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -70,16 +65,16 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.DELETE;
@@ -94,11 +89,11 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/api/workflows")
 @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_1_0, ApiMediaType.VERSION_1_2_0, ApiMediaType.VERSION_1_3_0,
             ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0, ApiMediaType.VERSION_1_6_0,
             ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0, ApiMediaType.VERSION_1_9_0,
-            ApiMediaType.VERSION_1_10_0 })
+            ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
 @RestService(name = "externalapiworkflowinstances", title = "External API Workflow Instances Service", notes = {},
              abstractText = "Provides resources and operations related to the workflow instances")
 @Component(
@@ -110,6 +105,7 @@ import javax.ws.rs.core.Response;
         "opencast.service.path=/api/workflows"
     }
 )
+@JaxrsResource
 public class WorkflowsEndpoint {
   /** The logging facility */
   private static final Logger logger = LoggerFactory.getLogger(WorkflowsEndpoint.class);
@@ -155,15 +151,30 @@ public class WorkflowsEndpoint {
 
   @POST
   @Path("")
-  @RestQuery(name = "createworkflowinstance", description = "Creates a workflow instance.", returnDescription = "", restParameters = {
-          @RestParameter(name = "event_identifier", description = "The event identifier this workflow should run against", isRequired = true, type = STRING),
-          @RestParameter(name = "workflow_definition_identifier", description = "The identifier of the workflow definition to use", isRequired = true, type = STRING),
-          @RestParameter(name = "configuration", description = "The optional configuration for this workflow", isRequired = false, type = STRING),
-          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in the response", isRequired = false, type = BOOLEAN),
-          @RestParameter(name = "withconfiguration", description = "Whether the workflow configuration should be included in the response", isRequired = false, type = BOOLEAN), }, responses = {
-          @RestResponse(description = "A new workflow is created and its identifier is returned in the Location header.", responseCode = HttpServletResponse.SC_CREATED),
-          @RestResponse(description = "The request is invalid or inconsistent.", responseCode = HttpServletResponse.SC_BAD_REQUEST),
-          @RestResponse(description = "The event or workflow definition could not be found.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "createworkflowinstance",
+      description = "Creates a workflow instance.",
+      returnDescription = "",
+      restParameters = {
+          @RestParameter(name = "event_identifier", description = "The event identifier this workflow should run "
+              + "against", isRequired = true, type = STRING),
+          @RestParameter(name = "workflow_definition_identifier", description = "The identifier of the workflow "
+              + "definition to use", isRequired = true, type = STRING),
+          @RestParameter(name = "configuration", description = "The optional configuration for this workflow",
+              isRequired = false, type = STRING),
+          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in "
+              + "the response", isRequired = false, type = BOOLEAN),
+          @RestParameter(name = "withconfiguration", description = "Whether the workflow configuration should be "
+              + "included in the response", isRequired = false, type = BOOLEAN),
+      },
+      responses = {
+          @RestResponse(description = "A new workflow is created and its identifier is returned in the Location "
+              + "header.", responseCode = HttpServletResponse.SC_CREATED),
+          @RestResponse(description = "The request is invalid or inconsistent.",
+              responseCode = HttpServletResponse.SC_BAD_REQUEST),
+          @RestResponse(description = "The event or workflow definition could not be found.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response createWorkflowInstance(@HeaderParam("Accept") String acceptHeader,
           @FormParam("event_identifier") String eventId,
           @FormParam("workflow_definition_identifier") String workflowDefinitionIdentifier,
@@ -179,9 +190,9 @@ public class WorkflowsEndpoint {
 
     try {
       // Media Package
-      Opt<Event> event = indexService.getEvent(eventId, elasticsearchIndex);
-      if (event.isNone()) {
-        return ApiResponses.notFound("Cannot find an event with id '%s'.", eventId);
+      Optional<Event> event = indexService.getEvent(eventId, elasticsearchIndex);
+      if (event.isEmpty()) {
+        return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", eventId);
       }
       MediaPackage mp = indexService.getEventMediapackage(event.get());
 
@@ -190,7 +201,8 @@ public class WorkflowsEndpoint {
       try {
         wd = workflowService.getWorkflowDefinitionById(workflowDefinitionIdentifier);
       } catch (NotFoundException e) {
-        return ApiResponses.notFound("Cannot find a workflow definition with id '%s'.", workflowDefinitionIdentifier);
+        return ApiResponseBuilder.notFound("Cannot find a workflow definition with id '%s'.",
+            workflowDefinitionIdentifier);
       }
 
       // Configuration
@@ -206,26 +218,42 @@ public class WorkflowsEndpoint {
 
       // Start workflow
       WorkflowInstance wi = workflowService.start(wd, mp, null, properties);
-      return ApiResponses.Json.created(acceptHeader, URI.create(getWorkflowUrl(wi.getId())),
+      return ApiResponseBuilder.Json.created(acceptHeader, URI.create(getWorkflowUrl(wi.getId())),
               workflowInstanceToJSON(wi, withOperations, withConfiguration));
     } catch (IllegalStateException e) {
       final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
-      return ApiResponses.Json.conflict(requestedVersion, obj(f("message", v(e.getMessage(), BLANK))));
+      JsonObject json = new JsonObject();
+      json.addProperty("message", safeString(e.getMessage()));
+      return ApiResponseBuilder.Json.conflict(requestedVersion, json);
     } catch (Exception e) {
       logger.error("Could not create workflow instances", e);
-      return ApiResponses.serverError("Could not create workflow instances, reason: '%s'", e.getMessage());
+      return ApiResponseBuilder.serverError("Could not create workflow instances, reason: '%s'", e.getMessage());
     }
   }
 
   @GET
   @Path("{workflowInstanceId}")
-  @RestQuery(name = "getworkflowinstance", description = "Returns a single workflow instance.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "workflowInstanceId", description = "The workflow instance id", isRequired = true, type = INTEGER) }, restParameters = {
-          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in the response", isRequired = false, type = BOOLEAN),
-          @RestParameter(name = "withconfiguration", description = "Whether the workflow configuration should be included in the response", isRequired = false, type = BOOLEAN) }, responses = {
+  @RestQuery(
+      name = "getworkflowinstance",
+      description = "Returns a single workflow instance.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "workflowInstanceId", description = "The workflow instance id", isRequired = true,
+              type = INTEGER)
+      },
+      restParameters = {
+          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in "
+              + "the response", isRequired = false, type = BOOLEAN),
+          @RestParameter(name = "withconfiguration", description = "Whether the workflow configuration should be "
+              + "included in the response", isRequired = false, type = BOOLEAN)
+      },
+      responses = {
           @RestResponse(description = "The workflow instance is returned.", responseCode = HttpServletResponse.SC_OK),
-          @RestResponse(description = "The user doesn't have the rights to make this request.", responseCode = HttpServletResponse.SC_FORBIDDEN),
-          @RestResponse(description = "The specified workflow instance does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+          @RestResponse(description = "The user doesn't have the rights to make this request.",
+              responseCode = HttpServletResponse.SC_FORBIDDEN),
+          @RestResponse(description = "The specified workflow instance does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response getWorkflowInstance(@HeaderParam("Accept") String acceptHeader,
           @PathParam("workflowInstanceId") Long id, @QueryParam("withoperations") boolean withOperations,
           @QueryParam("withconfiguration") boolean withConfiguration) {
@@ -233,30 +261,48 @@ public class WorkflowsEndpoint {
     try {
       wi = workflowService.getWorkflowById(id);
     } catch (NotFoundException e) {
-      return ApiResponses.notFound("Cannot find workflow instance with id '%d'.", id);
+      return ApiResponseBuilder.notFound("Cannot find workflow instance with id '%d'.", id);
     } catch (UnauthorizedException e) {
       return Response.status(Response.Status.FORBIDDEN).build();
     } catch (Exception e) {
       logger.error("The workflow service was not able to get the workflow instance", e);
-      return ApiResponses.serverError("Could not retrieve workflow instance, reason: '%s'", e.getMessage());
+      return ApiResponseBuilder.serverError("Could not retrieve workflow instance, reason: '%s'", e.getMessage());
     }
 
-    return ApiResponses.Json.ok(acceptHeader, workflowInstanceToJSON(wi, withOperations, withConfiguration));
+    return ApiResponseBuilder.Json.ok(acceptHeader, workflowInstanceToJSON(wi, withOperations, withConfiguration));
   }
 
   @PUT
   @Path("{workflowInstanceId}")
-  @RestQuery(name = "updateworkflowinstance", description = "Creates a workflow instance.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "workflowInstanceId", description = "The workflow instance id", isRequired = true, type = INTEGER) }, restParameters = {
-          @RestParameter(name = "configuration", description = "The optional configuration for this workflow", isRequired = false, type = STRING),
-          @RestParameter(name = "state", description = "The optional state transition for this workflow", isRequired = false, type = STRING),
-          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in the response", isRequired = false, type = BOOLEAN),
-          @RestParameter(name = "withconfiguration", description = "Whether the workflow configuration should be included in the response", isRequired = false, type = BOOLEAN), }, responses = {
+  @RestQuery(
+      name = "updateworkflowinstance",
+      description = "Creates a workflow instance.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "workflowInstanceId", description = "The workflow instance id", isRequired = true,
+              type = INTEGER)
+      },
+      restParameters = {
+          @RestParameter(name = "configuration", description = "The optional configuration for this workflow",
+              isRequired = false, type = STRING),
+          @RestParameter(name = "state", description = "The optional state transition for this workflow",
+              isRequired = false, type = STRING),
+          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in "
+              + "the response", isRequired = false, type = BOOLEAN),
+          @RestParameter(name = "withconfiguration", description = "Whether the workflow configuration should be "
+              + "included in the response", isRequired = false, type = BOOLEAN),
+      },
+      responses = {
           @RestResponse(description = "The workflow instance is updated.", responseCode = HttpServletResponse.SC_OK),
-          @RestResponse(description = "The request is invalid or inconsistent.", responseCode = HttpServletResponse.SC_BAD_REQUEST),
-          @RestResponse(description = "The user doesn't have the rights to make this request.", responseCode = HttpServletResponse.SC_FORBIDDEN),
-          @RestResponse(description = "The workflow instance could not be found.", responseCode = HttpServletResponse.SC_NOT_FOUND),
-          @RestResponse(description = "The workflow instance cannot transition to this state.", responseCode = HttpServletResponse.SC_CONFLICT) })
+          @RestResponse(description = "The request is invalid or inconsistent.",
+              responseCode = HttpServletResponse.SC_BAD_REQUEST),
+          @RestResponse(description = "The user doesn't have the rights to make this request.",
+              responseCode = HttpServletResponse.SC_FORBIDDEN),
+          @RestResponse(description = "The workflow instance could not be found.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND),
+          @RestResponse(description = "The workflow instance cannot transition to this state.",
+              responseCode = HttpServletResponse.SC_CONFLICT)
+      })
   public Response updateWorkflowInstance(@HeaderParam("Accept") String acceptHeader,
           @PathParam("workflowInstanceId") Long id, @FormParam("configuration") String configuration,
           @FormParam("state") String stateStr, @QueryParam("withoperations") boolean withOperations,
@@ -333,25 +379,37 @@ public class WorkflowsEndpoint {
       }
 
       wi = workflowService.getWorkflowById(id);
-      return ApiResponses.Json.ok(acceptHeader, workflowInstanceToJSON(wi, withOperations, withConfiguration));
+      return ApiResponseBuilder.Json.ok(acceptHeader, workflowInstanceToJSON(wi, withOperations, withConfiguration));
     } catch (NotFoundException e) {
-      return ApiResponses.notFound("Cannot find workflow instance with id '%d'.", id);
+      return ApiResponseBuilder.notFound("Cannot find workflow instance with id '%d'.", id);
     } catch (UnauthorizedException e) {
       return Response.status(Response.Status.FORBIDDEN).build();
     } catch (Exception e) {
       logger.error("The workflow service was not able to get the workflow instance", e);
-      return ApiResponses.serverError("Could not retrieve workflow instance, reason: '%s'", e.getMessage());
+      return ApiResponseBuilder.serverError("Could not retrieve workflow instance, reason: '%s'", e.getMessage());
     }
   }
 
   @DELETE
   @Path("{workflowInstanceId}")
-  @RestQuery(name = "deleteworkflowinstance", description = "Deletes a workflow instance.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "workflowInstanceId", description = "The workflow instance id", isRequired = true, type = INTEGER) }, responses = {
-          @RestResponse(description = "The workflow instance has been deleted.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-          @RestResponse(description = "The user doesn't have the rights to make this request.", responseCode = HttpServletResponse.SC_FORBIDDEN),
-          @RestResponse(description = "The specified workflow instance does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND),
-          @RestResponse(description = "The workflow instance cannot be deleted in this state.", responseCode = HttpServletResponse.SC_CONFLICT) })
+  @RestQuery(
+      name = "deleteworkflowinstance",
+      description = "Deletes a workflow instance.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "workflowInstanceId", description = "The workflow instance id", isRequired = true,
+              type = INTEGER)
+      },
+      responses = {
+          @RestResponse(description = "The workflow instance has been deleted.",
+              responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The user doesn't have the rights to make this request.",
+              responseCode = HttpServletResponse.SC_FORBIDDEN),
+          @RestResponse(description = "The specified workflow instance does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND),
+          @RestResponse(description = "The workflow instance cannot be deleted in this state.",
+              responseCode = HttpServletResponse.SC_CONFLICT)
+      })
   public Response deleteWorkflowInstance(@HeaderParam("Accept") String acceptHeader,
           @PathParam("workflowInstanceId") Long id) {
     try {
@@ -359,80 +417,87 @@ public class WorkflowsEndpoint {
     } catch (WorkflowStateException e) {
       return RestUtil.R.conflict("Cannot delete workflow instance in this workflow state");
     } catch (NotFoundException e) {
-      return ApiResponses.notFound("Cannot find workflow instance with id '%d'.", id);
+      return ApiResponseBuilder.notFound("Cannot find workflow instance with id '%d'.", id);
     } catch (UnauthorizedException e) {
       return Response.status(Response.Status.FORBIDDEN).build();
     } catch (Exception e) {
       logger.error("Could not delete workflow instances", e);
-      return ApiResponses.serverError("Could not delete workflow instances, reason: '%s'", e.getMessage());
+      return ApiResponseBuilder.serverError("Could not delete workflow instances, reason: '%s'", e.getMessage());
     }
 
     return Response.noContent().build();
   }
 
-  private JValue workflowInstanceToJSON(WorkflowInstance wi, boolean withOperations, boolean withConfiguration) {
-    List<Field> fields = new ArrayList<>();
+  private JsonObject workflowInstanceToJSON(WorkflowInstance wi, boolean withOperations, boolean withConfiguration) {
+    JsonObject json = new JsonObject();
 
-    fields.add(f("identifier", v(wi.getId())));
-    fields.add(f("title", v(wi.getTitle(), BLANK)));
-    fields.add(f("description", v(wi.getDescription(), BLANK)));
-    fields.add(f("workflow_definition_identifier", v(wi.getTemplate(), BLANK)));
-    fields.add(f("event_identifier", v(wi.getMediaPackage().getIdentifier().toString())));
-    fields.add(f("creator", v(wi.getCreatorName())));
-    fields.add(f("state", enumToJSON(wi.getState())));
+    json.addProperty("identifier", wi.getId());
+    json.addProperty("title", safeString(wi.getTitle()));
+    json.addProperty("description", safeString(wi.getDescription()));
+    json.addProperty("workflow_definition_identifier", safeString(wi.getTemplate()));
+    json.addProperty("event_identifier", wi.getMediaPackage().getIdentifier().toString());
+    json.addProperty("creator", wi.getCreatorName());
+    json.add("state", enumToJSON(wi.getState()));
     if (withOperations) {
-      fields.add(f("operations", arr(wi.getOperations()
-                                       .stream()
-                                       .map(this::workflowOperationInstanceToJSON)
-                                       .collect(Collectors.toList()))));
+      JsonArray operationsArray = new JsonArray();
+      for (WorkflowOperationInstance op : wi.getOperations()) {
+        operationsArray.add(workflowOperationInstanceToJSON(op));
+      }
+      json.add("operations", operationsArray);
     }
+
     if (withConfiguration) {
-      fields.add(f("configuration", obj(wi.getConfigurationKeys()
-                                          .stream()
-                                          .map(key -> f(key, wi.getConfiguration(key)))
-                                          .collect(Collectors.toList()))));
+      JsonObject configObject = new JsonObject();
+      for (String key : wi.getConfigurationKeys()) {
+        String value = wi.getConfiguration(key);
+        configObject.addProperty(key, value);
+      }
+      json.add("configuration", configObject);
     }
 
-    return obj(fields);
+    return json;
   }
 
-  private JValue workflowOperationInstanceToJSON(WorkflowOperationInstance woi) {
-    List<Field> fields = new ArrayList<>();
-    DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_DATE_TIME;
+  private JsonObject workflowOperationInstanceToJSON(WorkflowOperationInstance woi) {
+    JsonObject json = new JsonObject();
+    DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_DATE_TIME.withZone(ZoneOffset.UTC);
 
-    // The job ID can be null if the workflow was just created
-    fields.add(f("identifier", v(woi.getId(), BLANK)));
-    fields.add(f("operation", v(woi.getTemplate())));
-    fields.add(f("description", v(woi.getDescription(), BLANK)));
-    fields.add(f("state", enumToJSON(woi.getState())));
-    fields.add(f("time_in_queue", v(woi.getTimeInQueue(), ZERO)));
-    fields.add(f("host", v(woi.getExecutionHost(), BLANK)));
-    fields.add(f("if", v(woi.getExecutionCondition(), BLANK)));
-    fields.add(f("fail_workflow_on_error", v(woi.isFailOnError())));
-    fields.add(f("error_handler_workflow", v(woi.getExceptionHandlingWorkflow(), BLANK)));
-    fields.add(f("retry_strategy", v(new RetryStrategy.Adapter().marshal(woi.getRetryStrategy()), BLANK)));
-    fields.add(f("max_attempts", v(woi.getMaxAttempts())));
-    fields.add(f("failed_attempts", v(woi.getFailedAttempts())));
-    fields.add(f("configuration", obj(woi.getConfigurationKeys()
-                                         .stream()
-                                         .map(key -> f(key, woi.getConfiguration(key)))
-                                         .collect(Collectors.toList()))));
+    json.addProperty("identifier", woi.getId());
+    json.addProperty("operation", woi.getTemplate());
+    json.addProperty("description", safeString(woi.getDescription()));
+    json.add("state", enumToJSON(woi.getState()));
+    Long timeInQueue = woi.getTimeInQueue();
+    json.addProperty("time_in_queue", timeInQueue != null ? timeInQueue : 0);
+    json.addProperty("host", safeString(woi.getExecutionHost()));
+    json.addProperty("if", safeString(woi.getExecutionCondition()));
+    json.addProperty("fail_workflow_on_error", woi.isFailOnError());
+    json.addProperty("error_handler_workflow", safeString(woi.getExceptionHandlingWorkflow()));
+    json.addProperty("retry_strategy", safeString(new RetryStrategy.Adapter().marshal(woi.getRetryStrategy())));
+    json.addProperty("max_attempts", woi.getMaxAttempts());
+    json.addProperty("failed_attempts", woi.getFailedAttempts());
+    JsonObject config = new JsonObject();
+    for (String key : woi.getConfigurationKeys()) {
+      config.addProperty(key, woi.getConfiguration(key));
+    }
+    json.add("configuration", config);
+
     if (woi.getDateStarted() != null) {
-      fields.add(f("start", v(dateFormatter.format(woi.getDateStarted().toInstant().atZone(UTC)))));
+      json.addProperty("start", dateFormatter.format(woi.getDateStarted().toInstant().atZone(ZoneOffset.UTC)));
     } else {
-      fields.add(f("start", BLANK));
-    }
-    if (woi.getDateCompleted() != null) {
-      fields.add(f("completion", v(dateFormatter.format(woi.getDateCompleted().toInstant().atZone(UTC)))));
-    } else {
-      fields.add(f("completion", BLANK));
+      json.addProperty("start", "");
     }
 
-    return obj(fields);
+    if (woi.getDateCompleted() != null) {
+      json.addProperty("completion", dateFormatter.format(woi.getDateCompleted().toInstant().atZone(ZoneOffset.UTC)));
+    } else {
+      json.addProperty("completion", "");
+    }
+
+    return json;
   }
 
-  private JValue enumToJSON(Enum e) {
-    return e == null ? null : v(e.toString().toLowerCase());
+  private JsonElement enumToJSON(Enum<?> e) {
+    return e == null ? null : new JsonPrimitive(e.toString().toLowerCase());
   }
 
   private <T extends Enum<T>> T jsonToEnum(Class<T> enumType, String name) {

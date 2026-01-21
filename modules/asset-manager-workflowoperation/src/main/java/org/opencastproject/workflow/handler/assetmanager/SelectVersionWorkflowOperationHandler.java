@@ -23,9 +23,6 @@ package org.opencastproject.workflow.handler.assetmanager;
 
 import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.assetmanager.api.Snapshot;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.ARecord;
-import org.opencastproject.assetmanager.api.query.AResult;
 import org.opencastproject.job.api.JobContext;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
@@ -37,8 +34,6 @@ import org.opencastproject.workflow.api.WorkflowOperationException;
 import org.opencastproject.workflow.api.WorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowOperationInstance;
 import org.opencastproject.workflow.api.WorkflowOperationResult;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.annotations.Component;
@@ -130,46 +125,34 @@ public class SelectVersionWorkflowOperationHandler extends AbstractWorkflowOpera
 
   private MediaPackage findVersion(String mpId, String version) throws WorkflowOperationException {
     // Get the specific version from the asset manager
-    AQueryBuilder q = assetManager.createQuery();
+    List<Snapshot> snapshots = assetManager.getSnapshotsByIdAndVersion(mpId, assetManager.toVersion(version).get());
 
-    AResult r = q.select(q.snapshot())
-            .where(q.mediaPackageId(mpId).and(q.version().eq(assetManager.toVersion(version).get()))).run();
-
-    if (r.getSize() == 0) {
+    if (snapshots.size() > 1) {
+      // Version not found
+      throw new WorkflowOperationException(
+          String.format("Multiple media package %s, version %s found in the archive.", mpId, version));
+    }
+    if (snapshots.isEmpty()) {
       // Version not found
       throw new WorkflowOperationException(
               String.format("Media package %s, version %s not found in the archive.", mpId, version));
     }
 
-    for (ARecord rec : r.getRecords()) {
-      // There should be only one
-      Opt<Snapshot> optSnap = rec.getSnapshot();
-      if (optSnap.isNone()) {
-        continue;
-      }
-      logger.info("Replacing current media package with version: {}", version);
-      return optSnap.get().getMediaPackage();
-    }
-    return null;
+    logger.info("Replacing current media package with version: {}", version);
+    return snapshots.get(0).getMediaPackage();
   }
 
   private MediaPackage findVersionWithNoTags(String mpId, SimpleElementSelector elementSelector,
           Collection<String> tags) throws WorkflowOperationException {
     // Get all the snapshots from the asset manager
-    AQueryBuilder q = assetManager.createQuery();
+    List<Snapshot> snapshots = assetManager.getSnapshotsByIdOrderedByVersion(mpId, false);
 
-    AResult r = q.select(q.snapshot()).where(q.mediaPackageId(mpId)).orderBy(q.version().desc()).run();
-    if (r.getSize() == 0) {
+    if (snapshots.isEmpty()) {
       // This is strange because it should run from the archive
       throw new WorkflowOperationException("Media package not found in the archive: " + mpId);
     }
 
-    nextVersion: for (ARecord rec : r.getRecords()) {
-      Opt<Snapshot> optSnap = rec.getSnapshot();
-      if (optSnap.isNone()) {
-        continue;
-      }
-      Snapshot snapshot = optSnap.get();
+    nextVersion: for (Snapshot snapshot : snapshots) {
       MediaPackage mp = snapshot.getMediaPackage();
       for (MediaPackageElement el : elementSelector.select(mp, false)) {
         for (String t : el.getTags()) {

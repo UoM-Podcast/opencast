@@ -30,39 +30,30 @@ import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static org.opencastproject.assetmanager.api.AssetManager.DEFAULT_OWNER;
 import static org.opencastproject.systems.OpencastConstants.WORKFLOW_PROPERTIES_NAMESPACE;
-import static org.opencastproject.util.MimeTypeUtil.Fns.suffix;
 import static org.opencastproject.util.RestUtil.R.badRequest;
 import static org.opencastproject.util.RestUtil.R.forbidden;
 import static org.opencastproject.util.RestUtil.R.noContent;
 import static org.opencastproject.util.RestUtil.R.notFound;
 import static org.opencastproject.util.RestUtil.R.ok;
-import static org.opencastproject.util.RestUtil.R.serverError;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
-import org.opencastproject.assetmanager.api.Asset;
 import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.assetmanager.api.Property;
 import org.opencastproject.assetmanager.api.PropertyId;
 import org.opencastproject.assetmanager.api.Value;
-import org.opencastproject.assetmanager.api.Version;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.AResult;
-import org.opencastproject.assetmanager.api.query.ASelectQuery;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageImpl;
 import org.opencastproject.rest.AbstractJobProducerEndpoint;
 import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.util.Checksum;
 import org.opencastproject.util.ChecksumType;
-import org.opencastproject.util.MimeTypeUtil;
-import org.opencastproject.util.data.Option;
+import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestParameter.Type;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
-import com.entwinemedia.fn.data.Opt;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -72,6 +63,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.ws.rs.DELETE;
 import javax.ws.rs.FormParam;
@@ -169,6 +161,40 @@ public abstract class AbstractAssetManagerRestEndpoint extends AbstractJobProduc
     }
   }
 
+  @POST
+  @Path("updateIndex")
+  @RestQuery(name = "updateIndex",
+      description = "Trigger search index update for event. The usage of this is limited to global administrators.",
+      restParameters = {
+          @RestParameter(
+              name = "id",
+              isRequired = true,
+              type = STRING,
+              description = "The event ID to trigger an index update for.")},
+      responses = {
+          @RestResponse(
+              description = "Update successfully triggered.",
+              responseCode = SC_NO_CONTENT),
+          @RestResponse(
+              description = "Not allowed to trigger update.",
+              responseCode = SC_FORBIDDEN),
+          @RestResponse(
+              description = "No such event found.",
+              responseCode = SC_NOT_FOUND)},
+      returnDescription = "No content is returned.")
+  public Response indexUpdate(@FormParam("id") final String id) {
+    try {
+      getAssetManager().triggerIndexUpdate(id);
+      return noContent();
+    } catch (UnauthorizedException e) {
+      return forbidden();
+    } catch (NotFoundException e) {
+      return notFound();
+    } catch (Exception e) {
+      return handleException(e);
+    }
+  }
+
   @DELETE
   @Path("delete/{id}")
   @RestQuery(name = "deleteSnapshots",
@@ -199,8 +225,7 @@ public abstract class AbstractAssetManagerRestEndpoint extends AbstractJobProduc
       return notFound();
     }
     try {
-      final AQueryBuilder q = getAssetManager().createQuery();
-      if (q.delete(AssetManager.DEFAULT_OWNER, q.snapshot()).where(q.mediaPackageId(mediaPackageId)).run() > 0) {
+      if (getAssetManager().deleteSnapshots(mediaPackageId) > 0) {
         return noContent();
       }
       return notFound();
@@ -231,9 +256,9 @@ public abstract class AbstractAssetManagerRestEndpoint extends AbstractJobProduc
   public Response getMediaPackage(@PathParam("mediaPackageID") final String mediaPackageId) {
 
     try {
-      Opt<MediaPackage> mp = getAssetManager().getMediaPackage(mediaPackageId);
+      Optional<MediaPackage> mp = getAssetManager().getMediaPackage(mediaPackageId);
 
-      if (mp.isSome()) {
+      if (mp.isPresent()) {
         return ok(mp.get());
       } else {
         return notFound();
@@ -292,8 +317,11 @@ public abstract class AbstractAssetManagerRestEndpoint extends AbstractJobProduc
                            @HeaderParam("If-None-Match") String ifNoneMatch) {
 
     try {
-      for (final Version v : getAssetManager().toVersion(version)) {
-        for (Asset asset : getAssetManager().getAsset(v, mediaPackageID, mediaPackageElementID)) {
+      final var v = getAssetManager().toVersion(version);
+      if (v.isPresent()) {
+        var assetOpt = getAssetManager().getAsset(v.get(), mediaPackageID, mediaPackageElementID);
+        if (assetOpt.isPresent()) {
+          var asset = assetOpt.get();
 
           if (StringUtils.isNotBlank(ifNoneMatch)) {
             Checksum checksum = asset.getChecksum();
@@ -312,17 +340,26 @@ public abstract class AbstractAssetManagerRestEndpoint extends AbstractJobProduc
           }
 
           if (StringUtils.isBlank(fileName)) {
+            String suffix = "unknown";
+            if (asset.getMimeType().isPresent()) {
+              var mimetype = asset.getMimeType().get();
+              if (mimetype.getSuffix().isPresent()) {
+                suffix = mimetype.getSuffix().get();
+              }
+            }
             fileName = mediaPackageElementID
                 .concat(".")
-                .concat(asset.getMimeType().bind(suffix).getOr("unknown"));
+                .concat(suffix);
           }
 
           // Write the file contents back
-          Option<Long> length = asset.getSize() > 0 ? Option.some(asset.getSize()) : Option.none();
+          Optional<Long> length = asset.getSize() > 0 ? Optional.of(asset.getSize()) : Optional.empty();
           return ok(asset.getInputStream(),
-                  Option.fromOpt(asset.getMimeType().map(MimeTypeUtil.Fns.toString)),
+                  asset.getMimeType().isPresent()
+                      ? Optional.of(asset.getMimeType().get().toString())
+                      : Optional.empty(),
                   length,
-                  Option.some(fileName));
+                  Optional.of(fileName));
         }
         // none
         return notFound();
@@ -362,33 +399,16 @@ public abstract class AbstractAssetManagerRestEndpoint extends AbstractJobProduc
   public Response getProperties(@PathParam("mediaPackageID") final String mediaPackageId,
           @FormParam("namespace") final String namespace) {
     try {
-      final AQueryBuilder queryBuilder = getAssetManager().createQuery();
-      ASelectQuery query;
-      if (StringUtils.isEmpty(namespace)) {
-        query = queryBuilder.select(queryBuilder.properties());
-      } else {
-        query = queryBuilder.select(queryBuilder.propertiesOf(namespace));
-      }
-      query = query.where(queryBuilder.mediaPackageId(mediaPackageId).and(queryBuilder.version().isLatest()));
-      final AResult result = query.run();
-
-      // we expect exactly one result when specifying a media package id
-      if (result.getSize() < 1) {
-        return notFound();
-      } else if (result.getSize() > 1) {
-        return serverError();
-      }
+      getAssetManager().selectProperties(mediaPackageId, namespace);
 
       // build map from properties
       HashMap<String, HashMap<String, String>> properties = new HashMap<>();
-      if (result.getRecords().head().isSome()) {
-        for (final Property property : result.getRecords().head().get().getProperties()) {
-          final String key = property.getId().getNamespace() + "." + property.getId().getName();
-          final HashMap<String, String> val = new HashMap<>();
-          val.put("type", property.getValue().getType().getClass().getSimpleName());
-          val.put("value", property.getValue().get().toString());
-          properties.put(key, val);
-        }
+      for (final Property property : getAssetManager().selectProperties(mediaPackageId, namespace)) {
+        final String key = property.getId().getNamespace() + "." + property.getId().getName();
+        final HashMap<String, String> val = new HashMap<>();
+        val.put("type", property.getValue().getType().getClass().getSimpleName());
+        val.put("value", property.getValue().get().toString());
+        properties.put(key, val);
       }
       return ok(gson.toJson(properties));
     } catch (Exception e) {
@@ -418,23 +438,11 @@ public abstract class AbstractAssetManagerRestEndpoint extends AbstractJobProduc
       })
   public Response getWorkflowProperties(@PathParam("mediaPackageID") final String mediaPackageId) {
     try {
-      final AQueryBuilder queryBuilder = getAssetManager().createQuery();
-      final AResult result = queryBuilder.select(queryBuilder.propertiesOf(WORKFLOW_PROPERTIES_NAMESPACE))
-              .where(queryBuilder.mediaPackageId(mediaPackageId).and(queryBuilder.version().isLatest())).run();
-
-      // we expect exactly one result when specifying a media package id
-      if (result.getSize() < 1) {
-        return notFound();
-      } else if (result.getSize() > 1) {
-        return serverError();
-      }
-
       // build map from properties
       HashMap<String, String> properties = new HashMap<>();
-      if (result.getRecords().head().isSome()) {
-        for (final Property property : result.getRecords().head().get().getProperties()) {
-          properties.put(property.getId().getName(), property.getValue().get(Value.STRING));
-        }
+      for (final Property property
+          : getAssetManager().selectProperties(mediaPackageId, WORKFLOW_PROPERTIES_NAMESPACE)) {
+        properties.put(property.getId().getName(), property.getValue().get(Value.STRING));
       }
       return ok(gson.toJson(properties));
     } catch (Exception e) {

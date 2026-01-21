@@ -43,6 +43,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -66,7 +68,7 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/admin-ng/server")
 @RestService(name = "ServerProxyService", title = "UI Servers",
   abstractText = "This service provides the server data for the UI.",
   notes = { "These Endpoints deliver informations about the server required for the UI.",
@@ -83,6 +85,7 @@ import javax.ws.rs.core.Response;
     "opencast.service.path=/admin-ng/server"
   }
 )
+@JaxrsResource
 public class ServerEndpoint {
 
   private static final Gson gson = new Gson();
@@ -144,6 +147,7 @@ public class ServerEndpoint {
   }
 
   private class Server {
+    protected long id;
     protected boolean online;
     protected boolean maintenance;
     protected String hostname;
@@ -153,12 +157,17 @@ public class ServerEndpoint {
     protected long queued;
   }
 
+  private class CachedServer {
+    protected long running;
+    protected long queued;
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(ServerEndpoint.class);
 
   private ServiceRegistry serviceRegistry;
 
   private long lastUpdated = 0;
-  private final List<Server> serverData = new ArrayList<>();
+  private final Map<Long, CachedServer> cachedServerData = new HashMap<>();
 
   /** OSGi callback for the service registry. */
   @Reference
@@ -265,29 +274,47 @@ public class ServerEndpoint {
    *          If the host data could not be retrieved
    */
   private synchronized List<Server> getServerData() throws ServiceRegistryException {
-    // Check if cache is still valid
-    if (lastUpdated + CACHE_SECONDS > Instant.now().getEpochSecond()) {
-      logger.debug("Using server data cache.");
-      return serverData;
-    }
+    List<Server> serverData = new ArrayList<>();
 
-    // Update cache
-    serverData.clear();
-    logger.debug("Updating server data");
-    HostStatistics statistics = serviceRegistry.getHostStatistics();
     for (HostRegistration host : serviceRegistry.getHostRegistrations()) {
       // Calculate statistics per server
       Server server = new Server();
+      server.id = host.getId();
       server.online = host.isOnline();
       server.maintenance = host.isMaintenanceMode();
       server.hostname = host.getBaseUrl();
       server.nodeName = host.getNodeName();
       server.cores = host.getCores();
-      server.running = statistics.runningJobs(host.getId());
-      server.queued = statistics.queuedJobs(host.getId());
       serverData.add(server);
     }
-    lastUpdated = Instant.now().getEpochSecond();
+
+    // Check if cache is still valid
+    if (lastUpdated + CACHE_SECONDS < Instant.now().getEpochSecond()) {
+      // Update cache
+      cachedServerData.clear();
+      logger.debug("Updating server data");
+      HostStatistics statistics = serviceRegistry.getHostStatistics();
+      for (HostRegistration host : serviceRegistry.getHostRegistrations()) {
+        // Calculate statistics per server
+        CachedServer server = new CachedServer();
+        server.running = statistics.runningJobs(host.getId());
+        server.queued = statistics.queuedJobs(host.getId());
+        cachedServerData.put(host.getId(), server);
+      }
+      lastUpdated = Instant.now().getEpochSecond();
+    }
+
+    // Add info from cache
+    for (int i = 0; i < serverData.size(); i++) {
+      Optional<CachedServer> cachedServer = Optional.ofNullable(cachedServerData.get(serverData.get(i).id));
+      if (cachedServer.isPresent()) {
+        Server server = serverData.get(i);
+        server.running = cachedServer.get().running;
+        server.queued = cachedServer.get().queued;
+        serverData.set(i, server);
+      }
+    }
+
     return serverData;
   }
 

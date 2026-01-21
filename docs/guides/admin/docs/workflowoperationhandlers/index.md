@@ -5,17 +5,12 @@
 Workflows are the central element to define how a media package is being processed by the Opencast services. Their
 definitions consist of a list of workflow operations, which basically map a piece of configuration to Opencast code:
 
-    <definition xmlns="http://workflow.opencastproject.org">
-        ....
-        <operation
-          id="tag"
-          <configurations>
-            <configuration key="source-flavors">presentation/trimmed</configuration>
-            <configuration key="target-flavor">presentation/tagged</configuration>
-          </configurations>
-       </operation>
-       ...
-    </definition>
+  ....
+  - id: tag
+    configurations:
+      - source-flavors: presentation/trimmed
+      - target-flavor: presentation/tagged
+  ...
 
 ## Default Workflow Operations
 
@@ -24,10 +19,8 @@ The following table contains the workflow operations that are available in an ou
 | Operation Handler                    | Description                                                                               | Details                                                      |
 |--------------------------------------|-------------------------------------------------------------------------------------------|--------------------------------------------------------------|
 | add-catalog                          | Add a catalog to the media package                                                        | [Documentation](add-catalog-woh.md)                          |
-| analyze-audio                        | Analyze first audio stream                                                                | [Documentation](analyzeaudio-woh.md)                         |
 | analyze-tracks                       | Analyze tracks in media package                                                           | [Documentation](analyze-tracks-woh.md)                       |
 | analyze-mediapackage                 | Analyze media package                                                                     | [Documentation](analyze-mediapackage-woh.md)                 |
-| animate                              | Create animated video sequence                                                            | [Documentation](animate-woh.md)                              |
 | amberscript-start-transcription      | Start AmberScript Transcription                                                           | [Documentation](amberscript-start-transcription-woh.md)      |
 | amberscript-attach-transcription     | Attach AmberScript Transcription                                                          | [Documentation](amberscript-attach-transcription-woh.md)     |
 | assert                               | Verify preconditions with assertion                                                       | [Documentation](assert-woh.md)                               |
@@ -69,11 +62,11 @@ The following table contains the workflow operations that are available in an ou
 | log                                  | Log workflow status                                                                       | [Documentation](log-woh.md)                                  |
 | mattermost-notify                    | Send messages to Mattermost                                                               | [Documentation](mattermost-notify-woh.md)                    |
 | metadata-to-acl                      | Add read/write access based on metadata                                                   | [Documentation](metadata-to-acl.md)                          |
-| microsoft-azure-attach-transcription | Attaches automated transcripts to mediapackage                                            | [Documentation](microsoft-azure-attach-transcription-woh.md) |
-| microsoft-azure-start-transcription  | Starts automated transcription provided by Microsoft Azure                                | [Documentation](microsoft-azure-start-transcription-woh.md)  |
+| microsoft-azure-attach-transcription | Attach Microsoft Azure Transcription                                                      | [Documentation](microsoft-azure-attach-transcription-woh.md) |
+| microsoft-azure-start-transcription  | Start Microsoft Azure Transcription                                                       | [Documentation](microsoft-azure-start-transcription-woh.md)  |
 | move-storage                         | Move files between asset manager storage systems                                          | [Documentation](move-storage-woh.md)                         |
 | multiencode                          | Encode to multiple profiles in one operation                                              | [Documentation](multiencode-woh.md)                          |
-| normalize-audio                      | Normalize first audio stream                                                              | [Documentation](normalizeaudio-woh.md)                       |
+| mux                                  | Mux multiple media tracks into one                                                        | [Documentation](mux-woh.md)                                  |
 | partial-import                       | Import partial tracks and process according to a SMIL document                            | [Documentation](partial-import-woh.md)                       |
 | post-mediapackage                    | Send mediapackage to remote service                                                       | [Documentation](postmediapackage-woh.md)                     |
 | prepare-av                           | Preparing audio and video work versions                                                   | [Documentation](prepareav-woh.md)                            |
@@ -106,10 +99,12 @@ The following table contains the workflow operations that are available in an ou
 | series                               | Apply series to the mediapackage                                                          | [Documentation](series-woh.md)                               |
 | silence                              | Silence detection on audio of the mediapackage                                            | [Documentation](silence-woh.md)                              |
 | snapshot                             | Archive the current state of the mediapackage                                             | [Documentation](snapshot-woh.md)                             |
-| speechtotext                         | Create subtitles for video and audio sources                                              | [Documentation](speechtotext-woh.md)                       |
+| speechtotext                         | Create subtitles for video and audio sources                                              | [Documentation](speechtotext-woh.md)                         |
+| speechtotext-attach                  | Attach results of asynchronous speechtotext jobs                                          | [Documentation](speechtotext-attach-woh.md)                  |
 | start-watson-transcription           | Starts automated transcription provided by IBM Watson                                     | [Documentation](start-watson-transcription-woh.md)           |
 | start-workflow                       | Start a new workflow for given media package ID                                           | [Documentation](start-workflow-woh.md)                       |
 | statistics-writer                    | Log statistical data about the video                                                      | [Documentation](statistics-writer.md)                        |
+| subtitle-timeshift                   | Shift the timestamps of subtitles                                                         | [Documentation](subtitle-timeshift-woh.md)                   |
 | tag                                  | Modify the tag sets of media package elements                                             | [Documentation](tag-woh.md)                                  |
 | tag-by-dcterm                        | Modify the tags if dublincore term matches value                                          | [Documentation](tag-by-dcterm-woh.md)                        |
 | tag-engage                           | Modify the tag sets of media package elements in the engage publication                   | [Documentation](tag-engage-woh.md)                           |
@@ -122,6 +117,7 @@ The following table contains the workflow operations that are available in an ou
 | zip                                  | Create zipped archive of the current state of the mediapackage                            | [Documentation](zip-woh.md)                                  |
 
 ## State Mappings
+
 Technically, a workflow can be in one of the following states:
 
 | Technical State | Description | What the Admin UI displays in the events table|

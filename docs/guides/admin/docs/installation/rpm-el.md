@@ -1,25 +1,21 @@
-Install from Repository (Red Hat Enterprise Linux, CentOS Stream, …
-===================================================================
+Install from Repository (Red Hat Enterprise Linux, CentOS Stream, Rocky Linux, AlmaLinux, …
+===========================================================================================
 
 This guide is based on an RPM software repository available for Red Hat based Linux distributions provided
 by [Osnabrück University](https://uni-osnabrueck.de).
 This repository provides preconfigured Opencast installations and all necessary 3rd-party-tools.
 
-> In addition to this guide, we have also recorded [a full installation done in 30 minutes](https://vt.uos.de/71hfc)
+> 🎞️ In addition to this guide, we have also recorded [a full installation done in 30 minutes](https://go.uos.de/71hfc)
 > if you like to see how this works before you try it yourself.
 
-<div class=warn>
-  <b>Opencast {{ opencast_major_version() }}</b> is not yet available.
-</div>
 
 Currently Supported
 -------------------
 
-We frequently test on CentOS Stream 8/9 and infrequently test on Red Hat Enterprise Linux 8/9,
+We frequently test on Rocky Linux 8, CentOS Stream 9/10 and infrequently test on Red Hat Enterprise Linux 8/9/10,
 trying to ensure that installations on those systems work without problems.
 Since Rocky Linux and AlmaLinux OS are intended to be fully compatible to RHEL,
 those distributions should work as well.
-But we don't test against those.
 
 We support only the x86\_64 architecture.
 
@@ -63,30 +59,29 @@ This will install the default distribution of Opencast and all its dependencies.
 For more options, see the [advanced installation section below](#advanced-installation).
 
 
-Install Elasticsearch
----------------------
+Install OpenSearch
+------------------
 
-Opencast uses Elasticsearch as a search index and a cache for quick access to some data from user interfaces.
-Make sure to install it on the node which also serves the admin interface.
+Opencast uses OpenSearch as a search index and a cache for quick access to some data from user interfaces.
+Opencast requires OpenSearch 1.x. Version 2.x will not work.
+It also requires `analysis-icu` plugin.
+The repository provides both:
 
 ```sh
-dnf install elasticsearch-oss
+dnf install opensearch opensearch-plugin-analysis-icu
 ```
 
-Opencast automatically configures the search index once it is connected.
-The default configuration will work for a local Elasticsearch with no modifications.
-The only exception for this is to add a configuration to mitigate Log4Shell.
-For this, add a file `/etc/elasticsearch/jvm.options.d/log4shell.options` with the content:
+After installing OpenSearch please make sure to install all necessary plugins and update the configuration.
+For details, please follow:
 
-```
--Dlog4j2.formatMsgNoLookups=true
-```
+- [Opencast OpenSearch Documentation](../configuration/searchindex/elasticsearch.md)
+
 
 Finally, make sure to start and enable the service:
 
 ```sh
-systemctl start elasticsearch
-systemctl enable elasticsearch
+systemctl start opensearch
+systemctl enable opensearch
 ```
 
 
@@ -132,6 +127,9 @@ Some commonly used distributions are:
 Upgrading
 ---------
 
+> 🎞️ If you want to see how upgrading Opencast works if you are using the RPM repository,
+> [we made a short recording to show you the process](https://explore.opencast.org/webinars/v/N_HuDZx9rO0).
+
 Packages will automatically upgrade to the latest minor version in a release series when running `dnf update`.
 They do not automatically upgrade the latest major version.
 This is intentional since additional migration steps might be required.
@@ -152,8 +150,7 @@ systemctl stop opencast.service
 Then, update the repository:
 
 ```sh
-dnf install -y \
-  "https://pkg.opencast.org/rpms/release/el/$(rpm -E %rhel)/oc-{{ opencast_major_version() }}/noarch/opencast-repository-{{ opencast_major_version() }}-1.el$(rpm -E %rhel).noarch.rpm"
+dnf install -y "https://pkg.opencast.org/rpms/release/el/$(rpm -E %rhel)/oc-{{ opencast_major_version() }}/noarch/opencast-repository-{{ opencast_major_version() }}-1.el$(rpm -E %rhel).noarch.rpm"
 ```
 
 Upgrade to the new Opencast package by running:

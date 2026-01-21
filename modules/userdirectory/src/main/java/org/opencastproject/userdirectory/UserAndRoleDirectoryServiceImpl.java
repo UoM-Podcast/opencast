@@ -233,7 +233,7 @@ public class UserAndRoleDirectoryServiceImpl implements UserDirectoryService, Us
    * @see org.opencastproject.security.api.UserDirectoryService#getUsers()
    */
   @Override
-  public Iterator<User> getUsers() {
+  public List<User> getUsers() {
     final Organization org = securityService.getOrganization();
     if (org == null) {
       throw new IllegalStateException("No organization is set");
@@ -247,7 +247,8 @@ public class UserAndRoleDirectoryServiceImpl implements UserDirectoryService, Us
         userProvider.getUsers().forEachRemaining(users::add);
       }
     }
-    return users.stream().sorted(Comparator.comparing(User::getUsername)).iterator();
+    users.sort(Comparator.comparing(User::getUsername));
+    return users;
   }
 
   /**
@@ -410,8 +411,11 @@ public class UserAndRoleDirectoryServiceImpl implements UserDirectoryService, Us
     // Add additional roles from role providers
     if (!InMemoryUserAndRoleProvider.PROVIDER_NAME.equals(user.getProvider())) {
       for (RoleProvider roleProvider : roleProviders) {
-        List<Role> rolesForUser = roleProvider.getRolesForUser(userName);
-        for (Role role : rolesForUser) {
+        String providerOrgId = roleProvider.getOrganization();
+        if (!ALL_ORGANIZATIONS.equals(providerOrgId) && !user.getOrganization().getId().equals(providerOrgId)) {
+          continue;
+        }
+        for (Role role : roleProvider.getRolesForUser(userName)) {
           authorities.add(new SimpleGrantedAuthority(role.getName()));
         }
       }

@@ -37,8 +37,6 @@ import org.opencastproject.series.api.SeriesException;
 import org.opencastproject.series.api.SeriesService;
 import org.opencastproject.util.RequireUtil;
 
-import com.entwinemedia.fn.data.Opt;
-
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +44,7 @@ import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Optional;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -61,21 +60,21 @@ public class ConfigurableSeriesDCCatalogUIAdapter extends ConfigurableDCCatalogU
   private SecurityService securityService;
 
   @Override
-  public Opt<DublinCoreMetadataCollection> getFields(String seriesId) {
+  public Optional<DublinCoreMetadataCollection> getFields(String seriesId) {
 
-    final Opt<DublinCoreCatalog> optDCCatalog = loadDublinCoreCatalog(
+    final Optional<DublinCoreCatalog> optDCCatalog = loadDublinCoreCatalog(
             RequireUtil.requireNotBlank(seriesId, "seriesId"));
-    if (optDCCatalog.isNone()) {
-      return Opt.none();
+    if (optDCCatalog.isEmpty()) {
+      return Optional.empty();
     }
-    return Opt.some(getFieldsFromCatalogs(Arrays.asList(optDCCatalog.get())));
+    return Optional.of(getFieldsFromCatalogs(Arrays.asList(optDCCatalog.get())));
   }
 
   @Override
   public boolean storeFields(String seriesId, DublinCoreMetadataCollection metadata) {
-    final Opt<DublinCoreCatalog> optDCCatalog = loadDublinCoreCatalog(
+    final Optional<DublinCoreCatalog> optDCCatalog = loadDublinCoreCatalog(
             RequireUtil.requireNotBlank(seriesId, "seriesId"));
-    if (optDCCatalog.isSome()) {
+    if (optDCCatalog.isPresent()) {
       final DublinCoreCatalog dc = optDCCatalog.get();
       dc.addBindings(config.getXmlNamespaceContext());
       DublinCoreMetadataUtil.updateDublincoreCatalog(dc, metadata);
@@ -86,27 +85,28 @@ public class ConfigurableSeriesDCCatalogUIAdapter extends ConfigurableDCCatalogU
     }
   }
 
-  protected Opt<DublinCoreCatalog> loadDublinCoreCatalog(String seriesId) {
+  protected Optional<DublinCoreCatalog> loadDublinCoreCatalog(String seriesId) {
     try {
-      Opt<byte[]> seriesElementData = getSeriesService().getSeriesElementData(requireNonNull(seriesId), flavor.getType());
-      if (seriesElementData.isSome()) {
+      Optional<byte[]> seriesElementData = getSeriesService().getSeriesElementData(requireNonNull(seriesId),
+          flavor.getType());
+      if (seriesElementData.isPresent()) {
         final DublinCoreCatalog dc = DublinCoreByteFormat.read(seriesElementData.get());
         // Make sure that the catalog has its flavor set.
         // It may happen, when updating a system, that already saved catalogs
         // do not have a flavor.
         dc.setFlavor(flavor);
         dc.addBindings(config.getXmlNamespaceContext());
-        return Opt.some(dc);
+        return Optional.of(dc);
       } else {
         final DublinCoreCatalog dc = DublinCores.mkStandard();
         dc.addBindings(config.getXmlNamespaceContext());
         dc.setRootTag(new EName(config.getCatalogXmlRootNamespace(), config.getCatalogXmlRootElementName()));
         dc.setFlavor(flavor);
-        return Opt.some(dc);
+        return Optional.of(dc);
       }
     } catch (SeriesException | IOException | ParseException | ParserConfigurationException | SAXException e) {
       logger.error("Error while loading DublinCore catalog {} of series '{}'", flavor, seriesId, e);
-      return Opt.none();
+      return Optional.empty();
     }
   }
 

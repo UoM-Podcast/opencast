@@ -69,7 +69,7 @@ public class SeriesEndpointTest {
     env.tearDownServer();
   }
 
-  /** Unit test for {@link SeriesEndpoint#getSeriesList(String, String, String, String, int, int)} */
+  /** Unit test for {@link SeriesEndpoint#getSeriesList(String, String, String, String, int, int, Boolean, Boolean)} */
   @Test
   public void testGetSeriesListJson() throws Exception {
     final String response = given().log().all().expect().statusCode(SC_OK).when().get(env.host("/")).asString();
@@ -147,7 +147,7 @@ public class SeriesEndpointTest {
             .statusCode(SC_NO_CONTENT).when().delete(env.host("/{seriesId}"));
   }
 
-  /** Unit test for {@link SeriesEndpoint#getSeriesMetadata(String, String)} */
+  /** Unit test for {@link SeriesEndpoint#getSeriesMetadata(String, String, String)} */
   @Test
   public void testMissingGetSeriesMetadataJson() throws Exception {
     given().pathParam("seriesId", "unknown-series-id").accept(APP_V1_0_0_JSON).log().all().expect()
@@ -163,7 +163,7 @@ public class SeriesEndpointTest {
     assertThat(expected, SameJSONAs.sameJSONAs(response).allowingAnyArrayOrdering());
   }
 
-  /** Unit test for {@link SeriesEndpoint#getSeriesMetadataByType(String, String)} */
+  /** Unit test for {@link SeriesEndpoint#getSeriesMetadata(String, String, String)} */
   @Test
   public void testMissingSeriesGetSeriesMetadataByTypeJson() throws Exception {
     given().pathParam("seriesId", "unknown-series-id").pathParam("type", "dublincore").accept(APP_V1_0_0_JSON).log()
@@ -179,7 +179,8 @@ public class SeriesEndpointTest {
 
   @Test
   public void testGetSeriesMetadataByTypeJson() throws Exception {
-    String expected = IOUtils.toString(getClass().getResource("/series/metadata/series-metadata-dublincore.json"), UTF_8);
+    String expected = IOUtils.toString(getClass().getResource("/series/metadata/series-metadata-dublincore.json"),
+        UTF_8);
     final String response = given().pathParam("seriesId", "4fd0ef66-aea5-4b7a-a62a-a4ada0eafd6f")
             .queryParam("type", "dublincore/series").accept(APP_V1_0_0_JSON).log().all().expect().statusCode(SC_OK)
             .when().get(env.host("/{seriesId}/metadata")).asString();
@@ -226,7 +227,7 @@ public class SeriesEndpointTest {
             .put(env.host("/{seriesId}/metadata"));
   }
 
-  /** Unit test for {@link SeriesEndpoint#deleteSeriesMetadata(String, String, String)} */
+  /** Unit test for {@link SeriesEndpoint#deleteSeriesMetadataByType(String, String, String)} */
   @Test
   public void testMissingSeriesDeleteSeriesMetadataJson() throws Exception {
     given().pathParam("seriesId", "unknown-series-id").pathParam("type", "othercatalog").accept(APP_V1_0_0_JSON).log()
@@ -301,7 +302,8 @@ public class SeriesEndpointTest {
 
   @Test
   public void testUpdateSeriesAclJson() throws Exception {
-    final String updatedAcl = "[{\"allow\":true,\"action\":\"write\",\"role\": \"ROLE_ADMIN\"},{\"allow\": true,\"action\": \"read\",\"role\": \"ROLE_USER\"}]";
+    final String updatedAcl = "[{\"allow\":true,\"action\":\"write\",\"role\": \"ROLE_ADMIN\"},"
+        + "{\"allow\": true,\"action\": \"read\",\"role\": \"ROLE_USER\"}]";
     final String response = given().pathParam("seriesId", "4fd0ef66-aea5-4b7a-a62a-a4ada0eafd6f")
             .formParam("acl", updatedAcl).accept(APP_V1_0_0_JSON).log().all().expect().statusCode(SC_OK).when()
             .put(env.host("/{seriesId}/acl")).asString();

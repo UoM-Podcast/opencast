@@ -22,9 +22,8 @@
 package org.opencastproject.workflow.handler.assetmanager;
 
 import org.opencastproject.assetmanager.api.AssetManager;
+import org.opencastproject.assetmanager.api.Snapshot;
 import org.opencastproject.assetmanager.api.Version;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.ARecord;
 import org.opencastproject.assetmanager.impl.AssetManagerJobProducer;
 import org.opencastproject.assetmanager.impl.VersionImpl;
 import org.opencastproject.job.api.Job;
@@ -38,8 +37,6 @@ import org.opencastproject.workflow.api.WorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowOperationInstance;
 import org.opencastproject.workflow.api.WorkflowOperationResult;
 
-import com.entwinemedia.fn.data.Opt;
-
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
@@ -47,6 +44,8 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Optional;
 
 @Component(
     immediate = true,
@@ -130,11 +129,9 @@ public class AssetManagerStorageMoveOperationHandler extends AbstractWorkflowOpe
   }
 
   private Version getLatestVersion(String mediaPackageId) throws WorkflowOperationException {
-    final AQueryBuilder q = assetManager.createQuery();
-    Opt<ARecord> result = q.select(q.snapshot())
-            .where(q.mediaPackageId(mediaPackageId).and(q.version().isLatest())).run().getRecords().head();
-    if (result.isSome()) {
-      return result.get().getSnapshot().get().getVersion();
+    Optional<Snapshot> snapshot = assetManager.getLatestSnapshot(mediaPackageId);
+    if (snapshot.isPresent()) {
+      return snapshot.get().getVersion();
     } else {
       throw new WorkflowOperationException(String.format("No last version found for mpId: {}", mediaPackageId));
     }

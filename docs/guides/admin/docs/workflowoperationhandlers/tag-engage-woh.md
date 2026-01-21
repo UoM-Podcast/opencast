@@ -13,24 +13,21 @@ Since no files have to be downloaded into the workspace, this operation is usual
 
 | configuration keys | example                        | description                                                                                                                                                                                                                                                                                                      | default value |
 |--------------------|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| source-tags        | "engage,atom,rss,-publish"     | Tag any media package elements with one of these (comma separated) tags. If a source-tag starts with a '-', media package elements with this tag will be excluded.                                                                                                                                               | EMPTY         |
+| source-tags        | "engage,-publish"              | Tag any media package elements with one of these (comma separated) tags. If a source-tag starts with a '-', media package elements with this tag will be excluded.                                                                                                                                               | EMPTY         |
 | source-flavors     | "presentation/trimmed"         | Tag any media package elements with one of these (comma separated) flavors.                                                                                                                                                                                                                                      | EMPTY         |
-| target-tags        | "tagged,+rss" / "-rss,+tagged" | Apply these (comma separated) tags to any media package elements. If a target-tag starts with a '-', it will be removed from preexisting tags, if a target-tag starts with a '+', it will be added to preexisting tags. If there is no prefix, all preexisting tags are removed and replaced by the target-tags. | EMPTY         |
+| target-tags        | "tagged,+exp" / "-exp,+tagged" | Apply these (comma separated) tags to any media package elements. If a target-tag starts with a '-', it will be removed from preexisting tags, if a target-tag starts with a '+', it will be added to preexisting tags. If there is no prefix, all preexisting tags are removed and replaced by the target-tags. | EMPTY         |
 | target-flavor      | "presentation/tagged"          | Apply this flavor to any media package elements.                                                                                                                                                                                                                                                                 | EMPTY         |
 
 Tags and flavors can be used in combination. For examples see the [tag](tag-woh.md) operation.
 
 ## Operation Example
 
-```xml
-    <operation
-    id="tag-engage"
-    description="Remove tag from composites in Engage">
-  <configurations>
-    <configuration key="source-flavors">presenter/*</configuration>
-    <configuration key="source-tags">engage-streaming</configuration>
-    <configuration key="target-flavor">presenter/tagged</configuration>
-    <configuration key="target-tags">+test</configuration>
-  </configurations>
-</operation>
+```yaml
+  - id: tag-engage
+    description: Remove tag from composites in Engage
+    configurations:
+      - source-flavors: presenter/*
+      - source-tags: engage-streaming
+      - target-flavor: presenter/tagged
+      - target-tags: +test
 ```

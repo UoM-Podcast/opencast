@@ -20,8 +20,6 @@
  */
 package org.opencastproject.workflow.handler.composer;
 
-import static com.entwinemedia.fn.Prelude.chuck;
-import static com.entwinemedia.fn.Stream.$;
 import static java.lang.String.format;
 import static org.opencastproject.util.JobUtil.getPayload;
 
@@ -39,7 +37,6 @@ import org.opencastproject.mediapackage.MediaPackageElementBuilderFactory;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
 import org.opencastproject.mediapackage.MediaPackageException;
-import org.opencastproject.mediapackage.MediaPackageSupport.Filters;
 import org.opencastproject.mediapackage.Track;
 import org.opencastproject.mediapackage.TrackSupport;
 import org.opencastproject.mediapackage.VideoStream;
@@ -60,9 +57,6 @@ import org.opencastproject.workflow.api.WorkflowOperationInstance;
 import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.Fn;
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
@@ -87,11 +81,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.UUID;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * The workflow definition for handling partial import operations
@@ -182,8 +178,8 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#start(org.opencastproject.workflow.api.WorkflowInstance,
-   *      JobContext)
+   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#start(
+   *      org.opencastproject.workflow.api.WorkflowInstance, JobContext)
    */
   @Override
   public WorkflowOperationResult start(final WorkflowInstance workflowInstance, JobContext context)
@@ -201,7 +197,7 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
         try {
           workspace.delete(elem.getURI());
         } catch (Exception e) {
-          logger.warn("Unable to delete element {}: {}", elem, e);
+          logger.warn("Unable to delete element {}", elem, e);
         }
       }
     }
@@ -214,33 +210,36 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     final Long operationId = operation.getId();
     //
     // read config options
-    final Opt<String> presenterFlavor = getOptConfig(operation, SOURCE_PRESENTER_FLAVOR);
-    final Opt<String> presentationFlavor = getOptConfig(operation, SOURCE_PRESENTATION_FLAVOR);
-    final MediaPackageElementFlavor smilFlavor = MediaPackageElementFlavor.parseFlavor(getConfig(operation, SOURCE_SMIL_FLAVOR));
+    final Optional<String> presenterFlavor = getOptConfig(operation, SOURCE_PRESENTER_FLAVOR);
+    final Optional<String> presentationFlavor = getOptConfig(operation, SOURCE_PRESENTATION_FLAVOR);
+    final MediaPackageElementFlavor smilFlavor = MediaPackageElementFlavor.parseFlavor(getConfig(operation,
+        SOURCE_SMIL_FLAVOR));
     final String concatEncodingProfile = getConfig(operation, CONCAT_ENCODING_PROFILE);
-    final Opt<String> concatOutputFramerate = getOptConfig(operation, CONCAT_OUTPUT_FRAMERATE);
+    final Optional<String> concatOutputFramerate = getOptConfig(operation, CONCAT_OUTPUT_FRAMERATE);
     final String trimEncodingProfile = getConfig(operation, TRIM_ENCODING_PROFILE);
     final MediaPackageElementFlavor targetPresenterFlavor = parseTargetFlavor(
             getConfig(operation, TARGET_PRESENTER_FLAVOR), "presenter");
     final MediaPackageElementFlavor targetPresentationFlavor = parseTargetFlavor(
             getConfig(operation, TARGET_PRESENTATION_FLAVOR), "presentation");
-    final Opt<EncodingProfile> forceProfile = getForceEncodingProfile(operation);
-    final boolean forceEncoding = BooleanUtils.toBoolean(getOptConfig(operation, FORCE_ENCODING).getOr("false"));
-    final boolean forceDivisible = BooleanUtils.toBoolean(getOptConfig(operation, ENFORCE_DIVISIBLE_BY_TWO).getOr("false"));
+    final boolean forceEncoding = BooleanUtils.toBoolean(getOptConfig(operation, FORCE_ENCODING).orElse("false"));
+    final Optional<EncodingProfile> forceProfile = getForceEncodingProfile(operation, forceEncoding);
+    final boolean forceDivisible = BooleanUtils.toBoolean(getOptConfig(operation, ENFORCE_DIVISIBLE_BY_TWO)
+        .orElse("false"));
     final List<String> requiredExtensions = getRequiredExtensions(operation);
     final String preencodeEncodingProfile = getConfig(operation, PREENCODE_ENCODING_PROFILE);
 
     //
     // further checks on config options
     // Skip the worklow if no presenter and presentation flavor has been configured
-    if (presenterFlavor.isNone() && presentationFlavor.isNone()) {
+    if (presenterFlavor.isEmpty() && presentationFlavor.isEmpty()) {
       logger.warn("No presenter and presentation flavor has been set.");
       return createResult(mediaPackage, Action.SKIP);
     }
 
     final EncodingProfile preencodeProfile = composerService.getProfile(preencodeEncodingProfile);
     if (preencodeProfile == null) {
-      throw new WorkflowOperationException("Preencode encoding profile '" + preencodeEncodingProfile + "' was not found");
+      throw new WorkflowOperationException("Preencode encoding profile '" + preencodeEncodingProfile
+          + "' was not found");
     }
 
     final EncodingProfile concatProfile = composerService.getProfile(concatEncodingProfile);
@@ -249,7 +248,7 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     }
 
     float outputFramerate = -1.0f;
-    if (concatOutputFramerate.isSome()) {
+    if (concatOutputFramerate.isPresent()) {
       if (NumberUtils.isNumber(concatOutputFramerate.get())) {
         logger.info("Using concat output framerate");
         outputFramerate = NumberUtils.toFloat(concatOutputFramerate.get());
@@ -321,7 +320,8 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
                       extendingTime);
               tracks.add(getSilentAudio(extendingTime, elementsToClean, operationId));
             } else {
-              logger.info("Extending {} track end with last image frame by {} seconds", sourceType.get(), extendingTime);
+              logger.info("Extending {} track end with last image frame by {} seconds",
+                  sourceType.get(), extendingTime);
               Attachment tempLastImageFrame = extractLastImageFrame(lastTrack, elementsToClean);
               tracks.add(createVideoFromImage(tempLastImageFrame, extendingTime, elementsToClean));
             }
@@ -373,8 +373,8 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     MediaPackageElementFlavor adjustedTargetPresenterFlavor = targetPresenterFlavor;
     MediaPackageElementFlavor adjustedTargetPresentationFlavor = targetPresentationFlavor;
     for (final Entry<String, Job> job : jobs.entrySet()) {
-      final Opt<Job> concatJob = JobUtil.update(serviceRegistry, job.getValue());
-      if (concatJob.isSome()) {
+      final Optional<Job> concatJob = JobUtil.update(serviceRegistry, job.getValue());
+      if (concatJob.isPresent()) {
         final String concatPayload = concatJob.get().getPayload();
         if (concatPayload != null) {
           final Track concatTrack;
@@ -437,8 +437,10 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
             trackDurationInSeconds, elementsToClean);
 
     // New: Mux within presentation and presenter
-    queueTime += checkForMuxing(mediaPackage, targetPresenterFlavor, deriveAudioFlavor(targetPresenterFlavor), false, elementsToClean);
-    queueTime += checkForMuxing(mediaPackage, targetPresentationFlavor, deriveAudioFlavor(targetPresentationFlavor), false, elementsToClean);
+    queueTime += checkForMuxing(mediaPackage, targetPresenterFlavor, deriveAudioFlavor(targetPresenterFlavor),
+        false, elementsToClean);
+    queueTime += checkForMuxing(mediaPackage, targetPresentationFlavor, deriveAudioFlavor(targetPresentationFlavor),
+        false, elementsToClean);
 
     adjustAudioTrackTargetFlavor(mediaPackage, targetPresenterFlavor);
     adjustAudioTrackTargetFlavor(mediaPackage, targetPresentationFlavor);
@@ -455,12 +457,12 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
   }
 
   protected long checkForEncodeToStandard(MediaPackage mediaPackage, boolean forceEncoding,
-          Opt<EncodingProfile> forceProfile, List<String> requiredExtensions,
+          Optional<EncodingProfile> forceProfile, List<String> requiredExtensions,
           MediaPackageElementFlavor targetPresenterFlavor, MediaPackageElementFlavor targetPresentationFlavor,
           List<MediaPackageElement> elementsToClean) throws EncoderException, IOException, MediaPackageException,
           NotFoundException, ServiceRegistryException, WorkflowOperationException {
     long queueTime = 0;
-    if (forceProfile.isSome()) {
+    if (forceProfile.isPresent()) {
       Track[] targetPresenterTracks = mediaPackage.getTracks(targetPresenterFlavor);
       for (Track track : targetPresenterTracks) {
         if (forceEncoding || trackNeedsTobeEncodedToStandard(track, requiredExtensions)) {
@@ -507,7 +509,8 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     } else {
       targetCopyFlavor = deriveAudioFlavor(targetFlavor);
     }
-    logger.debug("Copying track {} with flavor {} using target flavor {}", track.getURI(), track.getFlavor(), targetCopyFlavor);
+    logger.debug("Copying track {} with flavor {} using target flavor {}", track.getURI(), track.getFlavor(),
+        targetCopyFlavor);
     copyPartialToSource(mediaPackage, targetCopyFlavor, track);
   }
 
@@ -534,15 +537,15 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     }
   }
 
-  private TrackSelector mkTrackSelector(Opt<String> flavor) throws WorkflowOperationException {
+  private TrackSelector mkTrackSelector(Optional<String> flavor) throws WorkflowOperationException {
     final TrackSelector s = new TrackSelector();
-    for (String fs : flavor) {
+    if (flavor.isPresent()) {
       try {
-        final MediaPackageElementFlavor f = MediaPackageElementFlavor.parseFlavor(fs);
+        final MediaPackageElementFlavor f = MediaPackageElementFlavor.parseFlavor(flavor.get());
         s.addFlavor(f);
         s.addFlavor(deriveAudioFlavor(f));
       } catch (IllegalArgumentException e) {
-        throw new WorkflowOperationException("Flavor '" + fs + "' is malformed");
+        throw new WorkflowOperationException("Flavor '" + flavor.get() + "' is malformed");
       }
     }
     return s;
@@ -558,13 +561,16 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
    * @param forceDivisible
    *          Whether to enforce the track's dimension to be divisible by two
    */
-  protected Job startConcatJob(EncodingProfile profile, List<Track> tracks, float outputFramerate, boolean forceDivisible)
+  protected Job startConcatJob(EncodingProfile profile, List<Track> tracks, float outputFramerate,
+      boolean forceDivisible)
           throws MediaPackageException, EncoderException {
     final Dimension dim = determineDimension(tracks, forceDivisible);
     if (outputFramerate > 0.0) {
-      return composerService.concat(profile.getIdentifier(), dim, outputFramerate, true, Collections.toArray(Track.class, tracks));
+      return composerService.concat(profile.getIdentifier(), dim, outputFramerate, true,
+          Collections.toArray(Track.class, tracks));
     } else {
-      return composerService.concat(profile.getIdentifier(), dim, true, Collections.toArray(Track.class, tracks));    }
+      return composerService.concat(profile.getIdentifier(), dim, true, Collections.toArray(Track.class, tracks));
+    }
   }
 
   /**
@@ -597,7 +603,8 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
       configExtensions = StringUtils.trimToNull(getConfig(operation, REQUIRED_EXTENSIONS));
     } catch (WorkflowOperationException e) {
       logger.info(
-              "Required extensions configuration key not specified so will be using default '{}'. Any input file not matching this extension will be re-encoded.",
+              "Required extensions configuration key not specified so will be using default '{}'. Any input file not "
+                  + "matching this extension will be re-encoded.",
               DEFAULT_REQUIRED_EXTENSION);
     }
     if (configExtensions != null) {
@@ -619,17 +626,24 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
    * @throws WorkflowOperationException
    *           if there is no such encoding profile or if no encoding profile is configured but force-encoding is true
    */
-  protected Opt<EncodingProfile> getForceEncodingProfile(WorkflowOperationInstance woi)
+  protected Optional<EncodingProfile> getForceEncodingProfile(WorkflowOperationInstance woi, boolean forceEncoding)
           throws WorkflowOperationException {
-    return getOptConfig(woi, FORCE_ENCODING_PROFILE).map(new Fn<String, EncodingProfile>() {
-      @Override
-      public EncodingProfile apply(String profileName) {
-        for (EncodingProfile profile : Opt.nul(composerService.getProfile(profileName))) {
-          return profile;
-        }
-        return chuck(new WorkflowOperationException("Force encoding profile '" + profileName + "' was not found"));
-      }
-    }).orError(new WorkflowOperationException("Force encoding profile must be set!"));
+    if (!forceEncoding) {
+      return Optional.empty();
+    }
+
+    Optional<String> profileNameOpt = getOptConfig(woi, FORCE_ENCODING_PROFILE);
+    if (forceEncoding && profileNameOpt.isEmpty()) {
+      throw new WorkflowOperationException("Force encoding profile must be set!");
+    }
+
+    String profileName = profileNameOpt.get();
+    EncodingProfile profile = composerService.getProfile(profileName);
+    if (profile == null) {
+      throw new WorkflowOperationException("Force encoding profile '" + profileName + "' was not found");
+    }
+
+    return Optional.of(profile);
   }
 
   /**
@@ -667,8 +681,9 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
    */
   private Dimension determineDimension(List<Track> tracks, boolean forceDivisible) {
     Tuple<Track, Dimension> trackDimension = getLargestTrack(tracks);
-    if (trackDimension == null)
+    if (trackDimension == null) {
       return null;
+    }
 
     if (forceDivisible && (trackDimension.getB().getHeight() % 2 != 0 || trackDimension.getB().getWidth() % 2 != 0)) {
       Dimension scaledDimension = Dimension.dimension((trackDimension.getB().getWidth() / 2) * 2, (trackDimension
@@ -693,8 +708,9 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     Track track = null;
     Dimension dimension = null;
     for (Track t : tracks) {
-      if (!t.hasVideo())
+      if (!t.hasVideo()) {
         continue;
+      }
 
       VideoStream[] videoStreams = TrackSupport.byType(t.getStreams(), VideoStream.class);
       int frameWidth = videoStreams[0].getFrameWidth();
@@ -704,8 +720,9 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
         track = t;
       }
     }
-    if (track == null || dimension == null)
+    if (track == null || dimension == null) {
       return null;
+    }
 
     return Tuple.tuple(track, dimension);
   }
@@ -715,8 +732,9 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
           throws EncoderException, MediaPackageException, WorkflowOperationException, NotFoundException,
           ServiceRegistryException, IOException {
     MediaPackageElement[] elements = mediaPackage.getElementsByFlavor(targetFlavor);
-    if (elements.length == 0)
+    if (elements.length == 0) {
       return 0;
+    }
 
     Track trackToTrim = (Track) elements[0];
     if (elements.length == 1 && trackToTrim.getDuration() / 1000 > videoDuration) {
@@ -731,13 +749,19 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
   }
 
   private List<Track> getPureVideoTracks(MediaPackage mediaPackage, MediaPackageElementFlavor videoFlavor) {
-    return $(mediaPackage.getTracks()).filter(Filters.matchesFlavor(videoFlavor).toFn())
-            .filter(Filters.hasVideo.toFn()).filter(Filters.hasNoAudio.toFn()).toList();
+    return Arrays.stream(mediaPackage.getTracks())
+        .filter(track -> track.getFlavor().matches(videoFlavor))
+        .filter(Track::hasVideo)
+        .filter(track -> !track.hasAudio())
+        .collect(Collectors.toList());
   }
 
   private List<Track> getPureAudioTracks(MediaPackage mediaPackage, MediaPackageElementFlavor audioFlavor) {
-    return $(mediaPackage.getTracks()).filter(Filters.matchesFlavor(audioFlavor).toFn())
-            .filter(Filters.hasAudio.toFn()).filter(Filters.hasNoVideo.toFn()).toList();
+    return Arrays.stream(mediaPackage.getTracks())
+        .filter(track -> track.getFlavor().matches(audioFlavor))
+        .filter(Track::hasAudio)
+        .filter(track -> !track.hasVideo())
+        .collect(Collectors.toList());
   }
 
   protected long checkForMuxing(MediaPackage mediaPackage, MediaPackageElementFlavor targetPresentationFlavor,
@@ -826,11 +850,10 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
       File originalFile = workspace.get(copyTrack.getURI());
       in = new FileInputStream(originalFile);
 
-      String elementID = UUID.randomUUID().toString();
-      copyTrack.setURI(workspace.put(mediaPackage.getIdentifier().toString(), elementID,
+      copyTrack.generateIdentifier();
+      copyTrack.setURI(workspace.put(mediaPackage.getIdentifier().toString(), copyTrack.getIdentifier(),
               FilenameUtils.getName(copyTrack.getURI().toString()), in));
       copyTrack.setFlavor(targetFlavor);
-      copyTrack.setIdentifier(elementID);
       copyTrack.referTo(track);
       mediaPackage.add(copyTrack);
       logger.info("Copied partial source element {} to {} with target flavor {}", track.toString(),
@@ -912,14 +935,16 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
           List<MediaPackageElement> elementsToClean) throws EncoderException, MediaPackageException,
           WorkflowOperationException, NotFoundException, ServiceRegistryException, IOException {
     Job trimJob = composerService.trim(track, trimProfile.getIdentifier(), 0, (long) (duration * 1000));
-    if (!waitForStatus(trimJob).isSuccess())
+    if (!waitForStatus(trimJob).isSuccess()) {
       throw new WorkflowOperationException("Trimming of track " + track + " failed");
+    }
 
     trimJob = serviceRegistry.getJob(trimJob.getId());
 
     Track trimmedTrack = (Track) MediaPackageElementParser.getFromXml(trimJob.getPayload());
-    if (trimmedTrack == null)
+    if (trimmedTrack == null) {
       throw new WorkflowOperationException("Trimming track " + track + " failed to produce a track");
+    }
 
     URI uri = workspace.moveTo(trimmedTrack.getURI(), mediaPackage.getIdentifier().toString(),
             trimmedTrack.getIdentifier(), FilenameUtils.getName(track.getURI().toString()));
@@ -1015,13 +1040,15 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     elementsToClean.add(emptyAttachment);
 
     final Job silentAudioJob = composerService.imageToVideo(emptyAttachment, SILENT_AUDIO_PROFILE, time);
-    if (!waitForStatus(silentAudioJob).isSuccess())
+    if (!waitForStatus(silentAudioJob).isSuccess()) {
       throw new WorkflowOperationException("Silent audio job did not complete successfully");
+    }
 
     // Get the latest copy
     try {
-      for (final String payload : getPayload(serviceRegistry, silentAudioJob)) {
-        final Track silentAudio = (Track) MediaPackageElementParser.getFromXml(payload);
+      Optional<String> payloadOpt = getPayload(serviceRegistry, silentAudioJob);
+      if (payloadOpt.isPresent()) {
+        final Track silentAudio = (Track) MediaPackageElementParser.getFromXml(payloadOpt.get());
         elementsToClean.add(silentAudio);
         return silentAudio;
       }
@@ -1035,8 +1062,9 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
   private Track createVideoFromImage(Attachment image, double time, List<MediaPackageElement> elementsToClean)
           throws EncoderException, MediaPackageException, WorkflowOperationException, NotFoundException {
     Job imageToVideoJob = composerService.imageToVideo(image, IMAGE_MOVIE_PROFILE, time);
-    if (!waitForStatus(imageToVideoJob).isSuccess())
+    if (!waitForStatus(imageToVideoJob).isSuccess()) {
       throw new WorkflowOperationException("Image to video job did not complete successfully");
+    }
 
     // Get the latest copy
     try {
@@ -1052,8 +1080,9 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
   private Attachment extractImage(Track presentationTrack, double time, List<MediaPackageElement> elementsToClean)
           throws EncoderException, MediaPackageException, WorkflowOperationException, NotFoundException {
     Job extractImageJob = composerService.image(presentationTrack, PREVIEW_PROFILE, time);
-    if (!waitForStatus(extractImageJob).isSuccess())
+    if (!waitForStatus(extractImageJob).isSuccess()) {
       throw new WorkflowOperationException("Extract image frame video job did not complete successfully");
+    }
 
     // Get the latest copy
     try {
@@ -1073,8 +1102,9 @@ public class PartialImportWorkflowOperationHandler extends AbstractWorkflowOpera
     Map<String, String> properties = new HashMap<String, String>();
 
     Job extractImageJob = composerService.image(presentationTrack, IMAGE_FRAME_PROFILE, properties);
-    if (!waitForStatus(extractImageJob).isSuccess())
+    if (!waitForStatus(extractImageJob).isSuccess()) {
       throw new WorkflowOperationException("Extract image frame video job did not complete successfully");
+    }
 
     // Get the latest copy
     try {

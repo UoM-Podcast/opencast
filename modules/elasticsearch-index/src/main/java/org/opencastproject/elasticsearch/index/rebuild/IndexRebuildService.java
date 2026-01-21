@@ -65,7 +65,11 @@ public class IndexRebuildService implements BundleActivator {
    * Attention: The order is relevant for the index rebuild and should not be changed!
    */
   public enum Service {
-    Themes, Series, Scheduler, AssetManager, Comments, Workflow
+    Series, Scheduler, AssetManager, Comments, Workflow, Search
+  }
+
+  public enum DataType {
+    ALL, ACL
   }
 
   public enum State {
@@ -118,6 +122,23 @@ public class IndexRebuildService implements BundleActivator {
   }
 
   /**
+   * Get the service by its enum identifier.
+   *
+   * @param service
+   *         The enum identifying the service.
+   *
+   * @return the service
+   * @throws IllegalStateException
+   *         If the service is not registered.
+   */
+  public synchronized IndexProducer getIndexProducer(Service service) throws IllegalStateException {
+    if (!indexProducers.containsKey(service)) {
+      throw new IllegalStateException(format("Service %s is not available", service));
+    }
+    return indexProducers.get(service);
+  }
+
+  /**
    * Clear and rebuild the index from all services.
    *
    * @param index
@@ -128,90 +149,74 @@ public class IndexRebuildService implements BundleActivator {
    * @throws IndexRebuildException
    *           Thrown if the index rebuild failed.
    */
-  public synchronized void rebuildIndex(ElasticsearchIndex index)
-          throws IOException, IndexRebuildException {
+  public synchronized void rebuildIndex(ElasticsearchIndex index) throws IOException, IndexRebuildException,
+          IllegalArgumentException {
     index.clear();
-    logger.info("{} Index cleared, starting complete rebuild.", index.getIndexName());
+    logger.info("Index cleared, starting complete rebuild.");
     setAllRebuildStates(IndexRebuildService.State.PENDING);
     for (IndexRebuildService.Service service: IndexRebuildService.Service.values()) {
-      rebuildIndex(index, service);
+      rebuildIndexInternal(getIndexProducer(service), DataType.ALL);
     }
   }
 
   /**
-   * Partially rebuild the index from a specific service.
+   * Partially rebuild the index from a specific service and maybe only a specific data type.
    *
-   * @param index
-   *           The index to rebuild.
-   * @param serviceName
-   *           The name of the {@link Service}.
-   *
+   * @param indexProducer
+   *           The service to re-index from.
+   * @param dataType
+   *           The data type to re-index.
    * @throws IllegalArgumentException
-   *           Thrown if the service doesn't exist.
+   *           Thrown if the service doesn't support the data type.
    * @throws IndexRebuildException
    *           Thrown if the index rebuild failed.
    */
-  public synchronized void rebuildIndex(ElasticsearchIndex index, String serviceName)
+  public synchronized void rebuildIndex(IndexProducer indexProducer, DataType dataType)
           throws IllegalArgumentException, IndexRebuildException {
-    IndexRebuildService.Service service = IndexRebuildService.Service.valueOf(serviceName);
-    logger.info("Starting partial rebuild of the {} index from service '{}'.", index.getIndexName(), service);
-    setRebuildState(service, IndexRebuildService.State.PENDING);
-    rebuildIndex(index, service);
+    logger.info("Starting partial rebuild of the {} index.", indexProducer.getService());
+    setRebuildState(indexProducer.getService(), IndexRebuildService.State.PENDING);
+    rebuildIndexInternal(indexProducer, dataType);
   }
 
   /**
    * Start Index Rebuild from the specified service and then do all that follow. Can be used to resume a complete index
    * rebuild that was interrupted.
    *
-   * @param index
-   *           The index to rebuild.
-   * @param serviceName
-   *           The name of the {@link Service} to start with.
+   * @param startingService
+   *           The {@link Service} to start with.
    *
    * @throws IllegalArgumentException
    *           Thrown if the service doesn't exist.
    * @throws IndexRebuildException
    *           Thrown if the index rebuild failed.
    */
-  public synchronized void resumeIndexRebuild(ElasticsearchIndex index, String serviceName)
+  public synchronized void resumeIndexRebuild(Service startingService)
           throws IllegalArgumentException, IndexRebuildException {
-    IndexRebuildService.Service startingService = IndexRebuildService.Service.valueOf(serviceName);
-    logger.info("Resuming rebuild of {} index with service '{}'.", index.getIndexName(), startingService);
+    logger.info("Resuming rebuild of {} index.", startingService);
     setSubsetOfRebuildStates(startingService, IndexRebuildService.State.PENDING);
     Service[] services = IndexRebuildService.Service.values();
     for (int i = startingService.ordinal(); i < services.length; i++) {
-      rebuildIndex(index, services[i]);
+      rebuildIndexInternal(getIndexProducer(services[i]), DataType.ALL);
     }
   }
 
-  /**
-   * Trigger repopulation of the index with data from a specific service.
-   *
-   * @param index
-   *           The index to rebuild.
-   * @param service
-   *          The {@link IndexRebuildService.Service} to re-add data from.
-   *
-   * @throws IndexRebuildException
-   *           Thrown if the index rebuild failed.
-   */
-  private void rebuildIndex(ElasticsearchIndex index, IndexRebuildService.Service service)
-          throws IndexRebuildException {
-
-    if (!indexProducers.containsKey(service)) {
-      throw new IllegalStateException(format("Service %s is not available", service));
+  private void rebuildIndexInternal(IndexProducer indexProducer, DataType dataType) throws IndexRebuildException,
+          IllegalArgumentException {
+    if (!indexProducer.dataTypeSupported(dataType)) {
+      throw new IllegalArgumentException("Service " + indexProducer.getService() + "doesn't support data type "
+              + dataType + " for index rebuild.");
     }
-
-    IndexProducer indexProducer = indexProducers.get(service);
-    logger.info("Starting to rebuild the {} index from service '{}'", index.getIndexName(), service);
+    Service service = indexProducer.getService();
+    logger.info("Starting to rebuild the {} index", service);
     setRebuildState(service, IndexRebuildService.State.RUNNING);
     try {
-      indexProducer.repopulate();
+      indexProducer.repopulate(dataType);
       setRebuildState(service, IndexRebuildService.State.OK);
     } catch (IndexRebuildException e) {
       setRebuildState(service, IndexRebuildService.State.ERROR);
+      throw e;
     }
-    logger.info("Finished to rebuild the {} index from service '{}'", index.getIndexName(), service);
+    logger.info("Finished rebuilding the {} index", service);
   }
 
   /**
@@ -324,15 +329,6 @@ public class IndexRebuildService implements BundleActivator {
   }
 
   /**
-   * @param service
-   *           the rebuild service
-   * @return the repopulation state of a single rebuild service.
-   */
-  public String getRebuildState(IndexRebuildService.Service service) {
-    return rebuildStates.get(service).toString();
-  }
-
-  /**
    * Set all rebuild States.
    *
    * @param state
@@ -347,7 +343,7 @@ public class IndexRebuildService implements BundleActivator {
   /**
    * Set a subset of rebuild States following the rebuild order.
    *
-   * @param startingservice
+   * @param startingService
    *           the service to start from
    * @param state
    *           the state to be set

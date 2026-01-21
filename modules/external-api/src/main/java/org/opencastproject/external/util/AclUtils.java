@@ -20,15 +20,13 @@
  */
 package org.opencastproject.external.util;
 
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 
 import org.opencastproject.security.api.AccessControlEntry;
 import org.opencastproject.security.api.AccessControlList;
 
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
@@ -84,9 +82,8 @@ public final class AclUtils {
         AccessControlEntry ace = new AccessControlEntry(role, action, Boolean.parseBoolean(allow));
         entries.add(ace);
       } else {
-        throw new IllegalArgumentException(
-                String.format(
-                        "One of the access control elements is missing a property. The action was '%s', allow was '%s' and the role was '%s'",
+        throw new IllegalArgumentException(String.format("One of the access control elements is missing a property. "
+                + "The action was '%s', allow was '%s' and the role was '%s'",
                         action, allow, role));
       }
     }
@@ -98,14 +95,16 @@ public final class AclUtils {
    *
    * @param acl
    *          The {@link AccessControlList} to serialize.
-   * @return A {@link JValue} representation of the {@link AccessControlList}
+   * @return A {@link JsonArray} representation of the {@link AccessControlList}
    */
-  public static List<JValue> serializeAclToJson(AccessControlList acl) {
-    List<JValue> entries = new ArrayList<JValue>();
+  public static JsonArray serializeAclToJson(AccessControlList acl) {
+    JsonArray entries = new JsonArray();
     for (AccessControlEntry ace : acl.getEntries()) {
-      entries.add(obj(
-          f(ALLOW_JSON_KEY, v(ace.isAllow())), f(ACTION_JSON_KEY, v(ace.getAction(), Jsons.BLANK)),
-          f(ROLE_JSON_KEY, v(ace.getRole(), Jsons.BLANK))));
+      JsonObject entry = new JsonObject();
+      entry.addProperty(ALLOW_JSON_KEY, ace.isAllow());
+      entry.addProperty(ACTION_JSON_KEY, safeString(ace.getAction()));
+      entry.addProperty(ROLE_JSON_KEY, safeString(ace.getRole()));
+      entries.add(entry);
     }
     return entries;
   }

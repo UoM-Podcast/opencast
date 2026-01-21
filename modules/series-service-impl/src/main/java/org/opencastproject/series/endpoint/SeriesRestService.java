@@ -61,12 +61,9 @@ import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
-import com.entwinemedia.fn.Stream;
-import com.entwinemedia.fn.data.Opt;
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
-import com.entwinemedia.fn.data.json.SimpleSerializer;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonPrimitive;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -76,6 +73,7 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,7 +107,7 @@ import javax.ws.rs.core.Response;
  * REST endpoint for Series Service.
  *
  */
-@Path("/")
+@Path("/series")
 @RestService(
     name = "seriesservice",
     title = "Series Service",
@@ -133,6 +131,7 @@ import javax.ws.rs.core.Response;
         "opencast.service.path=/series"
     }
 )
+@JaxrsResource
 public class SeriesRestService {
 
   private static final String SERIES_ELEMENT_CONTENT_TYPE_PREFIX = "series/";
@@ -1177,11 +1176,15 @@ public class SeriesRestService {
   )
   public Response getSeriesElements(@PathParam("seriesId") String seriesId) {
     try {
-      Opt<Map<String, byte[]>> optSeriesElements = seriesService.getSeriesElements(seriesId);
-      if (optSeriesElements.isSome()) {
+      Optional<Map<String, byte[]>> optSeriesElements = seriesService.getSeriesElements(seriesId);
+      if (optSeriesElements.isPresent()) {
         Map<String, byte[]> seriesElements = optSeriesElements.get();
-        JValue jsonArray = Jsons.arr(Stream.$(seriesElements.keySet()).map(Jsons.Functions.stringToJValue));
-        return Response.ok(new SimpleSerializer().toJson(jsonArray)).build();
+        JsonArray jsonArray = new JsonArray();
+        for (String key : seriesElements.keySet()) {
+          jsonArray.add(new JsonPrimitive(key));
+        }
+        String json = new Gson().toJson(jsonArray);
+        return Response.ok(json).build();
       } else {
         return R.notFound();
       }
@@ -1223,8 +1226,8 @@ public class SeriesRestService {
       @PathParam("elementType") String elementType
   ) {
     try {
-      Opt<byte[]> data = seriesService.getSeriesElementData(seriesId, elementType);
-      if (data.isSome()) {
+      Optional<byte[]> data = seriesService.getSeriesElementData(seriesId, elementType);
+      if (data.isPresent()) {
         return Response.ok().entity(new ByteArrayInputStream(data.get()))
                 .type(SERIES_ELEMENT_CONTENT_TYPE_PREFIX + elementType).build();
       } else {
@@ -1267,7 +1270,7 @@ public class SeriesRestService {
   ) {
     try {
       DublinCoreCatalog dc = dcService.load(new ByteArrayInputStream(dcString.getBytes(StandardCharsets.UTF_8)));
-      boolean elementExists = seriesService.getSeriesElementData(seriesId, type).isSome();
+      boolean elementExists = seriesService.getSeriesElementData(seriesId, type).isPresent();
       if (seriesService.updateExtendedMetadata(seriesId, type, dc)) {
         if (elementExists) {
           return R.noContent();
@@ -1312,7 +1315,7 @@ public class SeriesRestService {
     try {
       is = request.getInputStream();
       final byte[] data = IOUtils.toByteArray(is);
-      boolean elementExists = seriesService.getSeriesElementData(seriesId, elementType).isSome();
+      boolean elementExists = seriesService.getSeriesElementData(seriesId, elementType).isPresent();
       if (seriesService.updateSeriesElement(seriesId, elementType, data)) {
         if (elementExists) {
           return R.noContent();

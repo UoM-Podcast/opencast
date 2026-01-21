@@ -33,6 +33,7 @@ import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
 import org.opencastproject.mediapackage.MediaPackageException;
 import org.opencastproject.mediapackage.Track;
+import org.opencastproject.mediapackage.selector.SimpleElementSelector;
 import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
@@ -136,8 +137,8 @@ public class ExecuteManyWorkflowOperationHandler extends AbstractWorkflowOperati
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#start(org.opencastproject.workflow.api.WorkflowInstance,
-   *      JobContext)
+   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#start(
+   *      org.opencastproject.workflow.api.WorkflowInstance, JobContext)
    */
   @Override
   public WorkflowOperationResult start(WorkflowInstance workflowInstance, JobContext context)
@@ -170,62 +171,66 @@ public class ExecuteManyWorkflowOperationHandler extends AbstractWorkflowOperati
     String sourceVideo = StringUtils.trimToNull(operation.getConfiguration(SOURCE_VIDEO_PROPERTY));
     String sourceSubtitle = StringUtils.trimToNull(operation.getConfiguration(SOURCE_SUBTITLE_PROPERTY));
     List<MediaPackageElementFlavor> targetFlavorList = tagsAndFlavors.getTargetFlavors();
-    List<String> targetTags = tagsAndFlavors.getTargetTags();
+    ConfiguredTagsAndFlavors.TargetTags targetTags = tagsAndFlavors.getTargetTags();
     String outputFilename = StringUtils.trimToNull(operation.getConfiguration(OUTPUT_FILENAME_PROPERTY));
     String expectedTypeStr = StringUtils.trimToNull(operation.getConfiguration(EXPECTED_TYPE_PROPERTY));
 
     boolean setWfProps = Boolean.valueOf(StringUtils.trimToNull(operation.getConfiguration(SET_WF_PROPS_PROPERTY)));
 
-    MediaPackageElementFlavor matchingFlavor = null;
-    if (!sourceFlavor.isEmpty())
-      matchingFlavor = sourceFlavor.get(0);
-
     // Unmarshall target flavor
     MediaPackageElementFlavor targetFlavor = null;
-    if (!targetFlavorList.isEmpty())
+    if (!targetFlavorList.isEmpty()) {
       targetFlavor = targetFlavorList.get(0);
+    }
 
     // Unmarshall expected mediapackage element type
     MediaPackageElement.Type expectedType = null;
     if (expectedTypeStr != null) {
-      for (MediaPackageElement.Type type : MediaPackageElement.Type.values())
+      for (MediaPackageElement.Type type : MediaPackageElement.Type.values()) {
         if (type.toString().equalsIgnoreCase(expectedTypeStr)) {
           expectedType = type;
           break;
         }
-
-      if (expectedType == null)
+      }
+      if (expectedType == null) {
         throw new WorkflowOperationException("'" + expectedTypeStr + "' is not a valid element type");
+      }
     }
 
     // Select the tracks based on source flavors and tags
     Set<MediaPackageElement> inputSet = new HashSet<>();
-    for (MediaPackageElement element : mediaPackage.getElementsByTags(sourceTagList)) {
-      MediaPackageElementFlavor elementFlavor = element.getFlavor();
-      if (sourceFlavor == null || (elementFlavor != null && elementFlavor.matches(matchingFlavor))) {
 
-        // Check for audio or video streams in the track, if specified
-        if ((element instanceof Track) && (sourceAudio != null)
-            && (Boolean.parseBoolean(sourceAudio) != ((Track) element).hasAudio())) {
-          continue;
-        }
+    SimpleElementSelector elementSelector = new SimpleElementSelector();
+    for (MediaPackageElementFlavor flavor : sourceFlavor) {
+      elementSelector.addFlavor(flavor);
+    }
+    for (String tag : sourceTagList) {
+      elementSelector.addTag(tag);
+    }
 
-        if ((element instanceof Track) && (sourceVideo != null)
-            && (Boolean.parseBoolean(sourceVideo) != ((Track) element).hasVideo())) {
-          continue;
-        }
-
-        if ((element instanceof Track) && (sourceSubtitle != null)
-            && (Boolean.parseBoolean(sourceSubtitle) != ((Track) element).hasSubtitle())) {
-          continue;
-        }
-
-        inputSet.add(element);
+    for (MediaPackageElement element : elementSelector.select(mediaPackage, true)) {
+      // Check for audio or video streams in the track, if specified
+      if ((element instanceof Track) && (sourceAudio != null)
+          && (Boolean.parseBoolean(sourceAudio) != ((Track) element).hasAudio())) {
+        continue;
       }
+
+      if ((element instanceof Track) && (sourceVideo != null)
+          && (Boolean.parseBoolean(sourceVideo) != ((Track) element).hasVideo())) {
+        continue;
+      }
+
+      if ((element instanceof Track) && (sourceSubtitle != null)
+          && (Boolean.parseBoolean(sourceSubtitle) != ((Track) element).hasSubtitle())) {
+        continue;
+      }
+
+      inputSet.add(element);
     }
 
     if (inputSet.size() == 0) {
-      logger.warn("Mediapackage {} has no suitable elements to execute the command {} based on tags {}, flavor {}, sourceAudio {}, sourceVideo {}, sourceSubtitle {}",
+      logger.warn("Mediapackage {} has no suitable elements to execute the command {} based on tags {}, flavor {}, "
+              + "sourceAudio {}, sourceVideo {}, sourceSubtitle {}",
               mediaPackage, exec, sourceTagList, sourceFlavor, sourceAudio, sourceVideo, sourceSubtitle);
       return createResult(mediaPackage, Action.CONTINUE);
     }
@@ -239,12 +244,14 @@ public class ExecuteManyWorkflowOperationHandler extends AbstractWorkflowOperati
       MediaPackageElement[] resultElements = new MediaPackageElement[inputElements.length];
       long totalTimeInQueue = 0;
 
-      for (int i = 0; i < inputElements.length; i++)
+      for (int i = 0; i < inputElements.length; i++) {
         jobs[i] = executeService.execute(exec, params, inputElements[i], outputFilename, expectedType, load);
+      }
 
       // Wait for all jobs to be finished
-      if (!waitForStatus(jobs).isSuccess())
+      if (!waitForStatus(jobs).isSuccess()) {
         throw new WorkflowOperationException("Execute operation failed");
+      }
 
       // Find which output elements are tracks and inspect them
       HashMap<Integer, Job> jobMap = new HashMap<>();
@@ -256,13 +263,15 @@ public class ExecuteManyWorkflowOperationHandler extends AbstractWorkflowOperati
           if (resultElements[i].getElementType() == MediaPackageElement.Type.Track) {
             jobMap.put(i, inspectionService.inspect(resultElements[i].getURI()));
           }
-        } else
+        } else {
           resultElements[i] = inputElements[i];
+        }
       }
 
       if (jobMap.size() > 0) {
-        if (!waitForStatus(jobMap.values().toArray(new Job[jobMap.size()])).isSuccess())
+        if (!waitForStatus(jobMap.values().toArray(new Job[jobMap.size()])).isSuccess()) {
           throw new WorkflowOperationException("Execute operation failed in track inspection");
+        }
 
         for (Entry<Integer, Job> entry : jobMap.entrySet()) {
           // Add this job's queue time to the total
@@ -278,7 +287,10 @@ public class ExecuteManyWorkflowOperationHandler extends AbstractWorkflowOperati
             // The job payload is a file with set of properties for the workflow
             final Properties properties = new Properties();
             File propertiesFile = workspace.get(resultElements[i].getURI());
-            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(propertiesFile), StandardCharsets.UTF_8)) {
+            try (InputStreamReader reader = new InputStreamReader(
+                new FileInputStream(propertiesFile),
+                StandardCharsets.UTF_8
+            )) {
               properties.load(reader);
             }
             logger.debug("Loaded {} properties from {}", properties.size(), propertiesFile);
@@ -318,16 +330,7 @@ public class ExecuteManyWorkflowOperationHandler extends AbstractWorkflowOperati
         }
 
         // Set new tags
-        if (targetTags != null) {
-          // Assume the tags starting with "-" means we want to eliminate such tags form the result element
-          for (String tag : targetTags) {
-            if (tag.startsWith("-"))
-              // We remove the tag resulting from stripping all the '-' characters at the beginning of the tag
-              resultElements[i].removeTag(tag.replaceAll("^-+", ""));
-            else
-              resultElements[i].addTag(tag);
-          }
-        }
+        applyTargetTagsToElement(targetTags, resultElements[i]);
       }
 
       WorkflowOperationResult result = createResult(mediaPackage, wfProps, Action.CONTINUE, totalTimeInQueue);
@@ -352,8 +355,8 @@ public class ExecuteManyWorkflowOperationHandler extends AbstractWorkflowOperati
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#skip(org.opencastproject.workflow.api.WorkflowInstance,
-   *      JobContext)
+   * @see org.opencastproject.workflow.api.WorkflowOperationHandler#skip(
+   *      org.opencastproject.workflow.api.WorkflowInstance, JobContext)
    */
   @Override
   public WorkflowOperationResult skip(WorkflowInstance workflowInstance, JobContext context)

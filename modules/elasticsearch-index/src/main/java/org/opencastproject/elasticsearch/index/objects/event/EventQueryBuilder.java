@@ -89,6 +89,15 @@ public class EventQueryBuilder extends AbstractElasticsearchQueryBuilder<EventSe
       }
     }
 
+    // filter by extended metadata
+    for (String flavor: query.getExtendedMetadata().keySet()) {
+      for (String name: query.getExtendedMetadata().get(flavor).keySet()) {
+        for (String value: query.getExtendedMetadata().get(flavor).get(name)) {
+          and(EventIndexSchema.EXTENDED_METADATA_PREFIX.concat(flavor + "_" + name), value);
+        }
+      }
+    }
+
     // Presenter
     if (query.getPresenters() != null) {
       for (String presenter : query.getPresenters()) {
@@ -225,6 +234,11 @@ public class EventQueryBuilder extends AbstractElasticsearchQueryBuilder<EventSe
       }
     }
 
+    // Is published
+    if (query.getIsPublished() != null) {
+      and(EventIndexSchema.IS_PUBLISHED, query.getIsPublished());
+    }
+
     // Archive version
     if (query.getArchiveVersion() != null) {
       and(EventIndexSchema.ARCHIVE_VERSION, query.getArchiveVersion());
@@ -265,11 +279,14 @@ public class EventQueryBuilder extends AbstractElasticsearchQueryBuilder<EventSe
           }
           queryText.append(term);
         }
-        if (query.isFuzzySearch()) {
-          fuzzyText = queryText.toString();
-        } else {
-          this.text = queryText.toString();
-        }
+
+        additionalMultiQueryFields.add(EventIndexSchema.UID);
+        additionalMultiQueryFields.add(EventIndexSchema.SERIES_ID);
+
+        fuzzy = query.isFuzzySearch();
+
+        this.text = queryText.toString();
+
         if (Quantifier.All.equals(terms.getQuantifier())) {
           if (groups == null) {
             groups = new ArrayList<>();

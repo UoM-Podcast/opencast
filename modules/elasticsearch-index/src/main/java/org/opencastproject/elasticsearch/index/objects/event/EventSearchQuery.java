@@ -24,6 +24,7 @@ package org.opencastproject.elasticsearch.index.objects.event;
 import static org.opencastproject.security.api.SecurityConstants.GLOBAL_ADMIN_ROLE;
 
 import org.opencastproject.elasticsearch.impl.AbstractSearchQuery;
+import org.opencastproject.elasticsearch.impl.IndexSchema;
 import org.opencastproject.security.api.Permissions;
 import org.opencastproject.security.api.Permissions.Action;
 import org.opencastproject.security.api.User;
@@ -33,8 +34,10 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -51,6 +54,7 @@ public class EventSearchQuery extends AbstractSearchQuery {
   private final List<String> presenters = new ArrayList<String>();
   private final List<String> contributors = new ArrayList<String>();
   private String subject = null;
+  private Map<String, Map<String, List<String>>> extendedMetadata = new HashMap<>();
   private String location = null;
   private String seriesId = null;
   private String seriesName = null;
@@ -78,14 +82,35 @@ public class EventSearchQuery extends AbstractSearchQuery {
   private final List<String> comments = new ArrayList<>();
   private Boolean needsCutting = null;
   private final List<String> publications = new ArrayList<String>();
+  private Boolean isPublished = null;
   private Long archiveVersion = null;
   private String agentId = null;
   private Date technicalStartTime = null;
   private Date technicalEndTime = null;
-  private List<String> technicalPresenters = new ArrayList<String>();
+  private final List<String> technicalPresenters = new ArrayList<String>();
+
+  private static final Map<String, String> SORT_FIELDS = Map.of(
+          EventIndexSchema.TITLE, EventIndexSchema.TITLE.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.CONTRIBUTOR, EventIndexSchema.CONTRIBUTOR.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.PRESENTER, EventIndexSchema.PRESENTER.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.SUBJECT, EventIndexSchema.SUBJECT.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.DESCRIPTION, EventIndexSchema.DESCRIPTION.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.LOCATION, EventIndexSchema.LOCATION.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.SERIES_NAME, EventIndexSchema.SERIES_NAME.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.CREATOR, EventIndexSchema.CREATOR.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION),
+          EventIndexSchema.PUBLISHER, EventIndexSchema.PUBLISHER.concat(IndexSchema.SORT_FIELD_NAME_EXTENSION)
+  );
 
   @SuppressWarnings("unused")
   private EventSearchQuery() {
+  }
+
+  @Override
+  protected String sortOrderFieldName(String field) {
+    if (SORT_FIELDS.containsKey(field)) {
+      return SORT_FIELDS.get(field);
+    }
+    return field;
   }
 
   /**
@@ -275,6 +300,33 @@ public class EventSearchQuery extends AbstractSearchQuery {
    */
   public String getSubject() {
     return subject;
+  }
+
+  /**
+   * Selects recording events with the given subject.
+   *
+   * @param flavor
+   *          the flavor of the catalog
+   * @param key
+   *          the metadata field key
+   * @param value
+   *           the metadata field value
+   * @return the enhanced search query
+   */
+  public EventSearchQuery withExtendedMetadata(String flavor, String key, String value) {
+    this.extendedMetadata.computeIfAbsent(flavor, h -> new HashMap<>())
+        .computeIfAbsent(key, a -> new ArrayList<>())
+        .add(value);
+    return this;
+  }
+
+  /**
+   * Returns the subject of the recording.
+   *
+   * @return the subject
+   */
+  public Map<String, Map<String, List<String>>> getExtendedMetadata() {
+    return extendedMetadata;
   }
 
   /**
@@ -854,6 +906,27 @@ public class EventSearchQuery extends AbstractSearchQuery {
   }
 
   /**
+   * Selects recordings with the given is published status.
+   *
+   * @param isPublished
+   *          the is published status
+   * @return the enhanced search query
+   */
+  public EventSearchQuery withIsPublished(boolean isPublished) {
+    this.isPublished = isPublished;
+    return this;
+  }
+
+  /**
+   * Returns the is published status of the recording.
+   *
+   * @return the recording is published status
+   */
+  public Boolean getIsPublished() {
+    return isPublished;
+  }
+
+  /**
    * Selects events with the given archive version.
    *
    * @param archiveVersion
@@ -1088,6 +1161,15 @@ public class EventSearchQuery extends AbstractSearchQuery {
    */
   public Order getTitleSortOrder() {
     return getSortOrder(EventIndexSchema.TITLE);
+  }
+
+  public EventSearchQuery sortByUID(Order order) {
+    withSortOrder(EventIndexSchema.UID, order);
+    return this;
+  }
+
+  public Order getUIDSortOrder() {
+    return getSortOrder(EventIndexSchema.UID);
   }
 
   /**

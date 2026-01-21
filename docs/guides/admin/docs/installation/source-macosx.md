@@ -9,7 +9,6 @@ The installation on macOS is not officially supported.
 Use this at your own risk.
 </div>
 
-
 Preparation
 -----------
 
@@ -39,7 +38,6 @@ directly from there or with the curl command specified below.
     curl -OL https://github.com/opencast/opencast/archive/[...].tar.gz
     tar xf [...].tar.gz
 
-
 Install Dependencies
 --------------------
 
@@ -48,7 +46,7 @@ Please make sure to install the following dependencies.
 Required:
 
     Xcode
-    jdk 11
+    jdk 17
     ffmpeg >= 3.2.4
     maven >= 3.6
     python >= 2.6
@@ -59,19 +57,11 @@ Required:
 
 Required (not necessarily on the same machine):
 
-    OpenSearch 1.x
+    OpenSearch 1.x and analysis-icu plugin
 
 Required for text extraction:
 
     tesseract >= 3
-
-Required for hunspell based text filtering:
-
-    hunspell >= 1.2.8
-
-Required for audio normalization:
-
-    sox >= 14.4 (with MP3, FLAC and OGG support)
 
 Required for animate service:
 
@@ -88,10 +78,7 @@ Homebrew is a package manager for OS X. For installation instruction see [their 
 
     brew install maven
     brew install ffmpeg
-
     brew install tesseract
-    brew install hunspell
-    brew install sox
     brew install synfig
 
 #### OpenSearch on macOS
@@ -107,7 +94,6 @@ Pre-built versions of most dependencies can be downloaded from the respective pr
 * [Get Apache Maven](https://maven.apache.org/download.cgi)
 * [Get FFmpeg](http://ffmpeg.org/download.html)
 
-
 Building Opencast
 -----------------
 
@@ -115,7 +101,7 @@ Switch to the opencast folder. If you downloaded the tarball, this is the folder
 like `opencast-community-opencast-[…]`). If you chose to download via git, use `cd opencast`. You can proceed by
 building opencast (depending on the folder permissions, you might need to start the command with `sudo`):
 
-    mvn clean install -Pdev
+    ./mvnw clean install -Pdev
 
 Please be patient, as building Opencast for the first time will take quite long.
 

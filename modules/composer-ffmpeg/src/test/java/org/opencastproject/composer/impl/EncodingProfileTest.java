@@ -31,6 +31,7 @@ import static org.junit.Assert.fail;
 
 import org.opencastproject.composer.api.EncodingProfile;
 import org.opencastproject.composer.api.EncodingProfile.MediaType;
+import org.opencastproject.composer.api.EncodingProfileImpl;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -79,7 +80,8 @@ public class EncodingProfileTest {
   public void testInstall() throws Exception {
     ServiceRegistration service = EasyMock.createNiceMock(ServiceRegistration.class);
     BundleContext bc = EasyMock.createNiceMock(BundleContext.class);
-    EasyMock.expect(bc.registerService(EasyMock.anyString(), EasyMock.anyObject(), EasyMock.anyObject())).andReturn(service).anyTimes();
+    EasyMock.expect(bc.registerService(EasyMock.anyString(), EasyMock.anyObject(), EasyMock.anyObject()))
+        .andReturn(service).anyTimes();
     EasyMock.replay(service, bc);
 
     URL url = EncodingProfileTest.class.getResource("/encodingtestprofiles.properties");
@@ -162,7 +164,7 @@ public class EncodingProfileTest {
   }
 
   /**
-   * Test method for {@link org.opencastproject.composer.api.EncodingProfileImpl#getApplicableMediaTypes()}.
+   * Test method for {@link EncodingProfileImpl#getApplicableMediaType()}
    */
   @Test
   public void testGetApplicableMediaTypes() {
@@ -173,7 +175,7 @@ public class EncodingProfileTest {
   }
 
   /**
-   * Test method for {@link org.opencastproject.composer.api.EncodingProfileImpl#getApplicableMediaTypes()}.
+   * Test method for {@link EncodingProfileImpl#getApplicableMediaType()}
    */
   @Test
   public void testApplicableTo() {

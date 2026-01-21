@@ -21,9 +21,7 @@
 
 package org.opencastproject.adminui.endpoint;
 
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
 import org.opencastproject.index.service.resources.list.query.ServicesListQuery;
@@ -33,7 +31,6 @@ import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.serviceregistry.api.ServiceState;
 import org.opencastproject.serviceregistry.api.ServiceStatistics;
 import org.opencastproject.util.SmartIterator;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
@@ -41,8 +38,7 @@ import org.opencastproject.util.doc.rest.RestService;
 import org.opencastproject.util.requests.SortCriterion;
 import org.opencastproject.util.requests.SortCriterion.Order;
 
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONAware;
@@ -50,6 +46,7 @@ import org.json.simple.JSONObject;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +57,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.servlet.http.HttpServletResponse;
@@ -71,7 +67,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/admin-ng/services")
 @RestService(name = "ServicesProxyService", title = "UI Services",
   abstractText = "This service provides the services data for the UI.",
   notes = { "These Endpoints deliver informations about the services required for the UI.",
@@ -88,6 +84,7 @@ import javax.ws.rs.core.Response;
     "opencast.service.path=/admin-ng/services"
   }
 )
+@JaxrsResource
 public class ServicesEndpoint {
   private static final Logger logger = LoggerFactory.getLogger(ServicesEndpoint.class);
   private ServiceRegistry serviceRegistry;
@@ -109,24 +106,24 @@ public class ServicesEndpoint {
   public Response getServices(@QueryParam("limit") final int limit, @QueryParam("offset") final int offset,
           @QueryParam("filter") String filter, @QueryParam("sort") String sort) throws Exception {
 
-    Option<String> sortOpt = Option.option(StringUtils.trimToNull(sort));
+    Optional<String> sortOpt = Optional.ofNullable(StringUtils.trimToNull(sort));
     ServicesListQuery query = new ServicesListQuery();
     EndpointUtil.addRequestFiltersToQuery(filter, query);
 
     String fName = null;
-    if (query.getName().isSome())
+    if (query.getName().isPresent())
       fName = StringUtils.trimToNull(query.getName().get());
     String fHostname = null;
-    if (query.getHostname().isSome())
+    if (query.getHostname().isPresent())
       fHostname = StringUtils.trimToNull(query.getHostname().get());
     String fNodeName = null;
-    if (query.getNodeName().isSome())
+    if (query.getNodeName().isPresent())
       fNodeName = StringUtils.trimToNull(query.getNodeName().get());
     String fStatus = null;
-    if (query.getStatus().isSome())
+    if (query.getStatus().isPresent())
       fStatus = StringUtils.trimToNull(query.getStatus().get());
     String fFreeText = null;
-    if (query.getFreeText().isSome())
+    if (query.getFreeText().isPresent())
       fFreeText = StringUtils.trimToNull(query.getFreeText().get());
 
     List<HostRegistration> servers = serviceRegistry.getHostRegistrations();
@@ -145,7 +142,7 @@ public class ServicesEndpoint {
       if (fStatus != null && !StringUtils.equalsIgnoreCase(service.getStatus().toString(), fStatus))
         continue;
 
-      if (query.getActions().isSome()) {
+      if (query.getActions().isPresent()) {
         ServiceState serviceState = service.getStatus();
 
         if (query.getActions().get()) {
@@ -167,8 +164,8 @@ public class ServicesEndpoint {
     }
     int total = services.size();
 
-    if (sortOpt.isSome()) {
-      Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sortOpt.get());
+    if (sortOpt.isPresent()) {
+      ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sortOpt.get());
       if (!sortCriteria.isEmpty()) {
         try {
           SortCriterion sortCriterion = sortCriteria.iterator().next();
@@ -181,10 +178,13 @@ public class ServicesEndpoint {
       }
     }
 
-    List<JValue> jsonList = new ArrayList<JValue>();
-    for (Service s : new SmartIterator<Service>(limit, offset).applyLimitAndOffset(services)) {
+    List<JsonObject> jsonList = new ArrayList<>();
+    List<Service> limitedServices = new SmartIterator<Service>(limit, offset).applyLimitAndOffset(services);
+
+    for (Service s : limitedServices) {
       jsonList.add(s.toJSON());
     }
+
     return RestUtils.okJsonList(jsonList, offset, limit, total);
   }
 
@@ -210,6 +210,10 @@ public class ServicesEndpoint {
     public static final String RUNNING_NAME = "running";
     /** Status model field name. */
     public static final String STATUS_NAME = "status";
+    /** Online model field name. */
+    public static final String ONLINE_NAME = "online";
+    /** Maintenance model field name. */
+    public static final String MAINTENANCE_NAME = "maintenance";
 
     /** Wrapped {@code ServiceStatistics} instance. */
     private final ServiceStatistics serviceStatistics;
@@ -295,6 +299,22 @@ public class ServicesEndpoint {
     }
 
     /**
+     * Returns whether the service is online.
+     * @return online status
+     */
+    public boolean getIsOnline() {
+      return serviceStatistics.getServiceRegistration().isOnline();
+    }
+
+    /**
+     * Returns whether the service is in maintenance.
+     * @return maintenance status
+     */
+    public boolean getisMaintenance() {
+      return serviceStatistics.getServiceRegistration().isInMaintenanceMode();
+    }
+
+    /**
      * Returns a map of all service fields.
      * @return a map of all service fields
      */
@@ -309,6 +329,8 @@ public class ServicesEndpoint {
       serviceMap.put(QUEUED_NAME, Integer.toString(getQueuedJobs()));
       serviceMap.put(RUNNING_NAME, Integer.toString(getRunningJobs()));
       serviceMap.put(STATUS_NAME, getStatus().name());
+      serviceMap.put(ONLINE_NAME, Boolean.toString(getIsOnline()));
+      serviceMap.put(MAINTENANCE_NAME, Boolean.toString(getisMaintenance()));
       return serviceMap;
     }
 
@@ -325,12 +347,20 @@ public class ServicesEndpoint {
      * Returns a json representation of a service as {@code JValue}.
      * @return a json representation of a service as {@code JValue}
      */
-    public JValue toJSON() {
-      return obj(f(COMPLETED_NAME, v(getCompletedJobs())), f(HOST_NAME, v(getHost(), Jsons.BLANK)), f(NODE_NAME, v(getNodeName(), Jsons.BLANK)),
-              f(MEAN_QUEUE_TIME_NAME, v(getMeanQueueTime())), f(MEAN_RUN_TIME_NAME, v(getMeanRunTime())),
-              f(NAME_NAME, v(getName(), Jsons.BLANK)), f(QUEUED_NAME, v(getQueuedJobs())),
-              f(RUNNING_NAME, v(getRunningJobs())),
-              f(STATUS_NAME, v(SERVICE_STATUS_TRANSLATION_PREFIX + getStatus().name(), Jsons.BLANK)));
+    public JsonObject toJSON() {
+      JsonObject json = new JsonObject();
+      json.addProperty(COMPLETED_NAME, getCompletedJobs());
+      json.addProperty(HOST_NAME, safeString(getHost()));
+      json.addProperty(NODE_NAME, safeString(getNodeName()));
+      json.addProperty(MEAN_QUEUE_TIME_NAME, getMeanQueueTime());
+      json.addProperty(MEAN_RUN_TIME_NAME, getMeanRunTime());
+      json.addProperty(NAME_NAME, safeString(getName()));
+      json.addProperty(QUEUED_NAME, getQueuedJobs());
+      json.addProperty(RUNNING_NAME, getRunningJobs());
+      json.addProperty(STATUS_NAME, SERVICE_STATUS_TRANSLATION_PREFIX + getStatus().name());
+      json.addProperty(ONLINE_NAME, getIsOnline());
+      json.addProperty(MAINTENANCE_NAME, getisMaintenance());
+      return json;
     }
   }
 

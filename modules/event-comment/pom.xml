@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.opencastproject</groupId>
     <artifactId>base</artifactId>
-    <version>16-SNAPSHOT</version>
+    <version>20-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <properties>
@@ -34,10 +34,6 @@
       <groupId>org.opencastproject</groupId>
       <artifactId>opencast-elasticsearch-index</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.entwinemedia.common</groupId>
-      <artifactId>functional</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -130,8 +126,6 @@
         <extensions>true</extensions>
         <configuration>
           <instructions>
-            <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-            <Build-Number>${buildNumber}</Build-Number>
             <Export-Package>
               org.opencastproject.event.comment;version=${project.version},
               org.opencastproject.event.comment.persistence;version=${project.version}

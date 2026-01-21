@@ -20,10 +20,10 @@
  */
 package org.opencastproject.transcription.ibmwatson;
 
+import static org.opencastproject.systems.OpencastConstants.ADMIN_EMAIL_PROPERTY;
+
 import org.opencastproject.assetmanager.api.AssetManager;
-import org.opencastproject.assetmanager.api.fn.Enrichments;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.AResult;
+import org.opencastproject.assetmanager.api.Snapshot;
 import org.opencastproject.assetmanager.util.Workflows;
 import org.opencastproject.job.api.AbstractJobProducer;
 import org.opencastproject.job.api.Job;
@@ -54,7 +54,6 @@ import org.opencastproject.util.LoadUtil;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.UrlSupport;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.workflow.api.ConfiguredWorkflow;
 import org.opencastproject.workflow.api.WorkflowDatabaseException;
 import org.opencastproject.workflow.api.WorkflowDefinition;
@@ -105,6 +104,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -143,7 +143,6 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
 
   // Global configuration (custom.properties)
   public static final String ADMIN_URL_PROPERTY = "org.opencastproject.admin.ui.url";
-  private static final String ADMIN_EMAIL_PROPERTY = "org.opencastproject.admin.email";
   private static final String DIGEST_USER_PROPERTY = "org.opencastproject.security.digest.user";
 
   // Cluster name
@@ -249,8 +248,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
 
       if (enabled) {
         // Service url (optional)
-        Option<String> urlOpt = OsgiUtil.getOptCfg(cc.getProperties(), IBM_WATSON_SERVICE_URL_CONFIG);
-        if (urlOpt.isSome()) {
+        Optional<String> urlOpt = OsgiUtil.getOptCfg(cc.getProperties(), IBM_WATSON_SERVICE_URL_CONFIG);
+        if (urlOpt.isPresent()) {
           watsonServiceUrl = UrlSupport.concat(urlOpt.get(), API_VERSION);
         }
 
@@ -258,8 +257,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         // support older instances of the STT service)
         String user; // user name or 'apikey'
         String psw; // user password or api key
-        Option<String> keyOpt = OsgiUtil.getOptCfg(cc.getProperties(), IBM_WATSON_API_KEY_CONFIG);
-        if (keyOpt.isSome()) {
+        Optional<String> keyOpt = OsgiUtil.getOptCfg(cc.getProperties(), IBM_WATSON_API_KEY_CONFIG);
+        if (keyOpt.isPresent()) {
           user = APIKEY;
           psw = keyOpt.get();
           logger.info("Using transcription service at {} with api key", watsonServiceUrl);
@@ -283,8 +282,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         }
 
         // Language model to be used (optional)
-        Option<String> modelOpt = OsgiUtil.getOptCfg(cc.getProperties(), IBM_WATSON_MODEL_CONFIG);
-        if (modelOpt.isSome()) {
+        Optional<String> modelOpt = OsgiUtil.getOptCfg(cc.getProperties(), IBM_WATSON_MODEL_CONFIG);
+        if (modelOpt.isPresent()) {
           model = modelOpt.get();
           language = StringUtils.substringBefore(model, "-");
           logger.info("Model is {}", model);
@@ -293,14 +292,14 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         }
 
         // Workflow to execute when getting callback (optional, with default)
-        Option<String> wfOpt = OsgiUtil.getOptCfg(cc.getProperties(), WORKFLOW_CONFIG);
-        if (wfOpt.isSome()) {
+        Optional<String> wfOpt = OsgiUtil.getOptCfg(cc.getProperties(), WORKFLOW_CONFIG);
+        if (wfOpt.isPresent()) {
           workflowDefinitionId = wfOpt.get();
         }
         logger.info("Workflow definition is {}", workflowDefinitionId);
         // Interval to check for completed transcription jobs and start workflows to attach transcripts
-        Option<String> intervalOpt = OsgiUtil.getOptCfg(cc.getProperties(), DISPATCH_WORKFLOW_INTERVAL_CONFIG);
-        if (intervalOpt.isSome()) {
+        Optional<String> intervalOpt = OsgiUtil.getOptCfg(cc.getProperties(), DISPATCH_WORKFLOW_INTERVAL_CONFIG);
+        if (intervalOpt.isPresent()) {
           try {
             workflowDispatchInterval = Long.parseLong(intervalOpt.get());
           } catch (NumberFormatException e) {
@@ -309,8 +308,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         }
         logger.info("Workflow dispatch interval is {} seconds", workflowDispatchInterval);
         // How long to wait after a transcription is supposed to finish before starting checking
-        Option<String> bufferOpt = OsgiUtil.getOptCfg(cc.getProperties(), COMPLETION_CHECK_BUFFER_CONFIG);
-        if (bufferOpt.isSome()) {
+        Optional<String> bufferOpt = OsgiUtil.getOptCfg(cc.getProperties(), COMPLETION_CHECK_BUFFER_CONFIG);
+        if (bufferOpt.isPresent()) {
           try {
             completionCheckBuffer = Long.parseLong(bufferOpt.get());
           } catch (NumberFormatException e) {
@@ -321,8 +320,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         }
         logger.info("Completion check buffer is {} seconds", completionCheckBuffer);
         // How long to wait after a transcription is supposed to finish before marking the job as canceled in the db
-        Option<String> maxProcessingOpt = OsgiUtil.getOptCfg(cc.getProperties(), MAX_PROCESSING_TIME_CONFIG);
-        if (maxProcessingOpt.isSome()) {
+        Optional<String> maxProcessingOpt = OsgiUtil.getOptCfg(cc.getProperties(), MAX_PROCESSING_TIME_CONFIG);
+        if (maxProcessingOpt.isPresent()) {
           try {
             maxProcessingSeconds = Long.parseLong(maxProcessingOpt.get());
           } catch (NumberFormatException e) {
@@ -331,8 +330,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         }
         logger.info("Maximum time a job is checked after it should have ended is {} seconds", maxProcessingSeconds);
         // How long to keep result files in the working file repository
-        Option<String> cleaupOpt = OsgiUtil.getOptCfg(cc.getProperties(), CLEANUP_RESULTS_DAYS_CONFIG);
-        if (cleaupOpt.isSome()) {
+        Optional<String> cleaupOpt = OsgiUtil.getOptCfg(cc.getProperties(), CLEANUP_RESULTS_DAYS_CONFIG);
+        if (cleaupOpt.isPresent()) {
           try {
             cleanupResultDays = Integer.parseInt(cleaupOpt.get());
           } catch (NumberFormatException e) {
@@ -342,8 +341,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         logger.info("Cleanup result files after {} days", cleanupResultDays);
 
         // Maximum number of retries if error (optional)
-        Option<String> maxAttemptsOpt = OsgiUtil.getOptCfg(cc.getProperties(), MAX_ATTEMPTS_CONFIG);
-        if (maxAttemptsOpt.isSome()) {
+        Optional<String> maxAttemptsOpt = OsgiUtil.getOptCfg(cc.getProperties(), MAX_ATTEMPTS_CONFIG);
+        if (maxAttemptsOpt.isPresent()) {
           try {
             maxAttempts = Integer.parseInt(maxAttemptsOpt.get());
             retryWfDefId = OsgiUtil.getComponentContextProperty(cc, RETRY_WORKLFOW_CONFIG);
@@ -370,13 +369,13 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
         scheduledExecutor.scheduleWithFixedDelay(new ResultsFileCleanup(), 1, 1, TimeUnit.DAYS);
 
         // Notification email passed in this service configuration?
-        Option<String> optTo = OsgiUtil.getOptCfg(cc.getProperties(), NOTIFICATION_EMAIL_CONFIG);
-        if (optTo.isSome()) {
+        Optional<String> optTo = OsgiUtil.getOptCfg(cc.getProperties(), NOTIFICATION_EMAIL_CONFIG);
+        if (optTo.isPresent()) {
           toEmailAddress = optTo.get();
         } else {
           // Use admin email informed in custom.properties
           optTo = OsgiUtil.getOptContextProperty(cc, ADMIN_EMAIL_PROPERTY);
-          if (optTo.isSome()) {
+          if (optTo.isPresent()) {
             toEmailAddress = optTo.get();
           }
         }
@@ -386,8 +385,8 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
           logger.warn("Email notification disabled");
         }
 
-        Option<String> optCluster = OsgiUtil.getOptContextProperty(cc, CLUSTER_NAME_PROPERTY);
-        if (optCluster.isSome()) {
+        Optional<String> optCluster = OsgiUtil.getOptContextProperty(cc, CLUSTER_NAME_PROPERTY);
+        if (optCluster.isPresent()) {
           clusterName = optCluster.get();
         }
         logger.info("Environment name is {}", clusterName);
@@ -1068,15 +1067,14 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
     securityService.setUser(SecurityUtil.createSystemUser(systemAccount, defaultOrg));
 
     // Find the episode
-    final AQueryBuilder q = assetManager.createQuery();
-    final AResult r = q.select(q.snapshot()).where(q.mediaPackageId(mpId).and(q.version().isLatest())).run();
-    if (r.getSize() == 0) {
+    Optional<Snapshot> snapshot = assetManager.getLatestSnapshot(mpId);
+    if (snapshot.isEmpty()) {
       // Media package not archived yet.
       logger.warn("Media package {} has not been archived yet.", mpId);
       return null;
     }
 
-    String org = Enrichments.enrich(r).getSnapshots().head2().getOrganizationId();
+    String org = snapshot.get().getOrganizationId();
     Organization organization = null;
     try {
       organization = organizationDirectoryService.getOrganization(org);
@@ -1096,7 +1094,7 @@ public class IBMWatsonTranscriptionService extends AbstractJobProducer implement
       Set<String> mpIds = new HashSet<String>();
       mpIds.add(mpId);
       List<WorkflowInstance> wfList = workflows
-              .applyWorkflowToLatestVersion(mpIds, ConfiguredWorkflow.workflow(wfDef, params)).toList();
+              .applyWorkflowToLatestVersion(mpIds, ConfiguredWorkflow.workflow(wfDef, params));
       return wfList.size() > 0 ? Long.toString(wfList.get(0).getId()) : null;
     } catch (NotFoundException | WorkflowDatabaseException e) {
       logger.warn("Could not get workflow definition: {}", wfDefId);

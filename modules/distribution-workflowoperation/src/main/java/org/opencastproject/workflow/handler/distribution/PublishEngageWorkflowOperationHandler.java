@@ -23,9 +23,6 @@ package org.opencastproject.workflow.handler.distribution;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.opencastproject.systems.OpencastConstants.SERVER_URL_PROPERTY;
-import static org.opencastproject.util.data.Option.option;
-import static org.opencastproject.util.data.functions.Strings.toBool;
-import static org.opencastproject.util.data.functions.Strings.trimToNone;
 import static org.opencastproject.workflow.handler.distribution.EngagePublicationChannel.CHANNEL_ID;
 
 import org.opencastproject.distribution.api.DistributionException;
@@ -52,8 +49,6 @@ import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.DublinCoreValue;
 import org.opencastproject.metadata.dublincore.DublinCoreXmlFormat;
 import org.opencastproject.search.api.SearchException;
-import org.opencastproject.search.api.SearchQuery;
-import org.opencastproject.search.api.SearchResult;
 import org.opencastproject.search.api.SearchService;
 import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.OrganizationDirectoryService;
@@ -63,6 +58,7 @@ import org.opencastproject.serviceregistry.api.ServiceRegistryException;
 import org.opencastproject.util.MimeTypes;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.UrlSupport;
+import org.opencastproject.util.data.functions.Strings;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowOperationException;
@@ -260,12 +256,21 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
             StringUtils.defaultString(op.getConfiguration(ADD_FORCE_FLAVORS), ADD_FORCE_FLAVORS_DEFAULT));
 
 
-    boolean checkAvailability = option(op.getConfiguration(CHECK_AVAILABILITY)).bind(trimToNone).map(toBool)
-            .getOrElse(true);
+    boolean checkAvailability = Optional.ofNullable(op.getConfiguration(CHECK_AVAILABILITY))
+            .flatMap(Strings::trimToNone)
+            .map(Boolean::valueOf)
+            .orElse(true);
 
     // First check if mp exists in the search index and strategy is merge
     // to avoid leaving distributed elements around.
-    MediaPackage distributedMp = getDistributedMediapackage(mediaPackage.getIdentifier().toString());
+    MediaPackage distributedMp = null;
+    try {
+      distributedMp = searchService.get(mediaPackage.getIdentifier().toString());
+    } catch (NotFoundException e) {
+      logger.debug("No published mediapackage found for {}", mediaPackage.getIdentifier().toString());
+    } catch (UnauthorizedException e) {
+      throw new WorkflowOperationException("Unauthorized for " + mediaPackage.getIdentifier().toString(), e);
+    }
     if (PUBLISH_STRATEGY_MERGE.equals(republishStrategy) && distributedMp == null) {
       logger.info("Skipping republish for {} since it is not currently published",
               mediaPackage.getIdentifier().toString());
@@ -559,9 +564,9 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
         continue;
       }
 
-      List <MediaPackageElement> distributedElements = null;
+      List<? extends MediaPackageElement> distributedElements = null;
       try {
-        distributedElements = (List <MediaPackageElement>) MediaPackageElementParser.getArrayFromXml(job.getPayload());
+        distributedElements = MediaPackageElementParser.getArrayFromXml(job.getPayload());
       } catch (MediaPackageException e) {
         throw new WorkflowOperationException(e);
       }
@@ -691,26 +696,6 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
     }
   }
 
-  protected MediaPackage getDistributedMediapackage(String mediaPackageID) throws WorkflowOperationException {
-    MediaPackage mediaPackage = null;
-    SearchQuery query = new SearchQuery().withId(mediaPackageID);
-    query.includeEpisodes(true);
-    query.includeSeries(false);
-    SearchResult result = searchService.getByQuery(query);
-    if (result.size() == 0) {
-      logger.info("The search service doesn't know mediapackage {}.", mediaPackageID);
-      return mediaPackage; // i.e. null
-    } else if (result.size() > 1) {
-      logger.warn("More than one mediapackage with id {} returned from search service", mediaPackageID);
-      throw new WorkflowOperationException("More than one mediapackage with id " + mediaPackageID + " found");
-    } else {
-      // else, merge the new with the existing (new elements will overwrite existing elements)
-      mediaPackage = result.getItems()[0].getMediaPackage();
-    }
-    return mediaPackage;
-  }
-
-
   /**
    * MH-10216, Copied from the original RepublishWorkflowOperationHandler
    *
@@ -778,8 +763,8 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
    * @throws WorkflowOperationException
    */
   private void retractFromEngage(MediaPackage distributedMediaPackage) throws WorkflowOperationException {
-    List<Job> jobs = new ArrayList<Job>();
-    Set<String> elementIds = new HashSet<String>();
+    List<Job> jobs = new ArrayList<>();
+    Set<String> elementIds = new HashSet<>();
     try {
       if (distributedMediaPackage != null) {
 
@@ -822,7 +807,7 @@ public class PublishEngageWorkflowOperationHandler extends AbstractWorkflowOpera
     } catch (SearchException e) {
       throw new WorkflowOperationException("Error retracting media package", e);
     } catch (UnauthorizedException | NotFoundException ex) {
-      logger.error("Retraction failed of Mediapackage: { }", distributedMediaPackage.getIdentifier().toString(), ex);
+      logger.error("Retraction failed of Mediapackage: {}", distributedMediaPackage.getIdentifier().toString(), ex);
     }
   }
 }

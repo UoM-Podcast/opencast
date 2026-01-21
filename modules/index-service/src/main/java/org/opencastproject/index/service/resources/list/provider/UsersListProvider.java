@@ -40,7 +40,6 @@ import java.util.Iterator;
 import java.util.Map;
 
 @Component(
-    immediate = true,
     service = ResourceListProvider.class,
     property = {
         "service.description=Users list provider",
@@ -60,10 +59,11 @@ public class UsersListProvider implements ResourceListProvider {
   public static final String NAME_ONLY = PROVIDER_PREFIX + ".NAME.ONLY"; // Name : Name
   public static final String EMAIL_ONLY = PROVIDER_PREFIX + ".EMAIL.ONLY"; // Email: Email
   public static final String ROLE_ONLY = PROVIDER_PREFIX + ".ROLE.ONLY"; // Role: Role
-  public static final String USERDIRECTORY_ONLY = PROVIDER_PREFIX + ".USERDIRECTORY.ONLY"; // UserDirectory: UserDirectory
+  // UserDirectory: UserDirectory
+  public static final String USERDIRECTORY_ONLY = PROVIDER_PREFIX + ".USERDIRECTORY.ONLY";
 
   protected static final String[] NAMES = { NAME, NAME_AND_EMAIL, NAME_AND_USERNAME, USERNAME, EMAIL, NAME_ONLY,
-          EMAIL_ONLY, ROLE_ONLY, USERDIRECTORY_ONLY };
+      EMAIL_ONLY, ROLE_ONLY, USERDIRECTORY_ONLY };
 
   private static final Logger logger = LoggerFactory.getLogger(UsersListProvider.class);
 
@@ -92,11 +92,13 @@ public class UsersListProvider implements ResourceListProvider {
     int limit = 0;
 
     if (query != null) {
-      if (query.getLimit().isSome())
+      if (query.getLimit().isPresent()) {
         limit = query.getLimit().get();
+      }
 
-      if (query.getOffset().isSome())
+      if (query.getOffset().isPresent()) {
         offset = query.getOffset().get();
+      }
     }
 
     Iterator<User> users = userDirectoryService.findUsers("%", offset, limit);

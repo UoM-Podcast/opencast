@@ -21,15 +21,10 @@
 
 package org.opencastproject.adminui.endpoint;
 
-import static com.entwinemedia.fn.Stream.$;
-import static com.entwinemedia.fn.data.Opt.nul;
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.index.service.util.RestUtils.okJson;
 import static org.opencastproject.workflow.api.ConfiguredWorkflow.workflow;
 
@@ -37,7 +32,6 @@ import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.assetmanager.util.Workflows;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.RestUtil;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
@@ -48,15 +42,16 @@ import org.opencastproject.workflow.api.WorkflowDefinition;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowService;
 
-import com.entwinemedia.fn.Fn;
-import com.entwinemedia.fn.data.json.JValue;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +60,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.FormParam;
@@ -76,7 +74,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-@Path("/")
+@Path("/admin-ng/tasks")
 @RestService(name = "TasksService", title = "UI Tasks",
   abstractText = "Provides resources and operations related to the tasks",
   notes = { "All paths above are relative to the REST endpoint base (something like http://your.server/files)",
@@ -98,6 +96,7 @@ import javax.ws.rs.core.Response.Status;
     "opencast.service.path=/admin-ng/tasks"
   }
 )
+@JaxrsResource
 public class TasksEndpoint {
 
   private static final Logger logger = LoggerFactory.getLogger(TasksEndpoint.class);
@@ -127,18 +126,20 @@ public class TasksEndpoint {
   @Path("processing.json")
   @RestQuery(name = "getProcessing", description = "Returns all the data related to the processing tab in the new tasks modal as JSON", returnDescription = "All the data related to the tasks processing tab as JSON", restParameters = { @RestParameter(name = "tags", isRequired = false, description = "A comma separated list of tags to filter the workflow definitions", type = RestParameter.Type.STRING) }, responses = { @RestResponse(responseCode = SC_OK, description = "Returns all the data related to the tasks processing tab as JSON") })
   public Response getProcessing(@QueryParam("tags") String tagsString) {
-    List<String> tags = RestUtil.splitCommaSeparatedParam(Option.option(tagsString)).value();
+    List<String> tags = RestUtil.splitCommaSeparatedParam(Optional.ofNullable(tagsString));
 
-    // This is the JSON Object which will be returned by this request
-    List<JValue> actions = new ArrayList<>();
+    JsonArray actions = new JsonArray();
     try {
-      List<WorkflowDefinition> workflowsDefinitions = workflowService.listAvailableWorkflowDefinitions();
-      for (WorkflowDefinition wflDef : workflowsDefinitions) {
+      List<WorkflowDefinition> workflowDefinitions = workflowService.listAvailableWorkflowDefinitions();
+      for (WorkflowDefinition wflDef : workflowDefinitions) {
         if (wflDef.containsTag(tags)) {
-          actions.add(obj(f("id", v(wflDef.getId())), f("title", v(nul(wflDef.getTitle()).getOr(""))),
-                  f("description", v(nul(wflDef.getDescription()).getOr(""))),
-                  f("configuration_panel", v(nul(wflDef.getConfigurationPanel()).getOr(""))),
-                  f("configuration_panel_json", v(nul(wflDef.getConfigurationPanelJson()).getOr("")))));
+          JsonObject action = new JsonObject();
+          action.addProperty("id", wflDef.getId());
+          action.addProperty("title", safeString(wflDef.getTitle()));
+          action.addProperty("description", safeString(wflDef.getDescription()));
+          action.addProperty("configuration_panel", safeString(wflDef.getConfigurationPanel()));
+          action.addProperty("configuration_panel_json", safeString(wflDef.getConfigurationPanelJson()));
+          actions.add(action);
         }
       }
     } catch (WorkflowDatabaseException e) {
@@ -146,7 +147,7 @@ public class TasksEndpoint {
       return RestUtil.R.serverError();
     }
 
-    return okJson(arr(actions));
+    return okJson(actions);
   }
 
   @POST
@@ -205,7 +206,7 @@ public class TasksEndpoint {
     for (final Entry<String, Map<String, String>> entry : configuration.entrySet()) {
       final ConfiguredWorkflow workflow = workflow(wfd, entry.getValue());
       final Set<String> mpIds = Collections.singleton(entry.getKey());
-      final List<WorkflowInstance> partialResult = workflows.applyWorkflowToLatestVersion(mpIds, workflow).toList();
+      final List<WorkflowInstance> partialResult = workflows.applyWorkflowToLatestVersion(mpIds, workflow);
 
       if (partialResult.size() != 1) {
         logger.warn("Couldn't start workflow for media package {}", entry.getKey());
@@ -214,14 +215,11 @@ public class TasksEndpoint {
 
       instances.addAll(partialResult);
     }
-    return Response.status(Status.CREATED).entity(gson.toJson($(instances).map(getWorkflowIds).toList())).build();
+    return Response.status(Status.CREATED)
+        .entity(gson.toJson(instances.stream().map(getWorkflowIds).collect(Collectors.toList())))
+        .build();
   }
 
-  private static final Fn<WorkflowInstance, Long> getWorkflowIds = new Fn<WorkflowInstance, Long>() {
-    @Override
-    public Long apply(WorkflowInstance a) {
-      return a.getId();
-    }
-  };
+  private static final Function<WorkflowInstance, Long> getWorkflowIds = a -> a.getId();
 
 }

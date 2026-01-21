@@ -30,7 +30,6 @@ import org.opencastproject.mediapackage.MediaPackageElementBuilderFactory;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
 import org.opencastproject.mediapackage.MediaPackageException;
 import org.opencastproject.mediapackage.Track;
-import org.opencastproject.mediapackage.identifier.IdImpl;
 import org.opencastproject.security.api.OrganizationDirectoryService;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UserDirectoryService;
@@ -392,6 +391,12 @@ public class TimelinePreviewsServiceImpl extends AbstractJobProducer implements
         binary,
         "-loglevel", "error",
         "-t", String.valueOf(duration - seconds / 2.0),
+        // For longer videos, this operation only considers keyframes. This
+        // significantly speeds up this command. The difference in output is
+        // minimal and not relevant for the user. Nothing would crash without
+        // this duration check: short videos would just repeat keyframes in the
+        // output image, making the preview less useful.
+        "-skip_frame", duration > 15 * 60.0 ? "nokey" : "default",
         "-i", mediaFile.getAbsolutePath(),
         "-vf", "fps=1/" + seconds + ",scale=" + width + ":" + height + ",tile=" + tileX + "x" + tileY,
         imageFilePath
@@ -476,7 +481,7 @@ public class TimelinePreviewsServiceImpl extends AbstractJobProducer implements
 
     // set the flavor and an ID
     timelinepreviewsMpe.setFlavor(track.getFlavor());
-    timelinepreviewsMpe.setIdentifier(IdImpl.fromUUID().toString());
+    timelinepreviewsMpe.generateIdentifier();
 
     return timelinepreviewsMpe;
   }

@@ -23,6 +23,7 @@ package org.opencastproject.authorization.xacml;
 
 import static org.opencastproject.mediapackage.MediaPackageElements.XACML_POLICY_EPISODE;
 import static org.opencastproject.mediapackage.MediaPackageElements.XACML_POLICY_SERIES;
+import static org.opencastproject.security.util.SecurityUtil.getEpisodeRoleId;
 import static org.opencastproject.util.data.Tuple.tuple;
 
 import org.opencastproject.mediapackage.Attachment;
@@ -107,6 +108,7 @@ public class XACMLAuthorizationService implements AuthorizationService {
     if (properties == null) {
       mergeMode = MergeMode.OVERRIDE;
       logger.debug("Merge mode set to {}", mergeMode);
+      logger.debug("Using episode ID roles is deactivated");
       return;
     }
     final String mode = StringUtils.defaultIfBlank((String) properties.get(CONFIG_MERGE_MODE),
@@ -305,11 +307,24 @@ public class XACMLAuthorizationService implements AuthorizationService {
     return Optional.empty();
   }
 
-  @Override
   public boolean hasPermission(final MediaPackage mp, final String action) {
     AccessControlList acl = getActiveAcl(mp).getA();
-    boolean allowed = false;
+
+    // Check special ROLE_EPISODE_<ID>_<ACTION> permissions
     final User user = securityService.getUser();
+    var episodeRole = getEpisodeRoleId(mp.getIdentifier().toString(), action);
+    logger.debug("Checking for role: {}", episodeRole);
+    var allowed = user.getRoles().stream().map(Role::getName).anyMatch(r -> r.equals(episodeRole));
+
+    return allowed || hasPermission(acl, action);
+  }
+
+  @Override
+  public boolean hasPermission(AccessControlList acl, final String action) {
+    final User user = securityService.getUser();
+    var allowed = false;
+
+    // Check ACL
     for (AccessControlEntry entry: acl.getEntries()) {
       // ignore entries for other actions
       if (!entry.getAction().equals(action)) {

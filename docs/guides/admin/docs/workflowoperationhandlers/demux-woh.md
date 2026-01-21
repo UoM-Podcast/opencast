@@ -16,7 +16,7 @@ Parameter Table
 |Configuration Key |Example                      |Description                            |
 |------------------|-----------------------------|---------------------------------------|
 |source-flavors    |`multitrack/source`          |Which media should be encoded          |
-|target-tags       |`archive,rss;rss`            |Specifies the tags of the new media    |
+|target-tags       |`archive,exp;exp`            |Specifies the tags of the new media    |
 |target-flavors    |`presenter/*,presentation/*` |Specifies the flavors of the new media |
 |encoding-profile  |`demux`                      |Specifies the encoding profile         |
 
@@ -27,17 +27,14 @@ output files (same order). Target flavors are separated by `,` as usual. They ar
 Operation Example
 -----------------
 
-```xml
-<operation
-    id="demux"
-    description="Extract presenter and presentation video from multitrack source">
-  <configurations>
-    <configuration key="source-flavors">multitrack/source</configuration>
-    <configuration key="target-flavors">presenter/source,presentation/source</configuration>
-    <configuration key="target-tags">archive</configuration>
-    <configuration key="encoding-profile">demux</configuration>
-  </configurations>
-</operation>
+```yaml
+  - id: demux
+    description: Extract presenter and presentation video from multitrack source
+    configurations:
+      - source-flavors: multitrack/source
+      - target-flavors: presenter/source,presentation/source
+      - target-tags: archive
+      - encoding-profile: demux
 ```
 
 Example Profile

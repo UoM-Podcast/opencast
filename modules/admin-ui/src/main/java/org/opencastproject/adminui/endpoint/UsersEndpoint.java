@@ -31,6 +31,8 @@ import static org.apache.http.HttpStatus.SC_FORBIDDEN;
 import static org.apache.http.HttpStatus.SC_INTERNAL_SERVER_ERROR;
 import static org.apache.http.HttpStatus.SC_NOT_FOUND;
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.opencastproject.userdirectory.UserIdRoleProvider.getUserRolePrefix;
+import static org.opencastproject.userdirectory.UserIdRoleProvider.isSanitize;
 import static org.opencastproject.util.RestUtil.getEndpointUrl;
 import static org.opencastproject.util.UrlSupport.uri;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
@@ -71,6 +73,7 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +83,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -98,7 +100,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/admin-ng/users")
 @RestService(name = "users", title = "User service",
   abstractText = "Provides operations for users",
   notes = { "This service offers the default users CRUD Operations for the admin UI.",
@@ -115,6 +117,7 @@ import javax.ws.rs.core.Response;
     "opencast.service.path=/admin-ng/users"
   }
 )
+@JaxrsResource
 public class UsersEndpoint {
 
   /** The logging facility */
@@ -160,6 +163,15 @@ public class UsersEndpoint {
   @Reference
   public void setSecurityService(SecurityService securityService) {
     this.securityService = securityService;
+  }
+
+  /**
+   * @param jpaUserReferenceProvider
+   *          the user provider to set
+   */
+  @Reference
+  public void setJpaUserReferenceProvider(JpaUserReferenceProvider jpaUserReferenceProvider) {
+    this.jpaUserReferenceProvider = jpaUserReferenceProvider;
   }
 
   /**
@@ -223,9 +235,7 @@ public class UsersEndpoint {
 
     // Filter users by filter criteria
     List<User> filteredUsers = new ArrayList<>();
-    for (Iterator<User> i = userDirectoryService.getUsers(); i.hasNext();) {
-      User user = i.next();
-
+    for (User user : userDirectoryService.getUsers()) {
       // Filter list
       final String finalFilterRole = filterRole;
       if (filterName != null && !filterName.equals(user.getName())
@@ -245,7 +255,7 @@ public class UsersEndpoint {
 
     // Sort by name, description or role
     if (sort != null) {
-      final Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
+      final ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
       filteredUsers.sort((user1, user2) -> {
         for (SortCriterion criterion : sortCriteria) {
           Order order = criterion.getOrder();
@@ -300,6 +310,38 @@ public class UsersEndpoint {
         "limit", limit,
         "total", total);
     return Response.ok(gson.toJson(response)).build();
+  }
+
+
+  @GET
+  @Path("usersforroles.json")
+  @Produces(MediaType.APPLICATION_JSON)
+  @RestQuery(
+      name = "usersforroles",
+      description = "Returns a list of users",
+      returnDescription = "Returns a JSON representation of the list of user accounts",
+      restParameters = {
+        @RestParameter(name = "roles", isRequired = false, description = "JSON Array", type = STRING),
+      },
+      responses = {
+          @RestResponse(responseCode = SC_OK, description = "The user accounts.")
+      })
+  public Response getsUsersForRoles(@QueryParam("roles") String roles) {
+    List<String> rolesList = gson.fromJson(roles, ArrayList.class);
+    Map<String, Map<String, Object>> roleUserMap = new HashMap<>();
+
+    for (String role : rolesList) {
+      if (!isSanitize()) {
+        User user = userDirectoryService.loadUser(role.replaceFirst(getUserRolePrefix(), ""));
+        if (user != null) {
+          roleUserMap.put(role, generateJsonUser(user));
+        } else {
+          roleUserMap.put(role, null);
+        }
+      }
+    }
+
+    return Response.ok(gson.toJson(roleUserMap)).build();
   }
 
   @POST
@@ -433,13 +475,13 @@ public class UsersEndpoint {
         return Response.status(SC_CONFLICT).build();
       }
     } catch (WorkflowDatabaseException e) {
-      logger.error("Error during deletion of user {}: {}", username, e);
+      logger.error("Error during deletion of user {}", username, e);
       return Response.status(SC_INTERNAL_SERVER_ERROR).build();
     }
 
     try {
       try {
-        jpaUserAndRoleProvider.deleteUser(username, organization.getId());
+        jpaUserReferenceProvider.deleteUser(username, organization.getId());
       } catch (NotFoundException e) {
         userReferenceNotFound = true;
       }
@@ -460,7 +502,7 @@ public class UsersEndpoint {
     } catch (UnauthorizedException e) {
       return Response.status(SC_FORBIDDEN).build();
     } catch (Exception e) {
-      logger.error("Error during deletion of user {}: {}", username, e);
+      logger.error("Error during deletion of user {}", username, e);
       return Response.status(SC_INTERNAL_SERVER_ERROR).build();
     }
 

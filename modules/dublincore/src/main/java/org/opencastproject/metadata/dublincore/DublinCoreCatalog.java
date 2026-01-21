@@ -20,21 +20,13 @@
  */
 package org.opencastproject.metadata.dublincore;
 
-import static com.entwinemedia.fn.Stream.$;
-import static org.opencastproject.util.EqualsUtil.eq;
-import static org.opencastproject.util.data.Monadics.mlist;
-
 import org.opencastproject.mediapackage.EName;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.XMLCatalogImpl;
 import org.opencastproject.metadata.api.MetadataCatalog;
 import org.opencastproject.util.RequireUtil;
 import org.opencastproject.util.XmlNamespaceContext;
-import org.opencastproject.util.data.Function;
-import org.opencastproject.util.data.Function2;
 
-import com.entwinemedia.fn.Fns;
-import com.entwinemedia.fn.data.ImmutableSetWrapper;
 import com.google.gson.annotations.JsonAdapter;
 
 import org.apache.commons.collections4.Closure;
@@ -46,11 +38,14 @@ import org.xml.sax.Attributes;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
@@ -116,8 +111,9 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
         public void execute(Object o) {
           CatalogEntry c = (CatalogEntry) o;
           String lang = c.getAttribute(XML_LANG_ATTR);
-          if ((langUndef && lang == null) || (language.equals(lang)))
+          if ((langUndef && lang == null) || (language.equals(lang))) {
             values.add(c.getValue());
+          }
         }
       });
       return values;
@@ -143,7 +139,8 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
     }
   }
 
-  private final Function<CatalogEntry, DublinCoreValue> toDublinCoreValue = new Function<CatalogEntry, DublinCoreValue>() {
+  private final Function<CatalogEntry, DublinCoreValue> toDublinCoreValue =
+      new Function<CatalogEntry, DublinCoreValue>() {
     @Override
     public DublinCoreValue apply(CatalogEntry e) {
       return toDublinCoreValue(e);
@@ -152,23 +149,26 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
 
   @Override
   public Map<EName, List<DublinCoreValue>> getValues() {
-    return mlist(data.values().iterator())
-            .foldl(new HashMap<EName, List<DublinCoreValue>>(),
-                    new Function2<HashMap<EName, List<DublinCoreValue>>, List<CatalogEntry>, HashMap<EName, List<DublinCoreValue>>>() {
-                      @Override
-                      public HashMap<EName, List<DublinCoreValue>> apply(HashMap<EName, List<DublinCoreValue>> map,
-                              List<CatalogEntry> entries) {
-                        if (entries.size() > 0) {
-                          final EName property = entries.get(0).getEName();
-                          map.put(property, mlist(entries).map(toDublinCoreValue).value());
-                        }
-                        return map;
-                      }
-                    });
+    Map<EName, List<DublinCoreValue>> result = new HashMap<>();
+
+    for (List<CatalogEntry> entries : data.values()) {
+      if (!entries.isEmpty()) {
+        EName property = entries.get(0).getEName();
+        List<DublinCoreValue> values = entries.stream()
+            .map(toDublinCoreValue)
+            .collect(Collectors.toList());
+        result.put(property, values);
+      }
+    }
+
+    return result;
   }
 
   @Override public List<DublinCoreValue> getValuesFlat() {
-    return $(data.values()).bind(Fns.<List<CatalogEntry>>id()).map(toDublinCoreValue.toFn()).toList();
+    return data.values().stream()
+        .flatMap(List::stream)
+        .map(toDublinCoreValue)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -205,8 +205,9 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
         for (CatalogEntry value : getValuesAsList(property)) {
           entry = value;
           // Prefer values without language information
-          if (!value.hasAttribute(XML_LANG_ATTR))
+          if (!value.hasAttribute(XML_LANG_ATTR)) {
             break;
+          }
         }
         break;
       default:
@@ -233,7 +234,11 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
         values = getLocalizedValuesAsList(property, language);
         break;
     }
-    return values.size() > 0 ? $(values).mkString(delimiter) : null;
+    return (values != null && !values.isEmpty())
+        ? values.stream()
+          .map(CatalogEntry::toString)
+          .collect(Collectors.joining(delimiter))
+        : null;
   }
 
   @Override
@@ -242,10 +247,11 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
     Set<String> languages = new HashSet<String>();
     for (CatalogEntry entry : getValuesAsList(property)) {
       String language = entry.getAttribute(XML_LANG_ATTR);
-      if (language != null)
+      if (language != null) {
         languages.add(language);
-      else
+      } else {
         languages.add(LANGUAGE_UNDEFINED);
+      }
     }
     return languages;
   }
@@ -269,10 +275,12 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
     } else {
       int counter = 0;
       for (CatalogEntry entry : getValuesAsList(property)) {
-        if (equalLanguage(language, entry.getAttribute(XML_LANG_ATTR)))
+        if (equalLanguage(language, entry.getAttribute(XML_LANG_ATTR))) {
           counter++;
-        if (counter > 1)
+        }
+        if (counter > 1) {
           return true;
+        }
       }
       return false;
     }
@@ -307,8 +315,9 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
   @Override
   public void set(EName property, @Nullable String value, String language) {
     RequireUtil.notNull(property, "property");
-    if (language == null || LANGUAGE_ANY.equals(language))
+    if (language == null || LANGUAGE_ANY.equals(language)) {
       throw new IllegalArgumentException("Language code may not be null or LANGUAGE_ANY");
+    }
     setValue(property, value, language, null);
   }
 
@@ -322,7 +331,7 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
   public void set(EName property, @Nullable DublinCoreValue value) {
     RequireUtil.notNull(property, "property");
     if (value != null) {
-      setValue(property, value.getValue(), value.getLanguage(), value.getEncodingScheme().orNull());
+      setValue(property, value.getValue(), value.getLanguage(), value.getEncodingScheme().orElse(null));
     } else {
       removeValue(property, LANGUAGE_ANY);
     }
@@ -361,8 +370,9 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
   public void add(EName property, String value, String language) {
     RequireUtil.notNull(property, "property");
     RequireUtil.notNull(value, "value");
-    if (language == null || LANGUAGE_ANY.equals(language))
+    if (language == null || LANGUAGE_ANY.equals(language)) {
       throw new IllegalArgumentException("Language code may not be null or LANGUAGE_ANY");
+    }
 
     add(property, value, language, null);
   }
@@ -372,7 +382,7 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
     RequireUtil.notNull(property, "property");
     RequireUtil.notNull(value, "value");
 
-    add(property, value.getValue(), value.getLanguage(), value.getEncodingScheme().orNull());
+    add(property, value.getValue(), value.getLanguage(), value.getEncodingScheme().orElse(null));
   }
 
   void add(EName property, String value, String language, @Nullable EName encodingScheme) {
@@ -448,12 +458,15 @@ public class DublinCoreCatalog extends XMLCatalogImpl implements DublinCore, Met
 
   @Override
   public Set<EName> getProperties() {
-    return new ImmutableSetWrapper<>(data.keySet());
+    return Collections.unmodifiableSet(data.keySet());
   }
 
   boolean equalLanguage(String a, String b) {
-    return (a == null && eq(b, LANGUAGE_UNDEFINED)) || (b == null && eq(a, LANGUAGE_UNDEFINED)) || eq(a, LANGUAGE_ANY)
-            || eq(b, LANGUAGE_ANY) || (a != null && eq(a, b));
+    return (a == null && Objects.equals(b, LANGUAGE_UNDEFINED))
+        || (b == null && Objects.equals(a, LANGUAGE_UNDEFINED))
+        || Objects.equals(a, LANGUAGE_ANY)
+        || Objects.equals(b, LANGUAGE_ANY)
+        || (a != null && Objects.equals(a, b));
   }
 
   // make public

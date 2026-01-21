@@ -33,9 +33,12 @@ import org.opencastproject.util.doc.rest.RestService;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import javax.ws.rs.GET;
@@ -47,7 +50,7 @@ import javax.ws.rs.core.Response;
  * This REST endpoint redirects users to the currently configured default player, allowing the default to be changed
  * without re-publishing all events.
  */
-@Path("/")
+@Path("/play")
 @RestService(
     name = "PlayerRedirect",
     title = "Configurable Player Endpoint",
@@ -62,6 +65,7 @@ import javax.ws.rs.core.Response;
         "opencast.service.path=/play"
     }
 )
+@JaxrsResource
 public class PlayerRedirect {
 
   private static final Logger logger = LoggerFactory.getLogger(PlayerRedirect.class);
@@ -91,7 +95,7 @@ public class PlayerRedirect {
   public Response redirect(@PathParam("id") String id) {
     final Organization org = securityService.getOrganization();
     final String playerPath = Objects.toString(org.getProperties().get("player"), PLAYER_DEFAULT)
-            .replace("#{id}", id);
+            .replace("#{id}", URLEncoder.encode(id, StandardCharsets.UTF_8));
     logger.debug("redirecting to player: {}", playerPath);
     return Response
             .status(Response.Status.TEMPORARY_REDIRECT)

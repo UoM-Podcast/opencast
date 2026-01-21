@@ -37,8 +37,8 @@ public interface CatalogUIAdapter {
   String ORGANIZATION_WILDCARD = "*";
 
   /**
-   * Returns the name of the organization (tenant) this catalog UI adapter belongs to or {@value #ORGANIZATION_WILDCARD} if this is a
-   * tenant-agnostic adapter.
+   * Returns the name of the organization (tenant) this catalog UI adapter belongs to or {@value #ORGANIZATION_WILDCARD}
+   * if this is a tenant-agnostic adapter.
    *
    * @return The organization name or {@value #ORGANIZATION_WILDCARD}
    */
@@ -81,4 +81,13 @@ public interface CatalogUIAdapter {
    */
   DublinCoreMetadataCollection getRawFields(Map<String, ResourceListQuery> collectionQueryOverrides);
 
+  /**
+   * Returns all fields of this catalog in a raw data format. Allows to hand over custom queries to fill the collection
+   * of a metadata field (defined by its output id) from a list provider.
+   *
+   * @param collectionQueryOverride
+   *          A custom list provider query mapped to every metadata field.
+   * @return The fields with raw data
+   */
+  DublinCoreMetadataCollection getRawFields(ResourceListQuery collectionQueryOverride);
 }

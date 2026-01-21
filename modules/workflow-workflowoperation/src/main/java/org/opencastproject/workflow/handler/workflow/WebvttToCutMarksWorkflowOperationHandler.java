@@ -28,6 +28,7 @@ import org.opencastproject.mediapackage.MediaPackageElementBuilder;
 import org.opencastproject.mediapackage.MediaPackageElementBuilderFactory;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.Track;
+import org.opencastproject.mediapackage.selector.SimpleElementSelector;
 import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.subtitleparser.SubtitleParsingException;
 import org.opencastproject.subtitleparser.webvttparser.WebVTTParser;
@@ -43,7 +44,6 @@ import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
 import org.opencastproject.workspace.api.Workspace;
 
-import com.entwinemedia.fn.data.Opt;
 import com.google.gson.Gson;
 
 import org.apache.commons.io.IOUtils;
@@ -58,8 +58,9 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
 /**
  * This workflow operation processes a Webvtt into CutMarks
@@ -108,7 +109,7 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
     protected long bufferTime;
     protected MediaPackageElementFlavor sourceFlavor;
     protected MediaPackageElementFlavor targetFlavor;
-    protected Opt<String> trackFlavor;
+    protected Optional<String> trackFlavor;
     protected Treatment treatmentStart;
     protected Treatment treatmentEnd;
   }
@@ -142,7 +143,7 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
     WebVTTSubtitle webvtt = readAndParseWebVTT(mp, config.sourceFlavor);
 
     // Get track length
-    Opt<Long> trackDuration = getTrackDuration(mp, config.trackFlavor);
+    Optional<Long> trackDuration = getTrackDuration(mp, config.trackFlavor);
 
     // Process WebVTT Subtitle Information into CutPoints
     List<Times> cutMarks = processWebVTTIntoCutPoints(
@@ -192,7 +193,7 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
       );
     }
 
-    Opt<String> trackFlavor = getOptConfig(workflowInstance, CFGK_TRACK_FLAVOR);
+    Optional<String> trackFlavor = getOptConfig(workflowInstance, CFGK_TRACK_FLAVOR);
 
     String treatmentStrStart = getConfig(
             workflowInstance,
@@ -242,7 +243,7 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
           WebVTTSubtitle webvtt,
           long minTimeSilenceInMS,
           long bufferTime,
-          Opt<Long> trackDuration,
+          Optional<Long> trackDuration,
           Treatment treatmentStart,
           Treatment treatmentEnd
   ) {
@@ -284,10 +285,11 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
       cutMarks.add(lastMark);
 
 
-      // handle start and end
-      // crop start and end
-      // (assumes that cropping is only necessary due to the bufferTime, does not include cases like the webvtt having timestamps outside of the videos runtime)
-      // (also assumes that the video starts at 0)
+      // handle start and end.
+      // crop start and end.
+      // (assumes that cropping is only necessary due to the bufferTime, does not include cases like the webvtt having
+      // timestamps outside of the videos runtime).
+      // (also assumes that the video starts at 0).
       Times firstCutMark = cutMarks.get(0);
       if (treatmentStart == Treatment.ALWAYS_INCLUDE) {
         updateTimesBegin(firstCutMark, 0L);
@@ -300,7 +302,7 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
           updateTimesBegin(firstCutMark, 0L);
         }
       }
-      if (trackDuration.isDefined()) {
+      if (trackDuration.isPresent()) {
         long trackDur = trackDuration.get();
         Times lastCutMark = cutMarks.get(cutMarks.size() - 1);
         if (treatmentEnd == Treatment.ALWAYS_INCLUDE) {
@@ -341,7 +343,7 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
 
       MediaPackageElementBuilder mpeBuilder = MediaPackageElementBuilderFactory.newInstance().newElementBuilder();
       MediaPackageElement mpe = mpeBuilder.newElement(MediaPackageElement.Type.Attachment, targetFlavor);
-      mpe.setIdentifier(UUID.randomUUID().toString());
+      mpe.generateIdentifier();
 
       URI cutMarksURI = workspace.put(mp.getIdentifier().toString(), mpe.getIdentifier(), TARGET_FILENAME, cutMarksOut);
 
@@ -356,7 +358,10 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
   private WebVTTSubtitle readAndParseWebVTT(MediaPackage mp, MediaPackageElementFlavor sourceFlavor)
           throws WorkflowOperationException {
     // Identify WebVTT Element to process
-    MediaPackageElement[] webvttElements = mp.getElementsByFlavor(sourceFlavor);
+    SimpleElementSelector elementSelector = new SimpleElementSelector();
+    elementSelector.addFlavor(sourceFlavor);
+    Collection<MediaPackageElement> elements = elementSelector.select(mp, false);
+    MediaPackageElement[] webvttElements = elements.toArray(new MediaPackageElement[elements.size()]);
     if (webvttElements.length != 1) {
       throw new WorkflowOperationException("Couldn't uniqly identify WebVTT Element");
     }
@@ -382,16 +387,17 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
           logger.debug("WebVTT InputStream is null (mediapackage {})", mp.getIdentifier().toString());
         }
       } catch (IOException e) {
-        logger.warn("Couldn't close '{}' properly (mediapackage {})", webvttURI.toString(), mp.getIdentifier().toString());
+        logger.warn("Couldn't close '{}' properly (mediapackage {})", webvttURI.toString(),
+            mp.getIdentifier().toString());
       }
     }
 
     return webvtt;
   }
 
-  private Opt<Long> getTrackDuration(MediaPackage mp, Opt<String> trackFlavor)
+  private Optional<Long> getTrackDuration(MediaPackage mp, Optional<String> trackFlavor)
           throws WorkflowOperationException {
-    if (trackFlavor.isDefined()) {
+    if (trackFlavor.isPresent()) {
       String flavor = trackFlavor.get();
       Track[] tracks;
       try {
@@ -406,10 +412,10 @@ public class WebvttToCutMarksWorkflowOperationHandler extends AbstractWorkflowOp
                 + mp.getIdentifier().toString() + "', exactly one needed"
         );
       }
-      return Opt.nul(tracks[0].getDuration());
+      return Optional.ofNullable(tracks[0].getDuration());
     }
 
-    return Opt.none();
+    return Optional.empty();
   }
 
   @Override

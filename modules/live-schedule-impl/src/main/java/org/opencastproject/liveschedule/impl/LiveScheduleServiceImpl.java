@@ -23,9 +23,6 @@ package org.opencastproject.liveschedule.impl;
 import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.assetmanager.api.Snapshot;
 import org.opencastproject.assetmanager.api.Version;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.ARecord;
-import org.opencastproject.assetmanager.api.query.AResult;
 import org.opencastproject.capture.admin.api.CaptureAgentStateService;
 import org.opencastproject.distribution.api.DistributionException;
 import org.opencastproject.distribution.api.DownloadDistributionService;
@@ -53,8 +50,6 @@ import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.DublinCoreCatalog;
 import org.opencastproject.metadata.dublincore.DublinCoreCatalogService;
 import org.opencastproject.metadata.dublincore.EncodingSchemeUtils;
-import org.opencastproject.search.api.SearchQuery;
-import org.opencastproject.search.api.SearchResult;
 import org.opencastproject.search.api.SearchService;
 import org.opencastproject.security.api.AccessControlList;
 import org.opencastproject.security.api.AclScope;
@@ -72,7 +67,6 @@ import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.UrlSupport;
 import org.opencastproject.workspace.api.Workspace;
 
-import com.entwinemedia.fn.data.Opt;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
@@ -85,8 +79,6 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -169,7 +161,6 @@ public class LiveScheduleServiceImpl implements LiveScheduleService {
   private String streamMimeType;
   private String[] streamResolution;
   private MediaPackageElementFlavor[] liveFlavors;
-  private String distributionServiceType = DEFAULT_LIVE_DISTRIBUTION_SERVICE;
   private String serverUrl;
   private Cache<String, Version> snapshotVersionCache
       = CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).build();
@@ -255,9 +246,6 @@ public class LiveScheduleServiceImpl implements LiveScheduleService {
       liveFlavors[i++] = MediaPackageElementFlavor.parseFlavor(f);
     }
 
-    if (!StringUtils.isBlank((String) properties.get(LIVE_DISTRIBUTION_SERVICE))) {
-      distributionServiceType = StringUtils.trimToEmpty((String) properties.get(LIVE_DISTRIBUTION_SERVICE));
-    }
     publishedStreamingFormats = Arrays.asList(Optional.ofNullable(StringUtils.split(
             (String)properties.get(LIVE_PUBLISH_STREAMING), ",")).orElse(new String[0]));
 
@@ -267,8 +255,8 @@ public class LiveScheduleServiceImpl implements LiveScheduleService {
     }
 
     logger.info(
-        "Configured live stream name: {}, mime type: {}, resolution: {}, target flavors: {}, distribution service: {}",
-        streamName, streamMimeType, resolution, flavors, distributionServiceType);
+            "Configured live stream name: {}, mime type: {}, resolution: {}, target flavors: {}",
+            streamName, streamMimeType, resolution, flavors);
   }
 
   @Override
@@ -459,29 +447,43 @@ public class LiveScheduleServiceImpl implements LiveScheduleService {
   }
 
   void retract(MediaPackage mp) throws LiveScheduleException {
+    Organization org = securityService.getOrganization();
+    User prevUser = org != null ? securityService.getUser() : null;
     try {
-      List<Job> jobs = new ArrayList<Job>();
+      securityService.setUser(SecurityUtil.createSystemUser(systemUserName, org));
       Set<String> elementIds = new HashSet<String>();
-      // Remove media package from the search index
       String mpId = mp.getIdentifier().toString();
       logger.info("Removing LIVE media package {} from the search index", mpId);
 
-      jobs.add(searchService.delete(mpId));
-      // Retract elements
       for (MediaPackageElement mpe : mp.getElements()) {
         if (!MediaPackageElement.Type.Publication.equals(mpe.getElementType())) {
           elementIds.add(mpe.getIdentifier());
         }
       }
-      jobs.add(downloadDistributionService.retract(CHANNEL_ID, mp, elementIds));
 
-      if (!waitForStatus(jobs.toArray(new Job[jobs.size()])).isSuccess()) {
-        throw new LiveScheduleException("Removing live media package from search did not complete successfully");
+      List<String> failedJobs = new ArrayList<>();
+      // Remove media package from the search index
+      Job searchDeleteJob = searchService.delete(mpId);
+      if (!waitForStatus(searchDeleteJob).isSuccess()) {
+        failedJobs.add("Search Index");
+      }
+
+      // Removing media from the download distribution service
+      Job distributionRetractJob =  downloadDistributionService.retract(CHANNEL_ID, mp, elementIds);
+      if (!waitForStatus(distributionRetractJob).isSuccess()) {
+        failedJobs.add("Distribution");
+      }
+
+      if (!failedJobs.isEmpty()) {
+        throw new LiveScheduleException(
+            String.format("Removing live media package %s from %s failed", mpId, String.join(" and ", failedJobs)));
       }
     } catch (LiveScheduleException e) {
       throw e;
     } catch (Exception e) {
       throw new LiveScheduleException(e);
+    } finally {
+      securityService.setUser(prevUser);
     }
   }
 
@@ -501,18 +503,11 @@ public class LiveScheduleServiceImpl implements LiveScheduleService {
     securityService.setUser(SecurityUtil.createSystemUser(systemUserName, org));
     try {
       // Look for the media package in the search index
-      SearchQuery query = new SearchQuery().withId(mediaPackageId);
-      SearchResult result = searchService.getForAdministrativeRead(query);
-      if (result.size() == 0) {
-        logger.debug("The search service doesn't know live mediapackage {}", mediaPackageId);
-        return null;
-      } else if (result.size() > 1) {
-        logger.warn("More than one live mediapackage with id {} returned from search service", mediaPackageId);
-        throw new LiveScheduleException("More than one live mediapackage with id " + mediaPackageId + " found");
-      }
-      return result.getItems()[0].getMediaPackage();
+      return searchService.get(mediaPackageId);
     } catch (UnauthorizedException e) {
       logger.warn("Unexpected unauthorized exception when querying the search index for mp {}", mediaPackageId, e);
+      return null;
+    } catch (NotFoundException e) {
       return null;
     } finally {
       securityService.setUser(prevUser);
@@ -647,19 +642,12 @@ public class LiveScheduleServiceImpl implements LiveScheduleService {
   }
 
   Snapshot getSnapshotFromArchive(String mpId) throws LiveScheduleException {
-    AQueryBuilder query = assetManager.createQuery();
-    AResult result = query.select(query.snapshot()).where(query.mediaPackageId(mpId).and(query.version().isLatest()))
-            .run();
-    if (result.getSize() == 0) {
-      // Media package not archived?.
-      throw new LiveScheduleException(String.format("Unexpected error: media package %s has not been archived.", mpId));
-    }
-    Opt<ARecord> record = result.getRecords().head();
-    if (record.isNone()) {
+    Optional<Snapshot> snapshot = assetManager.getLatestSnapshot(mpId);
+    if (snapshot.isEmpty()) {
       // No snapshot?
       throw new LiveScheduleException(String.format("Unexpected error: media package %s has not been archived.", mpId));
     }
-    return record.get().getSnapshot().get();
+    return snapshot.get();
   }
 
   MediaPackage distributeAclsAndCatalogs(Snapshot snapshot) throws LiveScheduleException {
@@ -906,21 +894,12 @@ public class LiveScheduleServiceImpl implements LiveScheduleService {
   }
 
   @Reference(
-      cardinality = ReferenceCardinality.AT_LEAST_ONE,
-      policy = ReferencePolicy.DYNAMIC,
-      unbind = "unsetDownloadDistributionService"
+      name = "DownloadDistributionService",
+      target = "(distribution.channel=download)"
   )
   public void setDownloadDistributionService(DownloadDistributionService service) {
-    if (distributionServiceType.equalsIgnoreCase(service.getDistributionType())) {
-      this.downloadDistributionService = service;
-    }
-  }
-
-  public void unsetDownloadDistributionService(DownloadDistributionService service) {
-    if (distributionServiceType.equalsIgnoreCase(service.getDistributionType())
-        && downloadDistributionService.equals(service)) {
-      this.downloadDistributionService = null;
-    }
+    this.downloadDistributionService = service;
+    logger.info("Distribution service with type '{}' set.", downloadDistributionService.getDistributionType());
   }
 
   @Reference

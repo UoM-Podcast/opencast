@@ -21,9 +21,6 @@
 
 package org.opencastproject.workflow.handler.incident;
 
-import static org.opencastproject.util.EnumSupport.parseEnum;
-import static org.opencastproject.util.data.Option.option;
-
 import org.opencastproject.job.api.Incident.Severity;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.job.api.JobContext;
@@ -48,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component(
@@ -71,9 +69,19 @@ public class IncidentCreatorWorkflowOperationHandler extends AbstractWorkflowOpe
   @Override
   public WorkflowOperationResult start(WorkflowInstance wi, JobContext ctx) throws WorkflowOperationException {
     final WorkflowOperationInstance woi = wi.getCurrentOperation();
-    final int code = option(woi.getConfiguration(OPT_CODE)).bind(Strings.toInt).getOrElse(1);
-    final Severity severity = option(woi.getConfiguration(OPT_SEVERITY)).bind(parseEnum(Severity.FAILURE))
-            .getOrElse(Severity.INFO);
+    final int code = Optional.ofNullable(woi.getConfiguration(OPT_CODE))
+        .flatMap(Strings::toInt)
+        .orElse(1);
+
+    final Severity severity = Optional.ofNullable(woi.getConfiguration(OPT_SEVERITY))
+        .map(s -> {
+          try {
+            return Severity.valueOf(s);
+          } catch (IllegalArgumentException e) {
+            return Severity.INFO;
+          }
+        })
+        .orElse(Severity.INFO);
 
     final List<Tuple<String, String>> details = Arrays.stream(ArrayUtils.nullToEmpty(
             StringUtils.split(woi.getConfiguration(OPT_DETAILS), ";")))
@@ -88,7 +96,7 @@ public class IncidentCreatorWorkflowOperationHandler extends AbstractWorkflowOpe
             .collect(Collectors.toMap(x -> x[0], x -> x[1]));
     log.info("Create nop job");
     final Job job = nopService.nop();
-    log.info("Log a dummy incident with code %d", code);
+    log.info("Log a dummy incident with code {}", code);
     serviceRegistry.incident().record(job, severity, code, params, details);
     if (!waitForStatus(job).isSuccess()) {
       throw new WorkflowOperationException("Job did not complete successfully");

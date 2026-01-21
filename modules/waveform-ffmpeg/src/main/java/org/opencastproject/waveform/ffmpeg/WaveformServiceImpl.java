@@ -29,7 +29,6 @@ import org.opencastproject.mediapackage.MediaPackageElementBuilderFactory;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
 import org.opencastproject.mediapackage.MediaPackageException;
 import org.opencastproject.mediapackage.Track;
-import org.opencastproject.mediapackage.identifier.IdImpl;
 import org.opencastproject.security.api.OrganizationDirectoryService;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UserDirectoryService;
@@ -117,6 +116,10 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
   /** The key to look for in the service configuration file to override the DEFAULT_WAVEFORM_COLOR */
   public static final String WAVEFORM_COLOR_CONFIG_KEY = "waveform.color";
 
+  public static final String DEFAULT_WAVEFORM_FILTER_MODE = "peak";
+
+  public static final String WAVEFORM_FILTER_MODE_CONFIG_KEY = "waveform.filter-mode";
+
   /** The default filter to be optionally prepended to the showwavespic filter */
   public static final String DEFAULT_WAVEFORM_FILTER_PRE = null;
 
@@ -149,6 +152,8 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
 
   /** The waveform colors per audio channel */
   private String[] waveformColor = DEFAULT_WAVEFORM_COLOR;
+
+  private String waveformFilterMode = DEFAULT_WAVEFORM_FILTER_MODE;
 
   /** Filter to be prepended to the showwavespic filter */
   private String waveformFilterPre = DEFAULT_WAVEFORM_FILTER_PRE;
@@ -216,6 +221,15 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
       if (StringUtils.isNotEmpty(colorValue) && StringUtils.isNotBlank(colorValue)) {
         waveformColor = StringUtils.split(colorValue, ", |:;");
       }
+    }
+
+    val = properties.get(WAVEFORM_FILTER_MODE_CONFIG_KEY);
+    if (val != null && StringUtils.isNotEmpty((String) val)) {
+      if (!"average".equals(val) && !"peak".equals(val)) {
+        logger.warn("Waveform filter mode configuration value '{}' is not in set of predefined values (average, peak). "
+                + "The waveform image extraction job may fail.", val);
+      }
+      waveformFilterMode = (String) val;
     }
 
     val = properties.get(WAVEFORM_FILTER_PRE_CONFIG_KEY);
@@ -405,21 +419,20 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
     // it is up to the workflow operation handler to set the attachment flavor
     Attachment waveformMpe = (Attachment) mpElementBuilder.elementFromURI(
             waveformFileUri, Type.Attachment, track.getFlavor());
-    waveformMpe.setIdentifier(IdImpl.fromUUID().toString());
+    waveformMpe.generateIdentifier();
     return waveformMpe;
   }
 
   /**
    * Create an ffmpeg waveform filter with parameters based on input track and service configuration.
    *
-   * @param track source audio/video track with at least one audio channel
    * @param width width of waveform image
    * @param height height of waveform image
    * @param color color of waveform image
    * @return ffmpeg filter parameter
    */
   private String createWaveformFilter(int width, int height, String color) {
-    StringBuilder filterBuilder = new StringBuilder("");
+    StringBuilder filterBuilder = new StringBuilder();
     if (waveformFilterPre != null) {
       filterBuilder.append(waveformFilterPre);
       filterBuilder.append(",");
@@ -440,6 +453,8 @@ public class WaveformServiceImpl extends AbstractJobProducer implements Waveform
     filterBuilder.append(height);
     filterBuilder.append(":scale=");
     filterBuilder.append(waveformScale);
+    filterBuilder.append(":filter=");
+    filterBuilder.append(waveformFilterMode);
     filterBuilder.append(":colors=");
     filterBuilder.append(StringUtils.join(Arrays.asList(waveformOperationColors), "|"));
     if (waveformFilterPost != null) {

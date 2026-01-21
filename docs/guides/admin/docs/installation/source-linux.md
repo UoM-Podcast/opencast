@@ -33,7 +33,6 @@ Cloning the Git repository:
     git tag   <-  List all available versions
     git checkout TAG   <-  Switch to desired version
 
-
 Install Dependencies
 --------------------
 
@@ -41,7 +40,7 @@ Please make sure to install the following dependencies.
 
 Required:
 
-    java-11-openjdk-devel / openjdk-11-jdk
+    java-17-openjdk-devel / openjdk-17-jdk
     ffmpeg >= 3.2.4
     maven >= 3.6
     python >= 2.7
@@ -53,19 +52,11 @@ Required:
 
 Required (not necessarily on the same machine):
 
-    OpenSearch 1.x
+    OpenSearch 1.x and analysis-icu plugin
 
 Required for text extraction (recommended):
 
     tesseract >= 3
-
-Required for hunspell based text filtering (optional):
-
-    hunspell >= 1.2.8
-
-Required for audio normalization (optional):
-
-    sox >= 14.4
 
 Required for animate service (optional):
 
@@ -75,9 +66,13 @@ Required for text to speech (optional):
 
     Vosk
 
-OR 
-    
+OR
+
     Whisper >= 20230314
+
+OR
+
+    WhisperC++ >= 1.4.0
 
 ### Dependency Download
 
@@ -94,7 +89,7 @@ Building Opencast
 Automatically build all Opencast modules and assemble distributions for different server types:
 
     cd opencast-dir
-    mvn clean install
+    ./mvnw clean install
 
 Deploy all-in-one distribution:
 
@@ -104,7 +99,6 @@ Deploy all-in-one distribution:
 Make sure everything belongs to the user `opencast`:
 
     sudo chown -R opencast:opencast /opt/opencast
-
 
 Configure
 ---------
@@ -125,7 +119,6 @@ To start Opencast, run `.../bin/start-opencast` as user `opencast`:
 
 As soon as Opencast is completely started, browse to [http://localhost:8080](http://localhost:8080) to get to the
 administration interface.
-
 
 Run Opencast as a service
 -------------------------
@@ -151,21 +144,3 @@ Start Opencast and make it run automatically:
     systemctl start opencast.service
     systemctl enable opencast.service
 
-### Using SysV-Init
-
-> Note that this option is for compatibility to older systems. If you have the choice of either using the Systemd unit
-> file or the Init script, it is recommended to use the Systemd unit file.
-
-Make sure the path to Opencast is set correctly:
-
-    vim docs/scripts/service/etc-init.d-opencast
-
-1. Install init script:
-
-        cp docs/scripts/service/etc-init.d-opencast /etc/init.d/opencast
-
-2. Enable service using `chkconfig` or `update-rc.d`
-
-3. Start Opencast using
-
-        service opencast start

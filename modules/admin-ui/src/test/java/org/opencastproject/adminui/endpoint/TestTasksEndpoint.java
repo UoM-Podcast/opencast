@@ -58,15 +58,12 @@ import org.opencastproject.security.api.User;
 import org.opencastproject.util.IoSupport;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.UrlSupport;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.workflow.api.WorkflowDatabaseException;
 import org.opencastproject.workflow.api.WorkflowDefinition;
 import org.opencastproject.workflow.api.WorkflowDefinitionImpl;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowService;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.FileUtils;
 import org.easymock.EasyMock;
@@ -155,14 +152,16 @@ public class TestTasksEndpoint extends TasksEndpoint {
   }
 
   AssetManager mkAssetManager(final Workspace workspace) throws Exception {
-    final DBSession dbSession = newDBSession("org.opencastproject.assetmanager.impl");
-    final Database db = new Database(dbSession);
     HttpAssetProvider httpAssetProvider = new HttpAssetProvider() {
       @Override
       public Snapshot prepareForDelivery(Snapshot snapshot) {
         return snapshot;
       }
     };
+
+    final DBSession dbSession = newDBSession("org.opencastproject.assetmanager.impl");
+    final Database db = new Database(dbSession);
+    db.setHttpAssetProvider(httpAssetProvider);
 
     JaxbOrganization org = new DefaultOrganization();
     JaxbUser user = new JaxbUser("user", null, org, new JaxbRole(DefaultOrganization.DEFAULT_ORGANIZATION_ADMIN,
@@ -192,10 +191,8 @@ public class TestTasksEndpoint extends TasksEndpoint {
     am.setSecurityService(securityService);
     am.setAuthorizationService(authorizationService);
     am.setIndex(esIndex);
-    //We need two handlers
     am.addEventHandler(EasyMock.createNiceMock(AssetManagerUpdateHandler.class));
     am.addEventHandler(EasyMock.createNiceMock(AssetManagerUpdateHandler.class));
-
     return am;
   }
 
@@ -203,18 +200,18 @@ public class TestTasksEndpoint extends TasksEndpoint {
     return new AssetStore() {
 
       @Override
-      public Option<Long> getUsedSpace() {
-        return Option.none();
+      public Optional<Long> getUsedSpace() {
+        return Optional.empty();
       }
 
       @Override
-      public Option<Long> getUsableSpace() {
-        return Option.none();
+      public Optional<Long> getUsableSpace() {
+        return Optional.empty();
       }
 
       @Override
-      public Option<Long> getTotalSpace() {
-        return Option.none();
+      public Optional<Long> getTotalSpace() {
+        return Optional.empty();
       }
 
       @Override
@@ -231,13 +228,13 @@ public class TestTasksEndpoint extends TasksEndpoint {
       }
 
       @Override
-      public Opt<InputStream> get(StoragePath path) throws AssetStoreException {
+      public Optional<InputStream> get(StoragePath path) throws AssetStoreException {
         File file = new File(baseDir, UrlSupport.concat(path.getMediaPackageId(), path.getMediaPackageElementId(),
                 path.getVersion().toString()));
         InputStream inputStream;
         try {
           inputStream = new ByteArrayInputStream(FileUtils.readFileToByteArray(file));
-          return Opt.some(inputStream);
+          return Optional.of(inputStream);
         } catch (IOException e) {
           throw new RuntimeException(e);
         }

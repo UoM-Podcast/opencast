@@ -21,11 +21,6 @@
 
 package org.opencastproject.adminui.endpoint;
 
-import static com.entwinemedia.fn.Stream.$;
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
@@ -37,6 +32,9 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.NO_CONTENT;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
+import static org.opencastproject.adminui.endpoint.EndpointUtil.transformAccessControList;
+import static org.opencastproject.index.service.util.JSONUtils.collectionToJsonArray;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.index.service.util.RestUtils.notFound;
 import static org.opencastproject.index.service.util.RestUtils.okJson;
 import static org.opencastproject.index.service.util.RestUtils.okJsonList;
@@ -55,7 +53,6 @@ import static org.opencastproject.util.doc.rest.RestParameter.Type.TEXT;
 import org.opencastproject.adminui.impl.AdminUIConfiguration;
 import org.opencastproject.adminui.tobira.TobiraException;
 import org.opencastproject.adminui.tobira.TobiraService;
-import org.opencastproject.adminui.util.QueryPreprocessor;
 import org.opencastproject.authorization.xacml.manager.api.AclService;
 import org.opencastproject.authorization.xacml.manager.api.AclServiceFactory;
 import org.opencastproject.authorization.xacml.manager.api.ManagedAcl;
@@ -69,8 +66,6 @@ import org.opencastproject.elasticsearch.index.objects.event.EventSearchQuery;
 import org.opencastproject.elasticsearch.index.objects.series.Series;
 import org.opencastproject.elasticsearch.index.objects.series.SeriesIndexSchema;
 import org.opencastproject.elasticsearch.index.objects.series.SeriesSearchQuery;
-import org.opencastproject.elasticsearch.index.objects.theme.IndexTheme;
-import org.opencastproject.elasticsearch.index.objects.theme.ThemeSearchQuery;
 import org.opencastproject.index.service.api.IndexService;
 import org.opencastproject.index.service.exception.IndexServiceException;
 import org.opencastproject.index.service.resources.list.provider.SeriesListProvider;
@@ -90,13 +85,16 @@ import org.opencastproject.security.api.AccessControlParser;
 import org.opencastproject.security.api.Permissions;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.UnauthorizedException;
+import org.opencastproject.security.api.UserDirectoryService;
 import org.opencastproject.series.api.SeriesException;
 import org.opencastproject.series.api.SeriesService;
 import org.opencastproject.systems.OpencastConstants;
+import org.opencastproject.themes.Theme;
+import org.opencastproject.themes.ThemesServiceDatabase;
+import org.opencastproject.themes.persistence.ThemesServiceDatabaseException;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.RestUtil;
 import org.opencastproject.util.UrlSupport;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.Tuple;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestParameter.Type;
@@ -107,11 +105,7 @@ import org.opencastproject.util.requests.SortCriterion;
 import org.opencastproject.util.requests.SortCriterion.Order;
 import org.opencastproject.workflow.api.WorkflowInstance;
 
-import com.entwinemedia.fn.data.Opt;
-import com.entwinemedia.fn.data.json.Field;
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
-import com.entwinemedia.fn.data.json.Jsons.Functions;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -123,6 +117,7 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,12 +125,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletResponse;
@@ -154,7 +147,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-@Path("/")
+@Path("/admin-ng/series")
 @RestService(name = "SeriesProxyService", title = "UI Series",
   abstractText = "This service provides the series data for the UI.",
   notes = { "This service offers the series CRUD Operations for the admin UI.",
@@ -171,6 +164,7 @@ import javax.ws.rs.core.Response.Status;
                 "opencast.service.path=/admin-ng/series",
         }
 )
+@JaxrsResource
 public class SeriesEndpoint {
 
   private static final Logger logger = LoggerFactory.getLogger(SeriesEndpoint.class);
@@ -198,6 +192,8 @@ public class SeriesEndpoint {
   private ListProvidersService listProvidersService;
   private ElasticsearchIndex searchIndex;
   private AdminUIConfiguration adminUIConfiguration;
+  private ThemesServiceDatabase themesServiceDatabase;
+  private UserDirectoryService userDirectoryService;
 
   /** Default server URL */
   private String serverUrl = "http://localhost:8080";
@@ -242,12 +238,23 @@ public class SeriesEndpoint {
     return aclServiceFactory.serviceFor(securityService.getOrganization());
   }
 
-  private Map<String, TobiraService> tobiras = new HashMap<>();
 
   /** OSGi DI. */
   @Reference
   public void setAdminUIConfiguration(AdminUIConfiguration adminUIConfiguration) {
     this.adminUIConfiguration = adminUIConfiguration;
+  }
+
+  /** OSGi callback for the themes service database. */
+  @Reference
+  public void setThemesServiceDatabase(ThemesServiceDatabase themesServiceDatabase) {
+    this.themesServiceDatabase = themesServiceDatabase;
+  }
+
+  /** Sets the user directory service */
+  @Reference
+  public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
+    this.userDirectoryService = userDirectoryService;
   }
 
   @Activate
@@ -287,7 +294,7 @@ public class SeriesEndpoint {
       if (!matches.matches()) {
         return;
       }
-      var tobira = getTobira(matches.group("organization"));
+      var tobira = TobiraService.getTobira(matches.group("organization"));
       switch (matches.group("key")) {
         case "origin":
           tobira.setOrigin((String) value);
@@ -327,11 +334,11 @@ public class SeriesEndpoint {
     JSONObject seriesAccessJson = new JSONObject();
     try {
       AccessControlList seriesAccessControl = seriesService.getSeriesAccessControl(seriesId);
-      Option<ManagedAcl> currentAcl = AccessInformationUtil.matchAclsLenient(acls, seriesAccessControl,
+      Optional<ManagedAcl> currentAcl = AccessInformationUtil.matchAclsLenient(acls, seriesAccessControl,
               adminUIConfiguration.getMatchManagedAclRolePrefixes());
-      seriesAccessJson.put("current_acl", currentAcl.isSome() ? currentAcl.get().getId() : 0);
+      seriesAccessJson.put("current_acl", currentAcl.isPresent() ? currentAcl.get().getId() : 0);
       seriesAccessJson.put("privileges", AccessInformationUtil.serializePrivilegesByRole(seriesAccessControl));
-      seriesAccessJson.put("acl", AccessControlParser.toJsonSilent(seriesAccessControl));
+      seriesAccessJson.put("acl", transformAccessControList(seriesAccessControl, userDirectoryService));
       seriesAccessJson.put("locked", hasProcessingEvents);
     } catch (SeriesException e) {
       logger.error("Unable to get ACL from series {}", seriesId, e);
@@ -362,8 +369,8 @@ public class SeriesEndpoint {
     List<SeriesCatalogUIAdapter> catalogUIAdapters = indexService.getSeriesCatalogUIAdapters();
     catalogUIAdapters.remove(indexService.getCommonSeriesCatalogUIAdapter());
     for (SeriesCatalogUIAdapter adapter : catalogUIAdapters) {
-      final Opt<DublinCoreMetadataCollection> optSeriesMetadata = adapter.getFields(series);
-      if (optSeriesMetadata.isSome()) {
+      final Optional<DublinCoreMetadataCollection> optSeriesMetadata = adapter.getFields(series);
+      if (optSeriesMetadata.isPresent()) {
         metadataList.add(adapter.getFlavor().toString(), adapter.getUITitle(), optSeriesMetadata.get());
       }
     }
@@ -510,36 +517,30 @@ public class SeriesEndpoint {
   @SuppressWarnings("unchecked")
   @RestQuery(name = "getNewThemes", description = "Returns all the data related to the themes tab in the new series modal as JSON", returnDescription = "All the data related to the series themes tab as JSON", responses = { @RestResponse(responseCode = SC_OK, description = "Returns all the data related to the series themes tab as JSON") })
   public Response getNewThemes() {
-    ThemeSearchQuery query = new ThemeSearchQuery(securityService.getOrganization().getId(), securityService.getUser());
-    // need to set limit because elasticsearch limit results by 10 per default
-    query.withLimit(Integer.MAX_VALUE);
-    query.withOffset(0);
-    query.sortByName(Order.Ascending);
-    SearchResult<IndexTheme> results = null;
-    try {
-      results = searchIndex.getByQuery(query);
-    } catch (SearchIndexException e) {
-      logger.error("The admin UI Search Index was not able to get the themes", e);
-      return RestUtil.R.serverError();
-    }
+    SortCriterion sortCriterion = new SortCriterion("name", Order.Ascending);
+    ArrayList<SortCriterion> sortCriteria = new ArrayList<>();
+    sortCriteria.add(sortCriterion);
+    List<Theme> results = themesServiceDatabase.findThemes(
+        Optional.ofNullable(Integer.MAX_VALUE),
+        Optional.ofNullable(0),
+        sortCriteria,
+        Optional.empty(),
+        Optional.empty()
+    );
 
     JSONObject themesJson = new JSONObject();
-    for (SearchResultItem<IndexTheme> item : results.getItems()) {
+    for (Theme theme : results) {
       JSONObject themeInfoJson = new JSONObject();
-      IndexTheme theme = item.getSource();
       themeInfoJson.put("name", theme.getName());
       themeInfoJson.put("description", theme.getDescription());
-      themesJson.put(theme.getIdentifier(), themeInfoJson);
+      themesJson.put(theme.getId().get(), themeInfoJson);
     }
+
     return Response.ok(themesJson.toJSONString()).build();
   }
 
-  private TobiraService getTobira(String organization) {
-    return tobiras.computeIfAbsent(organization, org -> new TobiraService());
-  }
-
   private TobiraService getTobira() {
-    return getTobira(securityService.getOrganization().getId());
+    return TobiraService.getTobira(securityService.getOrganization().getId());
   }
 
   @GET
@@ -740,7 +741,7 @@ public class SeriesEndpoint {
       logger.debug("Requested series list");
       SeriesSearchQuery query = new SeriesSearchQuery(securityService.getOrganization().getId(),
               securityService.getUser());
-      Option<String> optSort = Option.option(trimToNull(sort));
+      Optional<String> optSort = Optional.ofNullable(trimToNull(sort));
 
       if (offset != 0) {
         query.withOffset(offset);
@@ -766,7 +767,7 @@ public class SeriesEndpoint {
         } else if (SeriesListQuery.FILTER_CREATOR_NAME.equals(name)) {
           query.withCreator(filters.get(name));
         } else if (SeriesListQuery.FILTER_TEXT_NAME.equals(name)) {
-          query.withText(QueryPreprocessor.sanitize(filters.get(name)));
+          query.withText(filters.get(name));
         } else if (SeriesListQuery.FILTER_LANGUAGE_NAME.equals(name)) {
           query.withLanguage(filters.get(name));
         } else if (SeriesListQuery.FILTER_LICENSE_NAME.equals(name)) {
@@ -780,8 +781,8 @@ public class SeriesEndpoint {
         }
       }
 
-      if (optSort.isSome()) {
-        Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
+      if (optSort.isPresent()) {
+        ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
         for (SortCriterion criterion : sortCriteria) {
 
           switch (criterion.getFieldName()) {
@@ -791,7 +792,7 @@ public class SeriesEndpoint {
             case SeriesIndexSchema.CONTRIBUTORS:
               query.sortByContributors(criterion.getOrder());
               break;
-            case SeriesIndexSchema.CREATOR:
+            case SeriesIndexSchema.ORGANIZERS:
               query.sortByOrganizers(criterion.getOrder());
               break;
             case SeriesIndexSchema.CREATED_DATE_TIME:
@@ -821,35 +822,37 @@ public class SeriesEndpoint {
         logger.debug("Found {} results in {} ms", result.getDocumentCount(), result.getSearchTime());
       }
 
-      List<JValue> series = new ArrayList<>();
+      List<JsonObject> series = new ArrayList<>();
       for (SearchResultItem<Series> item : result.getItems()) {
-        List<Field> fields = new ArrayList<>();
+        JsonObject sJson = new JsonObject();
         Series s = item.getSource();
-        String sId = s.getIdentifier();
-        fields.add(f("id", v(sId)));
-        fields.add(f("title", v(s.getTitle(), Jsons.BLANK)));
-        fields.add(f("organizers", arr($(s.getOrganizers()).map(Functions.stringToJValue))));
-        fields.add(f("contributors", arr($(s.getContributors()).map(Functions.stringToJValue))));
+
+        sJson.addProperty("id", s.getIdentifier());
+        sJson.addProperty("title", safeString(s.getTitle()));
+        sJson.add("organizers", collectionToJsonArray(s.getOrganizers()));
+        sJson.add("contributors", collectionToJsonArray(s.getContributors()));
         if (s.getCreator() != null) {
-          fields.add(f("createdBy", v(s.getCreator())));
+          sJson.addProperty("createdBy", s.getCreator());
         }
         if (s.getCreatedDateTime() != null) {
-          fields.add(f("creation_date", v(toUTC(s.getCreatedDateTime().getTime()), Jsons.BLANK)));
+          sJson.addProperty("creation_date", toUTC(s.getCreatedDateTime().getTime()));
         }
         if (s.getLanguage() != null) {
-          fields.add(f("language", v(s.getLanguage())));
+          sJson.addProperty("language", s.getLanguage());
         }
         if (s.getLicense() != null) {
-          fields.add(f("license", v(s.getLicense())));
+          sJson.addProperty("license", s.getLicense());
         }
         if (s.getRightsHolder() != null) {
-          fields.add(f("rightsHolder", v(s.getRightsHolder())));
+          sJson.addProperty("rightsHolder", s.getRightsHolder());
         }
         if (StringUtils.isNotBlank(s.getManagedAcl())) {
-          fields.add(f("managedAcl", v(s.getManagedAcl())));
+          sJson.addProperty("managedAcl", s.getManagedAcl());
         }
-        series.add(obj(fields));
+
+        series.add(sJson);
       }
+
       logger.debug("Request done");
 
       return okJsonList(series, offset, limit, result.getHitCount());
@@ -1016,8 +1019,10 @@ public class SeriesEndpoint {
    *          The theme to get the id and name from.
    * @return A {@link Response} with the theme id and name as json contents
    */
-  private Response getSimpleThemeJsonResponse(IndexTheme theme) {
-    return okJson(obj(f(Long.toString(theme.getIdentifier()), v(theme.getName()))));
+  private Response getSimpleThemeJsonResponse(Theme theme) {
+    JsonObject json = new JsonObject();
+    json.addProperty(Long.toString(theme.getId().get()), theme.getName());
+    return okJson(json);
   }
 
   @GET
@@ -1041,15 +1046,14 @@ public class SeriesEndpoint {
 
     // If no theme is set return empty JSON
     if (themeId == null)
-      return okJson(obj());
+      return okJson(new JsonObject());
 
     try {
-      Opt<IndexTheme> themeOpt = getTheme(themeId);
-      if (themeOpt.isNone())
-        return notFound("Cannot find a theme with id {}", themeId);
-
-      return getSimpleThemeJsonResponse(themeOpt.get());
-    } catch (SearchIndexException e) {
+      Theme theme = themesServiceDatabase.getTheme(themeId);
+      return getSimpleThemeJsonResponse(theme);
+    } catch (NotFoundException e) {
+      return notFound("Cannot find a theme with id {}", themeId);
+    } catch (ThemesServiceDatabaseException e) {
       logger.error("Unable to get theme {}", themeId, e);
       throw new WebApplicationException(e);
     }
@@ -1064,16 +1068,13 @@ public class SeriesEndpoint {
   public Response updateSeriesTheme(@PathParam("seriesId") String seriesID, @FormParam("themeId") long themeId)
           throws UnauthorizedException, NotFoundException {
     try {
-      Opt<IndexTheme> themeOpt = getTheme(themeId);
-      if (themeOpt.isNone())
-        return notFound("Cannot find a theme with id {}", themeId);
-
+      Theme theme = themesServiceDatabase.getTheme(themeId);
       seriesService.updateSeriesProperty(seriesID, THEME_KEY, Long.toString(themeId));
-      return getSimpleThemeJsonResponse(themeOpt.get());
+      return getSimpleThemeJsonResponse(theme);
     } catch (SeriesException e) {
       logger.error("Unable to update series theme {}", themeId, e);
       throw new WebApplicationException(e);
-    } catch (SearchIndexException e) {
+    } catch (ThemesServiceDatabaseException e) {
       logger.error("Unable to get theme {}", themeId, e);
       throw new WebApplicationException(e);
     }
@@ -1134,6 +1135,139 @@ public Response getSeriesHostPages(@PathParam("seriesId") String seriesId) {
       return Response.ok(seriesData.toJSONString()).build();
     } catch (TobiraException e) {
       throw new WebApplicationException(e, Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @POST
+  @Path("{seriesId}/tobira/path")
+  @RestQuery(
+          name = "updateSeriesTobiraPath",
+          description = "Updates the path of the given series in a connected Tobira instance",
+          returnDescription = "Status code",
+          pathParameters = { @RestParameter(
+                  name = "seriesId",
+                  isRequired = true,
+                  description = "The series id",
+                  type = STRING) },
+          restParameters = {
+                  @RestParameter(
+                          name = "pathComponents",
+                          isRequired = true,
+                          description = "List of realms with name and path segment on path to series.",
+                          type = TEXT),
+                  @RestParameter(
+                          name = "currentPath",
+                          isRequired = false,
+                          description = "Path where the series is currently mounted.",
+                          type = STRING),
+                  @RestParameter(
+                          name = "targetPath",
+                          isRequired = true,
+                          description = "Path where the series will be mounted.",
+                          type = STRING) },
+          responses = {
+                  @RestResponse(
+                          responseCode = SC_OK,
+                          description = "The path of the series has successfully been updated in Tobira."),
+                  @RestResponse(
+                          responseCode = SC_NOT_FOUND,
+                          description = "Tobira doesn't know about the given series"),
+                  @RestResponse(
+                          responseCode = SC_SERVICE_UNAVAILABLE,
+                          description = "Tobira is not configured (correctly)") })
+  public Response updateSeriesTobiraPath(
+    @PathParam("seriesId") String seriesId,
+    @FormParam("pathComponents") String pathComponents,
+    @FormParam("currentPath") String currentPath,
+    @FormParam("targetPath") String targetPath
+  ) throws IOException, InterruptedException {
+    if (targetPath == null) {
+      throw new WebApplicationException("target path is missing", BAD_REQUEST);
+    }
+
+    var tobira = getTobira();
+    if (!tobira.ready()) {
+      return Response.status(Status.SERVICE_UNAVAILABLE)
+              .entity("Tobira is not configured (correctly)")
+              .build();
+    }
+
+    try {
+      var paths = (List<JSONObject>) new JSONParser().parse(pathComponents);
+
+      var mountParams = new JSONObject();
+      mountParams.put("seriesId", seriesId);
+      mountParams.put("targetPath", targetPath);
+
+      tobira.createRealmLineage(paths);
+      tobira.addSeriesMountPoint(mountParams);
+
+      if (currentPath != null && !currentPath.trim().isEmpty()) {
+        var unmountParams = new JSONObject();
+        unmountParams.put("seriesId", seriesId);
+        unmountParams.put("currentPath", currentPath);
+        tobira.removeSeriesMountPoint(unmountParams);
+      }
+
+      return ok();
+    } catch (Exception e) {
+      return Response.status(Status.INTERNAL_SERVER_ERROR)
+              .entity("Internal server error: " + e.getMessage())
+              .build();
+    }
+  }
+
+  @DELETE
+  @Path("{seriesId}/tobira/{currentPath}")
+  @RestQuery(
+          name = "removeSeriesTobiraPath",
+          description = "Removes the path of the given series in a connected Tobira instance",
+          returnDescription = "Status code",
+          pathParameters = {
+                  @RestParameter(
+                          name = "seriesId",
+                          isRequired = true,
+                          description = "The series id",
+                          type = STRING),
+                  @RestParameter(
+                          name = "currentPath",
+                          isRequired = true,
+                          description = "URL encoded path where the series is currently mounted.",
+                          type = STRING) },
+          responses = {
+                  @RestResponse(
+                          responseCode = SC_OK,
+                          description = "The path of the series has successfully been removed in Tobira."),
+                  @RestResponse(
+                          responseCode = SC_NOT_FOUND,
+                          description = "Tobira doesn't know about the given series"),
+                  @RestResponse(
+                          responseCode = SC_SERVICE_UNAVAILABLE,
+                          description = "Tobira is not configured (correctly)") })
+  public Response removeSeriesTobiraPath(
+    @PathParam("seriesId") String seriesId,
+    @PathParam("currentPath") String currentPath
+  ) throws IOException, InterruptedException {
+    var tobira = getTobira();
+    if (!tobira.ready()) {
+      return Response.status(Status.SERVICE_UNAVAILABLE)
+              .entity("Tobira is not configured (correctly)")
+              .build();
+    }
+
+    try {
+      if (currentPath != null && !currentPath.trim().isEmpty()) {
+        var unmountParams = new JSONObject();
+        unmountParams.put("seriesId", seriesId);
+        unmountParams.put("currentPath", currentPath);
+        tobira.removeSeriesMountPoint(unmountParams);
+      }
+
+      return ok();
+    } catch (Exception e) {
+      return Response.status(Status.INTERNAL_SERVER_ERROR)
+              .entity("Internal server error: " + e.getMessage())
+              .build();
     }
   }
 
@@ -1241,24 +1375,6 @@ public Response getSeriesHostPages(@PathParam("seriesId") String seriesId) {
     JSONObject jsonReturnObj = new JSONObject();
     jsonReturnObj.put("hasEvents", elementsCount > 0);
     return Response.ok(jsonReturnObj.toString()).build();
-  }
-
-  /**
-   * Get a single theme
-   *
-   * @param id
-   *          the theme id
-   * @return a theme or none if not found, wrapped in an option
-   * @throws SearchIndexException
-   */
-  private Opt<IndexTheme> getTheme(long id) throws SearchIndexException {
-    SearchResult<IndexTheme> result = searchIndex.getByQuery(new ThemeSearchQuery(securityService.getOrganization().getId(),
-            securityService.getUser()).withIdentifier(id));
-    if (result.getPageSize() == 0) {
-      logger.debug("Didn't find theme with id {}", id);
-      return Opt.<IndexTheme> none();
-    }
-    return Opt.some(result.getItems()[0].getSource());
   }
 
   @GET

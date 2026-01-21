@@ -36,10 +36,7 @@ import org.opencastproject.util.ConfigurationException;
 import org.opencastproject.util.MimeType;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -51,6 +48,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
 
 public abstract class AwsAbstractArchive implements AssetStore {
 
@@ -77,15 +75,15 @@ public abstract class AwsAbstractArchive implements AssetStore {
     }
   }
 
-  public Option<Long> getUsedSpace() {
+  public Optional<Long> getUsedSpace() {
     throw new UnsupportedOperationException("Not implemented");
   }
 
-  public Option<Long> getUsableSpace() {
+  public Optional<Long> getUsableSpace() {
     throw new UnsupportedOperationException("Not implemented");
   }
 
-  public Option<Long> getTotalSpace() {
+  public Optional<Long> getTotalSpace() {
     throw new UnsupportedOperationException("Not implemented");
   }
 
@@ -177,7 +175,8 @@ public abstract class AwsAbstractArchive implements AssetStore {
     String objectVersion = null;
     try {
       // Upload file to AWS
-      AwsUploadOperationResult result = uploadObject(origin, objectName, source.getMimeType());
+      AwsUploadOperationResult result = uploadObject(storagePath.getOrganizationId(), origin, objectName,
+          source.getMimeType());
       objectName = result.getObjectName();
       objectVersion = result.getObjectVersion();
     } catch (Exception e) {
@@ -194,20 +193,20 @@ public abstract class AwsAbstractArchive implements AssetStore {
     }
   }
 
-  protected abstract AwsUploadOperationResult uploadObject(File origin, String objectName, Opt<MimeType> mimeType)
-          throws AssetStoreException;
+  protected abstract AwsUploadOperationResult uploadObject(String orgId, File origin, String objectName,
+          Optional<MimeType> mimeType) throws AssetStoreException;
 
   /** @see AssetStore#get(StoragePath) */
-  public Opt<InputStream> get(final StoragePath path) throws AssetStoreException {
+  public Optional<InputStream> get(final StoragePath path) throws AssetStoreException {
     try {
       AwsAssetMapping map = database.findMapping(path);
       if (map == null) {
         logger.warn("File mapping not found in database: {}", path);
-        return Opt.none();
+        return Optional.empty();
       }
 
       logger.debug("Getting archive object from AWS {}: {}", getStoreType(), map.getObjectKey());
-      return Opt.some(getObject(map));
+      return Optional.of(getObject(map));
 
     } catch (AssetStoreException e) {
       throw e;
@@ -222,7 +221,7 @@ public abstract class AwsAbstractArchive implements AssetStore {
   public boolean delete(DeletionSelector sel) throws AssetStoreException {
     // Build path, version may be null if all versions are desired
     StoragePath path = new StoragePath(
-        sel.getOrganizationId(), sel.getMediaPackageId(), sel.getVersion().orNull(), null);
+        sel.getOrganizationId(), sel.getMediaPackageId(), sel.getVersion().orElse(null), null);
     try {
       List<AwsAssetMapping> list = database.findMappingsByMediaPackageAndVersion(path);
       // Traverse all file mappings for that media package / version(s)

@@ -6,13 +6,17 @@ This is meant for developers.
 For the installation of a production cluster, take a look at the admin guides.
 
 
+Warning: This probably won´t work with Windows.
+
+
+
 ## TL;DR
 
 
 ```sh
 $ git clone https://github.com/opencast/opencast.git
 $ cd opencast
-$ mvn clean install -Pdev
+$ ./mvnw clean install -Pdev
 $ cd build/opencast-dist-develop-*
 $ ./bin/start-opencast
 ```
@@ -45,11 +49,11 @@ Please make sure to install the following dependencies.
 
 Required:
 
-    java-11-openjdk-devel
+    java-17-openjdk-devel
     ffmpeg >= 3.2.4
     maven >= 3.6
     python
-    firefox/chrome
+    firefox/chrome/chromium
     unzip
     gcc-c++
     tar
@@ -57,7 +61,7 @@ Required:
 
 Required as a service for running Opencast:
 
-    elasticsearch = 7.9.x
+    elasticsearch = 7.9.x and analysis-icu plugin
 
 Required for some services. Some tests may be skipped and some features
 may not be usable if they are not installed. Hence, it's generally a good idea to
@@ -65,7 +69,6 @@ install them.
 
     tesseract >= 3
     hunspell >= 1.2.8
-    sox >= 14.4
     synfig
 
 
@@ -74,7 +77,7 @@ install them.
 
 You can now build opencast by changing into your opencast directory and running:
 
-    $ mvn clean install [Options]
+    $ ./mvnw clean install [Options]
 
 After the successful compilation you can start opencast with:
 
@@ -108,20 +111,24 @@ Option | Description
 
 ### Build Single Modules
 
-When working on a single Opencast module, it can be extremely helpful having the new built version automatically included in the Opencast OSGi infrastructure. This can be achieved by watching the module with the [bundle:watch](https://karaf.apache.org/manual/latest/commands/bundle-watch.html) command in Karaf. The procedure would be as follows:
+When working on a single Opencast module, it can be extremely helpful having the new built version automatically
+included in the Opencast OSGi infrastructure. This can be achieved by watching the module with the
+[bundle:watch](https://karaf.apache.org/manual/latest/commands/bundle-watch.html) command in Karaf.
+The procedure would be as follows:
 
-* Start Opencast and use `la -u` in the Karaf console to list all installed bundles/modules. Note down the IDs of the
+- Start Opencast and use `la -u` in the Karaf console to list all installed bundles/modules. Note down the IDs of the
   bundles you want to watch.
-* Use `bundle:watch IDs` to watch the desired modules, e.g. `bundle:watch 190 199`
-* Make your changes and rebuild the module (e.g. execute `mvn clean install` in the module folder).
-* Watch how Karaf automatically redeploys the changed jars from your local Maven repository. You can verify that
+- Use `bundle:watch IDs` to watch the desired modules, e.g. `bundle:watch 190 199`
+- Make your changes and rebuild the module (e.g. execute `./mvnw clean install` in the module folder).
+- Watch how Karaf automatically redeploys the changed jars from your local Maven repository. You can verify that
   everything went smoothly by checking the log with `log:tail`.
 
 To see this technique in action, you can watch the following short video:
 
-* [Opencast development: Watch and reload modules](https://asciinema.org/a/348132)
+- [Opencast development: Watch and reload modules](https://asciinema.org/a/348132)
 
-The updated bundles are only available in the currently running Karaf instance. To create a Opencast version that contains your changes permanently, you have to run `mvn install` in the assemblies directory again. 
+The updated bundles are only available in the currently running Karaf instance. To create an Opencast version that contains
+your changes permanently, you have to run `./mvnw install` in the `assemblies` directory again.
 
 In several cases the `bundle:watch` can put Karaf in an unstable condition, as dependencies between bundles will not
 correctly be restored after the new bundle has been deployed.
@@ -133,8 +140,8 @@ correctly be restored after the new bundle has been deployed.
 Building with multiple threads decreases the build time significantly.
 If you want to enable multiple threads, you can use the following command:
 
-    $ mvn clean install -T 1.0C -DskipTests -Pnone 
-    && cd assemblies && mvn install -T 1.0C -Dskiptests -Pdev  
+    $ ./mvnw clean install -T 1.0C -DskipTests -Pnone
+    && cd assemblies && ./mvnw install -T 1.0C -Dskiptests -Pdev
     && cd ..
     $ ./build/opencast-dist-develop-*/start-opencast
 
@@ -146,12 +153,12 @@ We don't advise using this feature for production.
 For a quick build, you can use the following command to skip Opencast's tests.
 
     $ cd opencast
-    $ mvn clean install -Pdev -DskipTests
+    $ ./mvnw clean install -Pdev -DskipTests
 
 To see the whole `stacktrace` of the installation you can use the following command to disable the trimming.
 
     $ cd opencast
-    $ mvn clean install -DtrimStackTrace=false
+    $ ./mvnw clean install -DtrimStackTrace=false
 
 If you want to start opencast in debug mode, you could use the debug argument:
 
@@ -166,6 +173,22 @@ To fix a NPM access error ([example](https://stackoverflow.com/questions/1615101
  you can run
 
     $ sudo chown -R $USER:$(id -gn $USER) ~/.config && sudo chown -R $USER:$(id -gn $USER) ~/.npm
+
+### NPM Timeout
+
+To avoid timeout and connection errors when downloading npm packages used in UI modules that are not maintained as dedicated
+projects (`engage-paella-player-7`, `engage-paella-player-8`, `engage-ui`, `graphql-ui`, `lti` and `runtime-info-ui`), you can
+configure an npm cache by setting an environment variable before running Maven. For example: `NPM_CONFIG_CACHE=~/.npm`.
+
+This is especially useful when building inside a container:
+
+```sh
+% docker run -v /path/to/opencast:/opencast -v npm-cache:/root/.npm ...
+
+% cd /opencast
+% export NPM_CONFIG_CACHE=/root/.npm
+% ./mvnv clean install ...
+```
 
 ### JDK Version
 
@@ -191,7 +214,7 @@ Follow the next steps, if you want to import opencast correctly
 - Search for projects recursively
 - Uncheck all listed profiles
 - Check all projects to import
-- Select JDK 11, it should be somewhere around `/usr/lib/jvm/java-11-openjdk` depending on your current system
+- Select JDK 17, it should be somewhere around `/usr/lib/jvm/java-17-openjdk` depending on your current system
 
 Now Idea should import the projects, it could take some time, you can make it faster by following [this](#slow-intellij-idea-fix).
 

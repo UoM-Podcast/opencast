@@ -21,8 +21,6 @@
 
 package org.opencastproject.assetmanager.impl;
 
-import static org.opencastproject.util.data.Option.some;
-
 import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.kernel.scanner.AbstractScanner;
 import org.opencastproject.security.api.Organization;
@@ -52,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Dictionary;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Component(
@@ -170,7 +169,7 @@ public class TimedMediaArchiver extends AbstractScanner implements ManagedServic
   public void scan() {
     Date maxAge = Calendar.getInstance().getTime();
     maxAge.setTime(maxAge.getTime() - TimeUnit.HOURS.toMillis(ageModifier));
-    if (assetManager.getAssetStore(storeId).isNone()) {
+    if (assetManager.getAssetStore(storeId).isEmpty()) {
       throw new RuntimeException("Store " + storeId + " is not available to the asset manager");
     }
 
@@ -197,7 +196,7 @@ public class TimedMediaArchiver extends AbstractScanner implements ManagedServic
     private static final NeedleEye eye = new NeedleEye();
 
     public Runner() {
-      super(some(eye));
+      super(Optional.of(eye));
     }
 
     @Override

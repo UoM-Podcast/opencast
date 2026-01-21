@@ -55,6 +55,7 @@ import org.json.simple.JSONValue;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +79,7 @@ import javax.ws.rs.core.Response;
 /**
  * Provides a sorted set of known users
  */
-@Path("/")
+@Path("/user-utils")
 @RestService(
     name = "UsersUtils",
     title = "User utils",
@@ -94,6 +95,7 @@ import javax.ws.rs.core.Response;
     immediate = true,
     service = { UserEndpoint.class }
 )
+@JaxrsResource
 public class UserEndpoint {
 
   /** The logger */
@@ -394,10 +396,10 @@ public class UserEndpoint {
       logger.debug("User {} not found.", username);
       return Response.status(SC_NOT_FOUND).build();
     } catch (UnauthorizedException e) {
-      logger.debug("Error during deletion of user {}: {}", username, e);
+      logger.debug("Error during deletion of user {}", username, e);
       return Response.status(SC_FORBIDDEN).build();
     } catch (Exception e) {
-      logger.error("Error during deletion of user {}: {}", username, e);
+      logger.error("Error during deletion of user {}", username, e);
       return Response.status(SC_INTERNAL_SERVER_ERROR).build();
     }
 

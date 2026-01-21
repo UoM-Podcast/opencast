@@ -38,7 +38,6 @@ import org.opencastproject.db.DBSessionFactory;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.job.api.Job.Status;
 import org.opencastproject.job.jpa.JpaJob;
-import org.opencastproject.rest.RestConstants;
 import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.TrustedHttpClient;
@@ -63,7 +62,6 @@ import org.opencastproject.serviceregistry.impl.jpa.ServiceRegistrationJpaImpl;
 import org.opencastproject.systems.OpencastConstants;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.UrlSupport;
-import org.opencastproject.util.data.functions.Strings;
 import org.opencastproject.util.function.ThrowingConsumer;
 import org.opencastproject.util.jmx.JmxUtil;
 
@@ -73,9 +71,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpHead;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.InvalidSyntaxException;
-import org.osgi.framework.ServiceReference;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
 import org.osgi.service.component.ComponentContext;
@@ -86,7 +81,6 @@ import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.util.tracker.ServiceTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,10 +126,12 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   /** JPA persistence unit name */
   public static final String PERSISTENCE_UNIT = "org.opencastproject.common";
 
-  /** Id of the workflow's start operation operation, need to match the corresponding enum value in WorkflowServiceImpl */
+  /** Id of the workflow's start operation operation, need to match the corresponding enum value in
+   * WorkflowServiceImpl */
   public static final String START_OPERATION = "START_OPERATION";
 
-  /** Id of the workflow's start workflow operation, need to match the corresponding enum value in WorkflowServiceImpl */
+  /** Id of the workflow's start workflow operation, need to match the corresponding enum value in
+   * WorkflowServiceImpl */
   public static final String START_WORKFLOW = "START_WORKFLOW";
 
   /** Id of the workflow's resume operation, need to match the corresponding enum value in WorkflowServiceImpl */
@@ -173,14 +169,17 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   /** Configuration key for the maximum load */
   protected static final String OPT_MAXLOAD = "org.opencastproject.server.maxload";
 
-  /** Configuration key for the interval to check whether the hosts in the service registry are still alive, in seconds */
+  /** Configuration key for the interval to check whether the hosts in the service registry are still alive,
+   * in seconds */
   protected static final String OPT_HEARTBEATINTERVAL = "heartbeat.interval";
 
   /** Configuration key for the collection of job statistics */
   protected static final String OPT_JOBSTATISTICS = "jobstats.collect";
 
-  /** Configuration key for the retrieval of service statistics: Do not consider jobs older than max_job_age (in days) */
-  protected static final String OPT_SERVICE_STATISTICS_MAX_JOB_AGE = "org.opencastproject.statistics.services.max_job_age";
+  /** Configuration key for the retrieval of service statistics:
+   * Do not consider jobs older than max_job_age (in days) */
+  protected static final String OPT_SERVICE_STATISTICS_MAX_JOB_AGE =
+      "org.opencastproject.statistics.services.max_job_age";
 
   /** Configuration key for the encoding preferred worker nodes */
   protected static final String OPT_ENCODING_WORKERS = "org.opencastproject.encoding.workers";
@@ -252,14 +251,13 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
   protected DBSession db;
 
-  /** Tracks services published locally and adds them to the service registry */
-  protected RestServiceTracker tracker = null;
-
   /** The thread pool to use for dispatching queued jobs and checking on phantom services. */
   protected ScheduledExecutorService scheduledExecutor = null;
 
   /** The security service */
   protected SecurityService securityService = null;
+
+  protected IncidentService incidentService = null;
 
   protected Incidents incidents;
 
@@ -372,21 +370,11 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       throw new IllegalStateException("Unable to register host " + hostName + " in the service registry", e);
     }
 
-    // Track any services from this host that need to be added to the service registry
-    if (cc != null) {
-      try {
-        tracker = new RestServiceTracker(cc.getBundleContext());
-        tracker.open(true);
-      } catch (InvalidSyntaxException e) {
-        logger.error("Invalid filter syntax:", e);
-        throw new IllegalStateException(e);
-      }
-    }
-
     // Whether a service accepts a job whose load exceeds the host’s max load
     if (cc != null) {
-      acceptJobLoadsExeedingMaxLoad = getOptContextProperty(cc, ACCEPT_JOB_LOADS_EXCEEDING_PROPERTY).map(Strings.toBool)
-              .getOrElse(DEFAULT_ACCEPT_JOB_LOADS_EXCEEDING);
+      acceptJobLoadsExeedingMaxLoad = getOptContextProperty(cc, ACCEPT_JOB_LOADS_EXCEEDING_PROPERTY)
+              .map(Boolean::valueOf)
+              .orElse(DEFAULT_ACCEPT_JOB_LOADS_EXCEEDING);
     }
 
     localSystemLoad = 0;
@@ -424,9 +412,6 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
       JmxUtil.unregisterMXBean(mbean);
     }
 
-    if (tracker != null) {
-      tracker.close();
-    }
     try {
       unregisterHost(hostName);
     } catch (ServiceRegistryException e) {
@@ -668,7 +653,7 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
           logger.debug("Parentless '{}' removed", job);
           c++;
         } catch (NotFoundException e) {
-          logger.debug("Parentless '{} ' not found in database: {}", job, e);
+          logger.debug("Parentless '{} ' not found in database", job, e);
         }
       }
 
@@ -755,17 +740,18 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
     String encodingWorkersString = (String) properties.get(OPT_ENCODING_WORKERS);
     if (StringUtils.isNotBlank(encodingWorkersString)) {
       encodingWorkers = Arrays.asList(encodingWorkersString.split("\\s*,\\s*"));
-    } else
+    } else {
       encodingWorkers = DEFAULT_ENCODING_WORKERS;
+    }
 
     // get the encoding worker load threshold defined in the configuration file and parse the double
     String encodingThersholdString = StringUtils.trimToNull((String) properties.get(OPT_ENCODING_THRESHOLD));
     if (StringUtils.isNotBlank(encodingThersholdString) && encodingThersholdString != null) {
         try {
           double encodingThresholdTmp = Double.parseDouble(encodingThersholdString);
-          if (encodingThresholdTmp >= 0 && encodingThresholdTmp <= 1)
+          if (encodingThresholdTmp >= 0 && encodingThresholdTmp <= 1) {
             encodingThreshold = encodingThresholdTmp;
-          else {
+          } else {
             encodingThreshold = DEFAULT_ENCODING_THRESHOLD;
             logger.warn("org.opencastproject.encoding.workers.threshold is not between 0 and 1");
           }
@@ -773,9 +759,9 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
           logger.warn("Can not set encoding threshold to {}. {} must be an parsable double", encodingThersholdString,
               OPT_ENCODING_THRESHOLD);
         }
-    } else
+    } else {
       encodingThreshold = DEFAULT_ENCODING_THRESHOLD;
-
+    }
 
     String maxJobAgeString = StringUtils.trimToNull((String) properties.get(OPT_SERVICE_STATISTICS_MAX_JOB_AGE));
     if (maxJobAgeString != null) {
@@ -1025,7 +1011,8 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
     if (job.getProcessingHost() != null) {
       ServiceRegistrationJpaImpl processingService = (ServiceRegistrationJpaImpl) getServiceRegistration(
               job.getJobType(), job.getProcessingHost());
-      logger.debug("{} has host '{}': setting processor service to '{}'", job, job.getProcessingHost(), processingService);
+      logger.debug("{} has host '{}': setting processor service to '{}'", job, job.getProcessingHost(),
+          processingService);
       fromDb.setProcessorServiceRegistration(processingService);
     } else {
       logger.debug("Unsetting previous processor service registration for {}", job);
@@ -1278,7 +1265,8 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
       db.execTxChecked(em -> {
         HostRegistrationJpaImpl hr = fetchHostRegistrationQuery(baseUrl).apply(em).orElseThrow(() -> {
-          logger.info("No associated host registration for '{}' or service '{}' (path '{}')", baseUrl, serviceType,path);
+          logger.info("No associated host registration for '{}' or service '{}' (path '{}')", baseUrl, serviceType,
+              path);
           return new IllegalStateException(
               "A service registration can not be updated when it has no associated host registration");
         });
@@ -1726,6 +1714,36 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
         .collect(Collectors.toList()));
   }
 
+  @Override
+  public Map<String, Map<String, Long>> countActiveByOrganizationAndHost() {
+    var rows = db.exec(namedQuery.findAll(
+        "Job.countByOrganizationAndHost",
+        Object[].class,
+        Pair.of("statuses", Arrays.stream(activeJobStatus).map(Enum::ordinal).collect(Collectors.toList()))
+    )).stream().collect(Collectors.toList());
+    var orgMap = new HashMap<String, Map<String, Long>>();
+    for (Object[] row: rows) {
+      var org = (String) row[0];
+      var host = (String) row[1];
+      var count = (Long) row[2];
+      orgMap.computeIfAbsent(org, o -> new HashMap<>()).put(host, count);
+    }
+    return orgMap;
+  }
+
+  @Override
+  public Map<String, Long> countActiveTypeByOrganization(final String operation) {
+    return db.exec(namedQuery.findAll(
+        "Job.countTypeByOrganization",
+        Object[].class,
+        Pair.of("statuses", Arrays.stream(activeJobStatus).map(Enum::ordinal).collect(Collectors.toList())),
+        Pair.of("operation", operation)
+    )).stream().collect(Collectors.toMap(
+        row -> (String) row[0],
+        row -> (Long) row[1]
+    ));
+  }
+
   /**
    * Gets jobs of all types that are in the given state.
    *
@@ -2097,81 +2115,6 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   }
 
   /**
-   * A custom ServiceTracker that registers all locally published servlets so clients can find the most appropriate
-   * service on the network to handle new jobs.
-   */
-  class RestServiceTracker extends ServiceTracker {
-    protected static final String FILTER = "(&(objectClass=javax.servlet.Servlet)("
-            + RestConstants.SERVICE_PATH_PROPERTY + "=*))";
-
-    protected BundleContext bundleContext;
-
-    RestServiceTracker(BundleContext bundleContext) throws InvalidSyntaxException {
-      super(bundleContext, bundleContext.createFilter(FILTER), null);
-      this.bundleContext = bundleContext;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @see org.osgi.util.tracker.ServiceTracker#open(boolean)
-     */
-    @Override
-    public void open(boolean trackAllServices) {
-      super.open(trackAllServices);
-      try {
-        ServiceReference[] references = bundleContext.getAllServiceReferences(null, FILTER);
-        if (references != null) {
-          for (ServiceReference ref : references) {
-            addingService(ref);
-          }
-        }
-      } catch (InvalidSyntaxException e) {
-        throw new IllegalStateException("The tracker filter '" + FILTER + "' has syntax errors", e);
-      }
-    }
-
-    @Override
-    public Object addingService(ServiceReference reference) {
-      String serviceType = (String) reference.getProperty(RestConstants.SERVICE_TYPE_PROPERTY);
-      String servicePath = (String) reference.getProperty(RestConstants.SERVICE_PATH_PROPERTY);
-      boolean publishFlag = (Boolean) reference.getProperty(RestConstants.SERVICE_PUBLISH_PROPERTY);
-      boolean jobProducer = (Boolean) reference.getProperty(RestConstants.SERVICE_JOBPRODUCER_PROPERTY);
-
-      // Only register services that have the "publish" flag set to "true"
-      if (publishFlag) {
-        try {
-          registerService(serviceType, hostName, servicePath, jobProducer);
-        } catch (ServiceRegistryException e) {
-          logger.warn("Unable to register job producer of type " + serviceType + " on host " + hostName);
-        }
-      } else {
-        logger.debug("Not registering service " + serviceType + " in service registry by configuration");
-      }
-
-      return super.addingService(reference);
-    }
-
-    @Override
-    public void removedService(ServiceReference reference, Object service) {
-      String serviceType = (String) reference.getProperty(RestConstants.SERVICE_TYPE_PROPERTY);
-      boolean publishFlag = (Boolean) reference.getProperty(RestConstants.SERVICE_PUBLISH_PROPERTY);
-
-      // Services that have the "publish" flag set to "true" have been registered before.
-      if (publishFlag) {
-        try {
-          unRegisterService(serviceType, hostName);
-        } catch (ServiceRegistryException e) {
-          logger.warn("Unable to unregister job producer of type " + serviceType + " on host " + hostName);
-        }
-      } else {
-        logger.trace("Service " + reference + " was never registered");
-      }
-      super.removedService(reference, service);
-    }
-  }
-
-  /**
    * Sets the trusted http client.
    *
    * @param client
@@ -2194,15 +2137,23 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
   }
 
   /** OSGi DI. */
-  @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy =  ReferencePolicy.DYNAMIC, unbind = "unsetIncidentService")
+  @Reference(
+      cardinality = ReferenceCardinality.OPTIONAL,
+      policy =  ReferencePolicy.DYNAMIC,
+      unbind = "unsetIncidentService"
+  )
   public void setIncidentService(IncidentService incidentService) {
+    this.incidentService = incidentService;
     // Manually resolve the cyclic dependency between the incident service and the service registry
     ((OsgiIncidentService) incidentService).setServiceRegistry(this);
     this.incidents = new Incidents(this, incidentService);
   }
 
   public void unsetIncidentService(IncidentService incidentService) {
-    this.incidents = null;
+    if (this.incidentService == incidentService) {
+      this.incidentService = null;
+      this.incidents = null;
+    }
   }
 
   /**
@@ -2520,10 +2471,11 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
     }
 
     // Sort the list by capacity and distinguish between composer jobs and other jobs
-    if ("org.opencastproject.composer".equals(jobType))
+    if ("org.opencastproject.composer".equals(jobType)) {
       Collections.sort(filteredList, new LoadComparatorEncoding(systemLoad));
-    else
+    } else {
       Collections.sort(filteredList, new LoadComparator(systemLoad));
+    }
 
     return filteredList;
   }
@@ -2658,7 +2610,8 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
   /**
    * Comparator that will sort service registrations depending on their capacity, wich is defined by the number of jobs
-   * the service's host is already running divided by the MaxLoad of the Server. The lower that number, the bigger the capacity.
+   * the service's host is already running divided by the MaxLoad of the Server. The lower that number, the bigger
+   * the capacity.
    */
   private class LoadComparator implements Comparator<ServiceRegistration> {
 
@@ -2693,8 +2646,10 @@ public class ServiceRegistryJpaImpl implements ServiceRegistry, ManagedService {
 
   /**
    * Comparator that will sort service registrations depending on their capacity, which is defined by the number of jobs
-   * the service's host is already running divided by the MaxLoad of the Server. The lower that number, the bigger the capacity.
-   * This Comparator will preferre encoding workers, if none are defined in the configuration file it will act like the LoadComparator.
+   * the service's host is already running divided by the MaxLoad of the Server. The lower that number, the bigger
+   * the capacity.
+   * This Comparator will prefer encoding workers, if none are defined in the configuration file it will act like
+   * the LoadComparator.
    */
   private class LoadComparatorEncoding extends LoadComparator implements Comparator<ServiceRegistration> {
 

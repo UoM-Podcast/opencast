@@ -47,14 +47,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component(
-    immediate = true,
     service = ResourceListProvider.class,
     property = {
         "service.description=Series list provider",
@@ -74,8 +76,10 @@ public class SeriesListProvider implements ResourceListProvider {
   public static final String LANGUAGE = PROVIDER_PREFIX + ".LANGUAGE";
   public static final String ORGANIZERS = PROVIDER_PREFIX + ".ORGANIZERS";
   public static final String LICENSE = PROVIDER_PREFIX + ".LICENSE";
+  public static final String SERIES_WRITE_ONLY = PROVIDER_PREFIX + ".WRITE_ONLY";
 
-  private static final String[] NAMES = { PROVIDER_PREFIX, CONTRIBUTORS, ORGANIZERS, TITLE_EXTENDED };
+  private static final String[] NAMES = { PROVIDER_PREFIX, CONTRIBUTORS, ORGANIZERS, TITLE_EXTENDED,
+      SERIES_WRITE_ONLY };
 
   /** The search index. */
   private ElasticsearchIndex searchIndex;
@@ -130,8 +134,15 @@ public class SeriesListProvider implements ResourceListProvider {
         seriesQuery.sortByTitle(SortCriterion.Order.Ascending);
         seriesQuery.sortByCreatedDateTime(SortCriterion.Order.Descending);
         seriesQuery.sortByOrganizers(SortCriterion.Order.Ascending);
-        SearchResult searchResult = searchIndex.getByQuery(seriesQuery);
+        if (SERIES_WRITE_ONLY.equals(listName)) {
+          seriesQuery.withAction(Permissions.Action.WRITE);
+        }
+        SearchResult<Series> searchResult = searchIndex.getByQuery(seriesQuery);
         Calendar calendar = Calendar.getInstance();
+        //We might have duplicate series names, so let's count them and see
+        Map<String, Long> duplicates = Arrays.stream(searchResult.getItems())
+            .map(series -> series.getSource().getTitle())
+            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
         for (SearchResultItem<Series> item : searchResult.getItems()) {
           Series s = item.getSource();
           if (TITLE_EXTENDED.equals(listName)) {
@@ -144,11 +155,26 @@ public class SeriesListProvider implements ResourceListProvider {
                 calendar.setTime(created);
                 extendedTitleData.add(Integer.toString(calendar.get(Calendar.YEAR)));
               }
-              if (organizers != null && !organizers.isEmpty())
+              if (organizers != null && !organizers.isEmpty()) {
                 extendedTitleData.addAll(organizers);
+              }
               sb.append(" (").append(StringUtils.join(extendedTitleData, ", ")).append(")");
             }
             result.put(s.getIdentifier(), sb.toString());
+          } else if (PROVIDER_PREFIX.equals(listName)) {
+            String newSeriesName = s.getTitle();
+            if (duplicates.get(newSeriesName) > 1L) {
+              // If a series name is repeated, will add the first 7 characters of the series ID to the display name on
+              // the admin-ui
+              if (s.getIdentifier().length() > 8) {
+                newSeriesName += " " + "(ID: " + s.getIdentifier().substring(0, 8) + "...)";
+              } else {
+                newSeriesName += " " + "(ID: " + s.getIdentifier() + ")";
+              }
+              logger.trace(String.format("Repeated series title \"%s\" found, changing to \"%s\" for admin-ui display",
+                  s.getTitle(), newSeriesName));
+            }
+            result.put(s.getIdentifier(), newSeriesName);
           } else {
             result.put(s.getIdentifier(), s.getTitle());
           }
@@ -177,51 +203,54 @@ public class SeriesListProvider implements ResourceListProvider {
    * @return a series search query
    */
   protected SeriesSearchQuery toSearchQuery(ResourceListQuery query) {
-    SeriesSearchQuery seriesQuery = new SeriesSearchQuery(securityService.getOrganization().getId(), securityService.getUser());
-    if (query.getLimit().isSome()) {
+    SeriesSearchQuery seriesQuery = new SeriesSearchQuery(securityService.getOrganization().getId(),
+        securityService.getUser());
+    if (query.getLimit().isPresent()) {
       seriesQuery.withLimit(query.getLimit().get());
     }
-    if (query.getOffset().isSome()) {
+    if (query.getOffset().isPresent()) {
       seriesQuery.withOffset(query.getOffset().get());
     }
+
+    for (ResourceListFilter filter : query.getFilters()) {
+      if (filter.getValue().isEmpty()) {
+        continue;
+      } else if (SeriesListQuery.FILTER_CREATIONDATE_NAME.equals(filter.getName())) {
+        Tuple<Date, Date> creationDate = (Tuple<Date, Date>) filter.getValue().get();
+        if (creationDate.getA() != null) {
+          seriesQuery.withCreatedFrom(creationDate.getA());
+        }
+        if (creationDate.getB() != null) {
+          seriesQuery.withCreatedTo(creationDate.getB());
+        }
+      } else if (SeriesListQuery.FILTER_CREATOR_NAME.equals(filter.getName())) {
+        seriesQuery.withCreator((String)filter.getValue().get());
+      } else if (SeriesListQuery.FILTER_CONTRIBUTORS_NAME.equals(filter.getName())) {
+        seriesQuery.withContributor((String)filter.getValue().get());
+      } else if (SeriesListQuery.FILTER_LANGUAGE_NAME.equals(filter.getName())) {
+        seriesQuery.withLanguage((String)filter.getValue().get());
+      } else if (SeriesListQuery.FILTER_LICENSE_NAME.equals(filter.getName())) {
+        seriesQuery.withLicense((String)filter.getValue().get());
+      } else if (SeriesListQuery.FILTER_ORGANIZERS_NAME.equals(filter.getName())) {
+        seriesQuery.withOrganizer((String)filter.getValue().get());
+      } else if (SeriesListQuery.FILTER_SUBJECT_NAME.equals(filter.getName())) {
+        seriesQuery.withSubject((String)filter.getValue().get());
+      } else if (SeriesListQuery.FILTER_TEXT_NAME.equals(filter.getName())) {
+        seriesQuery.withText((String)filter.getValue().get());
+      } else if (SeriesListQuery.FILTER_TITLE_NAME.equals(filter.getName())) {
+        seriesQuery.withTitle((String)filter.getValue().get());
+      }
+    }
+
     if (query instanceof SeriesListQuery) {
-      if (((SeriesListQuery) query).getReadPermission().isSome()
-          || ((SeriesListQuery) query).getWritePermission().isSome()) {
+      if (((SeriesListQuery) query).getReadPermission().isPresent()
+          || ((SeriesListQuery) query).getWritePermission().isPresent()) {
         seriesQuery.withoutActions();
-        if (((SeriesListQuery) query).getReadPermission().getOrElse(true)) {
+        if (((SeriesListQuery) query).getReadPermission().orElse(true)) {
           seriesQuery.withAction(Permissions.Action.READ);
         }
-        if (((SeriesListQuery) query).getWritePermission().getOrElse(false)) {
+        if (((SeriesListQuery) query).getWritePermission().orElse(false)) {
           seriesQuery.withAction(Permissions.Action.WRITE);
-        }
-      }
-      for (ResourceListFilter filter : query.getFilters()) {
-        if (filter.getValue().isNone()) {
-          continue;
-        } else if (SeriesListQuery.FILTER_CREATIONDATE_NAME.equals(filter.getName())) {
-          Tuple<Date, Date> creationDate = (Tuple<Date, Date>) filter.getValue().get();
-          if (creationDate.getA() != null) {
-            seriesQuery.withCreatedFrom(creationDate.getA());
-          }
-          if (creationDate.getB() != null) {
-            seriesQuery.withCreatedTo(creationDate.getB());
-          }
-        } else if (SeriesListQuery.FILTER_CREATOR_NAME.equals(filter.getName())) {
-          seriesQuery.withCreator((String)filter.getValue().get());
-        } else if (SeriesListQuery.FILTER_CONTRIBUTORS_NAME.equals(filter.getName())) {
-          seriesQuery.withContributor((String)filter.getValue().get());
-        } else if (SeriesListQuery.FILTER_LANGUAGE_NAME.equals(filter.getName())) {
-          seriesQuery.withLanguage((String)filter.getValue().get());
-        } else if (SeriesListQuery.FILTER_LICENSE_NAME.equals(filter.getName())) {
-          seriesQuery.withLicense((String)filter.getValue().get());
-        } else if (SeriesListQuery.FILTER_ORGANIZERS_NAME.equals(filter.getName())) {
-          seriesQuery.withOrganizer((String)filter.getValue().get());
-        } else if (SeriesListQuery.FILTER_SUBJECT_NAME.equals(filter.getName())) {
-          seriesQuery.withSubject((String)filter.getValue().get());
-        } else if (SeriesListQuery.FILTER_TEXT_NAME.equals(filter.getName())) {
-          seriesQuery.withText((String)filter.getValue().get());
-        } else if (SeriesListQuery.FILTER_TITLE_NAME.equals(filter.getName())) {
-          seriesQuery.withTitle((String)filter.getValue().get());
         }
       }
     }

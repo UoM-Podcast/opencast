@@ -43,8 +43,6 @@ import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
 import org.opencastproject.workspace.api.Workspace;
 
-import com.entwinemedia.fn.data.Opt;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.easymock.Capture;
@@ -60,6 +58,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Test class for {@link SeriesWorkflowOperationHandler}
@@ -86,7 +85,7 @@ public class SeriesWorkflowOperationHandlerTest {
     EasyMock.expect(seriesService.getSeriesAccessControl(EasyMock.anyString())).andReturn(new AccessControlList())
             .anyTimes();
     EasyMock.expect(seriesService.getSeriesElementData(EasyMock.anyString(), EasyMock.anyString()))
-            .andReturn(Opt.some(FileUtils.readFileToByteArray(file))).anyTimes();
+            .andReturn(Optional.of(FileUtils.readFileToByteArray(file))).anyTimes();
     EasyMock.replay(seriesService);
 
     SecurityService securityService = EasyMock.createNiceMock(SecurityService.class);
@@ -107,14 +106,16 @@ public class SeriesWorkflowOperationHandlerTest {
 
     SeriesCatalogUIAdapter adapter = EasyMock.createNiceMock(SeriesCatalogUIAdapter.class);
     EasyMock.expect(adapter.getOrganization()).andReturn(new DefaultOrganization().getId()).anyTimes();
-    EasyMock.expect(adapter.handlesOrganization(EasyMock.eq(DefaultOrganization.DEFAULT_ORGANIZATION_ID))).andReturn(true).anyTimes();
+    EasyMock.expect(adapter.handlesOrganization(EasyMock.eq(DefaultOrganization.DEFAULT_ORGANIZATION_ID)))
+            .andReturn(true).anyTimes();
     EasyMock.expect(adapter.getFlavor()).andReturn(MediaPackageElementFlavor.parseFlavor("creativecommons/series"))
             .anyTimes();
     EasyMock.replay(adapter);
 
     SeriesCatalogUIAdapter seriesAdapter = EasyMock.createNiceMock(SeriesCatalogUIAdapter.class);
     EasyMock.expect(seriesAdapter.getOrganization()).andReturn(new DefaultOrganization().getId()).anyTimes();
-    EasyMock.expect(seriesAdapter.handlesOrganization(EasyMock.eq(DefaultOrganization.DEFAULT_ORGANIZATION_ID))).andReturn(true).anyTimes();
+    EasyMock.expect(seriesAdapter.handlesOrganization(EasyMock.eq(DefaultOrganization.DEFAULT_ORGANIZATION_ID)))
+            .andReturn(true).anyTimes();
     EasyMock.expect(seriesAdapter.getFlavor()).andReturn(MediaPackageElementFlavor.parseFlavor("dublincore/series"))
             .anyTimes();
     EasyMock.replay(seriesAdapter);
@@ -219,14 +220,15 @@ public class SeriesWorkflowOperationHandlerTest {
 
     // Prepare "copy metadata" property
     String[] extraMetadata = {
-            // Append a full metadata field, with NS
-            DublinCore.PROPERTY_LANGUAGE.toString(),
-            // Field without namespace
-            DublinCore.PROPERTY_CONTRIBUTOR.getLocalName(),
-            // Field with a namespace different than the default
-            otherProperty.toString(),
-            // Field that does not exist in the series catalog
-            "does-not-exist" };
+        // Append a full metadata field, with NS
+        DublinCore.PROPERTY_LANGUAGE.toString(),
+        // Field without namespace
+        DublinCore.PROPERTY_CONTRIBUTOR.getLocalName(),
+        // Field with a namespace different than the default
+        otherProperty.toString(),
+        // Field that does not exist in the series catalog
+        "does-not-exist"
+    };
 
     WorkflowInstance instance = new WorkflowInstance();
     List<WorkflowOperationInstance> ops = new ArrayList<WorkflowOperationInstance>();

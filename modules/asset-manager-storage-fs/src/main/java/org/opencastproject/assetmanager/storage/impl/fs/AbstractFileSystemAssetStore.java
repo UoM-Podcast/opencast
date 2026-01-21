@@ -20,9 +20,6 @@
  */
 package org.opencastproject.assetmanager.storage.impl.fs;
 
-import static com.entwinemedia.fn.data.Opt.none;
-import static com.entwinemedia.fn.data.Opt.nul;
-import static com.entwinemedia.fn.data.Opt.some;
 import static org.apache.commons.io.FilenameUtils.EXTENSION_SEPARATOR;
 import static org.apache.commons.io.FilenameUtils.getExtension;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getMessage;
@@ -31,7 +28,6 @@ import static org.opencastproject.util.IoSupport.file;
 import static org.opencastproject.util.PathSupport.path;
 import static org.opencastproject.util.data.functions.Strings.trimToNone;
 
-import org.opencastproject.assetmanager.api.Version;
 import org.opencastproject.assetmanager.api.storage.AssetStore;
 import org.opencastproject.assetmanager.api.storage.AssetStoreException;
 import org.opencastproject.assetmanager.api.storage.DeletionSelector;
@@ -39,11 +35,7 @@ import org.opencastproject.assetmanager.api.storage.Source;
 import org.opencastproject.assetmanager.api.storage.StoragePath;
 import org.opencastproject.util.FileSupport;
 import org.opencastproject.util.NotFoundException;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.Fn;
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -58,6 +50,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.util.Optional;
 
 public abstract class AbstractFileSystemAssetStore implements AssetStore {
   /** Log facility */
@@ -70,6 +63,14 @@ public abstract class AbstractFileSystemAssetStore implements AssetStore {
 
   protected abstract String getRootDirectory();
   protected abstract String getRootDirectory(String orgId, String mpId);
+
+  /**
+   * Optional further handling of the complete deletion of mediapackage from the local store.
+   * This method will be called after the deletion of the mediapackage directory.
+   * @param orgId Organization ID
+   * @param mpId Mediapackage ID
+   */
+  protected abstract void onDeleteMediaPackage(String orgId, String mpId);
 
   @Override
   public void put(StoragePath storagePath, Source source) throws AssetStoreException {
@@ -106,50 +107,64 @@ public abstract class AbstractFileSystemAssetStore implements AssetStore {
 
   @Override
   public boolean copy(final StoragePath from, final StoragePath to) throws AssetStoreException {
-    return findStoragePathFile(from).map(new Fn<File, Boolean>() {
-      @Override public Boolean apply(File f) {
-        final File t = createFile(to, f);
-        mkParent(t);
-        logger.debug("Copying {} to {}", f.getAbsolutePath(), t.getAbsolutePath());
-        try {
-          link(f, t, true);
-        } catch (IOException e) {
-          logger.error("Error copying archive file {} to {}", f, t);
-          throw new AssetStoreException(e);
-        }
-        return true;
+    var file = findStoragePathFile(from);
+    if (file.isPresent()) {
+      var f = file.get();
+
+      final File t = createFile(to, f);
+      mkParent(t);
+      logger.debug("Copying {} to {}", f.getAbsolutePath(), t.getAbsolutePath());
+      try {
+        link(f, t, true);
+      } catch (IOException e) {
+        logger.error("Error copying archive file {} to {}", f, t);
+        throw new AssetStoreException(e);
       }
-    }).getOr(false);
+      return true;
+    }
+    return false;
   }
 
   @Override
-  public Opt<InputStream> get(final StoragePath path) throws AssetStoreException {
-    return findStoragePathFile(path).map(new Fn<File, InputStream>() {
-      @Override
-      public InputStream apply(File file) {
-        try {
-          return new FileInputStream(file);
-        } catch (FileNotFoundException e) {
-          logger.error("Error getting archive file {}", file);
-          throw new AssetStoreException(e);
-        }
+  public Optional<InputStream> get(final StoragePath path) throws AssetStoreException {
+    var file = findStoragePathFile(path);
+    if (file.isPresent()) {
+      try {
+        return Optional.of(new FileInputStream(file.get()));
+      } catch (FileNotFoundException e) {
+        logger.error("Error getting archive file {}", file);
+        throw new AssetStoreException(e);
       }
-    });
+    }
+    return Optional.empty();
   }
 
   @Override
   public boolean contains(StoragePath path) throws AssetStoreException {
-    return findStoragePathFile(path).isSome();
+    return findStoragePathFile(path).isPresent();
   }
 
   @Override
   public boolean delete(DeletionSelector sel) throws AssetStoreException {
     File dir = getDeletionSelectorDir(sel);
+    if (dir == null) {
+      // MediaPackage could not be found locally. This could mean
+      //   - all snapshots live in a remote asset store
+      //   - mount failed and files are temporary not available
+      //   - file was deleted out-of-band
+      //   - other fs problem
+      // In any case, we cannot continue and return "false" to indicate that the files could not be found.
+      return false;
+    }
     try {
       FileUtils.deleteDirectory(dir);
       // also delete the media package directory if all versions have been deleted
-      FileSupport.deleteHierarchyIfEmpty(file(path(getRootDirectory(sel.getOrganizationId(), sel.getMediaPackageId()),
-              sel.getOrganizationId())), dir.getParentFile());
+      boolean mpDirDeleted = FileSupport.deleteHierarchyIfEmpty(file(path(
+              getRootDirectory(sel.getOrganizationId(), sel.getMediaPackageId()), sel.getOrganizationId())),
+              dir.getParentFile());
+      if (mpDirDeleted) {
+        onDeleteMediaPackage(sel.getOrganizationId(), sel.getMediaPackageId());
+      }
       return true;
     } catch (IOException e) {
       logger.error("Error deleting directory from archive {}", dir);
@@ -162,13 +177,16 @@ public abstract class AbstractFileSystemAssetStore implements AssetStore {
    *
    * @param sel
    *          the deletion selector
-   * @return the directory file
+   * @return the directory file or null if it does not exist (e.g. MediaPackage does not exist locally)
    */
   private File getDeletionSelectorDir(DeletionSelector sel) {
-    final String basePath = path(getRootDirectory(sel.getOrganizationId(), sel.getMediaPackageId()),
-            sel.getOrganizationId(), sel.getMediaPackageId());
-    for (Version v : sel.getVersion()) {
-      return file(basePath, v.toString());
+    final String rootPath = getRootDirectory(sel.getOrganizationId(), sel.getMediaPackageId());
+    if (rootPath == null) {
+      return null;
+    }
+    final String basePath = path(rootPath, sel.getOrganizationId(), sel.getMediaPackageId());
+    if (sel.getVersion().isPresent()) {
+      return file(basePath, sel.getVersion().get().toString());
     }
     return file(basePath);
   }
@@ -192,14 +210,20 @@ public abstract class AbstractFileSystemAssetStore implements AssetStore {
   }
 
   /** Return the extension of a file. */
-  private Opt<String> extension(File f) {
-    return trimToNone(getExtension(f.getAbsolutePath())).toOpt();
+  private Optional<String> extension(File f) {
+    Optional<String> opt = trimToNone(getExtension(f.getAbsolutePath()));
+    return opt.isPresent()
+        ? Optional.of(opt.get())
+        : Optional.empty();
   }
 
   /** Return the extension of a URI, i.e. the extension of its path. */
-  private Opt<String> extension(URI uri) {
+  private Optional<String> extension(URI uri) {
     try {
-      return trimToNone(getExtension(uri.toURL().getPath())).toOpt();
+      Optional<String> opt = trimToNone(getExtension(uri.toURL().getPath()));
+      return opt.isPresent()
+          ? Optional.of(opt.get())
+          : Optional.empty();
     } catch (MalformedURLException e) {
       throw new Error(e);
     }
@@ -216,18 +240,22 @@ public abstract class AbstractFileSystemAssetStore implements AssetStore {
   }
 
   /** Create a file from a storage path and an optional extension. */
-  private File createFile(StoragePath p, Opt<String> extension) {
+  private File createFile(StoragePath p, Optional<String> extension) {
+    String rootDirectory = getRootDirectory(p.getOrganizationId(), p.getMediaPackageId());
+    if (rootDirectory == null) {
+      rootDirectory = getRootDirectory();
+    }
     return file(
-            getRootDirectory(),
+            rootDirectory,
             p.getOrganizationId(),
             p.getMediaPackageId(),
             p.getVersion().toString(),
-            extension.isSome() ? p.getMediaPackageElementId() + EXTENSION_SEPARATOR + extension.get() : p
+            extension.isPresent() ? p.getMediaPackageElementId() + EXTENSION_SEPARATOR + extension.get() : p
                     .getMediaPackageElementId());
   }
 
   /** Returns a file from a storage path if it exists, null otherwise */
-  private File getExistingFile(StoragePath p, Opt<String> extension) {
+  private File getExistingFile(StoragePath p, Optional<String> extension) {
     String rootDirectory = getRootDirectory(p.getOrganizationId(), p.getMediaPackageId());
     if (rootDirectory == null) {
       return null;
@@ -237,39 +265,39 @@ public abstract class AbstractFileSystemAssetStore implements AssetStore {
             p.getOrganizationId(),
             p.getMediaPackageId(),
             p.getVersion().toString(),
-            extension.isSome() ? p.getMediaPackageElementId() + EXTENSION_SEPARATOR + extension.get() : p
+            extension.isPresent() ? p.getMediaPackageElementId() + EXTENSION_SEPARATOR + extension.get() : p
                     .getMediaPackageElementId());
   }
 
   /**
-   * Returns a file {@link Option} from a storage path if one is found or an empty {@link Option}
+   * Returns a file {@link Optional} from a storage path if one is found or an empty {@link Optional}
    *
    * @param storagePath
    *          the storage path
-   * @return the file {@link Option}
+   * @return the file {@link Optional}
    */
-  private Opt<File> findStoragePathFile(final StoragePath storagePath) {
+  private Optional<File> findStoragePathFile(final StoragePath storagePath) {
     final FilenameFilter filter = new FilenameFilter() {
       @Override
       public boolean accept(File dir, String name) {
         return FilenameUtils.getBaseName(name).equals(storagePath.getMediaPackageElementId());
       }
     };
-    final File containerDir = getExistingFile(storagePath, Opt.none(String.class)).getParentFile();
-    return nul(containerDir.listFiles(filter)).bind(new Fn<File[], Opt<File>>() {
-      @Override
-      public Opt<File> apply(File[] files) {
-        switch (files.length) {
-          case 0:
-            return none();
-          case 1:
-            return some(files[0]);
-          default:
-            throw new AssetStoreException("Storage path " + files[0].getParent()
-                    + "contains multiple files with the same element id!: " + storagePath.getMediaPackageElementId());
-        }
-      }
-    });
+    final File containerDir = getExistingFile(storagePath, Optional.empty()).getParentFile();
+
+    var files = containerDir.listFiles(filter);
+    if (files == null) {
+      return Optional.empty();
+    }
+    switch (files.length) {
+      case 0:
+        return Optional.empty();
+      case 1:
+        return Optional.of(files[0]);
+      default:
+        throw new AssetStoreException("Storage path " + files[0].getParent()
+            + "contains multiple files with the same element id!: " + storagePath.getMediaPackageElementId());
+    }
   }
 
   @Override

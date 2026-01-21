@@ -4,7 +4,7 @@ Release Manager Guide
 The single most important duty of release managers is to keep an eye on their release, notify the community about
 possible problems in a timely manner and encourage community members to help out if needed. While working on Opencast's
 code is often done as well during the release process, for release managers this is secondary to the communication and
-management role and with few exceptions no requirement for this position.
+management role.  With few exceptions, a release manager should not *need* to be able to code.
 
 The community has a number of expectations for release managers, and their handling of the problems which may arise
 during the release cycle. The core of these expectations are:
@@ -22,13 +22,13 @@ precedence over release manager decisions.
 Recommended practices for release managers
 ------------------------------
 
-This is a recommendation of best practices to help to organize the duties of the release managers after they have been choosen
-these recomendations came from the experience of past release managers.
+This is a recommendation of best practices to help to organize the duties of the release managers after they have been
+chosen.
 
 ### After the election of the release manager
-- Create a draft pull request for the release notes early
-- Create a draft article as a draft opencast.org Wordpress.
-- Create draft slides for presentation in summits and adopters meetings
+- Create a draft pull request for the release notes early, and keep it up to date as development progresses.
+- Create a draft article about the release in the opencast.org Wordpress instance.
+- Create draft slides for presentation in summits and adopters meetings.
 
 ### After the end or begining of each month
 - Check the merged pull requests
@@ -43,8 +43,8 @@ these recomendations came from the experience of past release managers.
 Responsibilities
 ----------------
 
-While a general rule is certainly just to look out for the release, work together with the community to make the release
-work properly and be pragmatic about the process, there are a few tasks which really can only be done by release
+While a general rule is certainly to look out for the release, work together with the community to make the release
+work properly, and be pragmatic about the process, there are a few tasks which really can only be done by release
 managers.
 
 For all of these tasks, it's generally a good idea to look at previous releases and at their solutions for the tasks.
@@ -54,14 +54,18 @@ schedule by six months).
 ### Release Notes
 
 It's usually a good idea to create or clean the release notes page early in the release cycle. This allows for a place
-to put the release schedule, short descriptions of features or noteworthy configuration changes early on.
+to put the release schedule, short descriptions of features or noteworthy configuration changes early on.  It also
+gives developers a clean slate to work from, otherwise there will be constant conflicts as one PR alters the notes file
+underneath a second PR.
+
+Also, once you have processed the release notes text files, please remove them from the history so that future RMs do
+not need to parse out which notes are for their new branch, and which belong to the old one.
 
 ### Upgrade script
 
 In general, everyone assumes someone else is testing the upgrade guides and scripts.  That means it's your job to take
 a quick peek every one in a while and make sure that they work.  Things to think about:
 
-- Do we need Solr index rebuilds?
 - Do we need Elasticsearch index rebuilds?
 - Is there any database migration necessary?
 - Are there any leftover steps in the upgrade docs from previous Opencast versions?
@@ -76,10 +80,10 @@ list and publish it on the release notes page.
 ### Release Branch
 
 According to the set release schedule, at one point a release branch should be cut, effectively marking a feature freeze
-for a given release.  This branch is split off `develop` and should be named `r/N.x` (e.g. `r/6.x` for the Opencast 6
-release branch).
+for a given release.  This branch is split off `develop` and should be named `r/N.x` (e.g.
+`r/{{ opencast_major_version() }}.x` for the Opencast {{ opencast_major_version() }} release branch).
 
-Example on how to create the Opencast 7 release branch:
+Example on how to create the Opencast {{ opencast_major_version() }} release branch:
 
 
 1. Check out `develop` and make sure it has the latest state (replace `<remote>` with your remote name for the community
@@ -88,101 +92,75 @@ Example on how to create the Opencast 7 release branch:
         git checkout develop
         git pull <remote> develop
 
-2. Modify the Paella target branch (For Paella 6.x and 7.x), found in the dependabot configuration
-   file `.github/dependabot.yml` to target the latest supported version when this version will released.
-
-        Example:
-        - package-ecosystem: npm
-          directory: "/modules/engage-paella-player-7"
-          schedule:
-          interval: daily
-          target-branch: "r/12.x"
-          open-pull-requests-limit: 10
-        
-        to
-
-        - package-ecosystem: npm
-          directory: "/modules/engage-paella-player-7"
-          schedule:
-          interval: daily
-          target-branch: "r/13.x"
-          open-pull-requests-limit: 10
-
-  make a PR then merge this change to `develop` branch.
-
-3. Make sure you did not modify any files. If you did, stash those changes:
+2. Make sure you did not modify any files. If you did, stash those changes:
 
         git status   # check for modified files
         git stash    # stash them if necessary
 
-4. Create and push the new release branch:
+3. Create and push the new release branch:
 
-        git checkout -b r/7.x
-        git push <remote> r/7.x
+        git checkout -b r/{{ opencast_major_version() }}.x
+        git push <remote> r/{{ opencast_major_version() }}.x
 
-5. That is it for the release branch. Now update the versions in `develop` in preparation for the next release:
+4. That is it for the release branch. Now update the versions in `develop` in preparation for the next release:
 
         git checkout develop
-        mvn versions:set -DnewVersion=8-SNAPSHOT versions:commit
+        ./mvnw versions:set -DnewVersion={{ opencast_major_version() + 1 }}-SNAPSHOT versions:commit
 
-6. Have a look at the changes. Make sure that nothing else was modified:
+5. Have a look at the changes. Make sure that nothing else was modified:
 
         git diff
         git status | grep modified: | grep -v pom.xml   # this should have no output
 
-7. If everything looks fine, commit the changes and push it to the community repository:
+6. If everything looks fine, commit the changes and push it to the community repository:
 
         git add $(git status | grep 'modified:.*pom.xml' | awk '{print $2;}')
         git commit -s -m 'Bumping pom.xml Version Numbers'
         git push <remote> develop
 
+7. Create a release branch in the admin-ui-interface repository:
 
-At this point, the developer community should then be notified by writing an email like the following to the developers
-list:
+        git clone -b develop git@github.com:opencast/opencast-admin-interface.git
+        cd opencast-admin-interface
+        git checkout -b r/{{ opencast_major_version() + 1 }}.x
+        git push origin r/{{ opencast_major_version() + 1 }}.x
 
-```no-highlight
-To: dev@opencast.org
-Subject: Release Branch for Opencast <version> Cut
+8. Create a release branch in the editor repository:
 
-Hi everyone,
-the Opencast <version> release branch (r/<version>.x) has been
-cut.  Please check if pull requests point to the correct branch.
+        git clone -b develop git@github.com:opencast/opencast-editor.git
+        cd opencast-editor
+        git checkout -b r/{{ opencast_major_version() + 1 }}.x
+        git push origin r/{{ opencast_major_version() + 1 }}.x
 
-For a guide on what you can still add to release branches, please refer to
+8. Create a release branch in the studio repository:
 
-  https://docs.opencast.org/develop/developer/#participate/development-process/#acceptance-criteria-for-patches-in-different-versions
+        git clone -b develop git@github.com:opencast/studio.git
+        cd studio
+        git checkout -b r/{{ opencast_major_version() + 1 }}.x
+        git push origin r/{{ opencast_major_version() + 1 }}.x
+
+9. File a PR against the infra repo updating version numbers:
+
+        git clone -b master git@github.com:opencast/opencast-project-infrastructure.git
+        [ Update ansible-demo-machines/deploy.yml ]
+        git commit -m "Updating demo machine versions due to {{ opencast_major_version() + 1 }} branch cut"
+        [ Create pr ]
+        [ Bug QA manager on Matrix/email ]
 
 
-Remember the release schedule for this release:
-
-  <release_schedule>
-
-As always, we hope to have a lot of people testing this
-version, especially during the public QA phase. Please
-report any bugs or issues you encounter.
-
-For testing, you may use https://stable.opencast.org if you
-do not want to set up a test server yourself. The server is
-reset on a daily basis and will follow the new release
-branch with its next rebuild.
-
-Additionally, look out for announcements regarding container
-and package builds for testing on list if you want to run
-your own system but do not want to build Opencast from
-source.
-```
+If you are unable to create the branches in the last three repositories, please make noise in the Matrix channel so we
+can fix your permissions!
 
 
 ### Status of Translations
 
 After the release branch is cut, the release managers should check if there are languages to be in- or excluded for the
-upcoming release as specified by the [criteria in the localization documentation](../develop/localization.md) and notify the
+upcoming release as specified by the [criteria in the localization documentation](localization.md) and notify the
 community about the status of Opencast's translations if necessary.
 
-Example announcement for included languages:
+Example discussion template for included languages:
 
 ```no-highlight
-To: users@opencast.org
 Subject: Opencast <VERSION>: Translation Status
 
 Hi everyone,
@@ -202,10 +180,9 @@ languages meet the criteria to be included in Opencast
     https://docs.opencast.org/develop/developer/#develop/localization/#inclusion-and-exclusion-of-translations
 ```
 
-Example announcement for endangered languages:
+Example discussion template for endangered languages:
 
 ```no-highlight
-To: users@opencast.org
 Subject: Opencast <VERSION>: <LANGUAGE> Translation Endangered
 
 Hi everyone,
@@ -228,11 +205,10 @@ Your Opencast <VERSION> Release Managers
     https://docs.opencast.org/develop/developer/#develop/localization/#inclusion-and-exclusion-of-translations
 ```
 
-A specific translation week may be announced using an email
+A specific translation week may be announced using a discussion post
 like this:
 
 ```no-highlight
-To: users@opencast.org
 Subject: Opencast <version>: Translation Week
 
 Hi everyone,
@@ -290,10 +266,10 @@ developer list or wherever appropriate.
 ### Merging Release Branches
 
 To not have to merge bug fixes into several branches and create several pull requests, the release branch should be
-merged down on a regular basis. Assuming, for example, that `r/6.x` is the latest release branch, merges should happen
-like this:
+merged down on a regular basis. Assuming, for example, that `r/{{ opencast_major_version() }}.x` is the latest release
+branch, merges should happen like this:
 
-    r/5.x → r/6.x → develop
+    r/{{ opencast_major_version() - 1 }}.x → r/{{ opencast_major_version() }}.x → develop
 
 While any committer may do this at any time, it is good practice for release managers to do this for their release
 branches on a regular basis.
@@ -312,7 +288,7 @@ For example, to merge the latest release branch into `develop`, follow these ste
 3. Merge the release branch. Note that if large merge conflicts arise, you may ask for help from the people creating the
    problematic patches:
 
-        git merge <remote>/r/6.x
+        git merge <remote>/r/{{ opencast_major_version() }}.x
 
 4. Push the updated branch into the community repository:
 
@@ -321,103 +297,99 @@ For example, to merge the latest release branch into `develop`, follow these ste
 
 ### Updating Translations
 
-Updating the [localization translations](../develop/localization.md) is automated for existing translation files. If new files need
+Updating the [localization translations](localization.md) is automated for existing translation files. If new files need
 to be added, it is something that should happen early during the release process. If files need to be removed, this
 needs to be done manually.
 
 
 ### Releasing
 
-The following steps outline the necessary steps for cutting the final release:
+The following steps outline the necessary steps for cutting the final release, using {{ opencast_major_version() }}.0
+as an example:
 
-1. Switch to and update your release branch and ensure the latest state of the previous release branch is merged:
+0. Switch to and update your local release branch, ensuring your local branch is up to date with the main repo.
 
-        git checkout r/6.x
-        git fetch <remote>
-        git merge <remote>/r/6.x
-        git merge <remote>/r/5.x
+1. Cut and merge a [new release of the admin UI](https://github.com/opencast/opencast-admin-interface) if necessary
 
-2. Add the release notes, and update the changelog. The `create-changelog` [helper script
+2. Cut and merge a [new release of the editor](https://github.com/opencast/opencast-editor) if necessary
+
+3. Cut and merge a [new release of studio](https://github.com/opencast/studio) if necessary
+
+4. Update the release notes and changelog
+
+    - First move to the correct directory
+
+            cd docs/guide/admin/docs
+
+    - Update the changelog. The `create-changelog` [helper script
    ](https://github.com/opencast/helper-scripts/tree/master/release-management/create-changelog) is a convenient tool
-   for this.
+   for this.  The script can be called a few different ways, please read the documentation and figure our yours.
 
-        cd docs/guides/admin/docs/
-        vim releasenotes.md
-        vim changelog.md
-        git commit -S releasenotes.md changelog.md -m 'Updated Release Notes'
-        git push <remote> r/6.x
+            python3 helper-scripts/release-management/create-changelog.py [args] >> changelog/opencast-{{ opencast_major_version() }}.md
+            [ manual check that the doc looks correct ]
+            git add changelog/opencast-{{ opencast_major_version() }}.md
 
-3. Switch to a new branch to create the release (name does not really matter):
+    - The release notes for a major release (x.0) should be built from the various text files in the 
+   `docs/guides/admin/docs/releasenotes` directory.  the release notes for a minor release (x.y) should be a rough
+   summary of the development activity between x.y and x.y-1
 
-        git checkout -b tmp-6.0
+            vim releasenotes.md
+            git commit -s releasenotes.md changelog.md -m 'updated release notes and changelog'
+            git push <remote> r/{{ opencast_major_version() }}.x
 
-4. Make the version changes for the release:
+5. Switch to a new branch to create the release (name does not really matter):
 
-        mvn versions:set -DnewVersion=6.0 versions:commit
+        git checkout -b tmp-{{ opencast_major_version() }}.0
 
-5. Have a look at the changes. Make sure that nothing else was modified:
+6. Make the version changes for the release:
+
+        ./mvnw versions:set -DnewVersion={{ opencast_major_version() }}.0 versions:commit
+
+7. Have a look at the changes. Make sure that nothing else was modified:
 
         git diff
-        git status | grep modified: | grep -v pom.xml   # this should yield no output
+        # The following command should yield no output:
+        git status | grep modified: | grep -v pom.xml
 
-6. Commit the changes and create a release tag:
+8. Commit the changes:
 
         git add $(git status | grep 'modified:.*pom.xml' | awk '{print $2;}')
-        git commit -S -m 'Opencast 6.0'
-        git tag -s 6.0
+        git commit -S -m 'Opencast {{ opencast_major_version() }}.0'
 
-7. Push the tag to the community repository (you can remove the branch afterwards):
+9. Build and test the distributions.  Start each one and make sure they boot successfully.
 
-        git push <remote> 6.0:6.0
+10. Push the tag to the community repository, and remove the local branch:
 
-8. Check the “Create new release” GitHub Actions workflow.
-   It will automatically build and upload the release tarballs and create a new release draft.
-   Once it is finished, review the draft, adjust the description and publish the release.
+        git tag -s {{ opencast_major_version() }}.0 -m 'Opencast {{ opencast_major_version() }}.0'
+        git push <remote> {{ opencast_major_version() }}.0
+        git branch -D tmp-{{ opencast_major_version() }}.0
 
-   If the workflow fails, investigate what was going wrong and either restart the workflow or create the release
-   manually in the GitHub user interface.
+11. Check the “Create new release” GitHub Actions workflow.
+    It will automatically build and upload the release tarballs and create a new release draft.
+    Once it is finished, review the draft, adjust the description and publish the release.
 
-9. Check that the release is published on [Maven Central](https://repo1.maven.org/maven2/org/opencastproject/opencast-common/).
+    If the workflow fails, investigate what was going wrong and either restart the workflow or create the release
+    manually in the GitHub user interface.
+
+12. In the case a x.0 release, post a release notification on [opencast.org](https://opencast.org).  You will need to
+    ensure you have the appropriate permissions - talk to the QA Coordinator, or the board if you do not know how or
+    have the rights.  Typically we reuse a previous major version's message, altering the version numbers, but the
+    actual content is up to the release manager.
+
+
+13. Check that the release is published on [Maven Central](https://repo1.maven.org/maven2/org/opencastproject/opencast-common/).
     This can take some time, and is done via [Buildbot](http://ci.opencast.org).  If in doubt, ask the QA Coordinator to
     check.  If you need to do this yourself please read the [infra documentation](infrastructure/maven-repository.md#pushing-to-maven-central).
-
-Finally, send a release notice to Opencast's announcement list. Note that posting to this list is restricted to those
-who need access to avoid general discussions on that list. In case you do not already have permissions to post on this
-list, please ask to be given permission. For the message, you may use the following template:
-
-```no-highlight
-To: announcements@opencast.org
-Subject: Opencast <VERSION> Released
-
-Hi everyone,
-it is my pleasure to announce that Opencast <VERSION> has
-been released:
-
-  https://github.com/opencast/opencast/releases
-
-The documentation for this release can be found at:
-
-  https://docs.opencast.org/r/<VERSION>/admin/
-
-RPM and Debian packages as well as Docker images will be
-available soon. Watch for announcements on the users list.
-
-To all committers and involved contributors, thank you for
-all your work. This could not have happened without you and
-I am glad we were able to work together and get this release
-out.
-```
-
 
 ### Appointment of Next Release Manager
 
 After the release branch is cut, all work on `develop` is effectively the preparation for the next release. At this
-point, the release managers should send an inquiry to the development list to identify volunteers for the next release.
+point, the release managers should send an inquiry to the general development discussion group to identify volunteers
+for the next release.
 
-For that, this email template may be used:
+For that, this post template may be used:
 
 ```no-highlight
-To: dev@opencast.org
 Subject: Opencast <NEXT_RELEASE> release managers wanted
 
 Hi everyone,
@@ -442,34 +414,18 @@ I am looking forward to your applications on list, please
 voice your interest until <DATE_ROUGHLY_2_WEEKS_IN_THE_FUTURE>.
 ```
 
-In the case where someone steps up and offers to fill in the role of a release manager for the upcoming release, a vote
-is held on the committers list to determine whether the candidates are deemed suitable for the position.
+In many cases only a single pair of users will step forward to fill these roles.  In this case, barring any objection
+from the community, these two will be selected to be release managers automatically.
 
-This email template may be used to initiate the vote:
+In the case where more than one pair steps up, the usual process is that the second pair becomes the release managers
+for the NEXT_NEXT_RELEASE.  If no agreement between the parties can be reached, a formal vote can be called using the
+same mechanism used for board votes.  In this case, contact the board directly for instructions.
 
-```no-highlight
-To: committers@opencast.org
-Subject: [#vote] Vote on Release Managers of Opencast <NEXT_RELEASE>
-
-Hi everyone,
-I am happy to announce that the following community members
-have volunteered themselves for the position of the Opencast
-<NEXT_RELEASE> release manager and have expressed the
-intention of sharing the position:
-
-  <NAME, INSTITITION>
-  <NAME, INSTITUTION>
-
-I hereby open the vote on accepting them for this position.
-The vote will be open for the coming 72h.
-```
-
-Once the voting is complete, the result should be announced on the development list:
+Once the release managers are selected the result should be announced on in the same development discussion:
 
 As an example:
 
 ```no-highlight
-To: dev@opencast.org
 Subject: Release Managers of Opencast <NEXT_RELEASE>
 
 Hi everyone,

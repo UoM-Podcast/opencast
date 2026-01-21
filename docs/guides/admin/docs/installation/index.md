@@ -6,6 +6,11 @@ There are a few hints about a sensible machine setup to run Opencast on:
 
 - [Hardware requirements](server-requirements.md)
 
+Since Opencast is written in Java, you may also need to ensure to have the correct version of Java installed.
+On fresh installations, the packages will usually take care about that.
+
+- [Java version requirements](java-version.md)
+
 
 Installation from Repository
 ----------------------------
@@ -17,11 +22,6 @@ pre-built Opencast installations.
     * [RedHat Enterprise Linux](rpm-el.md)
     * [CentOS Stream](rpm-el.md)
     * …
-* [Red Hat 7 based](rpm-el7.md)
-    * [RedHat Enterprise Linux 7](rpm-el7.md)
-    * [CentOS 7](rpm-el7.md)
-    * [Scientific Linux 7](rpm-el7.md)
-* [Fedora](rpm-fedora.md)
 * [Debian based](debs.md)
     * [Debian](debs.md)
     * [Ubuntu](debs.md)

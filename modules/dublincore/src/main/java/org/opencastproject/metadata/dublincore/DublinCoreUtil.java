@@ -21,8 +21,6 @@
 
 package org.opencastproject.metadata.dublincore;
 
-import static com.entwinemedia.fn.Prelude.chuck;
-
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageElements;
@@ -58,7 +56,8 @@ public final class DublinCoreUtil {
    *
    * @return the catalog or none if the media package does not contain an episode DublinCore
    */
-  public static Optional<DublinCoreCatalog> loadEpisodeDublinCore(final Workspace workspace, MediaPackage mediaPackage) {
+  public static Optional<DublinCoreCatalog> loadEpisodeDublinCore(final Workspace workspace,
+      MediaPackage mediaPackage) {
     return Arrays.stream(mediaPackage.getCatalogs(MediaPackageElements.EPISODE))
         .findFirst()
         .map(dc -> loadDublinCore(workspace, dc));
@@ -77,7 +76,7 @@ public final class DublinCoreUtil {
       return DublinCores.read(in);
     } catch (Exception e) {
       logger.error("Unable to load metadata from catalog '{}'", mpe, e);
-      return chuck(e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -127,7 +126,7 @@ public final class DublinCoreUtil {
       }
       return Checksum.create("md5", Checksum.convertToHex(digest.digest()));
     } catch (NoSuchAlgorithmException e) {
-      return chuck(e);
+      throw new RuntimeException(e);
     }
   }
 

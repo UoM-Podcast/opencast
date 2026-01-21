@@ -157,7 +157,7 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
    */
   @Override
   public void deleteMediaPackage(String mediaPackageId, Date deletionDate) throws SearchServiceDatabaseException,
-          NotFoundException {
+          NotFoundException, UnauthorizedException {
     try {
       db.execTxChecked(em -> {
         Optional<SearchEntity> searchEntity = getSearchEntityQuery(mediaPackageId).apply(em);
@@ -172,12 +172,11 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
         String accessControlXml = searchEntity.get().getAccessControl();
 
         // allow ca users to retract live publications without putting them into the ACL
-        if (!(searchMp.isLive() && currentUser.hasRole(GLOBAL_CAPTURE_AGENT_ROLE))
-            && accessControlXml != null) {
+        if (!(searchMp.isLive() && currentUser.hasRole(GLOBAL_CAPTURE_AGENT_ROLE)) && accessControlXml != null) {
           AccessControlList acl = AccessControlParser.parseAcl(accessControlXml);
-          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, WRITE.toString())) {
-            throw new UnauthorizedException(currentUser + " is not authorized to delete media package "
-                + mediaPackageId);
+          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, WRITE.toString(), mediaPackageId)) {
+            throw new UnauthorizedException(
+                currentUser + " is not authorized to delete media package " + mediaPackageId);
           }
         }
 
@@ -185,7 +184,7 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
         searchEntity.get().setModificationDate(deletionDate);
         em.merge(searchEntity.get());
       });
-    } catch (NotFoundException e) {
+    } catch (NotFoundException | UnauthorizedException e) {
       throw e;
     } catch (Exception e) {
       logger.error("Could not delete episode {}: {}", mediaPackageId, e.getMessage());
@@ -211,13 +210,15 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#getAllMediaPackages()
+   * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#getAllMediaPackages(int, int)
    */
   @Override
-  public Stream<Tuple<MediaPackage, String>> getAllMediaPackages() throws SearchServiceDatabaseException {
+  public Stream<Tuple<MediaPackage, String>> getAllMediaPackages(int pagesize, int offset)
+          throws SearchServiceDatabaseException {
     List<SearchEntity> searchEntities;
     try {
-      searchEntities = db.exec(namedQuery.findAll("Search.findAll", SearchEntity.class));
+      int firstResult = pagesize * offset;
+      searchEntities = db.exec(namedQuery.findSome("Search.findAll", firstResult, pagesize, SearchEntity.class));
     } catch (Exception e) {
       logger.error("Could not retrieve all episodes: {}", e.getMessage());
       throw new SearchServiceDatabaseException(e);
@@ -272,10 +273,10 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
    * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#getAccessControlLists(String, String...)
    */
   @Override
-  public Collection<AccessControlList> getAccessControlLists(final String seriesId, String ... excludeIds)
+  public Collection<Pair<String, AccessControlList>> getAccessControlLists(final String seriesId, String ... excludeIds)
           throws SearchServiceDatabaseException {
     List<String> excludes = Arrays.asList(excludeIds);
-    List<AccessControlList> accessControlLists = new ArrayList<>();
+    List<Pair<String,AccessControlList>> accessControlLists = new ArrayList<>();
     try {
       List<SearchEntity> result = db.exec(namedQuery.findAll(
           "Search.findBySeriesId",
@@ -284,7 +285,10 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
       ));
       for (SearchEntity entity: result) {
         if (entity.getAccessControl() != null && !excludes.contains(entity.getMediaPackageId())) {
-          accessControlLists.add(AccessControlParser.parseAcl(entity.getAccessControl()));
+          accessControlLists.add(Pair.of(
+              entity.getMediaPackageId(),
+              AccessControlParser.parseAcl(entity.getAccessControl()))
+          );
         }
       }
     } catch (IOException | AccessControlParsingException e) {
@@ -296,24 +300,26 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
   /**
    * {@inheritDoc}
    *
-   * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#getMediaPackages(String)
+   * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#getSeries(String)
    */
-  @Override
-  public Collection<MediaPackage> getMediaPackages(final String seriesId) throws SearchServiceDatabaseException {
-    List<MediaPackage> episodes = new ArrayList<>();
+  public Collection<Pair<Organization, MediaPackage>> getSeries(final String seriesId)
+          throws SearchServiceDatabaseException {
+    List<Pair<Organization, MediaPackage>> episodes = new ArrayList<>();
+    EntityManager em = emf.createEntityManager();
+    TypedQuery<SearchEntity> q = em.createNamedQuery("Search.findBySeriesId", SearchEntity.class)
+        .setParameter("seriesId", seriesId);
     try {
-      List<SearchEntity> result = db.exec(namedQuery.findAll(
-          "Search.findBySeriesId",
-          SearchEntity.class,
-          Pair.of("seriesId", seriesId)
-      ));
-      for (SearchEntity entity: result) {
+      for (SearchEntity entity: q.getResultList()) {
         if (entity.getMediaPackageXML() != null) {
-          episodes.add(MediaPackageParser.getFromXml(entity.getMediaPackageXML()));
+          episodes.add(Pair.of(
+              entity.getOrganization(),
+              MediaPackageParser.getFromXml(entity.getMediaPackageXML())));
         }
       }
     } catch (MediaPackageException e) {
       throw new SearchServiceDatabaseException(e);
+    } finally {
+      em.close();
     }
     return episodes;
   }
@@ -344,12 +350,14 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
           em.persist(searchEntity);
         } else {
           // Ensure this user is allowed to update this media package
+          // If user has ROLE_EPISODE_<ID>_WRITE, no further permission checks are necessary
           String accessControlXml = entity.get().getAccessControl();
           if (accessControlXml != null && entity.get().getDeletionDate() == null) {
             AccessControlList accessList = AccessControlParser.parseAcl(accessControlXml);
             User currentUser = securityService.getUser();
             Organization currentOrg = securityService.getOrganization();
-            if (!AccessControlUtil.isAuthorized(accessList, currentUser, currentOrg, WRITE.toString())) {
+            if (!AccessControlUtil.isAuthorized(accessList, currentUser, currentOrg, WRITE.toString(),
+                mediaPackageId)) {
               throw new UnauthorizedException(currentUser + " is not authorized to update media package "
                   + mediaPackageId);
             }
@@ -364,6 +372,8 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
           em.merge(entity.get());
         }
       });
+    } catch (UnauthorizedException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Could not update media package: {}", e.getMessage());
       throw new SearchServiceDatabaseException(e);
@@ -376,29 +386,31 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
    * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#getMediaPackage(String)
    */
   @Override
-  public MediaPackage getMediaPackage(String mediaPackageId) throws NotFoundException, SearchServiceDatabaseException {
+  public MediaPackage getMediaPackage(String mediaPackageId)
+          throws NotFoundException, SearchServiceDatabaseException, UnauthorizedException {
     try {
       return db.execTxChecked(em -> {
         Optional<SearchEntity> episodeEntity = getSearchEntityQuery(mediaPackageId).apply(em);
-        if (episodeEntity.isEmpty()) {
+        if (episodeEntity.isEmpty() || episodeEntity.get().getDeletionDate() != null) {
           throw new NotFoundException("No episode with id=" + mediaPackageId + " exists");
         }
-        // Ensure this user is allowed to read this episode
+
         String accessControlXml = episodeEntity.get().getAccessControl();
         if (accessControlXml != null) {
           AccessControlList acl = AccessControlParser.parseAcl(accessControlXml);
           User currentUser = securityService.getUser();
           Organization currentOrg = securityService.getOrganization();
           // There are several reasons a user may need to load a episode: to read content, to edit it, or add content
-          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString())
-              && !AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, CONTRIBUTE.toString())
-              && !AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, WRITE.toString())) {
+          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString(), mediaPackageId)
+                  && !AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, CONTRIBUTE.toString(),
+              mediaPackageId)
+                  && !AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, WRITE.toString(), mediaPackageId)) {
             throw new UnauthorizedException(currentUser + " is not authorized to see episode " + mediaPackageId);
           }
         }
         return MediaPackageParser.getFromXml(episodeEntity.get().getMediaPackageXML());
       });
-    } catch (NotFoundException e) {
+    } catch (NotFoundException | UnauthorizedException e) {
       throw e;
     } catch (Exception e) {
       logger.error("Could not get episode {} from database: {} ", mediaPackageId, e.getMessage());
@@ -425,8 +437,9 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
           AccessControlList acl = AccessControlParser.parseAcl(accessControlXml);
           User currentUser = securityService.getUser();
           Organization currentOrg = securityService.getOrganization();
-          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString())) {
-            throw new UnauthorizedException(currentUser + " is not authorized to read media package " + mediaPackageId);
+          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString(), mediaPackageId)) {
+            throw new UnauthorizedException(
+                currentUser + " is not authorized to read media package " + mediaPackageId);
           }
         }
         return searchEntity.get().getModificationDate();
@@ -458,8 +471,9 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
           AccessControlList acl = AccessControlParser.parseAcl(accessControlXml);
           User currentUser = securityService.getUser();
           Organization currentOrg = securityService.getOrganization();
-          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString())) {
-            throw new UnauthorizedException(currentUser + " is not authorized to read media package " + mediaPackageId);
+          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString(), mediaPackageId)) {
+            throw new UnauthorizedException(
+                currentUser + " is not authorized to read media package " + mediaPackageId);
           }
         }
         return searchEntity.get().getDeletionDate();
@@ -468,6 +482,23 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
       throw e;
     } catch (Exception e) {
       logger.error("Could not get deletion date {}: {}", mediaPackageId, e.getMessage());
+      throw new SearchServiceDatabaseException(e);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   *
+   * @see org.opencastproject.search.impl.persistence.SearchServiceDatabase#isAvailable(String)
+   */
+  public boolean isAvailable(String mediaPackageId) throws SearchServiceDatabaseException {
+    try {
+      return db.execTxChecked(em -> {
+        Optional<SearchEntity> searchEntity = getSearchEntityQuery(mediaPackageId).apply(em);
+        return searchEntity.stream().anyMatch(entity -> entity.getDeletionDate() == null);
+      });
+    } catch (Exception e) {
+      logger.error("Error while checking if mediapackage {} exists in database: {}", mediaPackageId, e.getMessage());
       throw new SearchServiceDatabaseException(e);
     }
   }
@@ -491,8 +522,9 @@ public class SearchServiceDatabaseImpl implements SearchServiceDatabase {
           AccessControlList acl = AccessControlParser.parseAcl(accessControlXml);
           User currentUser = securityService.getUser();
           Organization currentOrg = securityService.getOrganization();
-          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString())) {
-            throw new UnauthorizedException(currentUser + " is not authorized to read media package " + mediaPackageId);
+          if (!AccessControlUtil.isAuthorized(acl, currentUser, currentOrg, READ.toString(), mediaPackageId)) {
+            throw new UnauthorizedException(
+                currentUser + " is not authorized to read media package " + mediaPackageId);
           }
         }
         return searchEntity.get().getOrganization().getId();

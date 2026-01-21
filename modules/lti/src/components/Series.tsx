@@ -1,5 +1,12 @@
 import React, { DOMAttributes } from "react";
-import { SearchEpisodeResults, searchEpisode, getLti, SearchEpisodeResult, deleteEvent, Track } from "../OpencastRest";
+import {
+    SearchEpisodeResults,
+    searchEpisode,
+    getLti,
+    SearchEpisodeResult,
+    deleteEvent,
+    Track,
+} from "../OpencastRest";
 import { Loading } from "./Loading";
 import { withTranslation, WithTranslation } from "react-i18next";
 import "../App.css";
@@ -52,7 +59,7 @@ const dropdownCustomToggle = React.forwardRef<any, DOMAttributes<any>>(({childre
   </button>
 );
 
-const SeriesEpisode: React.StatelessComponent<EpisodeProps> = ({ episode, deleteCallback, editCallback, annotateCallback, downloadCallback, t }) => {
+const SeriesEpisode: React.FC<EpisodeProps> = ({episode, deleteCallback, editCallback, annotateCallback, downloadCallback, t}) => {
     const attachments = episode.mediapackage.attachments;
     const imageAttachment = attachments.find((a) => a.type.endsWith("/search+preview"));
     const image = imageAttachment !== undefined ? imageAttachment.url : "";
@@ -106,7 +113,7 @@ const SeriesEpisode: React.StatelessComponent<EpisodeProps> = ({ episode, delete
                 }
             </div>}
     </div>;
-}
+};
 
 const EPISONDES_PER_PAGE:number = 15;
 
@@ -136,7 +143,9 @@ class TranslatedSeries extends React.Component<SeriesProps, SeriesState> {
             (pageNumber - 1) * EPISONDES_PER_PAGE,
             undefined,
             typeof qs.series === "string" ? qs.series : undefined,
-            typeof qs.series_name === "string" ? qs.series_name : undefined
+            typeof qs.series_name === "string" ? qs.series_name : undefined,
+            typeof qs.sort === "string" ? qs.sort : undefined,
+            typeof qs.live === "string" ? qs.live : undefined,
         ).then((results) => this.setState({
             ...this.state,
             searchResults: results
@@ -144,6 +153,7 @@ class TranslatedSeries extends React.Component<SeriesProps, SeriesState> {
             ...this.state,
             httpErrors: this.state.httpErrors.concat([error.message])
         }));
+
     }
 
     unsetDeletionState() {
@@ -242,7 +252,7 @@ class TranslatedSeries extends React.Component<SeriesProps, SeriesState> {
             const headingOpts = {
                 range: {
                     begin: Math.min(sr.offset + 1, sr.total),
-                    end: sr.offset + sr.limit
+                    end: Math.min(sr.offset + sr.limit, sr.total)
                 },
                 total: sr.total
             };

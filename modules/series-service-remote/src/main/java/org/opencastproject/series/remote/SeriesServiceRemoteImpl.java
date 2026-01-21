@@ -48,7 +48,6 @@ import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.doc.rest.RestService;
 
-import com.entwinemedia.fn.data.Opt;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -69,6 +68,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,7 +97,7 @@ import javax.ws.rs.core.Response;
 /**
  * A proxy to a remote series service.
  */
-@Path("/")
+@Path("/series")
 @RestService(
     name = "seriesservice",
     title = "Series Service Remote",
@@ -122,6 +122,7 @@ import javax.ws.rs.core.Response;
     immediate = true,
     service = { SeriesService.class, SeriesServiceRemoteImpl.class }
 )
+@JaxrsResource
 public class SeriesServiceRemoteImpl extends RemoteBase implements SeriesService {
 
   private static final Logger logger = LoggerFactory.getLogger(SeriesServiceRemoteImpl.class);
@@ -569,7 +570,7 @@ public class SeriesServiceRemoteImpl extends RemoteBase implements SeriesService
   }
 
   @Override
-  public Opt<Map<String, byte[]>> getSeriesElements(String seriesID) throws SeriesException {
+  public Optional<Map<String, byte[]>> getSeriesElements(String seriesID) throws SeriesException {
     HttpGet get = new HttpGet("/" + seriesID + "/elements.json");
     HttpResponse response = getResponse(get, SC_OK, SC_NOT_FOUND, SC_INTERNAL_SERVER_ERROR);
     JSONParser parser = new JSONParser();
@@ -585,16 +586,16 @@ public class SeriesServiceRemoteImpl extends RemoteBase implements SeriesService
             Map<String, byte[]> elements = new HashMap<>();
             for (int i = 0; i < elementArray.length(); i++) {
               final String type = elementArray.getString(i);
-              Opt<byte[]> optData = getSeriesElementData(seriesID, type);
-              if (optData.isSome()) {
+              Optional<byte[]> optData = getSeriesElementData(seriesID, type);
+              if (optData.isPresent()) {
                 elements.put(type, optData.get());
               } else {
                 throw new SeriesException(format("Tried to load non-existing element of type '%s'", type));
               }
             }
-            return Opt.some(elements);
+            return Optional.of(elements);
           case SC_NOT_FOUND:
-            return Opt.none();
+            return Optional.empty();
           case SC_INTERNAL_SERVER_ERROR:
             throw new SeriesException(format("Error while retrieving elements from series '%s'", seriesID));
           default:
@@ -610,7 +611,7 @@ public class SeriesServiceRemoteImpl extends RemoteBase implements SeriesService
   }
 
   @Override
-  public Opt<byte[]> getSeriesElementData(String seriesID, String type) throws SeriesException {
+  public Optional<byte[]> getSeriesElementData(String seriesID, String type) throws SeriesException {
     HttpGet get = new HttpGet("/" + seriesID + "/elements/" + type);
     HttpResponse response = getResponse(get, SC_OK, SC_NOT_FOUND, SC_INTERNAL_SERVER_ERROR);
 
@@ -622,9 +623,9 @@ public class SeriesServiceRemoteImpl extends RemoteBase implements SeriesService
         final int statusCode = response.getStatusLine().getStatusCode();
         switch (statusCode) {
           case SC_OK:
-            return Opt.some(IOUtils.toByteArray(response.getEntity().getContent()));
+            return Optional.of(IOUtils.toByteArray(response.getEntity().getContent()));
           case SC_NOT_FOUND:
-            return Opt.none();
+            return Optional.empty();
           case SC_INTERNAL_SERVER_ERROR:
             throw new SeriesException(
                     format("Error while retrieving element of type '%s' from series '%s'", type, seriesID));

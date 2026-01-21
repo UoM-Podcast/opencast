@@ -31,7 +31,6 @@ import static org.opencastproject.util.RestUtil.R.noContent;
 import static org.opencastproject.util.RestUtil.R.notFound;
 import static org.opencastproject.util.RestUtil.R.ok;
 import static org.opencastproject.util.RestUtil.R.serverError;
-import static org.opencastproject.util.data.Monadics.mlist;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.BOOLEAN;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.INTEGER;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
@@ -53,19 +52,15 @@ import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.util.Jsons;
 import org.opencastproject.util.NotFoundException;
-import org.opencastproject.util.data.Function;
-import org.opencastproject.util.data.Option;
-import org.opencastproject.util.data.functions.Functions;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Optional;
 
 import javax.ws.rs.DELETE;
@@ -150,7 +145,7 @@ public abstract class AbstractAclServiceRestEndpoint {
       throw new WebApplicationException(Response.Status.BAD_REQUEST);
     }
 
-    AccessControlList acl = AccessControlUtil.extendAcl(parseAcl.apply(accessControlList), role, action, allow);
+    AccessControlList acl = AccessControlUtil.extendAcl(parseAcl(accessControlList), role, action, allow);
     return JsonConv.full(acl).toJson();
   }
 
@@ -180,7 +175,7 @@ public abstract class AbstractAclServiceRestEndpoint {
       throw new WebApplicationException(Response.Status.BAD_REQUEST);
     }
 
-    AccessControlList acl = AccessControlUtil.reduceAcl(parseAcl.apply(accessControlList), role, action);
+    AccessControlList acl = AccessControlUtil.reduceAcl(parseAcl(accessControlList), role, action);
     return JsonConv.full(acl).toJson();
   }
 
@@ -200,8 +195,10 @@ public abstract class AbstractAclServiceRestEndpoint {
       }
   )
   public String getAcls() {
-    return Jsons.arr(mlist(aclService().getAcls()).map(Functions.co(JsonConv.fullManagedAcl)))
-            .toJson();
+    List<Jsons.Val> acls = aclService().getAcls().stream()
+        .map(JsonConv.fullManagedAcl)
+        .toList();
+    return Jsons.arr(acls).toJson();
   }
 
   @POST
@@ -226,7 +223,7 @@ public abstract class AbstractAclServiceRestEndpoint {
       @FormParam("name") String name,
       @FormParam("acl") String accessControlList
   ) {
-    final AccessControlList acl = parseAcl.apply(accessControlList);
+    final AccessControlList acl = parseAcl(accessControlList);
     final Optional<ManagedAcl> managedAcl = aclService().createAcl(acl, name);
     if (managedAcl.isEmpty()) {
       logger.info("An ACL with the same name '{}' already exists", name);
@@ -262,7 +259,7 @@ public abstract class AbstractAclServiceRestEndpoint {
       @FormParam("acl") String accessControlList
   ) throws NotFoundException {
     final Organization org = getSecurityService().getOrganization();
-    final AccessControlList acl = parseAcl.apply(accessControlList);
+    final AccessControlList acl = parseAcl(accessControlList);
     final ManagedAclImpl managedAcl = new ManagedAclImpl(aclId, name, org.getId(), acl);
     if (!aclService().updateAcl(managedAcl)) {
       logger.info("No ACL with id '{}' could be found under organization '{}'", aclId, org.getId());
@@ -296,7 +293,7 @@ public abstract class AbstractAclServiceRestEndpoint {
         return conflict();
       }
     } catch (AclServiceException e) {
-      logger.warn("Error deleting manged acl with id '{}': {}", aclId, e);
+      logger.warn("Error deleting manged acl with id '{}'", aclId, e);
       throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
     }
     return noContent();
@@ -334,33 +331,28 @@ public abstract class AbstractAclServiceRestEndpoint {
       return notFound();
     }
     try {
-      Option<AccessControlList> aclOpt = Option.some(macl.get().getAcl());
-      Opt<MediaPackage> mediaPackage = getAssetManager().getMediaPackage(episodeId);
+      Optional<AccessControlList> aclOpt = Optional.of(macl.get().getAcl());
+      Optional<MediaPackage> mediaPackage = getAssetManager().getMediaPackage(episodeId);
       // the episode service is the source of authority for the retrieval of media packages
-      if (mediaPackage.isSome()) {
+      if (mediaPackage.isPresent()) {
         MediaPackage episodeSvcMp = mediaPackage.get();
-        aclOpt.fold(new Option.EMatch<AccessControlList>() {
-          // set the new episode ACL
-          @Override
-          public void esome(final AccessControlList acl) {
-            // update in episode service
-            try {
-              MediaPackage mp = getAuthorizationService().setAcl(episodeSvcMp, AclScope.Episode, acl).getA();
+        aclOpt.ifPresentOrElse(
+            acl -> { // "some" branch
+              try {
+                MediaPackage mp = getAuthorizationService()
+                    .setAcl(episodeSvcMp, AclScope.Episode, acl)
+                    .getA();
+                getAssetManager().takeSnapshot(mp);
+              } catch (MediaPackageException e) {
+                logger.error("Error getting ACL from media package", e);
+              }
+            },
+            () -> { // "none" branch
+              MediaPackage mp = getAuthorizationService()
+                  .removeAcl(episodeSvcMp, AclScope.Episode);
               getAssetManager().takeSnapshot(mp);
-            } catch (MediaPackageException e) {
-              logger.error("Error getting ACL from media package", e);
             }
-          }
-
-          // if none EpisodeACLTransition#isDelete returns true so delete the episode ACL
-          @Override
-          public void enone() {
-            // update in episode service
-            MediaPackage mp = getAuthorizationService().removeAcl(episodeSvcMp, AclScope.Episode);
-            getAssetManager().takeSnapshot(mp);
-          }
-
-        });
+        );
         return ok();
       }
       // not found
@@ -371,17 +363,14 @@ public abstract class AbstractAclServiceRestEndpoint {
     }
   }
 
-  private static final Function<String, AccessControlList> parseAcl = new Function<String, AccessControlList>() {
-    @Override
-    public AccessControlList apply(String acl) {
-      try {
-        return AccessControlParser.parseAcl(acl);
-      } catch (Exception e) {
-        logger.warn("Unable to parse ACL");
-        throw new WebApplicationException(Response.Status.BAD_REQUEST);
-      }
+  private static AccessControlList parseAcl(String acl) {
+    try {
+      return AccessControlParser.parseAcl(acl);
+    } catch (Exception e) {
+      logger.warn("Unable to parse ACL");
+      throw new WebApplicationException(Response.Status.BAD_REQUEST);
     }
-  };
+  }
 
   private AclService aclService() {
     return getAclServiceFactory().serviceFor(getSecurityService().getOrganization());

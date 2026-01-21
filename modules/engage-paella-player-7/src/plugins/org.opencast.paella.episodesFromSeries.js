@@ -47,7 +47,7 @@ export default class EpisodesFromSeriesPlugin extends PopUpButtonPlugin {
         const response = await fetch(getUrlFromOpencastServer(`/search/episode.json?sid=${ series }&limit=${limit}`));
         if (response.ok) {
           this._episodesData = await response.json();
-          return (this._episodesData['search-results'].total > 1);
+          return (this._episodesData['result'].length > 1);
         }
         return false;
       }
@@ -76,19 +76,26 @@ export default class EpisodesFromSeriesPlugin extends PopUpButtonPlugin {
 
     const thisId = this.player.videoId;
     if (this._episodesData) {
-      const result = this._episodesData['search-results'].result;
-      (Array.isArray(result) ? result : [result]).forEach(({id,dcTitle,mediapackage}) => {
+      const result = this._episodesData['result'];
+      (Array.isArray(result) ? result : [result]).forEach((thing) => {
+        const id = thing.mediapackage.id;
+        const dcTitle = thing.dc.title[0];
+        const mediapackage = thing.mediapackage;
         if (id !== thisId) {
           const preview = getVideoPreview(mediapackage,this.player.config);
           const url = `watch.html?id=${id}`;
-          createElementWithHtmlText(`
+          const elm = createElementWithHtmlText(`
                   <li>
-                      <a href="${url}">
-                          <img src="${preview}" alt="${dcTitle}">
-                          <span>${dcTitle}</span>
+                      <a href="">
+                          <img src="" alt="">
+                          <span> </span>
                       </a>
                   </li>
-                  `,list);
+                  `, list);
+          elm.querySelector('a').href = url;
+          elm.querySelector('img').src = preview;
+          elm.querySelector('img').alt = dcTitle;
+          elm.querySelector('span').textContent = dcTitle;
         }
       });
     }

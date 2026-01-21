@@ -22,7 +22,7 @@
 package org.opencastproject.adminui.endpoint;
 
 import static org.opencastproject.security.api.SecurityConstants.GLOBAL_ADMIN_ROLE;
-import static org.opencastproject.util.data.functions.Functions.chuck;
+import static org.opencastproject.util.data.functions.Misc.chuck;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
 import org.opencastproject.adminui.impl.ProviderQuery;
@@ -50,7 +50,6 @@ import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
-import com.entwinemedia.fn.data.Opt;
 import com.google.gson.Gson;
 
 import org.apache.commons.lang3.StringUtils;
@@ -58,6 +57,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +78,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 
-@Path("/")
+@Path("/admin-ng/statistics")
 @RestService(name = "statistics", title = "statistics façade service",
   abstractText = "Provides statistics",
   notes = {"This service provides statistics."
@@ -94,6 +94,7 @@ import javax.ws.rs.core.Response;
                 "opencast.service.path=/admin-ng/statistics",
         }
 )
+@JaxrsResource
 public class StatisticsEndpoint {
 
   /** The logging facility */
@@ -309,8 +310,8 @@ public class StatisticsEndpoint {
   }
 
   private void checkMediapackageAccess(final String mpId) throws UnauthorizedException, SearchIndexException {
-    final Opt<Event> event = indexService.getEvent(mpId, searchIndex);
-    if (event.isNone()) {
+    final Optional<Event> event = indexService.getEvent(mpId, searchIndex);
+    if (event.isEmpty()) {
       // IndexService checks permissions and returns None if user is unauthorized
       throw new UnauthorizedException(securityService.getUser(), "read");
     }

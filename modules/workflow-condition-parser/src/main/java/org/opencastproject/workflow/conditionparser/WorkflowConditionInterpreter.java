@@ -41,7 +41,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class WorkflowConditionInterpreter {
-  private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{(?<varname>[^:}]+)(:(?<def>[^}]+))?}");
+  private static final Pattern PROPERTY_PATTERN =
+      Pattern.compile("\\$\\{(?<varname>([^:}]|\\\\:)+)((?<!\\\\):(?<def>[^}]+))?}");
 
   private WorkflowConditionInterpreter() {
   }
@@ -65,13 +66,14 @@ public final class WorkflowConditionInterpreter {
     StringBuilder result = new StringBuilder();
     int cursor = 0;
     boolean matchFound = matcher.find();
-    if (!matchFound)
+    if (!matchFound) {
       return source;
+    }
     while (matchFound) {
       int matchStart = matcher.start();
       int matchEnd = matcher.end();
       result.append(source, cursor, matchStart); // add the content before the match
-      String key = matcher.group("varname");
+      String key = extractVarname(matcher);
       String systemProperty = systemPropertyGetter.apply(key);
       String providedProperty = null;
       if (properties != null) {
@@ -105,8 +107,9 @@ public final class WorkflowConditionInterpreter {
       }
       cursor = matchEnd;
       matchFound = matcher.find();
-      if (!matchFound)
+      if (!matchFound) {
         result.append(source.substring(matchEnd));
+      }
     }
     return result.toString();
   }
@@ -123,15 +126,12 @@ public final class WorkflowConditionInterpreter {
       int matchStart = matcher.start();
       int matchEnd = matcher.end();
       result.append(source, cursor, matchStart); // add the content before the match
-      String defaultValue = matcher.group("def");
-      if (defaultValue == null) {
-        defaultValue = "false";
-      }
-      result.append(defaultValue);
+      result.append(extractDefault(matcher));
       cursor = matchEnd;
       matchFound = matcher.find();
-      if (!matchFound)
+      if (!matchFound) {
         result.append(source.substring(matchEnd));
+      }
     }
     return result.toString();
   }
@@ -154,5 +154,17 @@ public final class WorkflowConditionInterpreter {
     p.addErrorListener(listener);
     ParseTree tree = p.booleanExpression();
     return new WorkflowConditionBooleanInterpreter().visit(tree);
+  }
+
+  private static String extractVarname(Matcher matcher) {
+    return matcher.group("varname").replace("\\:", ":");
+  }
+
+  private static String extractDefault(Matcher matcher) {
+    String defaultValue = matcher.group("def");
+    if (defaultValue == null) {
+      return "false";
+    }
+    return defaultValue.replace("\\:", ":");
   }
 }

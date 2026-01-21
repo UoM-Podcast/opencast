@@ -38,11 +38,12 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.ExecutionError;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -54,6 +55,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,6 +63,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -77,6 +80,7 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
   public static final String PROVIDER_NAME = "studip";
 
   private static final String OC_USERAGENT = "Opencast";
+  private static final String STUDIP_GROUP = Group.ROLE_PREFIX + "STUDIP";
 
   /** The logger */
   private static final Logger logger = LoggerFactory.getLogger(StudipUserProviderInstance.class);
@@ -97,7 +101,7 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
   protected Object nullToken = new Object();
 
   /** The URL of the Studip instance */
-  private String studipUrl = null;
+  private URI studipUrl;
 
   /** The URL of the Studip instance */
   private String studipToken = null;
@@ -121,7 +125,7 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
   public StudipUserProviderInstance(
       String pid,
       Organization organization,
-      String url,
+      URI url,
       String token,
 
       int cacheSize,
@@ -168,11 +172,11 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
       try {
         mbs.unregisterMBean(name);
       } catch (InstanceNotFoundException e) {
-        logger.debug(name + " was not registered");
+        logger.debug("{} was not registered before", name);
       }
       mbs.registerMBean(mbean, name);
     } catch (Exception e) {
-      logger.error("Unable to register {} as an mbean: {}", this, e);
+      logger.error("Unable to register {} as an mbean", this, e);
     }
   }
 
@@ -195,7 +199,7 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
    */
   @Override
   public User loadUser(String userName) {
-    logger.debug("loaduser(" + userName + ")");
+    logger.debug("loaduser({})", userName);
 
     requests.incrementAndGet();
     try {
@@ -204,20 +208,17 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
         logger.debug("Returning null user from cache");
         return null;
       } else {
-        logger.debug("Returning user " + userName + " from cache");
+        logger.debug("Returning user {} from cache", userName);
         return (JaxbUser) user;
       }
-    } catch (ExecutionError e) {
-      logger.warn("Exception while loading user {}", userName, e);
-      return null;
-    } catch (UncheckedExecutionException e) {
+    } catch (ExecutionError | UncheckedExecutionException e) {
       logger.warn("Exception while loading user {}", userName, e);
       return null;
     }
   }
 
   /**
-   * Loads a user from Studip.
+   * Loads a user from Stud.IP.
    * 
    * @param userName
    *          the username
@@ -225,13 +226,13 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
    */
   protected User loadUserFromStudip(String userName) {
     if (cache == null) {
-      throw new IllegalStateException("The Studip user detail service has not yet been configured");
+      throw new IllegalStateException("The Stud.IP user detail service has not yet been configured");
     }
 
     // Don't answer for admin, anonymous or empty user
     if ("admin".equals(userName) || "".equals(userName) || "anonymous".equals(userName)) {
       cache.put(userName, nullToken);
-      logger.debug("we don't answer for: " + userName);
+      logger.debug("we don't answer for {}", userName);
       return null;
     }
 
@@ -245,11 +246,13 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
     Thread currentThread = Thread.currentThread();
     ClassLoader originalClassloader = currentThread.getContextClassLoader();
     try {
-      // Studip userId (internal id), email address and display name
-      Object userObj = getStudipUser(userName);
-      JSONObject userJsonObj = (JSONObject) userObj;
+      // Stud.IP userId (internal id), email address and display name
+      JSONObject userJsonObj = getStudipUser(userName);
+      if (userJsonObj == null) {
+        return null;
+      }
 
-      Set<JaxbRole> roles = new HashSet<JaxbRole>();
+      Set<JaxbRole> roles = new HashSet<>();
       if (userJsonObj.containsKey("roles")) {
         JSONArray rolesArray = (JSONArray) userJsonObj.get("roles");
         for (Object r : rolesArray) {
@@ -257,17 +260,15 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
         }
       }
 
-      // if Studip doesn't know about this user we need to return
-      if (roles == null) {
-        cache.put(userName, nullToken);
-        return null;
-      }
+      // Group role for all Stud.IP users
+      roles.add(new JaxbRole(STUDIP_GROUP, jaxbOrganization, "Studip Users", Role.Type.EXTERNAL_GROUP));
+      logger.debug("Returning JaxbRoles: {}", roles);
 
-      // Group role for all Studip users
-      roles.add(new JaxbRole(Group.ROLE_PREFIX + "STUDIP", jaxbOrganization, "Studip Users", Role.Type.EXTERNAL_GROUP));
-      logger.debug("Returning JaxbRoles: " + roles);
+      // Email address
+      var email = Objects.toString(userJsonObj.get("email"), null);
+      var name = Objects.toString(userJsonObj.get("fullname"), null);
 
-      User user = new JaxbUser(userName, null, null, null, PROVIDER_NAME, jaxbOrganization, roles);
+      User user = new JaxbUser(userName, null, name, email, PROVIDER_NAME, jaxbOrganization, roles);
 
       cache.put(userName, user);
       logger.debug("Returning user {}", userName);
@@ -278,7 +279,7 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
       logger.error("Exception while parsing response from provider for user {}", userName, e);
       return null;
     } catch (IOException e) {
-      logger.error(e.getMessage());
+      logger.error("Error requesting user data for user `{}`: {}", userName, e.getMessage());
       return null;
     } catch (URISyntaxException e) {
       logger.error("Misspelled URI", e);
@@ -289,24 +290,35 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
   }
 
   /**
-   * Get the internal Studip user Id for the supplied user. If the user exists, set the user's email address.
+   * Get the internal Stud.IP user Id for the supplied user. If the user exists, set the user's email address.
    * 
-   * @param eid
-   * @return
+   * @param uid Identifier of the user to look for
+   * @return JSON object containing user information
    */
-  private Object getStudipUser(String eid) throws URISyntaxException, IOException, ParseException {
+  private JSONObject getStudipUser(String uid) throws URISyntaxException, IOException, ParseException {
     // Build URL
-    URIBuilder url = new URIBuilder(studipUrl + "opencast/user/" + eid);
-//    url.addParameters(params);
-    url.addParameter("token", studipToken);
+    var apiPath = new URIBuilder().setPathSegments("opencast", "user", uid).getPath();
+    var url = new URIBuilder(studipUrl)
+        .setPath(studipUrl.getPath().replaceAll("/*$", "") + apiPath)
+        .addParameter("token", studipToken)
+        .build();
 
     // Execute request
-    HttpGet get = new HttpGet(url.build());
+    HttpGet get = new HttpGet(url);
     get.setHeader("User-Agent", OC_USERAGENT);
 
-    try (CloseableHttpClient client = HttpClients.createDefault()) {
+    // Don't wait for responses indefinitely
+    RequestConfig config = RequestConfig.custom()
+        .setConnectTimeout(5000)
+        .setSocketTimeout(10000).build();
+
+    try (CloseableHttpClient client = HttpClientBuilder.create().setDefaultRequestConfig(config).build();) {
       try (CloseableHttpResponse resp = client.execute(get)) {
-        if (resp.getStatusLine().getStatusCode() / 100 != 2) {
+        var statusCode = resp.getStatusLine().getStatusCode();
+        if (statusCode == 404) {
+          // Stud.IP does not know about the user
+          return null;
+        } else if (statusCode / 100 != 2) {
           throw new IOException("HttpRequest unsuccessful, reason: " + resp.getStatusLine().getReasonPhrase());
         }
 
@@ -316,16 +328,16 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
         Object obj = parser.parse(reader);
 
         // Check for errors
-        if (obj instanceof JSONObject) {
-          JSONObject jObj = (JSONObject) obj;
-          if (jObj.containsKey("exception") || jObj.containsKey("errorcode")) {
-            throw new IOException("Moodle returned an error: " + jObj.toJSONString());
-          }
-        } else {
+        if (!(obj instanceof JSONObject)) {
           throw new IOException("StudIP responded in unexpected format");
         }
 
-        return obj;
+        JSONObject jObj = (JSONObject) obj;
+        if (jObj.containsKey("errors")) {
+          throw new IOException("Stud.IP returned an error: " + jObj.toJSONString());
+        }
+
+        return jObj;
       }
     }
   }
@@ -392,26 +404,26 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
 
     // Don't answer for admin, anonymous or empty user
     if ("admin".equals(userName) || "".equals(userName) || "anonymous".equals(userName)) {
-      logger.debug("we don't answer for: " + userName);
+      logger.debug("we don't answer for {}", userName);
       return roles;
     }
 
-    logger.debug("getRolesForUser(" + userName + ")");
+    logger.debug("getRolesForUser({})", userName);
 
     User user = loadUser(userName);
     if (user != null) {
-      logger.debug("Returning cached roleset for {}", userName);
+      logger.debug("Returning cached role set for {}", userName);
       return new ArrayList<Role>(user.getRoles());
     }
 
     // Not found
-    logger.debug("Return empty roleset for {} - not found on Studip");
-    return new LinkedList<Role>();
+    logger.debug("Return empty role set for {} - not found on Stud.IP", userName);
+    return new LinkedList<>();
   }
 
   @Override
   public Iterator<Role> findRoles(String query, Role.Target target, int offset, int limit) {
-    logger.debug("findRoles(query=" + query + " offset=" + offset + " limit=" + limit + ")");
+    logger.debug("findRoles(query={} offset={} limit={})", query, offset, limit);
 
     // Don't return roles for users or groups
     if (target == Role.Target.USER) {
@@ -427,7 +439,7 @@ public class StudipUserProviderInstance implements UserProvider, RoleProvider, C
     }
 
     // Roles list
-    List<Role> roles = new LinkedList<Role>();
+    List<Role> roles = new LinkedList<>();
 
     return roles.iterator();
   }

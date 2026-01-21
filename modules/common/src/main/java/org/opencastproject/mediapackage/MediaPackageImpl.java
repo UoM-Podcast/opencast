@@ -22,9 +22,6 @@
 
 package org.opencastproject.mediapackage;
 
-import static org.opencastproject.mediapackage.MediaPackageSupport.Filters.presentations;
-import static org.opencastproject.util.data.Monadics.mlist;
-
 import org.opencastproject.mediapackage.MediaPackageElement.Type;
 import org.opencastproject.mediapackage.identifier.Id;
 import org.opencastproject.mediapackage.identifier.IdImpl;
@@ -57,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.UUID;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -93,9 +89,6 @@ public final class MediaPackageImpl implements MediaPackage {
 
   /** Context for serializing and deserializing */
   static final JAXBContext context;
-
-  /** List of observers */
-  private final List<MediaPackageObserver> observers = new ArrayList<MediaPackageObserver>();
 
   /** The media package element builder, may remain <code>null</code> */
   private MediaPackageElementBuilder mediaPackageElementBuilder = null;
@@ -448,7 +441,6 @@ public final class MediaPackageImpl implements MediaPackage {
   public void add(Catalog catalog) {
     integrateCatalog(catalog);
     addInternal(catalog);
-    fireElementAdded(catalog);
   }
 
   /**
@@ -458,7 +450,6 @@ public final class MediaPackageImpl implements MediaPackage {
   public void add(Track track) {
     integrateTrack(track);
     addInternal(track);
-    fireElementAdded(track);
   }
 
   /**
@@ -468,7 +459,6 @@ public final class MediaPackageImpl implements MediaPackage {
   public void add(Attachment attachment) {
     integrateAttachment(attachment);
     addInternal(attachment);
-    fireElementAdded(attachment);
   }
 
   /**
@@ -791,7 +781,14 @@ public final class MediaPackageImpl implements MediaPackage {
   @XmlElement(name = "publication")
   @Override
   public Publication[] getPublications() {
-    return mlist(elements).bind(presentations).value().toArray(new Publication[0]);
+//    return elements.stream()
+//        .map(presentations::apply)
+//        .flatMap(List::stream)
+//        .toArray(Publication[]::new);
+    return elements.stream()
+        .filter(Publication.class::isInstance)
+        .map(Publication.class::cast)
+        .toArray(Publication[]::new);
   }
 
   void setPublications(Publication[] publications) {
@@ -872,7 +869,6 @@ public final class MediaPackageImpl implements MediaPackage {
    */
   void removeElement(MediaPackageElement element) {
     removeInternal(element);
-    fireElementRemoved(element);
     if (element instanceof AbstractMediaPackageElement) {
       ((AbstractMediaPackageElement) element).setMediaPackage(null);
     }
@@ -894,7 +890,6 @@ public final class MediaPackageImpl implements MediaPackage {
     MediaPackageElement element = mediaPackageElementBuilder.elementFromURI(url);
     integrate(element);
     addInternal(element);
-    fireElementAdded(element);
     return element;
   }
 
@@ -916,7 +911,6 @@ public final class MediaPackageImpl implements MediaPackage {
     MediaPackageElement element = mediaPackageElementBuilder.elementFromURI(uri, type, flavor);
     integrate(element);
     addInternal(element);
-    fireElementAdded(element);
     return element;
   }
 
@@ -937,7 +931,6 @@ public final class MediaPackageImpl implements MediaPackage {
       integrate(element);
     }
     addInternal(element);
-    fireElementAdded(element);
   }
 
   /**
@@ -994,42 +987,6 @@ public final class MediaPackageImpl implements MediaPackage {
   }
 
   /**
-   * Notify observers of a removed media package element.
-   *
-   * @param element
-   *          the removed element
-   */
-  private void fireElementAdded(MediaPackageElement element) {
-    synchronized (observers) {
-      for (MediaPackageObserver o : observers) {
-        try {
-          o.elementAdded(element);
-        } catch (Throwable th) {
-          logger.error("MediaPackageOberserver " + o + " throw exception while processing callback", th);
-        }
-      }
-    }
-  }
-
-  /**
-   * Notify observers of a removed media package element.
-   *
-   * @param element
-   *          the removed element
-   */
-  private void fireElementRemoved(MediaPackageElement element) {
-    synchronized (observers) {
-      for (MediaPackageObserver o : observers) {
-        try {
-          o.elementRemoved(element);
-        } catch (Throwable th) {
-          logger.error("MediaPackageObserver " + o + " threw exception while processing callback", th);
-        }
-      }
-    }
-  }
-
-  /**
    * Integrates the element into the media package. This mainly involves moving the element into the media package file
    * structure.
    *
@@ -1052,7 +1009,7 @@ public final class MediaPackageImpl implements MediaPackage {
     // Check (uniqueness of) catalog identifier
     String id = catalog.getIdentifier();
     if (id == null || contains(id)) {
-      catalog.setIdentifier(createElementIdentifier());
+      catalog.generateIdentifier();
     }
     integrate(catalog);
   }
@@ -1068,7 +1025,7 @@ public final class MediaPackageImpl implements MediaPackage {
     // Check (uniqueness of) track identifier
     String id = track.getIdentifier();
     if (id == null || contains(id)) {
-      track.setIdentifier(createElementIdentifier());
+      track.generateIdentifier();
     }
     integrate(track);
   }
@@ -1084,18 +1041,9 @@ public final class MediaPackageImpl implements MediaPackage {
     // Check (uniqueness of) attachment identifier
     String id = attachment.getIdentifier();
     if (id == null || contains(id)) {
-      attachment.setIdentifier(createElementIdentifier());
+      attachment.generateIdentifier();
     }
     integrate(attachment);
-  }
-
-  /**
-   * Returns a unique media package element identifier.
-   *
-   * @return the element identifier
-   */
-  private String createElementIdentifier() {
-    return UUID.randomUUID().toString();
   }
 
   /**
@@ -1120,11 +1068,7 @@ public final class MediaPackageImpl implements MediaPackage {
    * @throws MediaPackageException
    */
   public static MediaPackageImpl valueOf(String xml) throws MediaPackageException {
-    try {
-      return MediaPackageImpl.valueOf(IOUtils.toInputStream(xml, "UTF-8"));
-    } catch (IOException e) {
-      throw new MediaPackageException(e);
-    }
+    return MediaPackageImpl.valueOf(IOUtils.toInputStream(xml, "UTF-8"));
   }
 
 
@@ -1498,10 +1442,7 @@ public final class MediaPackageImpl implements MediaPackage {
 
     // Check if element has an id
     if (element.getIdentifier() == null) {
-      if (element instanceof AbstractMediaPackageElement) {
-        element.setIdentifier(createElementIdentifier());
-      } else
-        throw new UnsupportedElementException(element, "Found unknown element without id");
+      element.generateIdentifier();
     }
   }
 

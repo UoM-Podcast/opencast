@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.opencastproject</groupId>
     <artifactId>base</artifactId>
-    <version>16-SNAPSHOT</version>
+    <version>20-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
   <properties>
@@ -23,6 +23,10 @@
     <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>org.osgi.service.component.annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.service.jaxrs</artifactId>
     </dependency>
     <!-- opencast -->
     <dependency>
@@ -72,10 +76,6 @@
       <groupId>org.opencastproject</groupId>
       <artifactId>opencast-elasticsearch-index</artifactId>
       <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.entwinemedia.common</groupId>
-      <artifactId>functional</artifactId>
     </dependency>
     <dependency>
       <!-- we use this for the transitive dependency to elasticsearch -->
@@ -145,8 +145,6 @@
         <extensions>true</extensions>
         <configuration>
           <instructions>
-            <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-            <Build-Number>${buildNumber}</Build-Number>
             <Import-Package>
               org.opencastproject.elasticsearch.impl;version=${project.version},
               org.opencastproject.rest;version=${project.version},

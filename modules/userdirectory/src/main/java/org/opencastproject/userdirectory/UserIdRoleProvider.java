@@ -31,7 +31,6 @@ import org.opencastproject.security.api.User;
 import org.opencastproject.security.api.UserDirectoryService;
 import org.opencastproject.security.api.UserProvider;
 import org.opencastproject.util.OsgiUtil;
-import org.opencastproject.util.data.Option;
 
 import com.google.common.base.CharMatcher;
 
@@ -49,6 +48,7 @@ import java.util.Dictionary;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
@@ -106,6 +106,14 @@ public class UserIdRoleProvider implements RoleProvider, ManagedService {
   public void setUserDirectoryService(UserDirectoryService userDirectoryService) {
     this.userDirectoryService = userDirectoryService;
   }
+
+  public static boolean isSanitize() {
+    return sanitize;
+  };
+
+  public static String getUserRolePrefix() {
+    return userRolePrefix;
+  };
 
   public static String getUserIdRole(String userName) {
     if (sanitize) {
@@ -202,6 +210,9 @@ public class UserIdRoleProvider implements RoleProvider, ManagedService {
   }
 
   private static boolean like(String string, final String query) {
+    if (string == null) {
+      return false;
+    }
     String regex = query.replace("_", ".").replace("%", ".*?");
     Pattern p = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     return p.matcher(string).matches();
@@ -209,8 +220,8 @@ public class UserIdRoleProvider implements RoleProvider, ManagedService {
 
   @Override
   public void updated(Dictionary properties) throws ConfigurationException {
-    Option<String> userPrefixProperty = OsgiUtil.getOptCfg(properties, ROLE_USER_PREFIX_KEY);
-    if (userPrefixProperty.isSome()) {
+    Optional<String> userPrefixProperty = OsgiUtil.getOptCfg(properties, ROLE_USER_PREFIX_KEY);
+    if (userPrefixProperty.isPresent()) {
       userRolePrefix = userPrefixProperty.get();
       logger.info("Using configured userRole prefix '{}'", userRolePrefix);
     } else {
@@ -218,8 +229,8 @@ public class UserIdRoleProvider implements RoleProvider, ManagedService {
       logger.info("Using default userRole prefix '{}'", userRolePrefix);
     }
 
-    Option<String> sanitizeProperty = OsgiUtil.getOptCfg(properties, SANITIZE_KEY);
-    if (sanitizeProperty.isSome()) {
+    Optional<String> sanitizeProperty = OsgiUtil.getOptCfg(properties, SANITIZE_KEY);
+    if (sanitizeProperty.isPresent()) {
       sanitize = BooleanUtils.toBoolean(sanitizeProperty.get());
       logger.info("Using configured will sanitize user names '{}'", sanitize);
     } else {

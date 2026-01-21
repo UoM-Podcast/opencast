@@ -9,6 +9,242 @@ The following list contains a list of passed proposals for reference.
 Passed Proposals
 ----------------
 
+### Deprecate Paella 7 in OC 20
+Proposed by Greg Logan <gregorydlogan@gmail.com>, passed on Dec 2, 2025
+```no-highlight
+As of end of November 2025 Paella 7 is in maintenance mode, with new features going only into Paella 8.  Since we have
+already included Paell 8 in Opencast 19, I #propose that we deprecate Paella 7 with Opencast 20, and remove it entirely
+in Opencast 21.
+
+Proposal passes Dec 2, or whenever the relevant PR is merged.
+```
+
+### Shift Release Schedule by a Month
+Proposed by Katrin Ihler <ihler@elan-ev.de>, passed on Oct 23, 2025
+```no-highlight
+As discussed during the German-speaking conference in Jena as well as the Dev meeting of 2025-09-23, I propose to shift
+the Release Schedule one month backwards starting with Opencast 20, meaning that all releases from that point onwards
+will happen one month earlier.
+
+That means that Opencast 20 would release in the middle of May instead of June, Opencast
+21 in the middle of November instead of December, and then so on. The exact release date will still be determined by the
+release managers.
+
+The reasons for this are as followed:
+- To give people from countries with an earlier semester start like Switzerland enough time to test before going
+productive.
+- To keep the major releases out of December, as that is a busy time for a lot of people.
+```
+
+### Require 2FA for all committers
+Proposed by Daniel Ziegenberg <daniel@ziegenberg.at>, passed on Nov 29, 2024
+```no-highlight
+Hi all,
+
+In 2022, GitHub wrote a blog post titled "Software security starts with the
+developer: Securing developer accounts with 2FA" about requiring all users who
+contribute code on GitHub.com to enable one or more forms of two-factor
+authentication (2FA) in the future[1].
+
+They justified it with the following reason:
+
+> Most security breaches are not the product of exotic zero-day attacks, but
+> rather involve lower-cost attacks like social engineering, credential theft
+> or leakage, and other avenues that provide attackers with a broad range of
+> access to victim accounts and the resources they have access to. Compromised
+> accounts can be used to steal private code or push malicious changes to that
+> code. This places not only the individuals and organizations associated with
+> the compromised accounts at risk, but also any users of the affected code.
+> The potential for downstream impact to the broader software ecosystem and
+> supply chain as a result is substantial.
+
+In 2023 GitHub presented a timeline for the implementation of this policy[2] and
+wrote another blog post about a dramatically increased 2FA adoption on GitHub in
+2024[3]. At GitHub they have "seen an opt-in rate of nearly 95% across code
+contributors who received the 2FA requirement in 2023". Their current policy
+lists several key actions on GitHub that shows someone is a contributor and
+therefore eligible for the 2FA requirement[4].
+
+This enrollment criteria contains the following points:
+
+
+- Publishing an app or action for others
+- Creating a release for your repository
+- Contributing to specific high-importance repositories, such as the projects
+  tracked by the Open Source Security Foundation
+- Being an administrator or a contributor of a high-importance repository
+- Being an organization owner for an organization containing repositories or
+  other users
+- Being an administrator or a contributor for repositories that published one
+  or more packages
+- Being an enterprise administrator
+
+Additionally GitHub now offers enhanced 2FA management for orgs and
+enterprises[5]:
+
+> Enterprises can enable this new 2FA policy alongside a general 2FA requirement
+> for their members, and current enterprises with a 2FA requirement can update
+> their 2FA settings to add this secure methods enforcement. Members who are
+> non-compliant with the new 2FA policy will no longer be removed from
+> organizations, lessening a historical friction around enforcing 2FA policies
+> at an enterprise or organization level, and instead be prevented from
+> accessing enterprise or organization resources while non-compliant.
+
+GitHub offers detailed documentation on how to start requiring two-factor
+authentication in an organization[6].
+
+
+In conclusion, I hereby #propose that all committers are required to enable
+(2FA) for their GitHub account. This is a security measure to protect the
+Opencast project from unauthorized access to the repositories and other
+ressources. GitHub has shown that this is a feasible requirement and that it can
+be implemented without major issues.
+
+
+Proposal passes Nov 29, or whenever the relevant PR is merged.
+
+
+Greetings,
+Daniel
+
+
+1: https://github.blog/news-insights/company-news/software-security-starts-with-the-developer-securing-developer-accounts-with-2fa/
+2: https://github.blog/news-insights/product-news/raising-the-bar-for-software-security-github-2fa-begins-march-13/
+3: https://github.blog/security/supply-chain-security/securing-millions-of-developers-through-2fa/
+4: https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa/about-mandatory-two-factor-authentication
+5: https://github.blog/changelog/2024-11-21-enhanced-2fa-management-for-orgs-and-enterprises-public-preview/
+6: https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-two-factor-authentication-for-your-organization/requiring-two-factor-authentication-in-your-organization
+
+```
+
+
+### Move #Proposals to PRs
+Proposed by Greg Logan <gregorydlogan@gmail.com>, passed on Nov 11, 2024
+```no-highlight
+Hi all,
+
+As we have previously discussed moving the majority of our communication to
+Matrix, and GitHub, I hereby #propose that we move these email-based proposals
+and make them PRs instead.  This prevents us from forgetting about proposals.
+The PR I'm filing as part of this actually contains a passed proposal that was
+forgetten somewhere :)
+
+The downside to this is that it binds the proposals to our weekly technical
+meeting's PR review, but I don't see this as an issue.  And, if you want to get
+*really* rule-lawyery, proposals only change documentation so there's no actual
+requirement to review them prior to merge...
+
+Proposal passes Nov 11, or whenever the relevant PR is merged
+
+G
+```
+
+
+### Rules for adding patches to legacy
+Proposed by Lars Kiesow <lkiesow@uos.de>, passed on Oct 11, 2024
+```no-highlight
+Hi everyone,
+at the DACH meeting we had a longer discussion about making updates
+easier where we concluded that no participant is trusting Opencast to
+not break stuff. Even with a minor update.
+
+Discussing how we could maybe improve the situation we came up with two
+suggested changes to the development process. Both are specifically
+adressing patches to the legacy branch (the second newest release
+branch; r/15.x right now):
+
+- We strongly recommend to not add new features to the legacy branch.
+  Even bug fixes should only be added if the bugs pose a significant
+  problem to the overall community.
+
+- If a developer wants to add a patch to the legacy branch, the patch
+  (pull request) must come with an explanation why it needs to be
+  merged in legacy and cannot just go into stable or develop.
+
+This means that the rules for stable do not change and developers and
+adopters still have about 7 month before the rules apply to a given
+release branch. We hope that the most important bugs are found until
+then.
+
+It also means that developers still can add the same patches they can
+add now. But they need to actually think about why they need to go into
+legacy and about what risks are involved.
+
+We hope this helps making at least the legacy version of Opencast more
+stable, which in turn makes updates between minor versions easier.
+
+If no one objects, this proposal will pass on
+Fri Oct 11 02:42 PM CEST 2024
+
+All the best,
+Lars
+```
+
+### Allow merges of admin interface and editor
+Proposed by Lars Kiesow <lkiesow@uos.de>, passed on Jun 21, 2024
+```no-highlight
+Hi everyone,
+the admin interface and editor are part of Opencast and follow the same
+set of rules when it comes to reviews. But right now we still always
+wait for a review of the merge into Opencast after a release.
+
+I hereby #propose to drop this requirement and allow committers to merge
+a new release themselves **if and only if** the pull request for the new
+release targets `develop` or the latest release branch.
+
+If someone wants to bring a new release of the admin interface or
+the editor to an older version of Opencast, that should still get a
+proper review. The same goes for external components we import and
+which do not follow the same rules like Paella Player or Studio.
+
+This proposal passes if no one vetoes it until
+Fri Jun 21 06:09 PM CEST 2024
+
+–Lars
+```
+
+### Release Manager Selection Process
+Proposed by Greg Logan <gregorydlogan@gmail.com>, passed on Tue, April 9 2023
+```no-highlight
+Hi all,
+
+As we've seen over the last few years, there isn't exactly a ton of competition
+to be a release manager.  Because of this, the voting requirement as outlined
+in our RM docs[1] seems a bit silly.  I #propose that we allow election via
+acclamation[2] in the case where there are no other volunteers.  This would
+remove the requirement for the vote until there is more than one set of
+candidates.
+
+Since it's Easter break and lots of folks are on holidays, let's vote for
+longer here.  Proposal closes on EOD 2024-04-09
+
+G
+
+1:https://docs.opencast.org/r/13.x/developer/#release-manager/#appointment-of-next-release-manager
+2: https://en.wikipedia.org/wiki/Acclamation, "Uncontested Election"
+```
+
+
+### Removal of Paella 6 in OC 16
+Proposed by Greg Logan <gregorydlogan@gmail.com>, passed on Wed, Feb 14 2024
+```no-highlight
+Hi all,
+
+With the freshly filed PR[1] upgrading the Search Index, we have broken compatibility with most existing integrations.
+I say most, since I updated Tobira, and Paella 7 as part of that work. If you're integrations depend on endpoints in
+the /search/* namespace, please test!
+
+With that in mind, Paella 6 would be broken by this pull request, and I'm #proposing that we remove it completely with
+Opencast 16. As far as I know all development is against Paella 7, and Paella 6 is already disabled by default.
+
+
+G
+
+1: https://github.com/opencast/opencast/pull/5597
+
+```
+
+
 ### Deprecate Theodul with Opencast 12
 Proposed by Greg Logan <gregorydlogan@gmail.com>, passed on Fri, July 1 2022
 ```no-highlight
@@ -153,30 +389,30 @@ Katrin
 ### External API deprecation policy
 Proposed by Maximiliano Lira Del Canto <mliradel@uni-koeln.de>, passed on 24 Feb 2021
 ```no-highlight
-As we talked in the draft thread and there are no more comments, this is the 
-final version of the proposal about the deprecation of the old 
+As we talked in the draft thread and there are no more comments, this is the
+final version of the proposal about the deprecation of the old
 versions in the external API.
 
 External API deprecation policy:
 
-- Any minor version should be supported at a maximum of 2 (Two) Opencast 
+- Any minor version should be supported at a maximum of 2 (Two) Opencast
 Releases since the release of the next minor version of the API.
- 
-    Example: If Opencast 10 has API v1.3.0 and Opencast 11 comes 
+
+    Example: If Opencast 10 has API v1.3.0 and Opencast 11 comes
     with API v1.4.0, the API v1.3.0 will be supported until Opencast 12)
- 
 
-- Deprecating a version does not require removing it from the code base, 
+
+- Deprecating a version does not require removing it from the code base,
 just removes the guarantee that it will be present in the next version.
- 
 
-- When an API version is set to be deprecated needs to notify the users 
-with a warning that they should start to use the newest version of the API. 
-A custom HTTP header when the flagged version is called plus a warning in 
+
+- When an API version is set to be deprecated needs to notify the users
+with a warning that they should start to use the newest version of the API.
+A custom HTTP header when the flagged version is called plus a warning in
 the website docs.
- 
 
-- In the case of a new major version, the immediate old version should 
+
+- In the case of a new major version, the immediate old version should
 be deprecated 4 (Four) next releases of Opencast.
 
 - Updating Opencast don't mean a new API version
@@ -397,7 +633,7 @@ OSGi component annotation example:
 If you want to know more about the service configuration and see
 annotations in action, watch the “Opencast OSGI Configuration“ webinar:
 
-  https://video.ethz.ch/events/opencast/webinars/7261ea70-ce36-4e17-8634-963966311028.html
+  https://explore.opencast.org/webinars/v/NJr9fCyXnqx
 
 This proposal passes on Wednesday evening if no one objects.
 

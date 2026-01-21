@@ -46,6 +46,7 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,7 @@ import javax.ws.rs.core.Response.Status;
 /**
  * Rest endpoint for distributing files to AWS S3.
  */
-@Path("/")
+@Path("/distribution/s3")
 @RestService(
     name = "awss3distributionservice",
     title = "AWS S3 Distribution Service",
@@ -89,6 +90,7 @@ import javax.ws.rs.core.Response.Status;
         "opencast.service.jobproducer=true"
     }
 )
+@JaxrsResource
 public class AwsS3DistributionRestService extends AbstractJobProducerEndpoint {
 
   /** The logger */
@@ -183,7 +185,7 @@ public class AwsS3DistributionRestService extends AbstractJobProducerEndpoint {
       logger.debug("Unable to distribute element: {}", e.getMessage());
       return status(Status.BAD_REQUEST).build();
     } catch (Exception e) {
-      logger.warn("Unable to distribute media package {}, element {} to aws s3 channel: {}",
+      logger.warn("Unable to distribute media package {}, element {} to aws s3 channel",
           mediaPackageXml, elementId, e);
       return Response.serverError().status(Status.INTERNAL_SERVER_ERROR).build();
     }
@@ -243,7 +245,7 @@ public class AwsS3DistributionRestService extends AbstractJobProducerEndpoint {
       logger.debug("Unable to distribute element: {}", e.getMessage());
       return status(Status.BAD_REQUEST).build();
     } catch (Exception e) {
-      logger.warn("Unable to distribute media package {}, element {} to aws s3 channel: {}",
+      logger.warn("Unable to distribute media package {}, element {} to aws s3 channel",
           mediaPackageXml, elementId, e);
       return Response.serverError().status(Status.INTERNAL_SERVER_ERROR).build();
     }
@@ -296,7 +298,7 @@ public class AwsS3DistributionRestService extends AbstractJobProducerEndpoint {
       logger.debug("Unable to retract element: {}", e.getMessage());
       return status(Status.BAD_REQUEST).build();
     } catch (Exception e) {
-      logger.warn("Unable to retract media package {}, element {} from aws s3 channel: {}",
+      logger.warn("Unable to retract media package {}, element {} from aws s3 channel",
           mediaPackageXml, elementId, e);
       return Response.serverError().status(Status.INTERNAL_SERVER_ERROR).build();
     }
@@ -349,7 +351,7 @@ public class AwsS3DistributionRestService extends AbstractJobProducerEndpoint {
       logger.debug("Unable to retract element: {}", e.getMessage());
       return status(Status.BAD_REQUEST).build();
     } catch (Exception e) {
-      logger.warn("Unable to retract media package {}, element {} from aws s3 channel: {}",
+      logger.warn("Unable to retract media package {}, element {} from aws s3 channel",
           mediaPackageXml, elementId, e);
       return Response.serverError().status(Status.INTERNAL_SERVER_ERROR).build();
     }

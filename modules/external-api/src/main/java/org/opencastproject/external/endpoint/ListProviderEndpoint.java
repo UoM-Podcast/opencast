@@ -21,7 +21,7 @@
 package org.opencastproject.external.endpoint;
 
 import org.opencastproject.external.common.ApiMediaType;
-import org.opencastproject.external.common.ApiResponses;
+import org.opencastproject.external.common.ApiResponseBuilder;
 import org.opencastproject.list.api.ListProviderException;
 import org.opencastproject.list.api.ListProvidersService;
 import org.opencastproject.list.impl.ListProviderNotFoundException;
@@ -39,6 +39,7 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,11 +51,11 @@ import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-@Path("/")
-@Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_10_0 })
+@Path("/api/listproviders")
+@Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
 @RestService(
         name = "externalapilistproviders",
         title = "External API List Providers Service",
@@ -70,6 +71,7 @@ import javax.ws.rs.core.Response;
                 "opencast.service.path=/api/listproviders"
         }
 )
+@JaxrsResource
 public class ListProviderEndpoint {
 
   /** The logging facility */
@@ -93,22 +95,45 @@ public class ListProviderEndpoint {
   @GET
   @Path("providers.json")
   @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_10_0 })
-  @RestQuery(name = "availableProviders", description = "Provides the list of the available list providers", responses = { @RestResponse(description = "Returns the availables list providers.", responseCode = HttpServletResponse.SC_OK) }, returnDescription = "")
+  @RestQuery(
+      name = "availableProviders",
+      description = "Provides the list of the available list providers",
+      responses = {
+          @RestResponse(description = "Returns the availables list providers.",
+              responseCode = HttpServletResponse.SC_OK)
+      },
+      returnDescription = "")
   public Response getAvailableProviders(@HeaderParam("Accept") String acceptHeader) {
     JSONArray list = new JSONArray();
 
     list.add(listProvidersService.getAvailableProviders());
 
-    return ApiResponses.Json.ok(acceptHeader, list.toJSONString());
+    return ApiResponseBuilder.Json.ok(acceptHeader, list.toJSONString());
   }
 
   @GET
   @Path("{source}.json")
   @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_10_0 })
-  @RestQuery(name = "list", description = "Provides key-value list from the given source", pathParameters = { @RestParameter(name = "source", description = "The source for the key-value list", isRequired = true, type = RestParameter.Type.STRING) }, restParameters = {
-          @RestParameter(description = "The maximum number of items to return per page", isRequired = false, name = "limit", type = RestParameter.Type.INTEGER),
-          @RestParameter(description = "The offset", isRequired = false, name = "offset", type = RestParameter.Type.INTEGER),
-          @RestParameter(description = "Filters", isRequired = false, name = "filter", type = RestParameter.Type.STRING) }, responses = { @RestResponse(description = "Returns the key-value list for the given source.", responseCode = HttpServletResponse.SC_OK) }, returnDescription = "")
+  @RestQuery(
+      name = "list",
+      description = "Provides key-value list from the given source",
+      pathParameters = {
+          @RestParameter(name = "source", description = "The source for the key-value list", isRequired = true,
+              type = RestParameter.Type.STRING)
+      },
+      restParameters = {
+          @RestParameter(description = "The maximum number of items to return per page", isRequired = false,
+              name = "limit", type = RestParameter.Type.INTEGER),
+          @RestParameter(description = "The offset", isRequired = false, name = "offset",
+              type = RestParameter.Type.INTEGER),
+          @RestParameter(description = "Filters", isRequired = false, name = "filter",
+              type = RestParameter.Type.STRING)
+      },
+      responses = {
+          @RestResponse(description = "Returns the key-value list for the given source.",
+              responseCode = HttpServletResponse.SC_OK)
+      },
+      returnDescription = "")
   public Response getList(@PathParam("source") final String source, @QueryParam("limit") final int limit,
           @QueryParam("filter") final String filter, @QueryParam("offset") final int offset,
           @HeaderParam("Accept") String acceptHeader) {
@@ -122,15 +147,15 @@ public class ListProviderEndpoint {
       autocompleteList = listProvidersService.getList(source, query, false);
     } catch (ListProviderNotFoundException e) {
       logger.debug("No list found for {}", source, e);
-      return ApiResponses.notFound("");
+      return ApiResponseBuilder.notFound("");
     } catch (ListProviderException e) {
       logger.error("Server error when getting list from provider {}", source, e);
-      return ApiResponses.serverError("");
+      return ApiResponseBuilder.serverError("");
     }
 
     Gson gson = new Gson();
     String jsonList = gson.toJson(autocompleteList);
-    return ApiResponses.Json.ok(acceptHeader, jsonList);
+    return ApiResponseBuilder.Json.ok(acceptHeader, jsonList);
   }
 
   /**

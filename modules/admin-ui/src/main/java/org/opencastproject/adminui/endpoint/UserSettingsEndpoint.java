@@ -31,6 +31,7 @@ import org.opencastproject.adminui.usersettings.UserSetting;
 import org.opencastproject.adminui.usersettings.UserSettings;
 import org.opencastproject.adminui.usersettings.UserSettingsService;
 import org.opencastproject.adminui.usersettings.persistence.UserSettingsServiceException;
+import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.UrlSupport;
 import org.opencastproject.util.data.Tuple;
@@ -43,6 +44,7 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +63,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/admin-ng/user-settings")
 @RestService(name = "usersettings", title = "User Settings service",
   abstractText = "Provides operations for user settings",
   notes = { "This service offers the default CRUD Operations for user settings for the admin UI.",
@@ -78,6 +80,7 @@ import javax.ws.rs.core.Response;
     "opencast.service.path=/admin-ng/user-settings"
   }
 )
+@JaxrsResource
 public class UserSettingsEndpoint {
 
   /** The logging facility */
@@ -88,12 +91,22 @@ public class UserSettingsEndpoint {
 
   private UserSettingsService userSettingsService;
 
+  private SecurityService securityService;
+
   /**
    * OSGi callback to set the service to retrieve user settings from.
    */
   @Reference
   public void setUserSettingsService(UserSettingsService userSettingsService) {
     this.userSettingsService = userSettingsService;
+  }
+
+  /**
+   * OSGi callback to set the security service
+   */
+  @Reference
+  public void setSecurityService(SecurityService securityService) {
+    this.securityService = securityService;
   }
 
   /** OSGi callback. */
@@ -134,10 +147,14 @@ public class UserSettingsEndpoint {
           @RestParameter(description = "The value representing this setting.", isRequired = true, name = "value", type = STRING) }, responses = { @RestResponse(responseCode = HttpServletResponse.SC_OK, description = "User setting has been created.") })
   public Response createUserSetting(@FormParam("key") String key, @FormParam("value") String value)
           throws NotFoundException {
+    String orgId = securityService.getOrganization().getId();
+    String username = securityService.getUser().getUsername();
     try {
       UserSetting newUserSetting = userSettingsService.addUserSetting(key, value);
       return Response.ok(newUserSetting.toJson().toJson(), MediaType.APPLICATION_JSON).build();
     } catch (UserSettingsServiceException e) {
+      logger.error("Could not add user setting username '{}' org: '{}' key: '{}' value: '{}'", username, orgId,
+          key, value);
       return Response.serverError().build();
     }
   }
@@ -168,10 +185,10 @@ public class UserSettingsEndpoint {
     try {
       userSettingsService.deleteUserSetting(id);
     } catch (UserSettingsServiceException e) {
-      logger.error("Unable to remove user setting id:'%s':", id, e);
+      logger.error("Unable to remove user setting id: '{}'", id, e);
       return Response.serverError().build();
     }
-    logger.debug("User setting with id %d removed.", id);
+    logger.debug("User setting with id {} removed.", id);
     return Response.status(SC_OK).build();
   }
 }

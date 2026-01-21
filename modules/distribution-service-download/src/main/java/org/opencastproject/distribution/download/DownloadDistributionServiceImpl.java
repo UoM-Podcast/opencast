@@ -54,7 +54,6 @@ import org.opencastproject.util.LoadUtil;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
 import org.opencastproject.util.UrlSupport;
-import org.opencastproject.util.data.Effect;
 import org.opencastproject.util.data.functions.Misc;
 import org.opencastproject.workspace.api.Workspace;
 
@@ -133,10 +132,10 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
   /** The load on the system introduced by creating a retract job */
   public static final float DEFAULT_RETRACT_JOB_LOAD = 0.1f;
 
-  /** The key to look for in the service configuration file to override the {@link DEFAULT_DISTRIBUTE_JOB_LOAD} */
+  /** The key to look for in the service configuration file to override the {@link #DEFAULT_DISTRIBUTE_JOB_LOAD} */
   public static final String DISTRIBUTE_JOB_LOAD_KEY = "job.load.download.distribute";
 
-  /** The key to look for in the service configuration file to override the {@link DEFAULT_RETRACT_JOB_LOAD} */
+  /** The key to look for in the service configuration file to override the {@link #DEFAULT_RETRACT_JOB_LOAD} */
   public static final String RETRACT_JOB_LOAD_KEY = "job.load.download.retract";
 
   /** The load on the system introduced by creating a distribute job */
@@ -425,10 +424,10 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
           distributedElements.add(distributedElement);
         }
       } catch (MediaPackageException | NotFoundException | IOException e1) {
-        logger.error("HLS Prepare failed for mediapackage {} in {}: {} ", elementSet.getKey(), mediapackage, e1);
+        logger.error("HLS Prepare failed for mediapackage {} in {}", elementSet.getKey(), mediapackage, e1);
         throw new DistributionException("Cannot distribute " + mediapackage);
       } catch (URISyntaxException e1) {
-        logger.error("HLS Prepare failed - Bad URI syntax {} in {}: {} ", elementSet.getKey(), mediapackage, e1);
+        logger.error("HLS Prepare failed - Bad URI syntax {} in {}", elementSet.getKey(), mediapackage, e1);
         throw new DistributionException("Cannot distribute - BAD URI syntax " + mediapackage);
       }
     }
@@ -895,15 +894,16 @@ public class DownloadDistributionServiceImpl extends AbstractDistributionService
     final User systemUser = SecurityUtil.createSystemUser(systemUserName, organization);
     SecurityUtil.runAs(getSecurityService(), organization, systemUser, () -> {
       waitForResource(trustedHttpClient, uri, HttpServletResponse.SC_OK, TIMEOUT, INTERVAL)
-          .fold(Misc.chuck(), new Effect.X<Integer>() {
-            @Override
-            public void xrun(Integer status) throws Exception {
-              if (ne(status, HttpServletResponse.SC_OK)) {
-                logger.warn("Attempt to access distributed file {} returned code {}", uri, status);
-                throw new DistributionException("Unable to load distributed file " + uri.toString());
+          .fold(
+              Misc.chuck(),
+              status -> {
+                if (ne(status, HttpServletResponse.SC_OK)) {
+                  logger.warn("Attempt to access distributed file {} returned code {}", uri, status);
+                  Misc.chuck(new DistributionException("Unable to load distributed file " + uri.toString()));
+                }
+                return null;
               }
-            }
-          });
+          );
     });
   }
 

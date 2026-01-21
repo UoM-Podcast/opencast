@@ -22,16 +22,6 @@
 package org.opencastproject.util;
 
 import static org.opencastproject.util.MimeType.mimeType;
-import static org.opencastproject.util.data.Monadics.mlist;
-import static org.opencastproject.util.data.Option.none;
-import static org.opencastproject.util.data.Option.option;
-
-import org.opencastproject.util.data.Collections;
-import org.opencastproject.util.data.functions.Options;
-import org.opencastproject.util.data.functions.Strings;
-
-import com.entwinemedia.fn.Fn;
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -44,9 +34,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -134,16 +127,13 @@ public final class MimeTypes {
     }
   }
 
-  public static final Fn<String, Opt<MimeType>> toMimeType = new Fn<String, Opt<MimeType>>() {
-    @Override
-    public Opt<MimeType> apply(String name) {
-      try {
-        return Opt.some(parseMimeType(name));
-      } catch (Exception e) {
-        return Opt.none();
-      }
+  public static Optional<MimeType> toMimeType(String name) {
+    try {
+      return Optional.of(parseMimeType(name));
+    } catch (Exception e) {
+      return Optional.empty();
     }
-  };
+  }
 
 
   /**
@@ -305,9 +295,18 @@ public final class MimeTypes {
         extensions = getContent();
       } else if ("MimeType".equals(name)) {
         String[] t = type.split("/");
-        MimeType mimeType = mimeType(t[0].trim(), t[1].trim(),
-                mlist(extensions.split(",")).bind(Options.<String> asList().o(Strings.trimToNone)).value(),
-                Collections.<MimeType> nil(), option(description), none(""), none(""));
+        MimeType mimeType = mimeType(
+            t[0].trim(),
+            t[1].trim(),
+            Arrays.stream(extensions.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList()),
+            java.util.Collections.emptyList(),
+            Optional.ofNullable(description),
+            Optional.empty(),
+            Optional.empty()
+        );
         registry.add(mimeType);
       }
     }

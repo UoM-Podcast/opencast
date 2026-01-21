@@ -22,10 +22,10 @@
 package org.opencastproject.workflow.handler.workflow;
 
 import org.opencastproject.job.api.JobContext;
-import org.opencastproject.mediapackage.Catalog;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
+import org.opencastproject.mediapackage.selector.CatalogSelector;
 import org.opencastproject.util.MimeType;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowInstance;
@@ -43,7 +43,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -102,7 +101,7 @@ public class AddCatalogWorkflowOperationHandler extends AbstractWorkflowOperatio
 
   @Override
   public WorkflowOperationResult start(WorkflowInstance wInst, JobContext context)
-      throws WorkflowOperationException {
+          throws WorkflowOperationException {
     // get Workflow configuration
     String catalogName = getConfig(wInst, CFG_KEY_CATALOG_NAME);
     String catalogPath = getConfig(wInst, CFG_KEY_CATALOG_PATH);
@@ -120,8 +119,11 @@ public class AddCatalogWorkflowOperationHandler extends AbstractWorkflowOperatio
 
     MediaPackage mp = wInst.getMediaPackage();
 
+    CatalogSelector catalogSelector = new CatalogSelector();
+    catalogSelector.addFlavor(catalogFlavor);
+
     // if CatalogType is already part of the MediaPackage handle special cases
-    if (doesCatalogFlavorExist(catalogFlavor, mp.getCatalogs())) {
+    if (catalogSelector.select(mp, false).size() > 0) {
       if (collBehavior == CatalogTypeCollisionBehavior.FAIL) {
         throw new WorkflowOperationException("Catalog Type already exists and 'fail' was specified");
       }
@@ -155,18 +157,6 @@ public class AddCatalogWorkflowOperationHandler extends AbstractWorkflowOperatio
   }
 
   /**
-   * Checks whether the catalogFlavor exists in the array of catalogs
-   *
-   * @param catalogFlavor
-   * @param catalogs
-   * @return true, if the catalogFlavor exists in the array of catalogs, else false
-   */
-  private boolean doesCatalogFlavorExist(MediaPackageElementFlavor catalogFlavor, Catalog[] catalogs) {
-    return Arrays.asList(catalogs).stream()
-      .anyMatch(cat -> catalogFlavor.matches(cat.getFlavor()));
-  }
-
-  /**
    * Parses the rawBehavior String into an CatalogTypeCollisionBehavior.
    * Throws an WorkflowOperationException if the String couldn't be parsed.
    *
@@ -175,7 +165,7 @@ public class AddCatalogWorkflowOperationHandler extends AbstractWorkflowOperatio
    * @throws WorkflowOperationException
    */
   private CatalogTypeCollisionBehavior parseCollisionBehavior(String rawBehavior)
-      throws WorkflowOperationException {
+          throws WorkflowOperationException {
     try {
       return CatalogTypeCollisionBehavior.valueOf(rawBehavior.toUpperCase());
     }

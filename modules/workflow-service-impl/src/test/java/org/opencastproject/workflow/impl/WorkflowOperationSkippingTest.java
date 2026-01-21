@@ -64,11 +64,9 @@ import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
 import org.opencastproject.workflow.api.WorkflowServiceDatabaseImpl;
 import org.opencastproject.workflow.api.WorkflowStateListener;
-import org.opencastproject.workflow.api.XmlWorkflowParser;
+import org.opencastproject.workflow.api.YamlWorkflowParser;
 import org.opencastproject.workflow.impl.WorkflowServiceImpl.HandlerRegistration;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.io.IOUtils;
 import org.easymock.EasyMock;
@@ -85,6 +83,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class WorkflowOperationSkippingTest {
@@ -167,7 +166,7 @@ public class WorkflowOperationSkippingTest {
       EasyMock.expect(assetManager.selectProperties(EasyMock.anyString(), EasyMock.anyString()))
               .andReturn(Collections.singletonList(property))
               .anyTimes();
-      EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Opt.none()).anyTimes();
+      EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Optional.empty()).anyTimes();
       EasyMock.expect(assetManager.snapshotExists(EasyMock.anyString())).andReturn(true).anyTimes();
       EasyMock.replay(assetManager);
       service.setAssetManager(assetManager);
@@ -186,8 +185,8 @@ public class WorkflowOperationSkippingTest {
 
     InputStream is;
     try {
-      is = getClass().getResourceAsStream("/workflow-definition-skipping.xml");
-      workingDefinition = XmlWorkflowParser.parseWorkflowDefinition(is);
+      is = getClass().getResourceAsStream("/workflow-definition-skipping.yaml");
+      workingDefinition = YamlWorkflowParser.parseWorkflowDefinition(is);
       IOUtils.closeQuietly(is);
 
       MediaPackageBuilder mediaPackageBuilder = MediaPackageBuilderFactory.newInstance().newMediaPackageBuilder();

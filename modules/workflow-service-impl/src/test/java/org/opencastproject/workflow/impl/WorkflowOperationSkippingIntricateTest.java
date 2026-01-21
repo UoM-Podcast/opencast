@@ -63,11 +63,9 @@ import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
 import org.opencastproject.workflow.api.WorkflowServiceDatabaseImpl;
 import org.opencastproject.workflow.api.WorkflowStateListener;
-import org.opencastproject.workflow.api.XmlWorkflowParser;
+import org.opencastproject.workflow.api.YamlWorkflowParser;
 import org.opencastproject.workflow.impl.WorkflowServiceImpl.HandlerRegistration;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.easymock.EasyMock;
 import org.junit.Assert;
@@ -83,6 +81,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 
@@ -164,7 +163,7 @@ public final class WorkflowOperationSkippingIntricateTest {
       EasyMock.expect(assetManager.selectProperties(EasyMock.anyString(), EasyMock.anyString()))
               .andReturn(Collections.singletonList(property))
               .anyTimes();
-      EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Opt.none()).anyTimes();
+      EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Optional.empty()).anyTimes();
       EasyMock.expect(assetManager.snapshotExists(EasyMock.anyString())).andReturn(true).anyTimes();
       EasyMock.replay(assetManager);
       service.setAssetManager(assetManager);
@@ -181,8 +180,8 @@ public final class WorkflowOperationSkippingIntricateTest {
     service.setUserDirectoryService(userDirectoryService);
     service.activate(null);
 
-    try (InputStream is = getClass().getResourceAsStream("/workflow-definition-skipping-intricate.xml")) {
-      workingDefinition = XmlWorkflowParser.parseWorkflowDefinition(is);
+    try (InputStream is = getClass().getResourceAsStream("/workflow-definition-skipping-intricate.yaml")) {
+      workingDefinition = YamlWorkflowParser.parseWorkflowDefinition(is);
 
       MediaPackageBuilder mediaPackageBuilder = MediaPackageBuilderFactory.newInstance().newMediaPackageBuilder();
       mediaPackageBuilder.setSerializer(new DefaultMediaPackageSerializerImpl(new File("target/test-classes")));
@@ -248,7 +247,8 @@ public final class WorkflowOperationSkippingIntricateTest {
     assertEquals(OperationState.SKIPPED, instanceFromDb.getOperations().get(0).getState());
   }
 
-  private WorkflowInstance startAndWait(WorkflowDefinition definition, MediaPackage mp, Map<String, String> properties) throws Exception {
+  private WorkflowInstance startAndWait(WorkflowDefinition definition, MediaPackage mp, Map<String, String> properties)
+          throws Exception {
 
     WorkflowStateListener stateListener = new WorkflowStateListener(WorkflowState.SUCCEEDED);
     service.addWorkflowListener(stateListener);

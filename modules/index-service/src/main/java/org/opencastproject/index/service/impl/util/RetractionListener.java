@@ -41,7 +41,8 @@ public final class RetractionListener implements WorkflowListener {
   private final Map<Long, Retraction> retractions;
   private final IndexService indexService;
 
-  public RetractionListener(IndexService indexService, SecurityService securityService, Map<Long, Retraction> retractions) {
+  public RetractionListener(IndexService indexService, SecurityService securityService,
+      Map<Long, Retraction> retractions) {
     this.indexService = indexService;
     this.securityService = securityService;
     this.retractions = retractions;
@@ -61,8 +62,9 @@ public final class RetractionListener implements WorkflowListener {
               workflow.getTitle(), workflow.getId(), workflow.getCreatorName());
     } else if (mediaPackage.getPublications() != null && mediaPackage.getPublications().length > 0) {
       logger.warn("The retract workflow \"{}\" (id: {}, created by: {}, media package {}) "
-                      + "has some non-retracted publications, refusing to orphan them.",
-              workflow.getTitle(), workflow.getId(), workflow.getCreatorName(), mediaPackage.getIdentifier().toString());
+              + "has some non-retracted publications, refusing to orphan them. Remaining publications: {}",
+          workflow.getTitle(), workflow.getId(), workflow.getCreatorName(), mediaPackage.getIdentifier(),
+          mediaPackage.getPublications());
     } else {
       final Retraction retraction = retractions.get(workflow.getId());
       SecurityUtil.runAs(securityService, retraction.getOrganization(), retraction.getUser(), () -> {

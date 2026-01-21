@@ -20,16 +20,15 @@
  */
 package org.opencastproject.assetmanager.api;
 
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.RichAResult;
 import org.opencastproject.assetmanager.api.storage.AssetStore;
 import org.opencastproject.mediapackage.MediaPackage;
+import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.util.NotFoundException;
 
-import com.entwinemedia.fn.data.Opt;
-
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The AssetManager stores versioned {@linkplain Snapshot snapshots} of media packages.
@@ -59,12 +58,12 @@ public interface AssetManager {
   String DEFAULT_OWNER = "default";
 
   /**
-   * Get the media package from the lates snapshot.
+   * Get the media package from the latest snapshot.
    *
    * @param mediaPackageId
    * @return mediapackage
    */
-  Opt<MediaPackage> getMediaPackage(String mediaPackageId);
+  Optional<MediaPackage> getMediaPackage(String mediaPackageId);
 
   /**
    * Get the asset that is uniquely identified by the triple {version, media package ID, media package element ID}.
@@ -74,7 +73,7 @@ public interface AssetManager {
    * @param mpeId the media package element ID
    * @return the asset or none, if no such asset exists
    */
-  Opt<Asset> getAsset(Version version, String mpId, String mpeId);
+  Optional<Asset> getAsset(Version version, String mpId, String mpeId);
 
   /**
    * Get an asset store by id (local or remote).
@@ -82,7 +81,7 @@ public interface AssetManager {
    * @param storeId the store id
    * @return the asset store if it exists
    */
-  Opt<AssetStore> getAssetStore(String storeId);
+  Optional<AssetStore> getAssetStore(String storeId);
 
   /**
    * Get the remote asset stores as a list.
@@ -100,6 +99,23 @@ public interface AssetManager {
 
 
   /* Snapshots */
+
+  /**
+   * Get the latest snapshot.
+   *
+   * @param mediaPackageId
+   * @return Snapshot
+   */
+  Optional<Snapshot> getLatestSnapshot(String mediaPackageId);
+
+  /**
+   * Get the latest snapshots.
+   *
+   * @param mediaPackageIds
+   * @return Snapshot
+   *    returns the latest snapshot for each given mediaPackageId
+   */
+  List<Snapshot> getLatestSnapshots(Collection mediaPackageIds);
 
   /**
    * Check if any snapshot with the given media package identifier exists.
@@ -122,17 +138,17 @@ public interface AssetManager {
   boolean snapshotExists(String mediaPackageId, String organization);
 
   /**
-   * Returns a stream of {@link RichAResult} filtered by mediapackage IDs
+   * Returns a list of {@link Snapshot} filtered by mediapackage IDs
    *
    * @param mpId
    *   The mediapackage ID to filter results for
    * @return
-   *   The {@link RichAResult} stream filtered by mediapackage ID
+   *   The {@link Snapshot} list filtered by mediapackage ID
    */
-  RichAResult getSnapshotsById(String mpId);
+  List<Snapshot> getSnapshotsById(String mpId);
 
   /**
-   * Returns a stream of {@link RichAResult} filtered by mediapackage IDs. This stream
+   * Returns a list of {@link Snapshot}filtered by mediapackage IDs. This stream
    * consists of all versions of all mediapackage ordered by the Version
    *
    * @param mpId
@@ -140,37 +156,24 @@ public interface AssetManager {
    * @param asc
    *   The asc {@link Boolean} decides if to order ascending (true) or descending (false)
    * @return
-   *   The {@link RichAResult} stream filtered by mediapackage ID
+   *   The {@link Snapshot} list filtered by mediapackage ID
    */
-  RichAResult getSnapshotsByIdOrderedByVersion(String mpId, boolean asc);
+  List<Snapshot> getSnapshotsByIdOrderedByVersion(String mpId, boolean asc);
 
   /**
-   * Returns a stream of {@link RichAResult} filtered by mediapackage ID and version
+   * Returns a list of {@link Snapshot} filtered by mediapackage ID and version
    *
    * @param mpId
    *   The mediapackage ID to filter results for
    * @param version
    *   The version to filter results for
    * @return
-   *   The {@link RichAResult} stream filtered by mediapackage ID
+   *   The {@link Snapshot} list filtered by mediapackage ID
    */
-  RichAResult getSnapshotsByIdAndVersion(String mpId, Version version);
+  List<Snapshot> getSnapshotsByIdAndVersion(String mpId, Version version);
 
   /**
-   * Returns a stream of {@link RichAResult} filtered by date. This stream
-   * consists of all versions of all mediapackages archived within the date range.
-   *
-   * @param start
-   *   The start {@link Date} to filter by
-   * @param end
-   *   The end{@link Date} to filter by
-   * @return
-   *   The {@link RichAResult} stream filtered by date
-   */
-  RichAResult getSnapshotsByDate(Date start, Date end);
-
-  /**
-   * Returns a stream of {@link RichAResult} filtered by date. This stream consists of all
+   * Returns a list of {@link Snapshot} filtered by date. This stream consists of all
    * a mediapackages which have at least one version archived within the date range.
    *
    * @param start
@@ -178,12 +181,12 @@ public interface AssetManager {
    * @param end
    *   The end{@link Date} to filter by
    * @return
-   *   The {@link RichAResult} stream filtered by date
+   *   The {@link Snapshot} list filtered by date
    */
-  RichAResult getSnapshotsByDateOrderedById(Date start, Date end);
+  List<Snapshot> getSnapshotsByDateOrderedById(Date start, Date end);
 
   /**
-   * Returns a stream of {@link RichAResult} filtered by date and mediapackage. This stream consists of all versions of
+   * Returns a list of {@link Snapshot} filtered by date and mediapackage. This stream consists of all versions of
    * a mediapackage archived within the date range.
    *
    * @param mpId
@@ -193,12 +196,12 @@ public interface AssetManager {
    * @param end
    *   The end{@link Date} to filter by
    * @return
-   *   The {@link RichAResult} stream filtered by date
+   *   The {@link Snapshot} list filtered by date
    */
-  RichAResult getSnapshotsByIdAndDate(String mpId, Date start, Date end);
+  List<Snapshot> getSnapshotsByIdAndDate(String mpId, Date start, Date end);
 
   /**
-   * Returns a stream of {@link RichAResult} filtered by date and mediapackage. 
+   * Returns a list of {@link Snapshot} filtered by date and mediapackage.
    * This stream consists of all versions of a mediapackage archived within the 
    * date range ordered by there Version.
    *
@@ -211,9 +214,48 @@ public interface AssetManager {
    * @param asc
    *   The asc {@link Boolean} decides if to order ascending (true) or descending (false)
    * @return
-   *   The {@link RichAResult} stream filtered by date
+   *   The {@link Snapshot} list filtered by date
    */
-  RichAResult getSnapshotsByIdAndDateOrderedByVersion(String mpId, Date start, Date end, boolean asc);
+  List<Snapshot> getSnapshotsByIdAndDateOrderedByVersion(String mpId, Date start, Date end, boolean asc);
+
+  /**
+   * Get the latest snapshots from the series
+   * @param seriesId
+   *   the id of the series
+   * @return
+   *   a list of the latest snapshots from the series
+   */
+  List<Snapshot> getLatestSnapshotsBySeriesId(String seriesId);
+
+  /**
+   * Gets a snapshot that confirms to the given parameters
+   * @param mpId
+   *   the mediaPackageId
+   * @param orgId
+   *   the organizationId
+   * @param version
+   *   the version
+   * @return
+   */
+  Optional<Snapshot> getSnapshotByMpIdOrgIdAndVersion(String mpId, String orgId, Version version);
+
+  /**
+   * Remove all snapshots with the given mediaPackage id
+   * @param
+   *   mpId the mediaPackage id
+   * @return
+   *   the amount of snapshots removed
+   */
+  int deleteSnapshots(String mpId);
+
+  /**
+   * Remove all snapshots with the given mediaPackage id, except for the snapshot with the highest version number
+   * @param
+   *   mpId the mediaPackage id
+   * @return
+   *   the amount of snapshots removed
+   */
+  int deleteAllButLatestSnapshot(String mpId);
 
   /**
    * Take a versioned snapshot of a media package.
@@ -340,25 +382,66 @@ public interface AssetManager {
    */
   int deleteProperties(String mediaPackageId, String namespace);
 
+  /**
+   * Delete all properties for a given media package identifier and namespace.
+   * Restricts access based on the current user
+   *
+   * @param mediaPackageId
+   *          Media package identifier
+   * @param namespace
+   *          A namespace prefix to use for deletion
+   * @return Number of deleted properties
+   */
+  int deletePropertiesWithCurrentUser(String mediaPackageId, String namespace);
+
 
   /* Misc. */
-
-  /** Create a new query builder. */
-  AQueryBuilder createQuery();
 
   /**
    * Deserialize a version from a string. This is the inverse function of {@link Version#toString()}.
    *
    * @return a version or none, if no version can be archived from the given string
    */
-  Opt<Version> toVersion(String version);
+  Optional<Version> toVersion(String version);
 
   /**
    * Count the number of events stored for a given organization.
    *
    * @param organization
-   *          The organization to check
+   *          The organization to check.
+   *          This may be `null` to not filter for an organization which is significantly faster.
    * @return Number of events
    */
   long countEvents(String organization);
+
+  /**
+   * Count the number of snapshots stored for a given organization.
+   *
+   * @param organization
+   *          The organization to check
+   * @return Number of snapshots
+   */
+  long countSnapshots(String organization);
+
+  /**
+   * Count the number of assets
+   *
+   * @return Number of assets
+   */
+  long countAssets();
+
+  /**
+   * Count the number of properties
+   *
+   * @return Number of properties
+   */
+  long countProperties();
+
+  /**
+   * Trigger search index update for event.
+   *
+   * @param mediaPackageId
+   *          The event ID to trigger an index update for
+   */
+  void triggerIndexUpdate(String mediaPackageId) throws NotFoundException, UnauthorizedException;
 }

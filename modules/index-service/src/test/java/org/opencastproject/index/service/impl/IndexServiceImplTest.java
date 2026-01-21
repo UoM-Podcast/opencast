@@ -76,14 +76,11 @@ import org.opencastproject.util.DateTimeSupport;
 import org.opencastproject.util.IoSupport;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.PropertiesUtil;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.Tuple;
 import org.opencastproject.util.data.VCell;
 import org.opencastproject.workflow.api.WorkflowDatabaseException;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
 
 import net.fortuna.ical4j.model.DateTime;
 import net.fortuna.ical4j.model.Period;
@@ -118,6 +115,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
@@ -176,8 +174,8 @@ public class IndexServiceImplTest {
     IngestService ingestService = EasyMock.createMock(IngestService.class);
     EasyMock.expect(ingestService.createMediaPackage()).andReturn(mediapackage).anyTimes();
     EasyMock.expect(ingestService.addTrack(EasyMock.anyObject(InputStream.class), EasyMock.anyString(),
-            EasyMock.anyObject(MediaPackageElementFlavor.class), EasyMock.anyObject(MediaPackage.class))).andReturn(mediapackage)
-                    .anyTimes();
+            EasyMock.anyObject(MediaPackageElementFlavor.class), EasyMock.anyObject(MediaPackage.class)))
+                    .andReturn(mediapackage).anyTimes();
     EasyMock.expect(ingestService.addCatalog(EasyMock.capture(captureInputStream), EasyMock.anyObject(String.class),
             EasyMock.anyObject(MediaPackageElementFlavor.class), EasyMock.anyObject(MediaPackage.class)))
             .andReturn(mediapackage).anyTimes();
@@ -209,14 +207,14 @@ public class IndexServiceImplTest {
     return securityService;
   }
 
-  private Tuple<CommonEventCatalogUIAdapter, VCell<Option<DublinCoreMetadataCollection>>> setupCommonCatalogUIAdapter(
+  private Tuple<CommonEventCatalogUIAdapter, VCell<Optional<DublinCoreMetadataCollection>>> setupCommonCatalogUIAdapter(
           Workspace workspace) throws org.osgi.service.cm.ConfigurationException {
     // Create Common Event Catalog UI Adapter
-    final VCell<Option<DublinCoreMetadataCollection>> metadataCell = VCell.ocell();
+    final VCell<Optional<DublinCoreMetadataCollection>> metadataCell = VCell.ocell();
     CommonEventCatalogUIAdapter commonEventCatalogUIAdapter = new CommonEventCatalogUIAdapter() {
       @Override
       public Catalog storeFields(MediaPackage mediaPackage, DublinCoreMetadataCollection metadata) {
-        metadataCell.set(Option.some(metadata));
+        metadataCell.set(Optional.of(metadata));
         return super.storeFields(mediaPackage, metadata);
       }
     };
@@ -286,20 +284,6 @@ public class IndexServiceImplTest {
           IngestException, ParseException, NotFoundException, SchedulerException, UnauthorizedException,
           org.json.simple.parser.ParseException {
     String testResourceLocation = "/events/create-event-no-processing.json";
-    JSONObject metadataJson = (JSONObject) parser
-            .parse(IOUtils.toString(IndexServiceImplTest.class.getResourceAsStream(testResourceLocation)));
-
-    IndexServiceImpl indexServiceImpl = new IndexServiceImpl();
-    indexServiceImpl.setIngestService(setupIngestServiceWithMediaPackage());
-    indexServiceImpl.createEvent(metadataJson, null);
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testCreateEventInputNoWorkflowExpectsIllegalArgumentException()
-          throws IllegalArgumentException, ConfigurationException, MediaPackageException, IOException,
-          IngestException, ParseException, NotFoundException, SchedulerException, UnauthorizedException,
-          org.json.simple.parser.ParseException {
-    String testResourceLocation = "/events/create-event-no-workflow.json";
     JSONObject metadataJson = (JSONObject) parser
             .parse(IOUtils.toString(IndexServiceImplTest.class.getResourceAsStream(testResourceLocation)));
 
@@ -553,7 +537,7 @@ public class IndexServiceImplTest {
     schedulerService.addEvent(EasyMock.capture(captureStart), EasyMock.capture(captureEnd), EasyMock.anyString(),
             EasyMock.<Set<String>> anyObject(), EasyMock.anyObject(MediaPackage.class),
             EasyMock.<Map<String, String>> anyObject(), EasyMock.<Map<String, String>> anyObject(),
-            EasyMock.<Opt<String>> anyObject());
+            EasyMock.<Optional<String>> anyObject());
     EasyMock.expectLastCall().once();
     EasyMock.replay(schedulerService);
 
@@ -605,10 +589,10 @@ public class IndexServiceImplTest {
           MediaPackageException, IngestException, NotFoundException {
     MediaPackage mediapackage = MediaPackageBuilderFactory.newInstance().newMediaPackageBuilder().createNew();
     JSONArray assetMetadata =  (JSONArray) new JSONParser().parse("[{\"id\":\"attachment_attachment_notes\", "
-      + "\"title\": \"class handout notes\","
-      + "\"flavorType\": \"attachment\","
-      + "\"flavorSubType\": \"notes\","
-      + "\"type\": \"attachment\"}]");
+        + "\"title\": \"class handout notes\","
+        + "\"flavorType\": \"attachment\","
+        + "\"flavorSubType\": \"notes\","
+        + "\"type\": \"attachment\"}]");
 
     // a test asset input stream
     List<String> assetList = new LinkedList<String>();
@@ -625,7 +609,8 @@ public class IndexServiceImplTest {
     IndexServiceImpl indexServiceImpl = new IndexServiceImpl();
     indexServiceImpl.setIngestService(setupIngestService(mediapackage, Capture.<InputStream> newInstance()));
     mediapackage = indexServiceImpl.updateMpAssetFlavor(assetList, mediapackage, assetMetadata);
-    assertTrue("The mediapackage attachment has the updated flavor", mediapackage.getAttachments(newElemflavor).length == 1);
+    assertTrue("The mediapackage attachment has the updated flavor",
+        mediapackage.getAttachments(newElemflavor).length == 1);
   }
 
   @Test
@@ -699,11 +684,12 @@ public class IndexServiceImplTest {
             EasyMock.capture(schedRRule), EasyMock.capture(schedStart), EasyMock.capture(schedEnd),
             EasyMock.captureLong(schedDuration), EasyMock.capture(schedTz), EasyMock.anyString(),
             EasyMock.<Set<String>>anyObject(), EasyMock.capture(mp), EasyMock.<Map<String, String>>anyObject(),
-            EasyMock.<Map<String, String>>anyObject(), EasyMock.<Opt<String>>anyObject())).
+            EasyMock.<Map<String, String>>anyObject(), EasyMock.<Optional<String>>anyObject())).
             andAnswer(new IAnswer<Map<String, Period>>() {
               @Override
               public Map<String, Period> answer() throws Throwable {
-                List<Period> periods = calculatePeriods(schedRRule.getValue(), schedStart.getValue(), schedEnd.getValue(), (Long) schedDuration.getValue(), schedTz.getValue());
+                List<Period> periods = calculatePeriods(schedRRule.getValue(), schedStart.getValue(),
+                    schedEnd.getValue(), (Long) schedDuration.getValue(), schedTz.getValue());
                 Map<String, Period> mapping = new LinkedHashMap<>();
                 int counter = 0;
                 for (Period p : periods) {
@@ -727,7 +713,8 @@ public class IndexServiceImplTest {
     String scheduledEvents = indexServiceImpl.createEvent(metadataJson, mediapackage);
     String[] ids = StringUtils.split(scheduledEvents, ",");
     //We should have as many scheduled events as we do periods
-    Assert.assertTrue(ids.length == calculatePeriods(schedRRule.getValue(), schedStart.getValue(), schedEnd.getValue(), (Long) schedDuration.getValue(), schedTz.getValue()).size());
+    Assert.assertTrue(ids.length == calculatePeriods(schedRRule.getValue(), schedStart.getValue(), schedEnd.getValue(),
+        (Long) schedDuration.getValue(), schedTz.getValue()).size());
 
     assertEquals("The catalog should have been added to the correct mediapackage", mpId.toString(),
             mediapackageIdResult.getValue());
@@ -837,7 +824,8 @@ public class IndexServiceImplTest {
     seriesMetadataField.setValue("series-1");
     metadataCollection.addField(seriesMetadataField);
     MetadataList metadataList = new MetadataList();
-    metadataList.getMetadataList().put("dublincore/episode", new MetadataList.TitledMetadataCollection("EVENTS.EVENTS.DETAILS.CATALOG.EPISODE", metadataCollection));
+    metadataList.getMetadataList().put("dublincore/episode",
+        new MetadataList.TitledMetadataCollection("EVENTS.EVENTS.DETAILS.CATALOG.EPISODE", metadataCollection));
     String eventId = "event-1";
     Event event = new Event(eventId, org);
     event.setTitle("Test Event 1");
@@ -864,17 +852,17 @@ public class IndexServiceImplTest {
     // Using scheduler as the source of the media package here.
     SchedulerService schedulerService = EasyMock.createMock(SchedulerService.class);
     EasyMock.expect(schedulerService.getMediaPackage(EasyMock.anyString())).andReturn(mp);
-    Capture<Opt<MediaPackage>> mpCapture = Capture.newInstance();
-    schedulerService.updateEvent(EasyMock.anyString(), EasyMock.anyObject(Opt.class),
-            EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class),
-            EasyMock.capture(mpCapture), EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class));
+    Capture<Optional<MediaPackage>> mpCapture = Capture.newInstance();
+    schedulerService.updateEvent(EasyMock.anyString(), EasyMock.anyObject(Optional.class),
+            EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class),
+            EasyMock.capture(mpCapture), EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class));
     EasyMock.expectLastCall();
     EasyMock.replay(schedulerService);
     SeriesService seriesService = EasyMock.createMock(SeriesService.class);
     DublinCoreCatalog seriesDC = DublinCores.read(getClass().getResourceAsStream("/events/update-event-series.xml"));
     EasyMock.expect(seriesService.getSeries(EasyMock.anyString())).andReturn(seriesDC);
     EasyMock.expect(seriesService.getSeriesAccessControl(EasyMock.anyString())).andReturn(null);
-    EasyMock.expect(seriesService.getSeriesElements(EasyMock.anyString())).andReturn(Opt.none());
+    EasyMock.expect(seriesService.getSeriesElements(EasyMock.anyString())).andReturn(Optional.empty());
     EasyMock.replay(seriesService);
 
     // create service
@@ -1013,10 +1001,8 @@ public class IndexServiceImplTest {
   }
 
   private MetadataField createCreatorMetadataField(Iterable<String> value) {
-    final MetadataField creator = new MetadataField(DublinCore.PROPERTY_CREATOR.getLocalName(), null, "creator", false, false, null,
-            null, MetadataField.Type.TEXT, null, null, null, null, null,
-            null,
-            null);
+    final MetadataField creator = new MetadataField(DublinCore.PROPERTY_CREATOR.getLocalName(), null, "creator",
+        false, false, null,  null, MetadataField.Type.TEXT, null, null, null, null, null, null, null);
     creator.setValue(value);
     return creator;
   }

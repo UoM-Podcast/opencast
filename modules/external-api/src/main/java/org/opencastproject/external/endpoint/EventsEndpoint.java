@@ -20,20 +20,17 @@
  */
 package org.opencastproject.external.endpoint;
 
-import static com.entwinemedia.fn.Stream.$;
-import static com.entwinemedia.fn.data.json.Jsons.BLANK;
-import static com.entwinemedia.fn.data.json.Jsons.NULL;
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
+import static org.opencastproject.external.common.ApiVersion.VERSION_1_11_0;
 import static org.opencastproject.external.common.ApiVersion.VERSION_1_1_0;
 import static org.opencastproject.external.common.ApiVersion.VERSION_1_4_0;
 import static org.opencastproject.external.common.ApiVersion.VERSION_1_7_0;
 import static org.opencastproject.external.util.SchedulingUtils.SchedulingInfo;
 import static org.opencastproject.external.util.SchedulingUtils.convertConflictingEvents;
 import static org.opencastproject.external.util.SchedulingUtils.getConflictingEvents;
+import static org.opencastproject.index.service.util.JSONUtils.arrayToJsonArray;
+import static org.opencastproject.index.service.util.JSONUtils.collectionToJsonArray;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.util.RestUtil.getEndpointUrl;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
@@ -50,7 +47,7 @@ import org.opencastproject.elasticsearch.index.objects.event.Event;
 import org.opencastproject.elasticsearch.index.objects.event.EventIndexSchema;
 import org.opencastproject.elasticsearch.index.objects.event.EventSearchQuery;
 import org.opencastproject.external.common.ApiMediaType;
-import org.opencastproject.external.common.ApiResponses;
+import org.opencastproject.external.common.ApiResponseBuilder;
 import org.opencastproject.external.common.ApiVersion;
 import org.opencastproject.external.util.AclUtils;
 import org.opencastproject.external.util.ExternalMetadataUtils;
@@ -63,6 +60,7 @@ import org.opencastproject.index.service.util.RequestUtils;
 import org.opencastproject.index.service.util.RestUtils;
 import org.opencastproject.ingest.api.IngestException;
 import org.opencastproject.ingest.api.IngestService;
+import org.opencastproject.list.impl.EmptyResourceListQuery;
 import org.opencastproject.mediapackage.Attachment;
 import org.opencastproject.mediapackage.AudioStream;
 import org.opencastproject.mediapackage.Catalog;
@@ -101,7 +99,6 @@ import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.RestUtil;
 import org.opencastproject.util.RestUtil.R;
 import org.opencastproject.util.UrlSupport;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.Tuple;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestParameter.Type;
@@ -113,13 +110,11 @@ import org.opencastproject.workflow.api.WorkflowDatabaseException;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowService;
 
-import com.entwinemedia.fn.Fn;
-import com.entwinemedia.fn.data.Opt;
-import com.entwinemedia.fn.data.json.Field;
-import com.entwinemedia.fn.data.json.JObject;
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
-import com.entwinemedia.fn.data.json.Jsons.Functions;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
@@ -141,6 +136,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,7 +145,6 @@ import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Dictionary;
 import java.util.HashMap;
@@ -158,8 +153,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
@@ -182,13 +178,24 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-@Path("/")
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Path("/api/events")
 @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_0_0, ApiMediaType.VERSION_1_1_0, ApiMediaType.VERSION_1_2_0,
             ApiMediaType.VERSION_1_3_0, ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0,
             ApiMediaType.VERSION_1_6_0, ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0,
-            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0 })
+            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
 @RestService(name = "externalapievents", title = "External API Events Service", notes = {},
              abstractText = "Provides resources and operations related to the events")
+@Tag(name = "External API")
+@Tag(name = "External API - Events",
+    description = "The events endpoint provides resources and operations related to the events")
 @Component(
     immediate = true,
     service = { EventsEndpoint.class,ManagedService.class },
@@ -198,6 +205,7 @@ import javax.ws.rs.core.Response.Status;
         "opencast.service.path=/api/events"
     }
 )
+@JaxrsResource
 public class EventsEndpoint implements ManagedService {
 
   protected static final String URL_SIGNING_EXPIRES_DURATION_SECONDS_KEY = "url.signing.expires.seconds";
@@ -242,7 +250,8 @@ public class EventsEndpoint implements ManagedService {
   private IndexService indexService;
   private IngestService ingestService;
   private SecurityService securityService;
-  private final List<EventCatalogUIAdapter> catalogUIAdapters = new ArrayList<>();
+  private final List<EventCatalogUIAdapter> catalogUIAdapters = new CopyOnWriteArrayList<>();
+  private final Map<String, List<EventCatalogUIAdapter>> orgCatalogUIAdaptersMap = new ConcurrentHashMap<>();
   private UrlSigningService urlSigningService;
   private SchedulerService schedulerService;
   private CaptureAgentStateService agentStateService;
@@ -305,11 +314,27 @@ public class EventsEndpoint implements ManagedService {
   )
   public void addCatalogUIAdapter(EventCatalogUIAdapter catalogUIAdapter) {
     catalogUIAdapters.add(catalogUIAdapter);
+    invalidateOrgCatalogUIAdaptersMapFor(catalogUIAdapter);
   }
 
   /** OSGi DI. */
   public void removeCatalogUIAdapter(EventCatalogUIAdapter catalogUIAdapter) {
     catalogUIAdapters.remove(catalogUIAdapter);
+    invalidateOrgCatalogUIAdaptersMapFor(catalogUIAdapter);
+  }
+
+  /**
+   * Invalidates caches for organizations that are handled by given catalog.
+   *
+   * @param catalogUIAdapter catalog used to identify affected organizations.
+   */
+  private void invalidateOrgCatalogUIAdaptersMapFor(EventCatalogUIAdapter catalogUIAdapter) {
+    // clean cached org to catalog map
+    for (String orgName : orgCatalogUIAdaptersMap.keySet()) {
+      if (catalogUIAdapter.handlesOrganization(orgName)) {
+        orgCatalogUIAdaptersMap.remove(orgName);
+      }
+    }
   }
 
   /** OSGi DI */
@@ -331,17 +356,16 @@ public class EventsEndpoint implements ManagedService {
 
 
   private List<EventCatalogUIAdapter> getEventCatalogUIAdapters() {
-    return new ArrayList<>(getEventCatalogUIAdapters(getSecurityService().getOrganization().getId()));
+    return getEventCatalogUIAdapters(getSecurityService().getOrganization().getId());
   }
 
   public List<EventCatalogUIAdapter> getEventCatalogUIAdapters(String organization) {
-    List<EventCatalogUIAdapter> adapters = new ArrayList<>();
-    for (EventCatalogUIAdapter adapter : catalogUIAdapters) {
-      if (adapter.handlesOrganization(organization)) {
-        adapters.add(adapter);
-      }
-    }
-    return adapters;
+    List<EventCatalogUIAdapter> cachedCatalogUIAdapters = orgCatalogUIAdaptersMap.computeIfAbsent(organization,
+        org -> new ArrayList<>(catalogUIAdapters.stream()
+            .filter(a -> a.handlesOrganization(org))
+            .collect(Collectors.toList())));
+    // create a shallow copy as callers may change it
+    return new ArrayList<>(cachedCatalogUIAdapters);
   }
 
   /** OSGi activation method */
@@ -388,110 +412,189 @@ public class EventsEndpoint implements ManagedService {
 
   @GET
   @Path("{eventId}")
-  @RestQuery(name = "getevent", description = "Returns a single event. By setting the optional sign parameter to true, the method will pre-sign distribution urls if signing is turned on in Opencast. Remember to consider the maximum validity of signed URLs when caching this response.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "sign", isRequired = false, description = "Whether public distribution urls should be signed.", type = Type.BOOLEAN),
-                  @RestParameter(name = "withacl", isRequired = false, description = "Whether the acl metadata should be included in the response.", type = Type.BOOLEAN),
-                  @RestParameter(name = "withmetadata", isRequired = false, description = "Whether the metadata catalogs should be included in the response.", type = Type.BOOLEAN),
-                  @RestParameter(name = "withscheduling", isRequired = false, description = "Whether the scheduling information should be included in the response.", type = Type.BOOLEAN),
-                  @RestParameter(name = "withpublications", isRequired = false, description = "Whether the publication ids and urls should be included in the response.", type = Type.BOOLEAN), }, responses = {
-                          @RestResponse(description = "The event is returned.", responseCode = HttpServletResponse.SC_OK),
-                          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
-  public Response getEvent(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
-          @QueryParam("sign") boolean sign, @QueryParam("withacl") Boolean withAcl,
-          @QueryParam("withmetadata") Boolean withMetadata, @QueryParam("withscheduling") Boolean withScheduling,
-          @QueryParam("withpublications") Boolean withPublications)
+  @RestQuery(
+      name = "getevent",
+      description = "Returns a single event. By setting the optional sign parameter to true, the method will pre-sign "
+          + "distribution urls if signing is turned on in Opencast. Remember to consider the maximum validity of "
+          + "signed URLs when caching this response.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "sign", isRequired = false, description = "Whether public distribution urls should be "
+              + "signed.", type = Type.BOOLEAN),
+          @RestParameter(name = "withacl", isRequired = false, description = "Whether the acl metadata should be "
+              + "included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "withmetadata", isRequired = false, description = "Whether the metadata catalogs "
+              + "should be included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "withscheduling", isRequired = false, description = "Whether the scheduling "
+              + "information should be included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "withpublications", isRequired = false, description = "Whether the publication ids and "
+              + "urls should be included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "includeInternalPublication", isRequired = false, description = "Whether internal "
+              + "publications should be included.", type = Type.BOOLEAN)
+      },
+      responses = {
+          @RestResponse(description = "The event is returned.", responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
+  @Operation(
+      summary = "Get a single event",
+      description = "Returns a single event. By setting the optional sign parameter to true, the method will pre-sign "
+          + "distribution urls if signing is turned on in Opencast. Remember to consider the maximum validity of "
+          + "signed URLs when caching this response."
+  )
+  public Response getEvent(
+      @HeaderParam("Accept") String acceptHeader,
+      @Parameter(description = "The event id", required = true)
+      @PathParam("eventId") String id,
+      @Parameter(description = "Whether public distribution urls should be signed.")
+      @QueryParam("sign") boolean sign,
+      @Parameter(description = "Whether the acl metadata should be included in the response.")
+      @QueryParam("withacl") Boolean withAcl,
+      @Parameter(description = "Whether the metadata catalogs should be included in the response.")
+      @QueryParam("withmetadata") Boolean withMetadata,
+      @Parameter(description = "Whether the scheduling information should be included in the response.")
+      @QueryParam("withscheduling") Boolean withScheduling,
+      @Parameter(description = "Whether the publication ids and urls should be included in the response.")
+      @QueryParam("withpublications") Boolean withPublications,
+      @Parameter(description = "Whether internal publications should be included.")
+      @QueryParam("includeInternalPublication") Boolean includeInternalPublication)
           throws Exception {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
     if (requestedVersion.isSmallerThan(VERSION_1_1_0)) {
       // withScheduling was added in version 1.1.0 and should be ignored for smaller versions
       withScheduling = false;
     }
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      Event event = eventOpt.get();
       event.updatePreview(previewSubtype);
-      return ApiResponses.Json.ok(
-          requestedVersion, eventToJSON(event, withAcl, withMetadata, withScheduling, withPublications, sign, requestedVersion));
+      return ApiResponseBuilder.Json.ok(
+          requestedVersion, eventToJSON(event, withAcl, withMetadata, withScheduling, withPublications,
+              includeInternalPublication, sign, requestedVersion));
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
   @GET
   @Path("{eventId}/media")
-  @RestQuery(name = "geteventmedia", description = "Returns media tracks of specific single event.", returnDescription = "", pathParameters = {
-      @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, responses = {
-      @RestResponse(description = "The event's media is returned.", responseCode = HttpServletResponse.SC_OK),
-      @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "geteventmedia",
+      description = "Returns media tracks of specific single event.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The event's media is returned.", responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
+  @Operation(
+      summary = "Get media tracks of a single event",
+      description = "Returns media tracks of specific single event."
+  )
+  @Parameters({
+      @Parameter(name = "eventId", description = "The event id", required = true, in = ParameterIn.PATH),
+      @Parameter(name = "Accept", description = "The accept header", required = true, in = ParameterIn.HEADER)
+  })
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "The event's media is returned."),
+      @ApiResponse(responseCode = "404", description = "The specified event does not exist.")
+  })
   public Response getEventMedia(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id)
           throws Exception {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
-    ArrayList<TrackImpl> tracks = new ArrayList<>();
+    List<TrackImpl> tracks = new ArrayList<>();
 
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
-      final MediaPackage mp = indexService.getEventMediapackage(event);
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      final MediaPackage mp = indexService.getEventMediapackage(eventOpt.get());
       for (Track track : mp.getTracks()) {
         if (track instanceof TrackImpl) {
           tracks.add((TrackImpl) track);
         }
       }
 
-      List<JValue> tracksJson = new ArrayList<>();
+      JsonArray tracksJson = new JsonArray();
       for (Track track : tracks) {
-        List<Field> fields = new ArrayList<>();
-        if (track.getChecksum() != null)
-          fields.add(f("checksum", v(track.getChecksum().toString())));
-        if (track.getDescription() != null)
-          fields.add(f("description", v(track.getDescription())));
-        if (track.getDuration() != null)
-          fields.add(f("duration", v(track.getDuration())));
-        if (track.getElementDescription() != null)
-          fields.add(f("element-description", v(track.getElementDescription())));
-        if (track.getFlavor() != null)
-          fields.add(f("flavor", v(track.getFlavor().toString())));
-        if (track.getIdentifier() != null)
-          fields.add(f("identifier", v(track.getIdentifier())));
-        if (track.getMimeType() != null)
-          fields.add(f("mimetype", v(track.getMimeType().toString())));
-        fields.add(f("size", v(track.getSize())));
+        JsonObject trackJson = new JsonObject();
+        if (track.getChecksum() != null) {
+          trackJson.addProperty("checksum", track.getChecksum().toString());
+        }
+        if (track.getDescription() != null) {
+          trackJson.addProperty("description", track.getDescription());
+        }
+        if (track.getDuration() != null) {
+          trackJson.addProperty("duration", track.getDuration());
+        }
+        if (track.getElementDescription() != null) {
+          trackJson.addProperty("element-description", track.getElementDescription());
+        }
+        if (track.getFlavor() != null) {
+          trackJson.addProperty("flavor", track.getFlavor().toString());
+        }
+        if (track.getIdentifier() != null) {
+          trackJson.addProperty("identifier", track.getIdentifier());
+        }
+        if (track.getMimeType() != null) {
+          trackJson.addProperty("mimetype", track.getMimeType().toString());
+        }
+        trackJson.addProperty("size", track.getSize());
+
         if (!requestedVersion.isSmallerThan(VERSION_1_7_0)) {
-          fields.add(f("has_video", v(track.hasVideo())));
-          fields.add(f("has_audio", v(track.hasAudio())));
-          fields.add(f("is_master_playlist", v(track.isMaster())));
-          fields.add(f("is_live", v(track.isLive())));
+          trackJson.addProperty("has_video", track.hasVideo());
+          trackJson.addProperty("has_audio", track.hasAudio());
+          trackJson.addProperty("is_master_playlist", track.isMaster());
+          trackJson.addProperty("is_live", track.isLive());
         }
+
         if (track.getStreams() != null) {
-          List<Field> streams = new ArrayList<>();
+          JsonObject streamsJson = new JsonObject();
           for (Stream stream : track.getStreams()) {
-            streams.add(f(stream.getIdentifier(), getJsonStream(stream)));
+            streamsJson.add(stream.getIdentifier(), getJsonStream(stream));
           }
-          fields.add(f("streams", obj(streams)));
+          trackJson.add("streams", streamsJson);
         }
-        if (track.getTags() != null) {
-          List<JValue> tags = new ArrayList<>();
-          for (String tag : track.getTags()) {
-            tags.add(v(tag));
-          }
-          fields.add(f("tags", arr(tags)));
+
+        trackJson.add("tags", arrayToJsonArray(track.getTags()));
+
+        if (track.getURI() != null) {
+          trackJson.addProperty("uri", track.getURI().toString());
         }
-        if (track.getURI() != null)
-          fields.add(f("uri", v(track.getURI().toString())));
-        tracksJson.add(obj(fields));
+
+        tracksJson.add(trackJson);
       }
-      return ApiResponses.Json.ok(acceptHeader, arr(tracksJson));
+
+      return ApiResponseBuilder.Json.ok(acceptHeader, tracksJson);
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
   @DELETE
   @Path("{eventId}")
-  @RestQuery(name = "deleteevent", description = "Deletes an event.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, responses = {
+  @RestQuery(
+      name = "deleteevent",
+      description = "Deletes an event.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      responses = {
           @RestResponse(description = "The event has been deleted.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-          @RestResponse(description = "The retraction of publications has started.", responseCode = HttpServletResponse.SC_ACCEPTED),
-          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+          @RestResponse(description = "The retraction of publications has started.",
+              responseCode = HttpServletResponse.SC_ACCEPTED),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response deleteEvent(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id)
           throws SearchIndexException, UnauthorizedException {
-    final Opt<Event> event = indexService.getEvent(id, elasticsearchIndex);
-    if (event.isNone()) {
+    final Optional<Event> event = indexService.getEvent(id, elasticsearchIndex);
+    if (event.isEmpty()) {
       return RestUtil.R.notFound(id);
     }
     final IndexService.EventRemovalResult result;
@@ -520,38 +623,60 @@ public class EventsEndpoint implements ManagedService {
 
   @POST
   @Path("{eventId}")
-  @RestQuery(name = "updateeventmetadata", description = "Updates an event.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "acl", isRequired = false, description = "A collection of roles with their possible action", type = Type.STRING),
-                  @RestParameter(name = "metadata", isRequired = false, description = "Event metadata as Form param", type = Type.STRING),
-                  @RestParameter(name = "scheduling", isRequired = false, description = "Scheduling information as Form param", type = Type.STRING),
-                  @RestParameter(name = "presenter", isRequired = false, description = "Presenter movie track", type = Type.FILE),
-                  @RestParameter(name = "presentation", isRequired = false, description = "Presentation movie track", type = Type.FILE),
-                  @RestParameter(name = "audio", isRequired = false, description = "Audio track", type = Type.FILE),
-                  @RestParameter(name = "processing", isRequired = false, description = "Processing instructions task configuration", type = Type.STRING), }, responses = {
-                          @RestResponse(description = "The event has been updated.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-                          @RestResponse(description = "The event could not be updated due to a scheduling conflict.", responseCode = HttpServletResponse.SC_CONFLICT),
-                          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "updateeventmetadata",
+      description = "Updates an event.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "acl", isRequired = false, description = "A collection of roles with their possible "
+              + "action", type = Type.STRING),
+          @RestParameter(name = "metadata", isRequired = false, description = "Event metadata as Form param",
+              type = Type.STRING),
+          @RestParameter(name = "scheduling", isRequired = false, description = "Scheduling information as Form param",
+              type = Type.STRING),
+          @RestParameter(name = "presenter", isRequired = false, description = "Presenter movie track",
+              type = Type.FILE),
+          @RestParameter(name = "presentation", isRequired = false, description = "Presentation movie track",
+              type = Type.FILE),
+          @RestParameter(name = "audio", isRequired = false, description = "Audio track", type = Type.FILE),
+          @RestParameter(name = "processing", isRequired = false, description = "Processing instructions task "
+              + "configuration", type = Type.STRING),
+      },
+      responses = {
+          @RestResponse(description = "The event has been updated.", responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The event could not be updated due to a scheduling conflict.",
+              responseCode = HttpServletResponse.SC_CONFLICT),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response updateEventMetadata(@HeaderParam("Accept") String acceptHeader, @Context HttpServletRequest request,
           @PathParam("eventId") String eventId) {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
     try {
-      String startDatePattern = configuredMetadataFields.containsKey("startDate") ? configuredMetadataFields.get("startDate").getPattern() : null;
-      String startTimePattern = configuredMetadataFields.containsKey("startTime") ? configuredMetadataFields.get("startTime").getPattern() : null;
-      for (final Event event : indexService.getEvent(eventId, elasticsearchIndex)) {
+      String startDatePattern = configuredMetadataFields.containsKey("startDate")
+          ? configuredMetadataFields.get("startDate").getPattern() : null;
+      String startTimePattern = configuredMetadataFields.containsKey("startTime")
+          ? configuredMetadataFields.get("startTime").getPattern() : null;
+      Optional<Event> eventOpt = indexService.getEvent(eventId, elasticsearchIndex);
+      if (eventOpt.isPresent()) {
+        Event event = eventOpt.get();
         EventHttpServletRequest eventHttpServletRequest = EventHttpServletRequest.updateFromHttpServletRequest(event,
                 request, getEventCatalogUIAdapters(), startDatePattern, startTimePattern);
 
         // FIXME: All of these update operations should be a part of a transaction to avoid a partially updated event.
-        if (eventHttpServletRequest.getMetadataList().isSome()) {
-          indexService.updateEventMetadata(eventId, eventHttpServletRequest.getMetadataList().get(), elasticsearchIndex);
+        if (eventHttpServletRequest.getMetadataList().isPresent()) {
+          indexService.updateEventMetadata(eventId, eventHttpServletRequest.getMetadataList().get(),
+              elasticsearchIndex);
         }
 
-        if (eventHttpServletRequest.getAcl().isSome()) {
+        if (eventHttpServletRequest.getAcl().isPresent()) {
           indexService.updateEventAcl(eventId, eventHttpServletRequest.getAcl().get(), elasticsearchIndex);
         }
 
-        if (eventHttpServletRequest.getProcessing().isSome()) {
+        if (eventHttpServletRequest.getProcessing().isPresent()) {
 
           if (!event.isScheduledEvent() || event.hasRecordingStarted()) {
             return RestUtil.R.badRequest("Processing can't be updated for events that are already uploaded.");
@@ -559,34 +684,39 @@ public class EventsEndpoint implements ManagedService {
           JSONObject processing = eventHttpServletRequest.getProcessing().get();
 
           String workflowId = (String) processing.get("workflow");
-          if (workflowId == null)
+          if (workflowId == null) {
             throw new IllegalArgumentException("No workflow template in metadata");
+          }
 
           Map<String, String> configuration = new HashMap<>();
           if (eventHttpServletRequest.getProcessing().get().get("configuration") != null) {
-            configuration = new HashMap<>((JSONObject) eventHttpServletRequest.getProcessing().get().get("configuration"));
+            configuration = new HashMap<>(
+                (JSONObject) eventHttpServletRequest
+                    .getProcessing().get()
+                    .get("configuration"));
           }
 
-          Opt<Map<String, String>> caMetadataOpt = Opt.none();
-          Opt<Map<String, String>> workflowConfigOpt = Opt.none();
+          Optional<Map<String, String>> caMetadataOpt = Optional.empty();
+          Optional<Map<String, String>> workflowConfigOpt = Optional.empty();
 
           Map<String, String> caMetadata = new HashMap<>(getSchedulerService().getCaptureAgentConfiguration(eventId));
           if (!workflowId.equals(caMetadata.get(CaptureParameters.INGEST_WORKFLOW_DEFINITION))) {
             caMetadata.put(CaptureParameters.INGEST_WORKFLOW_DEFINITION, workflowId);
-            caMetadataOpt = Opt.some(caMetadata);
+            caMetadataOpt = Optional.of(caMetadata);
           }
 
           Map<String, String> oldWorkflowConfig = new HashMap<>(getSchedulerService().getWorkflowConfig(eventId));
-          if (!oldWorkflowConfig.equals(configuration))
-            workflowConfigOpt = Opt.some(configuration);
+          if (!oldWorkflowConfig.equals(configuration)) {
+            workflowConfigOpt = Optional.of(configuration);
+          }
 
-          if (!caMetadataOpt.isNone() || !workflowConfigOpt.isNone()) {
-            getSchedulerService().updateEvent(eventId, Opt.none(), Opt.none(), Opt.none(),
-                    Opt.none(), Opt.none(), workflowConfigOpt, caMetadataOpt);
+          if (!caMetadataOpt.isEmpty() || !workflowConfigOpt.isEmpty()) {
+            getSchedulerService().updateEvent(eventId, Optional.empty(), Optional.empty(), Optional.empty(),
+                    Optional.empty(), Optional.empty(), workflowConfigOpt, caMetadataOpt);
           }
         }
 
-        if (eventHttpServletRequest.getScheduling().isSome() && !requestedVersion.isSmallerThan(VERSION_1_1_0)) {
+        if (eventHttpServletRequest.getScheduling().isPresent() && !requestedVersion.isSmallerThan(VERSION_1_1_0)) {
           // Scheduling is only available for version 1.1.0 and above
           Optional<Response> clientError = updateSchedulingInformation(
               eventHttpServletRequest.getScheduling().get(), eventId, requestedVersion, false);
@@ -597,9 +727,9 @@ public class EventsEndpoint implements ManagedService {
 
         return Response.noContent().build();
       }
-      return ApiResponses.notFound("Cannot find an event with id '%s'.", eventId);
+      return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", eventId);
     } catch (NotFoundException e) {
-      return ApiResponses.notFound("Cannot find an event with id '%s'.", eventId);
+      return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", eventId);
     } catch (UnauthorizedException e) {
       return Response.status(Status.UNAUTHORIZED).build();
     } catch (IllegalArgumentException e) {
@@ -619,36 +749,58 @@ public class EventsEndpoint implements ManagedService {
   @POST
   @Path("/")
   @Consumes(MediaType.MULTIPART_FORM_DATA)
-  @RestQuery(name = "createevent", description = "Creates an event by sending metadata, access control list, processing instructions and files in a multipart request.", returnDescription = "", restParameters = {
-          @RestParameter(name = "acl", isRequired = false, description = "A collection of roles with their possible action", type = STRING),
-          @RestParameter(name = "metadata", description = "Event metadata as Form param", isRequired = false, type = STRING),
-          @RestParameter(name = "scheduling", description = "Scheduling information as Form param", isRequired = false, type = STRING),
-          @RestParameter(name = "presenter", description = "Presenter movie track", isRequired = false, type = Type.FILE),
-          @RestParameter(name = "presentation", description = "Presentation movie track", isRequired = false, type = Type.FILE),
+  @RestQuery(
+      name = "createevent",
+      description = "Creates an event by sending metadata, access control list, processing instructions and files in a "
+          + "multipart request.",
+      returnDescription = "",
+      restParameters = {
+          @RestParameter(name = "acl", isRequired = false, description = "A collection of roles with their possible "
+              + "action", type = STRING),
+          @RestParameter(name = "metadata", description = "Event metadata as Form param", isRequired = false,
+              type = STRING),
+          @RestParameter(name = "scheduling", description = "Scheduling information as Form param", isRequired = false,
+              type = STRING),
+          @RestParameter(name = "presenter", description = "Presenter movie track", isRequired = false,
+              type = Type.FILE),
+          @RestParameter(name = "presentation", description = "Presentation movie track", isRequired = false,
+              type = Type.FILE),
           @RestParameter(name = "audio", description = "Audio track", isRequired = false, type = Type.FILE),
-          @RestParameter(name = "processing", description = "Processing instructions task configuration", isRequired = false, type = STRING) }, responses = {
-                  @RestResponse(description = "A new event is created and its identifier is returned in the Location header.", responseCode = HttpServletResponse.SC_CREATED),
-                  @RestResponse(description = "The event could not be created due to a scheduling conflict.", responseCode = HttpServletResponse.SC_CONFLICT),
-                  @RestResponse(description = "The request is invalid or inconsistent..", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
+          @RestParameter(name = "processing", description = "Processing instructions task configuration",
+              isRequired = false, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "A new event is created and its identifier is returned in the Location header.",
+              responseCode = HttpServletResponse.SC_CREATED),
+          @RestResponse(description = "The event could not be created due to a scheduling conflict.",
+              responseCode = HttpServletResponse.SC_CONFLICT),
+          @RestResponse(description = "The request is invalid or inconsistent..",
+              responseCode = HttpServletResponse.SC_BAD_REQUEST)
+      })
   public Response createNewEvent(@HeaderParam("Accept") String acceptHeader, @Context HttpServletRequest request) {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
     try {
-      String startDatePattern = configuredMetadataFields.containsKey("startDate") ? configuredMetadataFields.get("startDate").getPattern() : null;
-      String startTimePattern = configuredMetadataFields.containsKey("startTime") ? configuredMetadataFields.get("startTime").getPattern() : null;
+      String startDatePattern = configuredMetadataFields.containsKey("startDate")
+          ? configuredMetadataFields.get("startDate").getPattern() : null;
+      String startTimePattern = configuredMetadataFields.containsKey("startTime")
+          ? configuredMetadataFields.get("startTime").getPattern() : null;
       EventHttpServletRequest eventHttpServletRequest = EventHttpServletRequest.createFromHttpServletRequest(request,
           ingestService, getEventCatalogUIAdapters(), startDatePattern, startTimePattern);
 
       // If scheduling information is provided, the source has to be "SCHEDULE_SINGLE" or "SCHEDULE_MULTIPLE".
-      if (eventHttpServletRequest.getScheduling().isSome() && !requestedVersion.isSmallerThan(VERSION_1_1_0)) {
+      if (eventHttpServletRequest.getScheduling().isPresent() && !requestedVersion.isSmallerThan(VERSION_1_1_0)) {
         // Scheduling is only available for version 1.1.0 and above
-        return scheduleNewEvent(eventHttpServletRequest, eventHttpServletRequest.getScheduling().get(), requestedVersion);
+        return scheduleNewEvent(eventHttpServletRequest, eventHttpServletRequest.getScheduling().get(),
+            requestedVersion);
       }
 
       JSONObject source = new JSONObject();
       source.put("type", "UPLOAD");
       eventHttpServletRequest.setSource(source);
       String eventId = indexService.createEvent(eventHttpServletRequest);
-      return ApiResponses.Json.created(requestedVersion, URI.create(getEventUrl(eventId)), obj(f("identifier", v(eventId))));
+      JsonObject json = new JsonObject();
+      json.addProperty("identifier", eventId);
+      return ApiResponseBuilder.Json.created(requestedVersion, URI.create(getEventUrl(eventId)), json);
     } catch (IllegalArgumentException | DateTimeParseException e) {
       logger.debug("Unable to create event", e);
       return RestUtil.R.badRequest(e.getMessage());
@@ -667,9 +819,9 @@ public class EventsEndpoint implements ManagedService {
     }
   }
 
-  private Response scheduleNewEvent(EventHttpServletRequest request, JSONObject scheduling, ApiVersion requestedVersion) throws
-      MediaPackageException, IOException, IngestException, SchedulerException,
-      NotFoundException, UnauthorizedException, SearchIndexException, java.text.ParseException {
+  private Response scheduleNewEvent(EventHttpServletRequest request, JSONObject scheduling, ApiVersion requestedVersion)
+          throws MediaPackageException, IOException, IngestException, SchedulerException,
+          NotFoundException, UnauthorizedException, SearchIndexException, java.text.ParseException {
 
     final SchedulingInfo schedulingInfo = SchedulingInfo.of(scheduling);
     final JSONObject source = schedulingInfo.toSource();
@@ -684,57 +836,95 @@ public class EventsEndpoint implements ManagedService {
 
       if (eventId.contains(",")) {
         // This the case when SCHEDULE_MULTIPLE is performed.
-        return ApiResponses.Json.ok(requestedVersion, arr(
-            Arrays.stream(eventId.split(","))
-                .map(s -> obj(f("identifier", v(s))))
-                .collect(Collectors.toList()))
-        );
+        JsonArray eventArray = new JsonArray();
+        for (String id : eventId.split(",")) {
+          JsonObject eventObj = new JsonObject();
+          eventObj.addProperty("identifier", id);
+          eventArray.add(eventObj);
+        }
+        return ApiResponseBuilder.Json.ok(requestedVersion, eventArray);
       }
 
-      return ApiResponses.Json.created(requestedVersion, URI.create(getEventUrl(eventId)), obj(f("identifier", v(eventId))));
+      JsonObject eventJson = new JsonObject();
+      eventJson.addProperty("identifier", eventId);
+      return ApiResponseBuilder.Json.created(requestedVersion, URI.create(getEventUrl(eventId)), eventJson);
     } catch (SchedulerConflictException e) {
-      final List<MediaPackage> conflictingEvents =
+      List<MediaPackage> conflictingEvents =
           getConflictingEvents(schedulingInfo, agentStateService, schedulerService);
       logger.debug("Client tried to schedule conflicting event(s).");
-      return ApiResponses.Json.conflict(requestedVersion,
-          arr(convertConflictingEvents(Optional.empty(), conflictingEvents, indexService, elasticsearchIndex)));
+      JsonArray conflictArray = new JsonArray();
+      for (JsonObject conflict : convertConflictingEvents(
+          Optional.empty(), conflictingEvents, indexService, elasticsearchIndex)) {
+        conflictArray.add(conflict);
+      }
+      return ApiResponseBuilder.Json.conflict(requestedVersion, conflictArray);
     }
   }
 
   @GET
   @Path("/")
-  @RestQuery(name = "getevents", description = "Returns a list of events. By setting the optional sign parameter to true, the method will pre-sign distribution urls if signing is turned on in Opencast. Remember to consider the maximum validity of signed URLs when caching this response.", returnDescription = "", restParameters = {
-          @RestParameter(name = "sign", isRequired = false, description = "Whether public distribution urls should be signed.", type = Type.BOOLEAN),
-          @RestParameter(name = "withacl", isRequired = false, description = "Whether the acl metadata should be included in the response.", type = Type.BOOLEAN),
-          @RestParameter(name = "withmetadata", isRequired = false, description = "Whether the metadata catalogs should be included in the response.", type = Type.BOOLEAN),
-          @RestParameter(name = "withscheduling", isRequired = false, description = "Whether the scheduling information should be included in the response.", type = Type.BOOLEAN),
-          @RestParameter(name = "withpublications", isRequired = false, description = "Whether the publication ids and urls should be included in the response.", type = Type.BOOLEAN),
-          @RestParameter(name = "onlyWithWriteAccess", isRequired = false, description = "Whether only to get the events to which we have write access.", type = Type.BOOLEAN),
-          @RestParameter(name = "filter", isRequired = false, description = "Usage [Filter Name]:[Value to Filter With]. Multiple filters can be used by combining them with commas \",\". Available Filters: presenters, contributors, location, textFilter, series, subject. If API ver > 1.1.0 also: identifier, title, description, series_name, language, created, license, rightsholder, is_part_of, source, status, agent_id, start, technical_start.", type = STRING),
-          @RestParameter(name = "sort", description = "Sort the results based upon a list of comma seperated sorting criteria. In the comma seperated list each type of sorting is specified as a pair such as: <Sort Name>:ASC or <Sort Name>:DESC. Adding the suffix ASC or DESC sets the order as ascending or descending order and is mandatory.", isRequired = false, type = STRING),
-          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.", isRequired = false, type = RestParameter.Type.INTEGER),
-          @RestParameter(name = "offset", description = "The index of the first result to return.", isRequired = false, type = RestParameter.Type.INTEGER) }, responses = {
-                  @RestResponse(description = "A (potentially empty) list of events is returned.", responseCode = HttpServletResponse.SC_OK) })
+  @RestQuery(
+      name = "getevents",
+      description = "Returns a list of events. By setting the optional sign parameter to true, the method will "
+          + "pre-sign distribution urls if signing is turned on in Opencast. Remember to consider the maximum validity "
+          + "of signed URLs when caching this response.",
+      returnDescription = "",
+      restParameters = {
+          @RestParameter(name = "sign", isRequired = false, description = "Whether public distribution urls should be "
+              + "signed.", type = Type.BOOLEAN),
+          @RestParameter(name = "withacl", isRequired = false, description = "Whether the acl metadata should be "
+              + "included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "withmetadata", isRequired = false, description = "Whether the metadata catalogs "
+              + "should be included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "withscheduling", isRequired = false, description = "Whether the scheduling "
+              + "information should be included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "withpublications", isRequired = false, description = "Whether the publication ids and "
+              + "urls should be included in the response.", type = Type.BOOLEAN),
+          @RestParameter(name = "includeInternalPublication", description = "Whether internal publications should be "
+              + "included.", isRequired = false, type = Type.BOOLEAN),
+          @RestParameter(name = "onlyWithWriteAccess", isRequired = false, description = "Whether only to get the "
+              + "events to which we have write access.", type = Type.BOOLEAN),
+          @RestParameter(name = "filter", isRequired = false, description = "Usage [Filter Name]:[Value to Filter With]"
+              + ". Multiple filters can be used by combining them with commas \",\". Available Filters: presenters, "
+              + "contributors, location, textFilter, series, subject. If API ver > 1.1.0 also: identifier, title, "
+              + "description, series_name, language, created, license, rightsholder, is_part_of, source, status, "
+              + "agent_id, start, technical_start.", type = STRING),
+          @RestParameter(name = "sort", description = "Sort the results based upon a list of comma seperated sorting "
+              + "criteria. In the comma seperated list each type of sorting is specified as a pair such as: "
+              + "<Sort Name>:ASC or <Sort Name>:DESC. Adding the suffix ASC or DESC sets the order as ascending or "
+              + "descending order and is mandatory.", isRequired = false, type = STRING),
+          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.",
+              isRequired = false, type = RestParameter.Type.INTEGER),
+          @RestParameter(name = "offset", description = "The index of the first result to return.", isRequired = false,
+              type = RestParameter.Type.INTEGER)
+      },
+      responses = {
+          @RestResponse(description = "A (potentially empty) list of events is returned.",
+              responseCode = HttpServletResponse.SC_OK)
+      })
   public Response getEvents(@HeaderParam("Accept") String acceptHeader, @QueryParam("id") String id,
           @QueryParam("commentReason") String reasonFilter, @QueryParam("commentResolution") String resolutionFilter,
-          @QueryParam("filter") List<String> filter, @QueryParam("sort") String sort, @QueryParam("offset") Integer offset,
-          @QueryParam("limit") Integer limit, @QueryParam("sign") boolean sign, @QueryParam("withacl") Boolean withAcl,
-          @QueryParam("withmetadata") Boolean withMetadata, @QueryParam("withscheduling") Boolean withScheduling,
-          @QueryParam("onlyWithWriteAccess") Boolean onlyWithWriteAccess, @QueryParam("withpublications") Boolean withPublications) {
+          @QueryParam("filter") List<String> filter, @QueryParam("sort") String sort,
+          @QueryParam("offset") Integer offset, @QueryParam("limit") Integer limit, @QueryParam("sign") boolean sign,
+          @QueryParam("withacl") Boolean withAcl, @QueryParam("withmetadata") Boolean withMetadata,
+          @QueryParam("withscheduling") Boolean withScheduling,
+          @QueryParam("onlyWithWriteAccess") Boolean onlyWithWriteAccess,
+          @QueryParam("withpublications") Boolean withPublications,
+          @QueryParam("includeInternalPublication") Boolean includeInternalPublication) {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
     if (requestedVersion.isSmallerThan(VERSION_1_1_0)) {
       // withscheduling was added for version 1.1.0 and should be ignored for smaller versions.
       withScheduling = false;
     }
 
-    Option<Integer> optLimit = Option.option(limit);
-    Option<Integer> optOffset = Option.option(offset);
-    Option<String> optSort = Option.option(trimToNull(sort));
+    Optional<Integer> optLimit = Optional.ofNullable(limit);
+    Optional<Integer> optOffset = Optional.ofNullable(offset);
+    Optional<String> optSort = Optional.ofNullable(trimToNull(sort));
     EventSearchQuery query = new EventSearchQuery(getSecurityService().getOrganization().getId(),
             getSecurityService().getUser());
     // If the limit is set to 0, this is not taken into account
-    if (optLimit.isSome() && limit == 0) {
-      optLimit = Option.none();
+    if (optLimit.isPresent() && limit == 0) {
+      optLimit = Optional.empty();
     }
 
     //List of all events from the filters
@@ -751,7 +941,7 @@ public class EventsEndpoint implements ManagedService {
         for (String f : filterPart.split(",")) {
           String[] filterTuple = f.split(":");
           if (filterTuple.length < 2) {
-            logger.info("No value for filter {} in filters list: {}", filterTuple[0], filter);
+            logger.debug("No value for filter {} in filters list: {}", filterTuple[0], filter);
             continue;
           }
 
@@ -772,7 +962,7 @@ public class EventsEndpoint implements ManagedService {
           } else if ("location".equals(name)) {
             query.withLocation(value);
           } else if ("textFilter".equals(name)) {
-            query.withText("*" + elasticsearchIndex.escapeQuery(value) + "*");
+            query.withText(value);
           } else if ("series".equals(name)) {
             query.withSeriesId(value);
           } else if ("subject".equals(name)) {
@@ -831,8 +1021,8 @@ public class EventsEndpoint implements ManagedService {
           }
         }
 
-        if (optSort.isSome()) {
-          Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
+        if (optSort.isPresent()) {
+          ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
           for (SortCriterion criterion : sortCriteria) {
 
             switch (criterion.getFieldName()) {
@@ -865,12 +1055,14 @@ public class EventsEndpoint implements ManagedService {
               case EventIndexSchema.LOCATION:
                 query.sortByLocation(criterion.getOrder());
                 break;
-              // For compatibility, we mimic to support the old review_status and scheduling_status sort criteria (MH-13407)
+              // For compatibility, we mimic to support the old review_status and scheduling_status sort criteria
+              // (MH-13407)
               case "review_status":
               case "scheduling_status":
                 break;
               default:
-                return RestUtil.R.badRequest(String.format("Unknown sort criterion in request: %s", criterion.getFieldName()));
+                return RestUtil.R.badRequest(String.format("Unknown sort criterion in request: %s",
+                    criterion.getFieldName()));
             }
           }
         }
@@ -885,10 +1077,12 @@ public class EventsEndpoint implements ManagedService {
           }
         }
 
-        if (optLimit.isSome())
+        if (optLimit.isPresent()) {
           query.withLimit(optLimit.get());
-        if (optOffset.isSome())
+        }
+        if (optOffset.isPresent()) {
           query.withOffset(offset);
+        }
         // TODO: Add other filters to the query
 
         SearchResult<Event> results = null;
@@ -910,8 +1104,8 @@ public class EventsEndpoint implements ManagedService {
         allEvents.addAll(events);
       }
     } else {
-      if (optSort.isSome()) {
-        Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
+      if (optSort.isPresent()) {
+        ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
         for (SortCriterion criterion : sortCriteria) {
 
           switch (criterion.getFieldName()) {
@@ -944,12 +1138,14 @@ public class EventsEndpoint implements ManagedService {
             case EventIndexSchema.LOCATION:
               query.sortByLocation(criterion.getOrder());
               break;
-            // For compatibility, we mimic to support the old review_status and scheduling_status sort criteria (MH-13407)
+            // For compatibility, we mimic to support the old review_status and scheduling_status sort criteria
+            // (MH-13407)
             case "review_status":
             case "scheduling_status":
               break;
             default:
-              return RestUtil.R.badRequest(String.format("Unknown sort criterion in request: %s", criterion.getFieldName()));
+              return RestUtil.R.badRequest(String.format("Unknown sort criterion in request: %s",
+                  criterion.getFieldName()));
           }
         }
       }
@@ -964,10 +1160,12 @@ public class EventsEndpoint implements ManagedService {
         }
       }
 
-      if (optLimit.isSome())
+      if (optLimit.isPresent()) {
         query.withLimit(optLimit.get());
-      if (optOffset.isSome())
+      }
+      if (optOffset.isPresent()) {
         query.withOffset(offset);
+      }
 
       if (onlyWithWriteAccess != null && onlyWithWriteAccess) {
         query.withoutActions();
@@ -995,7 +1193,8 @@ public class EventsEndpoint implements ManagedService {
     }
     try {
       return getJsonEvents(
-          acceptHeader, allEvents, withAcl, withMetadata, withScheduling, withPublications, sign, requestedVersion);
+          acceptHeader, allEvents, withAcl, withMetadata, withScheduling, withPublications, includeInternalPublication,
+          sign, requestedVersion);
     } catch (Exception e) {
       logger.error("Unable to get events", e);
       throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
@@ -1025,14 +1224,17 @@ public class EventsEndpoint implements ManagedService {
    * @throws UnauthorizedException
    */
   protected Response getJsonEvents(String acceptHeader, List<IndexObject> events, Boolean withAcl, Boolean withMetadata,
-          Boolean withScheduling, Boolean withPublications, Boolean withSignedUrls, ApiVersion requestedVersion)
-      throws IndexServiceException, UnauthorizedException, SchedulerException {
-    List<JValue> eventsList = new ArrayList<>();
+      Boolean withScheduling, Boolean withPublications, Boolean includeInternalPublication, Boolean withSignedUrls,
+      ApiVersion requestedVersion)
+          throws IndexServiceException, UnauthorizedException, SchedulerException {
+    JsonArray eventsArray = new JsonArray();
     for (IndexObject item : events) {
-      eventsList.add(eventToJSON((Event) item, withAcl, withMetadata, withScheduling, withPublications, withSignedUrls,
-              requestedVersion));
+      JsonObject jsonEvent = eventToJSON((Event) item, withAcl, withMetadata, withScheduling, withPublications,
+          includeInternalPublication, withSignedUrls, requestedVersion);
+      eventsArray.add(jsonEvent);
     }
-    return ApiResponses.Json.ok(requestedVersion, arr(eventsList));
+
+    return ApiResponseBuilder.Json.ok(requestedVersion, eventsArray);
   }
 
   /**
@@ -1056,114 +1258,156 @@ public class EventsEndpoint implements ManagedService {
    * @throws SchedulerException
    * @throws UnauthorizedException
    */
-  protected JValue eventToJSON(Event event, Boolean withAcl, Boolean withMetadata, Boolean withScheduling,
-          Boolean withPublications, Boolean withSignedUrls, ApiVersion requestedVersion) throws IndexServiceException, SchedulerException, UnauthorizedException {
-    List<Field> fields = new ArrayList<>();
-    if (event.getArchiveVersion() != null)
-      fields.add(f("archive_version", v(event.getArchiveVersion())));
-    fields.add(f("created", v(event.getCreated(), Jsons.BLANK)));
-    fields.add(f("creator", v(event.getCreator(), Jsons.BLANK)));
-    fields.add(f("contributor", arr($(event.getContributors()).map(Functions.stringToJValue))));
-    fields.add(f("description", v(event.getDescription(), Jsons.BLANK)));
-    fields.add(f("has_previews", v(event.hasPreview())));
-    fields.add(f("identifier", v(event.getIdentifier(), BLANK)));
-    fields.add(f("location", v(event.getLocation(), BLANK)));
-    fields.add(f("presenter", arr($(event.getPresenters()).map(Functions.stringToJValue))));
-    if (!requestedVersion.isSmallerThan(VERSION_1_1_0)) {
-      fields.add(f("language", v(event.getLanguage(), BLANK)));
-      fields.add(f("rightsholder", v(event.getRights(), BLANK)));
-      fields.add(f("license", v(event.getLicense(), BLANK)));
-      fields.add(f("is_part_of", v(event.getSeriesId(), BLANK)));
-      fields.add(f("series", v(event.getSeriesName(),BLANK)));
-      fields.add(f("source", v(event.getSource(), BLANK)));
-      fields.add(f("status", v(event.getEventStatus(), BLANK)));
+  protected JsonObject eventToJSON(Event event, Boolean withAcl, Boolean withMetadata, Boolean withScheduling,
+      Boolean withPublications, Boolean includeInternalPublication, Boolean withSignedUrls,
+      ApiVersion requestedVersion) throws IndexServiceException, SchedulerException, UnauthorizedException {
+    JsonObject json = new JsonObject();
+
+    if (event.getArchiveVersion() != null) {
+      json.addProperty("archive_version", event.getArchiveVersion());
     }
-    List<JValue> publicationIds = new ArrayList<>();
+    json.addProperty("created", safeString(event.getCreated()));
+    json.addProperty("creator", safeString(event.getCreator()));
+    json.add("contributor", collectionToJsonArray(event.getContributors()));
+    json.addProperty("description", safeString(event.getDescription()));
+    json.addProperty("has_previews", event.hasPreview());
+    json.addProperty("identifier", safeString(event.getIdentifier()));
+    json.addProperty("location", safeString(event.getLocation()));
+    json.add("presenter", collectionToJsonArray(event.getPresenters()));
+
+    if (!requestedVersion.isSmallerThan(VERSION_1_1_0)) {
+      json.addProperty("language", safeString(event.getLanguage()));
+      json.addProperty("rightsholder", safeString(event.getRights()));
+      json.addProperty("license", safeString(event.getLicense()));
+      json.addProperty("is_part_of", safeString(event.getSeriesId()));
+      json.addProperty("series", safeString(event.getSeriesName()));
+      json.addProperty("source", safeString(event.getSource()));
+      json.addProperty("status", safeString(event.getEventStatus()));
+    }
+
+    JsonArray publicationIds = new JsonArray();
     if (event.getPublications() != null) {
       for (Publication publication : event.getPublications()) {
-        publicationIds.add(v(publication.getChannel()));
+        publicationIds.add(new JsonPrimitive(publication.getChannel()));
       }
     }
-    fields.add(f("publication_status", arr(publicationIds)));
-    fields.add(f("processing_state", v(event.getWorkflowState(), BLANK)));
+    json.add("publication_status", publicationIds);
+    json.addProperty("processing_state", safeString(event.getWorkflowState()));
 
     if (requestedVersion.isSmallerThan(VERSION_1_4_0)) {
-      fields.add(f("start", v(event.getTechnicalStartTime(), BLANK)));
+      json.addProperty("start", safeString(event.getTechnicalStartTime()));
       if (event.getTechnicalEndTime() != null) {
         long duration = new DateTime(event.getTechnicalEndTime()).getMillis()
-                - new DateTime(event.getTechnicalStartTime()).getMillis();
-        fields.add(f("duration", v(duration)));
+            - new DateTime(event.getTechnicalStartTime()).getMillis();
+        json.addProperty("duration", duration);
       }
     } else {
-      fields.add(f("start", v(event.getRecordingStartDate(), BLANK)));
-      fields.add(f("duration", v(event.getDuration(), NULL)));
+      json.addProperty("start", safeString(event.getRecordingStartDate()));
+      if (event.getDuration() != null) {
+        json.addProperty("duration", event.getDuration());
+      } else {
+        json.add("duration", JsonNull.INSTANCE);
+      }
     }
 
     if (StringUtils.trimToNull(event.getSubject()) != null) {
-      fields.add(f("subjects", arr(splitSubjectIntoArray(event.getSubject()))));
+      json.add("subjects", splitSubjectIntoArray(event.getSubject()));
     } else {
-      fields.add(f("subjects", arr()));
+      json.add("subjects", new JsonArray());
     }
-    fields.add(f("title", v(event.getTitle(), BLANK)));
+
+    json.addProperty("title", safeString(event.getTitle()));
+
     if (withAcl != null && withAcl) {
       AccessControlList acl = getAclFromEvent(event);
-      fields.add(f("acl", arr(AclUtils.serializeAclToJson(acl))));
+      json.add("acl", AclUtils.serializeAclToJson(acl));
     }
+
     if (withMetadata != null && withMetadata) {
       try {
-        Opt<MetadataList> metadata = getEventMetadata(event);
-        if (metadata.isSome()) {
-          fields.add(f("metadata", MetadataJson.listToJson(metadata.get(), true)));
+        Optional<MetadataList> metadata = getEventMetadata(event);
+        if (metadata.isPresent()) {
+          json.add("metadata", MetadataJson.listToJson(metadata.get(), true));
         }
       } catch (Exception e) {
         logger.error("Unable to get metadata for event '{}'", event.getIdentifier(), e);
         throw new IndexServiceException("Unable to add metadata to event", e);
       }
     }
+
     if (withScheduling != null && withScheduling) {
-      fields.add(f("scheduling", SchedulingInfo.of(event.getIdentifier(), schedulerService).toJson()));
+      json.add("scheduling", SchedulingInfo.of(event.getIdentifier(), schedulerService).toJson());
     }
+
     if (withPublications != null && withPublications) {
-      List<JValue> publications = getPublications(event, withSignedUrls, requestedVersion);
-      fields.add(f("publications", arr(publications)));
+      List<JsonObject> publications = getPublications(event, withSignedUrls, includeInternalPublication,
+          requestedVersion);
+      JsonArray pubDetails = new JsonArray();
+      for (JsonObject pub : publications) {
+        pubDetails.add(pub);
+      }
+      json.add("publications", pubDetails);
     }
-    return obj(fields);
+
+    return json;
   }
 
-  private List<JValue> splitSubjectIntoArray(final String subject) {
-    return com.entwinemedia.fn.Stream.$(subject.split(",")).map(new Fn<String, JValue>() {
-      @Override
-      public JValue apply(String a) {
-        return v(a.trim());
+  private JsonArray splitSubjectIntoArray(final String subject) {
+    JsonArray array = new JsonArray();
+    if (subject != null && !subject.trim().isEmpty()) {
+      for (String part : subject.split(",")) {
+        array.add(new JsonPrimitive(part.trim()));
       }
-    }).toList();
+    }
+    return array;
   }
 
   @GET
   @Path("{eventId}/acl")
-  @RestQuery(name = "geteventacl", description = "Returns an event's access policy.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, responses = {
-                  @RestResponse(description = "The access control list for the specified event is returned.", responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "geteventacl",
+      description = "Returns an event's access policy.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The access control list for the specified event is returned.",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response getEventAcl(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id)
           throws Exception {
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
-      AccessControlList acl = getAclFromEvent(event);
-      return ApiResponses.Json.ok(acceptHeader, arr(AclUtils.serializeAclToJson(acl)));
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      AccessControlList acl = getAclFromEvent(eventOpt.get());
+      return ApiResponseBuilder.Json.ok(acceptHeader, AclUtils.serializeAclToJson(acl));
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
   @PUT
   @Path("{eventId}/acl")
-  @RestQuery(name = "updateeventacl", description = "Update an event's access policy.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "acl", isRequired = true, description = "Access policy", type = STRING) }, responses = {
-                          @RestResponse(description = "The access control list for the specified event is updated.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-                          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "updateeventacl",
+      description = "Update an event's access policy.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "acl", isRequired = true, description = "Access policy", type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The access control list for the specified event is updated.",
+              responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response updateEventAcl(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
           @FormParam("acl") String acl) throws Exception {
-    if (indexService.getEvent(id, elasticsearchIndex).isSome()) {
+    if (indexService.getEvent(id, elasticsearchIndex).isPresent()) {
       AccessControlList accessControlList;
       try {
         accessControlList = AclUtils.deserializeJsonToAcl(acl, false);
@@ -1182,23 +1426,38 @@ public class EventsEndpoint implements ManagedService {
       }
       return Response.noContent().build();
     } else {
-      return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+      return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
     }
   }
 
   @POST
   @Path("{eventId}/acl/{action}")
-  @RestQuery(name = "addeventace", description = "Grants permission to execute action on the specified event to any user with role role. Note that this is a convenience method to avoid having to build and post a complete access control list.", returnDescription = "", pathParameters = {
+  @RestQuery(
+      name = "addeventace",
+      description = "Grants permission to execute action on the specified event to any user with role role. Note that "
+          + "this is a convenience method to avoid having to build and post a complete access control list.",
+      returnDescription = "",
+      pathParameters = {
           @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING),
-          @RestParameter(name = "action", description = "The action that is allowed to be executed", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "role", isRequired = true, description = "The role that is granted permission", type = STRING) }, responses = {
-                          @RestResponse(description = "The permission has been created in the access control list of the specified event.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-                          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+          @RestParameter(name = "action", description = "The action that is allowed to be executed", isRequired = true,
+              type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "role", isRequired = true, description = "The role that is granted permission",
+              type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The permission has been created in the access control list of the specified "
+              + "event.", responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response addEventAce(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
           @PathParam("action") String action, @FormParam("role") String role) throws Exception {
     List<AccessControlEntry> entries = new ArrayList<>();
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
-      AccessControlList accessControlList = getAclFromEvent(event);
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      AccessControlList accessControlList = getAclFromEvent(eventOpt.get());
       AccessControlEntry newAce = new AccessControlEntry(role, action, true);
       boolean alreadyInAcl = false;
       for (AccessControlEntry ace : accessControlList.getEntries()) {
@@ -1229,22 +1488,34 @@ public class EventsEndpoint implements ManagedService {
       }
       return Response.noContent().build();
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
   @DELETE
   @Path("{eventId}/acl/{action}/{role}")
-  @RestQuery(name = "deleteeventace", description = "Revokes permission to execute action on the specified event from any user with role role.", returnDescription = "", pathParameters = {
+  @RestQuery(
+      name = "deleteeventace",
+      description = "Revokes permission to execute action on the specified event from any user with role role.",
+      returnDescription = "",
+      pathParameters = {
           @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING),
-          @RestParameter(name = "action", description = "The action that is no longer allowed to be executed", isRequired = true, type = STRING),
-          @RestParameter(name = "role", description = "The role that is no longer granted permission", isRequired = true, type = STRING) }, responses = {
-                  @RestResponse(description = "The permission has been revoked from the access control list of the specified event.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-                  @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+          @RestParameter(name = "action", description = "The action that is no longer allowed to be executed",
+              isRequired = true, type = STRING),
+          @RestParameter(name = "role", description = "The role that is no longer granted permission",
+              isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The permission has been revoked from the access control list of the specified "
+              + "event.", responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response deleteEventAce(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
           @PathParam("action") String action, @PathParam("role") String role) throws Exception {
     List<AccessControlEntry> entries = new ArrayList<>();
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
-      AccessControlList accessControlList = getAclFromEvent(event);
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      AccessControlList accessControlList = getAclFromEvent(eventOpt.get());
       boolean foundDelete = false;
       for (AccessControlEntry ace : accessControlList.getEntries()) {
         if (ace.getAction().equals(action) && ace.getRole().equals(role)) {
@@ -1255,8 +1526,8 @@ public class EventsEndpoint implements ManagedService {
       }
 
       if (!foundDelete) {
-        return ApiResponses.notFound("Unable to find an access control entry with action '%s' and role '%s'", action,
-                role);
+        return ApiResponseBuilder.notFound("Unable to find an access control entry with action '%s' and role '%s'",
+            action, role);
       }
 
       AccessControlList withoutDeleted = new AccessControlList(entries);
@@ -1268,35 +1539,48 @@ public class EventsEndpoint implements ManagedService {
       }
       return Response.noContent().build();
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
   @GET
   @Path("{eventId}/metadata")
-  @RestQuery(name = "geteventmetadata", description = "Returns the event's metadata of the specified type. For a metadata catalog there is the flavor such as 'dublincore/episode' and this is the unique type.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "type", isRequired = false, description = "The type of metadata to get", type = STRING) }, responses = {
-                          @RestResponse(description = "The metadata collection is returned.", responseCode = HttpServletResponse.SC_OK),
-                          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "geteventmetadata",
+      description = "Returns the event's metadata of the specified type. For a metadata catalog there is the flavor "
+          + "such as 'dublincore/episode' and this is the unique type.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "type", isRequired = false, description = "The type of metadata to get", type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The metadata collection is returned.", responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response getAllEventMetadata(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
           @QueryParam("type") String type) throws Exception {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
     if (StringUtils.trimToNull(type) == null) {
-      Opt<MetadataList> metadataList = getEventMetadataById(id);
-      if (metadataList.isSome()) {
+      Optional<MetadataList> metadataList = getEventMetadataById(id);
+      if (metadataList.isPresent()) {
         MetadataList actualList = metadataList.get();
 
-        // API v1 should return a two separate fields for start date and start time. Since those fields were merged in index service, we have to split them up.
+        // API v1 should return a two separate fields for start date and start time. Since those fields were merged in
+        // index service, we have to split them up.
         final DublinCoreMetadataCollection collection = actualList.getMetadataByFlavor("dublincore/episode");
         final boolean withOrderedText = collection == null;
         if (collection != null) {
           convertStartDateTimeToApiV1(collection);
         }
 
-        return ApiResponses.Json.ok(requestedVersion, MetadataJson.listToJson(actualList, withOrderedText));
+        return ApiResponseBuilder.Json.ok(requestedVersion, MetadataJson.listToJson(actualList, withOrderedText));
       }
-      else
-        return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+      else {
+        return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
+      }
     } else {
       return getEventMetadataByType(id, type, requestedVersion);
     }
@@ -1304,7 +1588,9 @@ public class EventsEndpoint implements ManagedService {
 
   private void convertStartDateTimeToApiV1(DublinCoreMetadataCollection collection) throws java.text.ParseException {
 
-    if (!collection.getOutputFields().containsKey("startDate")) return;
+    if (!collection.getOutputFields().containsKey("startDate")) {
+      return;
+    }
 
     MetadataField oldStartDateField = collection.getOutputFields().get("startDate");
     SimpleDateFormat sdf = MetadataField.getSimpleDateFormatter(oldStartDateField.getPattern());
@@ -1332,90 +1618,112 @@ public class EventsEndpoint implements ManagedService {
     }
   }
 
-  protected Opt<MetadataList> getEventMetadataById(String id) throws IndexServiceException, Exception {
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
-      return getEventMetadata(event);
+  protected Optional<MetadataList> getEventMetadataById(String id) throws IndexServiceException, Exception {
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      return getEventMetadata(eventOpt.get());
     }
-    return Opt.<MetadataList> none();
+    return Optional.<MetadataList> empty();
   }
 
-  protected Opt<MetadataList> getEventMetadata(Event event) throws IndexServiceException, Exception {
+  protected Optional<MetadataList> getEventMetadata(Event event) throws IndexServiceException, Exception {
     MetadataList metadataList = new MetadataList();
     List<EventCatalogUIAdapter> catalogUIAdapters = getEventCatalogUIAdapters();
     EventCatalogUIAdapter eventCatalogUIAdapter = indexService.getCommonEventCatalogUIAdapter();
     catalogUIAdapters.remove(eventCatalogUIAdapter);
-    MediaPackage mediaPackage = indexService.getEventMediapackage(event);
     if (catalogUIAdapters.size() > 0) {
+      MediaPackage mediaPackage = indexService.getEventMediapackage(event);
       for (EventCatalogUIAdapter catalogUIAdapter : catalogUIAdapters) {
         // TODO: This is very slow:
         DublinCoreMetadataCollection fields = catalogUIAdapter.getFields(mediaPackage);
-        if (fields != null) metadataList.add(catalogUIAdapter, fields);
+        if (fields != null) {
+          ExternalMetadataUtils.removeCollectionList(fields);
+          metadataList.add(catalogUIAdapter, fields);
+        }
       }
     }
-    // TODO: This is slow:
-    DublinCoreMetadataCollection collection = EventUtils.getEventMetadata(event, eventCatalogUIAdapter);
+    DublinCoreMetadataCollection collection = EventUtils.getEventMetadata(event, eventCatalogUIAdapter,
+        new EmptyResourceListQuery());
     ExternalMetadataUtils.changeSubjectToSubjects(collection);
     ExternalMetadataUtils.removeCollectionList(collection);
     metadataList.add(eventCatalogUIAdapter, collection);
     if (WorkflowInstance.WorkflowState.RUNNING.toString().equals(event.getWorkflowState())) {
       metadataList.setLocked(Locked.WORKFLOW_RUNNING);
     }
-    return Opt.some(metadataList);
+    return Optional.of(metadataList);
   }
 
-  private Opt<MediaPackageElementFlavor> getFlavor(String flavorString) {
+  private Optional<MediaPackageElementFlavor> getFlavor(String flavorString) {
     try {
       MediaPackageElementFlavor flavor = MediaPackageElementFlavor.parseFlavor(flavorString);
-      return Opt.some(flavor);
+      return Optional.of(flavor);
     } catch (IllegalArgumentException e) {
-      return Opt.none();
+      return Optional.empty();
     }
   }
 
   private Response getEventMetadataByType(String id, String type, ApiVersion requestedVersion) throws Exception {
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
-      Opt<MediaPackageElementFlavor> flavor = getFlavor(type);
-      if (flavor.isNone()) {
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      Event event = eventOpt.get();
+      Optional<MediaPackageElementFlavor> flavor = getFlavor(type);
+      if (flavor.isEmpty()) {
         return R.badRequest(
                 String.format("Unable to parse type '%s' as a flavor so unable to find the matching catalog.", type));
       }
       // Try the main catalog first as we load it from the index.
       EventCatalogUIAdapter eventCatalogUIAdapter = indexService.getCommonEventCatalogUIAdapter();
       if (flavor.get().equals(eventCatalogUIAdapter.getFlavor())) {
-        DublinCoreMetadataCollection collection = EventUtils.getEventMetadata(event, eventCatalogUIAdapter);
+        DublinCoreMetadataCollection collection = EventUtils.getEventMetadata(event, eventCatalogUIAdapter,
+            new EmptyResourceListQuery());
         ExternalMetadataUtils.changeSubjectToSubjects(collection);
         ExternalMetadataUtils.removeCollectionList(collection);
         convertStartDateTimeToApiV1(collection);
-        return ApiResponses.Json.ok(requestedVersion, MetadataJson.collectionToJson(collection, false));
+        return ApiResponseBuilder.Json.ok(requestedVersion, MetadataJson.collectionToJson(collection, false));
       }
       // Try the other catalogs
       List<EventCatalogUIAdapter> catalogUIAdapters = getEventCatalogUIAdapters();
       catalogUIAdapters.remove(eventCatalogUIAdapter);
-      MediaPackage mediaPackage = indexService.getEventMediapackage(event);
       if (catalogUIAdapters.size() > 0) {
+        MediaPackage mediaPackage = indexService.getEventMediapackage(event);
         for (EventCatalogUIAdapter catalogUIAdapter : catalogUIAdapters) {
           if (flavor.get().equals(catalogUIAdapter.getFlavor())) {
             DublinCoreMetadataCollection fields = catalogUIAdapter.getFields(mediaPackage);
             ExternalMetadataUtils.removeCollectionList(fields);
             convertStartDateTimeToApiV1(fields);
-            return ApiResponses.Json.ok(requestedVersion, MetadataJson.collectionToJson(fields, false));
+            return ApiResponseBuilder.Json.ok(requestedVersion, MetadataJson.collectionToJson(fields, false));
           }
         }
       }
-      return ApiResponses.notFound("Cannot find a catalog with type '%s' for event with id '%s'.", type, id);
+      return ApiResponseBuilder.notFound("Cannot find a catalog with type '%s' for event with id '%s'.", type, id);
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
   @PUT
   @Path("{eventId}/metadata")
-  @RestQuery(name = "updateeventmetadata", description = "Update the metadata with the matching type of the specified event. For a metadata catalog there is the flavor such as 'dublincore/episode' and this is the unique type.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "type", isRequired = true, description = "The type of metadata to update", type = STRING),
-                  @RestParameter(name = "metadata", description = "Metadata catalog in JSON format", isRequired = true, type = STRING) }, responses = {
-                          @RestResponse(description = "The metadata of the given namespace has been updated.", responseCode = HttpServletResponse.SC_OK),
-                          @RestResponse(description = "The request is invalid or inconsistent.", responseCode = HttpServletResponse.SC_BAD_REQUEST),
-                          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "updateeventmetadata",
+      description = "Update the metadata with the matching type of the specified event. For a metadata catalog there "
+          + "is the flavor such as 'dublincore/episode' and this is the unique type.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "type", isRequired = true, description = "The type of metadata to update",
+              type = STRING),
+          @RestParameter(name = "metadata", description = "Metadata catalog in JSON format", isRequired = true,
+              type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The metadata of the given namespace has been updated.",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The request is invalid or inconsistent.",
+              responseCode = HttpServletResponse.SC_BAD_REQUEST),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response updateEventMetadataByType(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
           @QueryParam("type") String type, @FormParam("metadata") String metadataJSON) throws Exception {
     Map<String, String> updatedFields;
@@ -1436,15 +1744,17 @@ public class EventsEndpoint implements ManagedService {
                       metadataJSON));
     }
 
-    Opt<MediaPackageElementFlavor> flavor = getFlavor(type);
-    if (flavor.isNone()) {
+    Optional<MediaPackageElementFlavor> flavor = getFlavor(type);
+    if (flavor.isEmpty()) {
       return R.badRequest(
               String.format("Unable to parse type '%s' as a flavor so unable to find the matching catalog.", type));
     }
 
     DublinCoreMetadataCollection collection = null;
     EventCatalogUIAdapter adapter = null;
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      Event event = eventOpt.get();
       MetadataList metadataList = new MetadataList();
       // Try the main catalog first as we load it from the index.
       EventCatalogUIAdapter eventCatalogUIAdapter = indexService.getCommonEventCatalogUIAdapter();
@@ -1458,8 +1768,8 @@ public class EventsEndpoint implements ManagedService {
       // Try the other catalogs
       List<EventCatalogUIAdapter> catalogUIAdapters = getEventCatalogUIAdapters();
       catalogUIAdapters.remove(eventCatalogUIAdapter);
-      MediaPackage mediaPackage = indexService.getEventMediapackage(event);
       if (catalogUIAdapters.size() > 0) {
+        MediaPackage mediaPackage = indexService.getEventMediapackage(event);
         for (EventCatalogUIAdapter catalogUIAdapter : catalogUIAdapters) {
           if (flavor.get().equals(catalogUIAdapter.getFlavor())) {
             collection = catalogUIAdapter.getFields(mediaPackage);
@@ -1471,14 +1781,14 @@ public class EventsEndpoint implements ManagedService {
       }
 
       if (collection == null) {
-        return ApiResponses.notFound("Cannot find a catalog with type '%s' for event with id '%s'.", type, id);
+        return ApiResponseBuilder.notFound("Cannot find a catalog with type '%s' for event with id '%s'.", type, id);
       }
 
       for (String key : updatedFields.keySet()) {
         if ("subjects".equals(key)) {
           MetadataField field = collection.getOutputFields().get(DublinCore.PROPERTY_SUBJECT.getLocalName());
-          Opt<Response> error = validateField(field, key, id, type, updatedFields);
-          if (error.isSome()) {
+          Optional<Response> error = validateField(field, key, id, type, updatedFields);
+          if (error.isPresent()) {
             return error.get();
           }
           collection.removeField(field);
@@ -1488,8 +1798,8 @@ public class EventsEndpoint implements ManagedService {
         } else if ("startDate".equals(key)) {
           // Special handling for start date since in API v1 we expect start date and start time to be separate fields.
           MetadataField field = collection.getOutputFields().get(key);
-          Opt<Response> error = validateField(field, key, id, type, updatedFields);
-          if (error.isSome()) {
+          Optional<Response> error = validateField(field, key, id, type, updatedFields);
+          if (error.isPresent()) {
             return error.get();
           }
           String apiPattern = field.getPattern();
@@ -1501,15 +1811,16 @@ public class EventsEndpoint implements ManagedService {
           SimpleDateFormat sdf = MetadataField.getSimpleDateFormatter(field.getPattern());
           DateTime oldStartDate = new DateTime(sdf.parse((String) field.getValue()), DateTimeZone.UTC);
           DateTime newStartDate = new DateTime(apiSdf.parse(updatedFields.get(key)), DateTimeZone.UTC);
-          DateTime updatedStartDate = oldStartDate.withDate(newStartDate.year().get(), newStartDate.monthOfYear().get(), newStartDate.dayOfMonth().get());
+          DateTime updatedStartDate = oldStartDate.withDate(newStartDate.year().get(), newStartDate.monthOfYear().get(),
+              newStartDate.dayOfMonth().get());
           collection.removeField(field);
           collection.addField(
                   MetadataJson.copyWithDifferentJsonValue(field, sdf.format(updatedStartDate.toDate())));
         } else if ("startTime".equals(key)) {
           // Special handling for start time since in API v1 we expect start date and start time to be separate fields.
           MetadataField field = collection.getOutputFields().get("startDate");
-          Opt<Response> error = validateField(field, "startDate", id, type, updatedFields);
-          if (error.isSome()) {
+          Optional<Response> error = validateField(field, "startDate", id, type, updatedFields);
+          if (error.isPresent()) {
             return error.get();
           }
           String apiPattern = "HH:mm";
@@ -1531,8 +1842,8 @@ public class EventsEndpoint implements ManagedService {
                   MetadataJson.copyWithDifferentJsonValue(field, sdf.format(updatedStartDate.toDate())));
         } else {
           MetadataField field = collection.getOutputFields().get(key);
-          Opt<Response> error = validateField(field, key, id, type, updatedFields);
-          if (error.isSome()) {
+          Optional<Response> error = validateField(field, key, id, type, updatedFields);
+          if (error.isPresent()) {
             return error.get();
           }
           collection.removeField(field);
@@ -1545,35 +1856,51 @@ public class EventsEndpoint implements ManagedService {
       indexService.updateEventMetadata(id, metadataList, elasticsearchIndex);
       return Response.noContent().build();
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
-  private Opt<Response> validateField(MetadataField field, String key, String id, String type, Map<String, String> updatedFields) {
+  private Optional<Response> validateField(MetadataField field, String key, String id, String type,
+      Map<String, String> updatedFields) {
     if (field == null) {
-      return Opt.some(ApiResponses.notFound(
+      return Optional.of(ApiResponseBuilder.notFound(
               "Cannot find a metadata field with id '%s' from event with id '%s' and the metadata type '%s'.",
               key, id, type));
     } else if (field.isRequired() && StringUtils.isBlank(updatedFields.get(key))) {
-      return Opt.some(R.badRequest(String.format(
+      return Optional.of(R.badRequest(String.format(
               "The event metadata field with id '%s' and the metadata type '%s' is required and can not be empty!.",
               key, type)));
     }
-    return Opt.none();
+    return Optional.empty();
   }
 
   @DELETE
   @Path("{eventId}/metadata")
-  @RestQuery(name = "deleteeventmetadata", description = "Delete the metadata namespace catalog of the specified event. This will remove all fields and values of the catalog.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "type", isRequired = true, description = "The type of metadata to delete", type = STRING) }, responses = {
-                          @RestResponse(description = "The metadata of the given namespace has been updated.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-                          @RestResponse(description = "The main metadata catalog dublincore/episode cannot be deleted as it has mandatory fields.", responseCode = HttpServletResponse.SC_FORBIDDEN),
-                          @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "deleteeventmetadata",
+      description = "Delete the metadata namespace catalog of the specified event. This will remove all fields and "
+          + "values of the catalog.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "type", isRequired = true, description = "The type of metadata to delete",
+              type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The metadata of the given namespace has been updated.",
+              responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The main metadata catalog dublincore/episode cannot be deleted as it has "
+              + "mandatory fields.", responseCode = HttpServletResponse.SC_FORBIDDEN),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response deleteEventMetadataByType(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
           @QueryParam("type") String type) throws SearchIndexException {
-    for (final Event event : indexService.getEvent(id, elasticsearchIndex)) {
-      Opt<MediaPackageElementFlavor> flavor = getFlavor(type);
-      if (flavor.isNone()) {
+    Optional<Event> eventOpt = indexService.getEvent(id, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      Optional<MediaPackageElementFlavor> flavor = getFlavor(type);
+      if (flavor.isEmpty()) {
         return R.badRequest(
                 String.format("Unable to parse type '%s' as a flavor so unable to find the matching catalog.", type));
       }
@@ -1585,9 +1912,9 @@ public class EventsEndpoint implements ManagedService {
                 .build();
       }
       try {
-        indexService.removeCatalogByFlavor(event, flavor.get());
+        indexService.removeCatalogByFlavor(eventOpt.get(), flavor.get());
       } catch (NotFoundException e) {
-        return ApiResponses.notFound(e.getMessage());
+        return ApiResponseBuilder.notFound(e.getMessage());
       } catch (IndexServiceException e) {
         logger.error("Unable to remove metadata catalog with type '{}' from event '{}'", type, id, e);
         throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
@@ -1599,32 +1926,45 @@ public class EventsEndpoint implements ManagedService {
       }
       return Response.noContent().build();
     }
-    return ApiResponses.notFound("Cannot find an event with id '%s'.", id);
+    return ApiResponseBuilder.notFound("Cannot find an event with id '%s'.", id);
   }
 
   @GET
   @Path("{eventId}/publications")
-  @RestQuery(name = "geteventpublications", description = "Returns an event's list of publications.",
-             returnDescription = "",
-             pathParameters = {
-               @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
-             },
-             restParameters = {
-               @RestParameter(name = "sign", description = "Whether public distribution urls should be signed.",
-                              isRequired = false, type = Type.BOOLEAN)
-             },
-             responses = {
-                  @RestResponse(description = "The list of publications is returned.", responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
-  public Response getEventPublications(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
-          @QueryParam("sign") boolean sign) throws Exception {
+  @RestQuery(
+      name = "geteventpublications",
+      description = "Returns an event's list of publications.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "sign", description = "Whether public distribution urls should be signed.",
+              isRequired = false, type = Type.BOOLEAN),
+          @RestParameter(name = "includeInternalPublication", description = "Whether internal publications should be "
+              + "included.", isRequired = false, type = Type.BOOLEAN)
+      },
+      responses = {
+          @RestResponse(description = "The list of publications is returned.",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
+
+    public Response getEventPublications(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
+      @QueryParam("sign") boolean sign, @QueryParam("includeInternalPublication") boolean includeInternalPublication)
+            throws Exception {
     try {
       final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
-      final Opt<Event> event = indexService.getEvent(id, elasticsearchIndex);
-      if (event.isSome()) {
-        return ApiResponses.Json.ok(acceptHeader, arr(getPublications(event.get(), sign, requestedVersion)));
+      final Optional<Event> event = indexService.getEvent(id, elasticsearchIndex);
+      if (event.isPresent()) {
+        JsonArray jsonArray = new JsonArray();
+        for (JsonElement pub : getPublications(event.get(), sign, includeInternalPublication, requestedVersion)) {
+          jsonArray.add(pub);
+        }
+        return ApiResponseBuilder.Json.ok(acceptHeader, jsonArray);
       } else {
-        return ApiResponses.notFound(String.format("Unable to find event with id '%s'", id));
+        return ApiResponseBuilder.notFound(String.format("Unable to find event with id '%s'", id));
       }
     } catch (SearchIndexException e) {
       logger.error("Unable to get list of publications from event with id '{}'", id, e);
@@ -1632,26 +1972,47 @@ public class EventsEndpoint implements ManagedService {
     }
   }
 
-  private List<JValue> getPublications(Event event, Boolean withSignedUrls, ApiVersion requestedVersion) {
+  private List<JsonObject> getPublications(Event event, Boolean withSignedUrls, Boolean includeInternalPublication,
+      ApiVersion requestedVersion) {
     return event.getPublications().stream()
-        .filter(EventUtils.internalChannelFilter::apply)
+        .filter(publication -> {
+          boolean isInternalAllowed = includeInternalPublication != null && includeInternalPublication
+              && !requestedVersion.isSmallerThan(VERSION_1_11_0);
+          return isInternalAllowed || EventUtils.internalChannelFilter.test(publication);
+        })
         .map(p -> getPublication(p, withSignedUrls, requestedVersion))
         .collect(Collectors.toList());
   }
 
-  public JObject getPublication(Publication publication, Boolean sign, ApiVersion requestedVersion) {
-    // signing publication URLs was introduced in 1.7.0
+  public JsonObject getPublication(Publication publication, Boolean sign, ApiVersion requestedVersion) {
+    // Signing URLs introduced in version 1.7.0
     URI publicationUrl = publication.getURI();
     if (!requestedVersion.isSmallerThan(VERSION_1_7_0)) {
       publicationUrl = getSignedUrl(publicationUrl, sign);
     }
 
-    return obj(f("id", v(publication.getIdentifier())), f("channel", v(publication.getChannel())),
-            f("mediatype", v(publication.getMimeType(), BLANK)),
-            f("url", v(publicationUrl, BLANK)),
-            f("media", arr(getPublicationTracksJson(publication, sign, requestedVersion))),
-            f("attachments", arr(getPublicationAttachmentsJson(publication, sign))),
-            f("metadata", arr(getPublicationCatalogsJson(publication, sign))));
+    JsonObject json = new JsonObject();
+    json.addProperty("id", publication.getIdentifier());
+    json.addProperty("channel", publication.getChannel());
+    json.addProperty("mediatype", safeString(publication.getMimeType()));
+    json.addProperty("url", publicationUrl != null ? publicationUrl.toString() : "");
+    JsonArray mediaArray = new JsonArray();
+    for (JsonObject trackJson : getPublicationTracksJson(publication, sign, requestedVersion)) {
+      mediaArray.add(trackJson);
+    }
+    json.add("media", mediaArray);
+    JsonArray attachmentArray = new JsonArray();
+    for (JsonObject attachmentJson : getPublicationAttachmentsJson(publication, sign)) {
+      attachmentArray.add(attachmentJson);
+    }
+    json.add("attachments", attachmentArray);
+    JsonArray metadataArray = new JsonArray();
+    for (JsonObject catalogJson : getPublicationCatalogsJson(publication, sign)) {
+      metadataArray.add(catalogJson);
+    }
+    json.add("metadata", metadataArray);
+
+    return json;
   }
 
   private URI getSignedUrl(URI url, boolean sign) {
@@ -1669,98 +2030,142 @@ public class EventsEndpoint implements ManagedService {
     return url;
   }
 
-  private List<JValue> getPublicationTracksJson(Publication publication, Boolean sign, ApiVersion requestedVersion) {
-    List<JValue> tracks = new ArrayList<>();
+  private List<JsonObject> getPublicationTracksJson(Publication publication, Boolean sign,
+      ApiVersion requestedVersion) {
+    List<JsonObject> tracksJson = new ArrayList<>();
+
     for (Track track : publication.getTracks()) {
+      JsonObject trackJson = new JsonObject();
+
+      trackJson.addProperty("id", safeString(track.getIdentifier()));
+      trackJson.addProperty("mediatype", safeString(track.getMimeType()));
+      trackJson.addProperty("url", safeString(getSignedUrl(track.getURI(), sign)));
+      trackJson.addProperty("flavor", safeString(track.getFlavor()));
+      trackJson.addProperty("size", track.getSize());
+      trackJson.addProperty("checksum", safeString(track.getChecksum()));
+      trackJson.add("tags", arrayToJsonArray(track.getTags()));
+      trackJson.addProperty("has_audio", track.hasAudio());
+      trackJson.addProperty("has_video", track.hasVideo());
+      trackJson.addProperty("duration", track.getDuration() != null ? track.getDuration() : null);
+      trackJson.addProperty("description", safeString(track.getDescription()));
 
       VideoStream[] videoStreams = TrackSupport.byType(track.getStreams(), VideoStream.class);
-      List<Field> trackInfo = new ArrayList<>();
-
       if (videoStreams.length > 0) {
         // Only supporting one stream, like in many other places...
-        final VideoStream videoStream = videoStreams[0];
-        if (videoStream.getBitRate() != null)
-          trackInfo.add(f("bitrate", v(videoStream.getBitRate())));
-        if (videoStream.getFrameRate() != null)
-          trackInfo.add(f("framerate", v(videoStream.getFrameRate())));
-        if (videoStream.getFrameCount() != null)
-          trackInfo.add(f("framecount", v(videoStream.getFrameCount())));
-        if (videoStream.getFrameWidth() != null)
-          trackInfo.add(f("width", v(videoStream.getFrameWidth())));
-        if (videoStream.getFrameHeight() != null)
-          trackInfo.add(f("height", v(videoStream.getFrameHeight())));
+        VideoStream videoStream = videoStreams[0];
+        if (videoStream.getBitRate() != null) {
+          trackJson.addProperty("bitrate", videoStream.getBitRate());
+        }
+        if (videoStream.getFrameRate() != null) {
+          trackJson.addProperty("framerate", videoStream.getFrameRate());
+        }
+        if (videoStream.getFrameCount() != null) {
+          trackJson.addProperty("framecount", videoStream.getFrameCount());
+        }
+        if (videoStream.getFrameWidth() != null) {
+          trackJson.addProperty("width", videoStream.getFrameWidth());
+        }
+        if (videoStream.getFrameHeight() != null) {
+          trackJson.addProperty("height", videoStream.getFrameHeight());
+        }
       }
 
       if (!requestedVersion.isSmallerThan(VERSION_1_7_0)) {
-        trackInfo.add(f("is_master_playlist", v(track.isMaster())));
-        trackInfo.add(f("is_live", v(track.isLive())));
+        trackJson.addProperty("is_master_playlist", track.isMaster());
+        trackJson.addProperty("is_live", track.isLive());
       }
 
-      tracks.add(obj(f("id", v(track.getIdentifier(), BLANK)), f("mediatype", v(track.getMimeType(), BLANK)),
-              f("url", v(getSignedUrl(track.getURI(), sign), BLANK)), f("flavor", v(track.getFlavor(), BLANK)),
-              f("size", v(track.getSize())), f("checksum", v(track.getChecksum(), BLANK)),
-              f("tags", arr(track.getTags())), f("has_audio", v(track.hasAudio())),
-              f("has_video", v(track.hasVideo())), f("duration", v(track.getDuration(), NULL)),
-              f("description", v(track.getDescription(), BLANK))).merge(trackInfo));
+      tracksJson.add(trackJson);
     }
-    return tracks;
+
+    return tracksJson;
   }
 
-  private List<JValue> getPublicationAttachmentsJson(Publication publication, Boolean sign) {
-    List<JValue> attachments = new ArrayList<>();
+  private List<JsonObject> getPublicationAttachmentsJson(Publication publication, Boolean sign) {
+    List<JsonObject> attachmentsJson = new ArrayList<>();
+
     for (Attachment attachment : publication.getAttachments()) {
-      attachments.add(
-              obj(f("id", v(attachment.getIdentifier(), BLANK)), f("mediatype", v(attachment.getMimeType(), BLANK)),
-                      f("url", v(getSignedUrl(attachment.getURI(), sign), BLANK)),
-                      f("flavor", v(attachment.getFlavor(), BLANK)), f("ref", v(attachment.getReference(), BLANK)),
-                      f("size", v(attachment.getSize())), f("checksum", v(attachment.getChecksum(), BLANK)),
-                      f("tags", arr(attachment.getTags()))));
+      JsonObject json = new JsonObject();
+
+      json.addProperty("id", safeString(attachment.getIdentifier()));
+      json.addProperty("mediatype", safeString(attachment.getMimeType()));
+      json.addProperty("url", safeString(getSignedUrl(attachment.getURI(), sign)));
+      json.addProperty("flavor", safeString(attachment.getFlavor()));
+      json.addProperty("ref", safeString(attachment.getReference()));
+      json.addProperty("size", attachment.getSize());
+      json.addProperty("checksum", safeString(attachment.getChecksum()));
+      json.add("tags", arrayToJsonArray(attachment.getTags()));
+
+      attachmentsJson.add(json);
     }
-    return attachments;
+
+    return attachmentsJson;
   }
 
-  private List<JValue> getPublicationCatalogsJson(Publication publication, Boolean sign) {
-    List<JValue> catalogs = new ArrayList<>();
+  private List<JsonObject> getPublicationCatalogsJson(Publication publication, Boolean sign) {
+    List<JsonObject> catalogsJson = new ArrayList<>();
+
     for (Catalog catalog : publication.getCatalogs()) {
-      catalogs.add(obj(f("id", v(catalog.getIdentifier(), BLANK)), f("mediatype", v(catalog.getMimeType(), BLANK)),
-              f("url", v(getSignedUrl(catalog.getURI(), sign), BLANK)),
-              f("flavor", v(catalog.getFlavor(), BLANK)), f("size", v(catalog.getSize())),
-              f("checksum", v(catalog.getChecksum(), BLANK)), f("tags", arr(catalog.getTags()))));
+      JsonObject json = new JsonObject();
+
+      json.addProperty("id", safeString(catalog.getIdentifier()));
+      json.addProperty("mediatype", safeString(catalog.getMimeType()));
+      json.addProperty("url", safeString(getSignedUrl(catalog.getURI(), sign)));
+      json.addProperty("flavor", safeString(catalog.getFlavor()));
+      json.addProperty("size", catalog.getSize());
+      json.addProperty("checksum", safeString(catalog.getChecksum()));
+      json.add("tags", arrayToJsonArray(catalog.getTags()));
+
+      catalogsJson.add(json);
     }
-    return catalogs;
+
+    return catalogsJson;
   }
 
   @GET
   @Path("{eventId}/publications/{publicationId}")
-  @RestQuery(name = "geteventpublication", description = "Returns a single publication.", returnDescription = "",
-             pathParameters = {
-               @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING),
-               @RestParameter(name = "publicationId", description = "The publication id", isRequired = true, type = STRING)
-             },
-             restParameters = {
-               @RestParameter(name = "sign", description = "Whether public distribution urls should be signed.",
-                              isRequired = false, type = Type.BOOLEAN)
-             },
-             responses = {
-                  @RestResponse(description = "The track details are returned.", responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(description = "The specified event or publication does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "geteventpublication",
+      description = "Returns a single publication.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING),
+          @RestParameter(name = "publicationId", description = "The publication id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "sign", description = "Whether public distribution urls should be signed.",
+              isRequired = false, type = Type.BOOLEAN)
+      },
+      responses = {
+          @RestResponse(description = "The track details are returned.", responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified event or publication does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
+
   public Response getEventPublication(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String eventId,
           @PathParam("publicationId") String publicationId, @QueryParam("sign") boolean sign) throws Exception {
     try {
       final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
-      return ApiResponses.Json.ok(acceptHeader, getPublication(eventId, publicationId, sign, requestedVersion));
+      return ApiResponseBuilder.Json.ok(acceptHeader, getPublication(eventId, publicationId, sign, requestedVersion));
     } catch (NotFoundException e) {
-      return ApiResponses.notFound(e.getMessage());
+      return ApiResponseBuilder.notFound(e.getMessage());
     } catch (SearchIndexException e) {
       logger.error("Unable to get list of publications from event with id '{}'", eventId, e);
       throw new WebApplicationException(Status.INTERNAL_SERVER_ERROR);
     }
   }
 
-  private JObject getPublication(String eventId, String publicationId, Boolean withSignedUrls, ApiVersion requestedVersion)
+
+  private JsonObject getPublication(String eventId, String publicationId, Boolean withSignedUrls,
+      ApiVersion requestedVersion)
           throws SearchIndexException, NotFoundException {
-    for (final Event event : indexService.getEvent(eventId, elasticsearchIndex)) {
-      List<Publication> publications = $(event.getPublications()).filter(EventUtils.internalChannelFilter).toList();
+    Optional<Event> eventOpt = indexService.getEvent(eventId, elasticsearchIndex);
+    if (eventOpt.isPresent()) {
+      List<Publication> publications;
+      publications = eventOpt.get().getPublications().stream()
+          .filter(publication -> (!requestedVersion.isSmallerThan(VERSION_1_11_0)
+              || EventUtils.internalChannelFilter.test(publication)))
+          .collect(Collectors.toList());
       for (Publication publication : publications) {
         if (publicationId.equals(publication.getIdentifier())) {
           return getPublication(publication, withSignedUrls, requestedVersion);
@@ -1782,80 +2187,115 @@ public class EventsEndpoint implements ManagedService {
   protected static AccessControlList getAclFromEvent(Event event) {
     AccessControlList activeAcl = new AccessControlList();
     try {
-      if (event.getAccessPolicy() != null)
+      if (event.getAccessPolicy() != null) {
         activeAcl = AccessControlParser.parseAcl(event.getAccessPolicy());
+      }
     } catch (Exception e) {
       logger.error("Unable to parse access policy", e);
     }
     return activeAcl;
   }
 
-  private JValue getJsonStream(Stream stream) {
-    List<Field> fields = new ArrayList<>();
+  private JsonObject getJsonStream(Stream stream) {
+    JsonObject json = new JsonObject();
+
     if (stream instanceof AudioStream) {
-      AudioStream audioStream = (AudioStream) stream;
-      if (audioStream.getBitDepth() != null)
-        fields.add(f("bitdepth", v(audioStream.getBitDepth())));
-      if (audioStream.getBitRate() != null)
-        fields.add(f("bitrate", v(audioStream.getBitRate())));
-      if (audioStream.getCaptureDevice() != null)
-        fields.add(f("capturedevice", v(audioStream.getCaptureDevice())));
-      if (audioStream.getCaptureDeviceVendor() != null)
-        fields.add(f("capturedevicevendor", v(audioStream.getCaptureDeviceVendor())));
-      if (audioStream.getCaptureDeviceVersion() != null)
-        fields.add(f("capturedeviceversion", v(audioStream.getCaptureDeviceVersion())));
-      if (audioStream.getChannels() != null)
-        fields.add(f("channels", v(audioStream.getChannels())));
-      if (audioStream.getEncoderLibraryVendor() != null)
-        fields.add(f("encoderlibraryvendor", v(audioStream.getEncoderLibraryVendor())));
-      if (audioStream.getFormat() != null)
-        fields.add(f("format", v(audioStream.getFormat())));
-      if (audioStream.getFormatVersion() != null)
-        fields.add(f("formatversion", v(audioStream.getFormatVersion())));
-      if (audioStream.getFrameCount() != null)
-        fields.add(f("framecount", v(audioStream.getFrameCount())));
-      if (audioStream.getIdentifier() != null)
-        fields.add(f("identifier", v(audioStream.getIdentifier())));
-      if (audioStream.getPkLevDb() != null)
-        fields.add(f("pklevdb", v(audioStream.getPkLevDb())));
-      if (audioStream.getRmsLevDb() != null)
-        fields.add(f("rmslevdb", v(audioStream.getRmsLevDb())));
-      if (audioStream.getRmsPkDb() != null)
-        fields.add(f("rmspkdb", v(audioStream.getRmsPkDb())));
-      if (audioStream.getSamplingRate() != null)
-        fields.add(f("samplingrate", v(audioStream.getSamplingRate())));
+      AudioStream audio = (AudioStream) stream;
+
+      if (audio.getBitDepth() != null) {
+        json.addProperty("bitdepth", audio.getBitDepth());
+      }
+      if (audio.getBitRate() != null) {
+        json.addProperty("bitrate", audio.getBitRate());
+      }
+      if (audio.getCaptureDevice() != null) {
+        json.addProperty("capturedevice", audio.getCaptureDevice());
+      }
+      if (audio.getCaptureDeviceVendor() != null) {
+        json.addProperty("capturedevicevendor", audio.getCaptureDeviceVendor());
+      }
+      if (audio.getCaptureDeviceVersion() != null) {
+        json.addProperty("capturedeviceversion", audio.getCaptureDeviceVersion());
+      }
+      if (audio.getChannels() != null) {
+        json.addProperty("channels", audio.getChannels());
+      }
+      if (audio.getEncoderLibraryVendor() != null) {
+        json.addProperty("encoderlibraryvendor", audio.getEncoderLibraryVendor());
+      }
+      if (audio.getFormat() != null) {
+        json.addProperty("format", audio.getFormat());
+      }
+      if (audio.getFormatVersion() != null) {
+        json.addProperty("formatversion", audio.getFormatVersion());
+      }
+      if (audio.getFrameCount() != null) {
+        json.addProperty("framecount", audio.getFrameCount());
+      }
+      if (audio.getIdentifier() != null) {
+        json.addProperty("identifier", audio.getIdentifier());
+      }
+      if (audio.getPkLevDb() != null) {
+        json.addProperty("pklevdb", audio.getPkLevDb());
+      }
+      if (audio.getRmsLevDb() != null) {
+        json.addProperty("rmslevdb", audio.getRmsLevDb());
+      }
+      if (audio.getRmsPkDb() != null) {
+        json.addProperty("rmspkdb", audio.getRmsPkDb());
+      }
+      if (audio.getSamplingRate() != null) {
+        json.addProperty("samplingrate", audio.getSamplingRate());
+      }
+
     } else if (stream instanceof VideoStream) {
-      VideoStream videoStream = (VideoStream) stream;
-      if (videoStream.getBitRate() != null)
-        fields.add(f("bitrate", v(videoStream.getBitRate())));
-      if (videoStream.getCaptureDevice() != null)
-        fields.add(f("capturedevice", v(videoStream.getCaptureDevice())));
-      if (videoStream.getCaptureDeviceVendor() != null)
-        fields.add(f("capturedevicevendor", v(videoStream.getCaptureDeviceVendor())));
-      if (videoStream.getCaptureDeviceVersion() != null)
-        fields.add(f("capturedeviceversion", v(videoStream.getCaptureDeviceVersion())));
-      if (videoStream.getEncoderLibraryVendor() != null)
-        fields.add(f("encoderlibraryvendor", v(videoStream.getEncoderLibraryVendor())));
-      if (videoStream.getFormat() != null)
-        fields.add(f("format", v(videoStream.getFormat())));
-      if (videoStream.getFormatVersion() != null)
-        fields.add(f("formatversion", v(videoStream.getFormatVersion())));
-      if (videoStream.getFrameCount() != null)
-        fields.add(f("framecount", v(videoStream.getFrameCount())));
-      if (videoStream.getFrameHeight() != null)
-        fields.add(f("frameheight", v(videoStream.getFrameHeight())));
-      if (videoStream.getFrameRate() != null)
-        fields.add(f("framerate", v(videoStream.getFrameRate())));
-      if (videoStream.getFrameWidth() != null)
-        fields.add(f("framewidth", v(videoStream.getFrameWidth())));
-      if (videoStream.getIdentifier() != null)
-        fields.add(f("identifier", v(videoStream.getIdentifier())));
-      if (videoStream.getScanOrder() != null)
-        fields.add(f("scanorder", v(videoStream.getScanOrder().toString())));
-      if (videoStream.getScanType() != null)
-        fields.add(f("scantype", v(videoStream.getScanType().toString())));
+      VideoStream video = (VideoStream) stream;
+
+      if (video.getBitRate() != null) {
+        json.addProperty("bitrate", video.getBitRate());
+      }
+      if (video.getCaptureDevice() != null) {
+        json.addProperty("capturedevice", video.getCaptureDevice());
+      }
+      if (video.getCaptureDeviceVendor() != null) {
+        json.addProperty("capturedevicevendor", video.getCaptureDeviceVendor());
+      }
+      if (video.getCaptureDeviceVersion() != null) {
+        json.addProperty("capturedeviceversion", video.getCaptureDeviceVersion());
+      }
+      if (video.getEncoderLibraryVendor() != null) {
+        json.addProperty("encoderlibraryvendor", video.getEncoderLibraryVendor());
+      }
+      if (video.getFormat() != null) {
+        json.addProperty("format", video.getFormat());
+      }
+      if (video.getFormatVersion() != null) {
+        json.addProperty("formatversion", video.getFormatVersion());
+      }
+      if (video.getFrameCount() != null) {
+        json.addProperty("framecount", video.getFrameCount());
+      }
+      if (video.getFrameHeight() != null) {
+        json.addProperty("frameheight", video.getFrameHeight());
+      }
+      if (video.getFrameRate() != null) {
+        json.addProperty("framerate", video.getFrameRate());
+      }
+      if (video.getFrameWidth() != null) {
+        json.addProperty("framewidth", video.getFrameWidth());
+      }
+      if (video.getIdentifier() != null) {
+        json.addProperty("identifier", video.getIdentifier());
+      }
+      if (video.getScanOrder() != null) {
+        json.addProperty("scanorder", video.getScanOrder().toString());
+      }
+      if (video.getScanType() != null) {
+        json.addProperty("scantype", video.getScanType().toString());
+      }
     }
-    return obj(fields);
+
+    return json;
   }
 
   private String getEventUrl(String eventId) {
@@ -1867,24 +2307,34 @@ public class EventsEndpoint implements ManagedService {
   @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_1_0, ApiMediaType.VERSION_1_2_0, ApiMediaType.VERSION_1_3_0,
               ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0, ApiMediaType.VERSION_1_6_0,
               ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0, ApiMediaType.VERSION_1_9_0,
-              ApiMediaType.VERSION_1_10_0 })
-  @RestQuery(name = "geteventscheduling", description = "Returns an event's scheduling information.", returnDescription = "", pathParameters = {
-      @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) }, responses = {
-      @RestResponse(description = "The scheduling information for the specified event is returned.", responseCode = HttpServletResponse.SC_OK),
-      @RestResponse(description = "The specified event has no scheduling information.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-      @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+              ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
+  @RestQuery(
+      name = "geteventscheduling",
+      description = "Returns an event's scheduling information.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The scheduling information for the specified event is returned.",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified event has no scheduling information.",
+              responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response getEventScheduling(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id)
-      throws Exception {
+          throws Exception {
     try {
-      final Opt<Event> event = indexService.getEvent(id, elasticsearchIndex);
+      final Optional<Event> event = indexService.getEvent(id, elasticsearchIndex);
 
-      if (event.isNone()) {
-        return ApiResponses.notFound(String.format("Unable to find event with id '%s'", id));
+      if (event.isEmpty()) {
+        return ApiResponseBuilder.notFound(String.format("Unable to find event with id '%s'", id));
       }
 
-      final JObject scheduling = SchedulingInfo.of(event.get().getIdentifier(), schedulerService).toJson();
+      final JsonObject scheduling = SchedulingInfo.of(event.get().getIdentifier(), schedulerService).toJson();
       if (!scheduling.isEmpty()) {
-        return ApiResponses.Json.ok(acceptHeader, scheduling);
+        return ApiResponseBuilder.Json.ok(acceptHeader, scheduling);
       }
       return Response.noContent().build();
     } catch (SearchIndexException e) {
@@ -1898,31 +2348,46 @@ public class EventsEndpoint implements ManagedService {
   @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_1_0, ApiMediaType.VERSION_1_2_0, ApiMediaType.VERSION_1_3_0,
               ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0, ApiMediaType.VERSION_1_6_0,
               ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0, ApiMediaType.VERSION_1_9_0,
-              ApiMediaType.VERSION_1_10_0 })
-  @RestQuery(name = "updateeventscheduling", description = "Update an event's scheduling information.", returnDescription = "", pathParameters = {
-      @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = Type.STRING) }, restParameters = {
-      @RestParameter(name = "scheduling", isRequired = true, description = "Scheduling Information", type = Type.STRING),
-      @RestParameter(name = "allowConflict", description = "Allow conflicts when updating scheduling", isRequired = false, type = Type.BOOLEAN) }, responses = {
-      @RestResponse(description = "The  scheduling information for the specified event is updated.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-      @RestResponse(description = "The specified event has no scheduling information to update.", responseCode = HttpServletResponse.SC_NOT_ACCEPTABLE),
-      @RestResponse(description = "The scheduling information could not be updated due to a conflict.", responseCode = HttpServletResponse.SC_CONFLICT),
-      @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+              ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
+  @RestQuery(
+      name = "updateeventscheduling",
+      description = "Update an event's scheduling information.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = Type.STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "scheduling", isRequired = true, description = "Scheduling Information",
+              type = Type.STRING),
+          @RestParameter(name = "allowConflict", description = "Allow conflicts when updating scheduling",
+              isRequired = false, type = Type.BOOLEAN)
+      },
+      responses = {
+          @RestResponse(description = "The  scheduling information for the specified event is updated.",
+              responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The specified event has no scheduling information to update.",
+              responseCode = HttpServletResponse.SC_NOT_ACCEPTABLE),
+          @RestResponse(description = "The scheduling information could not be updated due to a conflict.",
+              responseCode = HttpServletResponse.SC_CONFLICT),
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response updateEventScheduling(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
-                                 @FormParam("scheduling") String scheduling,
-                                 @FormParam("allowConflict") @DefaultValue("false") boolean allowConflict) throws Exception {
+      @FormParam("scheduling") String scheduling,
+      @FormParam("allowConflict") @DefaultValue("false") boolean allowConflict) throws Exception {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
-    final Opt<Event> event = indexService.getEvent(id, elasticsearchIndex);
+    final Optional<Event> event = indexService.getEvent(id, elasticsearchIndex);
 
     if (requestedVersion.isSmallerThan(ApiVersion.VERSION_1_2_0)) {
-        allowConflict = false;
+      allowConflict = false;
     }
-    if (event.isNone()) {
-      return ApiResponses.notFound(String.format("Unable to find event with id '%s'", id));
+    if (event.isEmpty()) {
+      return ApiResponseBuilder.notFound(String.format("Unable to find event with id '%s'", id));
     }
     final JSONParser parser = new JSONParser();
     JSONObject parsedJson;
     try {
-       parsedJson = (JSONObject) parser.parse(scheduling);
+      parsedJson = (JSONObject) parser.parse(scheduling);
     } catch (ParseException e) {
       logger.debug("Client sent unparsable scheduling information for event {}: {}", id, scheduling);
       return RestUtil.R.badRequest("Unparsable scheduling information");
@@ -1947,11 +2412,11 @@ public class EventsEndpoint implements ManagedService {
     final TechnicalMetadata technicalMetadata = schedulerService.getTechnicalMetadata(id);
 
     // When "inputs" is updated, capture agent configuration needs to be merged
-    Opt<Map<String, String>> caConfig = Opt.none();
-    if (schedulingInfo.getInputs().isSome()) {
+    Optional<Map<String, String>> caConfig = Optional.empty();
+    if (schedulingInfo.getInputs().isPresent()) {
       final Map<String, String> configMap = new HashMap<>(technicalMetadata.getCaptureAgentConfiguration());
       configMap.put(CaptureParameters.CAPTURE_DEVICE_NAMES, schedulingInfo.getInputs().get());
-      caConfig = Opt.some(configMap);
+      caConfig = Optional.of(configMap);
     }
 
     try {
@@ -1960,17 +2425,25 @@ public class EventsEndpoint implements ManagedService {
           schedulingInfo.getStartDate(),
           schedulingInfo.getEndDate(),
           schedulingInfo.getAgentId(),
-          Opt.none(),
-          Opt.none(),
-          Opt.none(),
+          Optional.empty(),
+          Optional.empty(),
+          Optional.empty(),
           caConfig,
           allowConflict);
     } catch (SchedulerConflictException e) {
       final List<MediaPackage> conflictingEvents = getConflictingEvents(
           schedulingInfo.merge(technicalMetadata), agentStateService, schedulerService);
       logger.debug("Client tried to change scheduling information causing a conflict for event {}.", id);
-      return Optional.of(ApiResponses.Json.conflict(requestedVersion,
-          arr(convertConflictingEvents(Optional.of(id), conflictingEvents, indexService, elasticsearchIndex))));
+      List<JsonObject> conflicts = convertConflictingEvents(
+          Optional.of(id), conflictingEvents, indexService, elasticsearchIndex
+      );
+
+      JsonArray conflictArray = new JsonArray();
+      for (JsonObject conflict : conflicts) {
+        conflictArray.add(conflict);
+      }
+
+      return Optional.of(ApiResponseBuilder.Json.conflict(requestedVersion, conflictArray));
     }
     return Optional.empty();
   }
@@ -1978,19 +2451,33 @@ public class EventsEndpoint implements ManagedService {
   @POST
   @Path("{eventId}/track")
   @Consumes(MediaType.MULTIPART_FORM_DATA)
-  @RestQuery(name = "updateFlavorWithTrack", description = "Update an events track for a given flavor", returnDescription = "",
-          pathParameters = {
-                  @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) },
-          restParameters = {
-                  @RestParameter(description = "Flavor to add track to, e.g. captions/source+en", isRequired = true, name = "flavor", type = RestParameter.Type.STRING),
-                  @RestParameter(description = "If true, all other tracks in the specified flavor are REMOVED", isRequired = true, name = "overwriteExisting", type = RestParameter.Type.BOOLEAN),
-                  @RestParameter(description = "The track file", isRequired = true, name = "track", type = RestParameter.Type.FILE),
-          },
-          responses = {
-                  @RestResponse(description = "The specified event does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND),
-                  @RestResponse(description = "The track has been added to the event.", responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(description = "The request is invalid or inconsistent.", responseCode = HttpServletResponse.SC_BAD_REQUEST),
-          })
+  @RestQuery(
+      name = "updateFlavorWithTrack",
+      description = "Update an events track for a given flavor",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "eventId", description = "The event id", isRequired = true, type = STRING) },
+      restParameters = {
+          @RestParameter(description = "Flavor to add track to, e.g. captions/source",
+              isRequired = true, name = "flavor", type = RestParameter.Type.STRING),
+          @RestParameter(description = "Comma separated list of tags for the given track, e.g. archive,publish. "
+              + "If a 'lang:LANG-CODE' tag exists and overwriteExisting=true "
+              + "only tracks with same lang tag and flavor will be replaced. This behavior is used for captions.",
+              isRequired = false, name = "tags", type = RestParameter.Type.STRING),
+          @RestParameter(description = "If true, all other tracks in the specified flavor are REMOVED. "
+              + "If tags argument contains a lang:LANG-CODE tag, only elements with same tag would be removed.",
+              isRequired = true, name = "overwriteExisting", type = RestParameter.Type.BOOLEAN),
+          @RestParameter(description = "The track file", isRequired = true, name = "track",
+              type = RestParameter.Type.FILE),
+      },
+      responses = {
+          @RestResponse(description = "The specified event does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND),
+          @RestResponse(description = "The track has been added to the event.",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The request is invalid or inconsistent.",
+              responseCode = HttpServletResponse.SC_BAD_REQUEST),
+      })
   public Response updateFlavorWithTrack(@HeaderParam("Accept") String acceptHeader, @PathParam("eventId") String id,
           @Context HttpServletRequest request) {
     logger.debug("updateFlavorWithTrack called");
@@ -1998,16 +2485,19 @@ public class EventsEndpoint implements ManagedService {
       boolean overwriteExisting = false;
       MediaPackageElementFlavor tmpFlavor = MediaPackageElementFlavor.parseFlavor("addTrack/temporary");
       MediaPackageElementFlavor newFlavor = null;
-      Opt<Event> event;
+      Optional<Event> event;
+      List<String> tags = null;
+      String langTag = null;
 
       try {
         event = indexService.getEvent(id, elasticsearchIndex);
       } catch (SearchIndexException e) {
-        return RestUtil.R.badRequest(String.format("Error while searching for event with id %s; %s", id, e.getMessage()));
+        return RestUtil.R.badRequest(String.format("Error while searching for event with id %s; %s",
+            id, e.getMessage()));
       }
 
-      if (event.isNone()) {
-        return ApiResponses.notFound(String.format("Unable to find event with id '%s'", id));
+      if (event.isEmpty()) {
+        return ApiResponseBuilder.notFound(String.format("Unable to find event with id '%s'", id));
       }
       MediaPackage mp = indexService.getEventMediapackage(event.get());
 
@@ -2031,7 +2521,21 @@ public class EventsEndpoint implements ManagedService {
             try {
               newFlavor = MediaPackageElementFlavor.parseFlavor(flavorString);
             } catch (IllegalArgumentException e) {
-              return RestUtil.R.badRequest(String.format("Could not parse flavor %s; %s", flavorString, e.getMessage()));
+              return RestUtil.R.badRequest(String.format("Could not parse flavor %s; %s",
+                  flavorString, e.getMessage()));
+            }
+          } else if ("tags".equals(fieldName)) {
+            String tagsString = Streams.asString(item.openStream());
+            if (StringUtils.isNotBlank(tagsString)) {
+              tags = List.of(StringUtils.split(tagsString, ','));
+              // find lang tag if exists
+              for (String tag : tags) {
+                if (StringUtils.startsWith(StringUtils.trimToEmpty(tag), "lang:")) {
+                  // lang tag is set
+                  langTag = StringUtils.trimToEmpty(tag);
+                  break;
+                }
+              }
             }
           } else if ("overwriteExisting".equals(fieldName)) {
             overwriteExisting = Boolean.parseBoolean(Streams.asString(item.openStream()));
@@ -2048,13 +2552,21 @@ public class EventsEndpoint implements ManagedService {
         // remove existing attachments of the new flavor
         Track[] existing = mp.getTracks(newFlavor);
         for (int i = 0; i < existing.length; i++) {
-          mp.remove(existing[i]);
-          logger.debug("Overwriting existing asset {} {}", tmpFlavor, newFlavor);
+          // if lang tag is set, remove only matching elements
+          if (null == langTag || existing[i].containsTag(langTag)) {
+            mp.remove(existing[i]);
+            logger.debug("Overwriting existing asset {} {}", tmpFlavor, newFlavor);
+          }
         }
       }
       // correct the flavor of the new attachment
       for (Track track : mp.getTracks(tmpFlavor)) {
         track.setFlavor(newFlavor);
+        if (null != tags) {
+          for (String tag : tags) {
+            track.addTag(tag);
+          }
+        }
       }
       logger.debug("Updated asset {} {}", tmpFlavor, newFlavor);
 

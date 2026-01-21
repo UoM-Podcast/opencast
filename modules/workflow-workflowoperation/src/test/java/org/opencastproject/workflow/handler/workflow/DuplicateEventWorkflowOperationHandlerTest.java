@@ -48,9 +48,6 @@ import static org.opencastproject.workflow.handler.workflow.DuplicateEventWorkfl
 
 import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.assetmanager.api.Snapshot;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.AResult;
-import org.opencastproject.assetmanager.api.query.ASelectQuery;
 import org.opencastproject.distribution.api.DistributionService;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.mediapackage.MediaPackage;
@@ -71,10 +68,9 @@ import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
 import org.opencastproject.workflow.handler.distribution.InternalPublicationChannel;
 import org.opencastproject.workspace.api.Workspace;
 
-import com.entwinemedia.fn.Stream;
-
 import org.easymock.Capture;
 import org.easymock.CaptureType;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -212,7 +208,7 @@ public class DuplicateEventWorkflowOperationHandlerTest {
   }
 
   private WorkflowOperationResult getWorkflowOperationResult(MediaPackage mp, Map<String, String> configurations)
-      throws WorkflowOperationException {
+          throws WorkflowOperationException {
     // Add the mediapackage to a workflow instance
     WorkflowInstance workflowInstance = new WorkflowInstance();
     workflowInstance.setId(1);
@@ -247,17 +243,8 @@ public class DuplicateEventWorkflowOperationHandlerTest {
         .andReturn(uriDc).times(numberOfCopies);
     replay(workspace);
 
-    final AResult qResult = createNiceMock(AResult.class);
-    expect(qResult.getRecords()).andReturn(Stream.empty()).anyTimes();
-    replay(qResult);
-    final ASelectQuery qSelect = createNiceMock(ASelectQuery.class);
-    expect(qSelect.where(anyObject())).andReturn(qSelect).anyTimes();
-    expect(qSelect.run()).andReturn(qResult).anyTimes();
-    replay(qSelect);
-    final AQueryBuilder qBuilder = createNiceMock(AQueryBuilder.class);
-    expect(qBuilder.select(anyObject())).andReturn(qSelect).anyTimes();
-    replay(qBuilder);
-    expect(assetManager.createQuery()).andReturn(qBuilder).anyTimes();
+    expect(assetManager.selectProperties(EasyMock.anyString(), EasyMock.anyString()))
+        .andReturn(new ArrayList<>()).anyTimes();
     expect(assetManager.takeSnapshot(eq(AssetManager.DEFAULT_OWNER), capture(clonedMediaPackages)))
         .andReturn(createNiceMock(Snapshot.class)).times(numberOfCopies);
     replay(assetManager);

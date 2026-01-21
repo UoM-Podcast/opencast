@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 import javax.persistence.EntityManager;
@@ -180,7 +181,7 @@ public class UserSettingsService {
     return em -> {
       String orgId = securityService.getOrganization().getId();
       String username = securityService.getUser().getUsername();
-      logger.debug("Getting user settings for '%s' in org '%s'", username, orgId);
+      logger.debug("Getting user settings for '{}' in org '{}'", username, orgId);
 
       List<UserSettingDto> result = em
           .createNamedQuery("UserSettings.findByUserName", UserSettingDto.class)
@@ -196,7 +197,7 @@ public class UserSettingsService {
       UserSettings userSettings = new UserSettings();
       for (UserSettingDto userSettingsDto : result) {
         UserSetting userSetting = userSettingsDto.toUserSetting();
-        logger.debug("Found user setting id: %d key: %s value: %s", userSetting.getId(), userSetting.getKey(),
+        logger.debug("Found user setting id: {} key: {} value: {}", userSetting.getId(), userSetting.getKey(),
             userSetting.getValue());
         userSettings.addUserSetting(userSetting);
       }
@@ -217,20 +218,35 @@ public class UserSettingsService {
   public UserSetting addUserSetting(String key, String value) throws UserSettingsServiceException {
     String orgId = securityService.getOrganization().getId();
     String username = securityService.getUser().getUsername();
-    try {
-      return db.execTx(em -> {
-        UserSettingDto userSettingDto = new UserSettingDto();
-        userSettingDto.setKey(key);
-        userSettingDto.setValue(value);
-        userSettingDto.setUsername(username);
-        userSettingDto.setOrganization(orgId);
-        em.persist(userSettingDto);
-        return userSettingDto.toUserSetting();
-      });
-    } catch (Exception e) {
-      logger.error("Could not update user setting username '%s' org:'%s' key:'%s' value:'%s':", username, orgId, key,
-          value, e);
-      throw new UserSettingsServiceException(e);
+    Optional<UserSettingDto> userSettingOpt = db.exec(getUserSettingsByKeyQuery(key)).stream()
+        .filter(setting -> setting.getKey().equalsIgnoreCase(key))
+        .findFirst();
+    if (userSettingOpt.isPresent()) {
+      try {
+        return db.execTx(em -> {
+          UserSettingDto userSettingDto = userSettingOpt.get();
+          userSettingDto.setValue(value);
+          em.merge(userSettingDto);
+          return userSettingDto.toUserSetting();
+        });
+      } catch (Exception e) {
+        throw new UserSettingsServiceException(e);
+      }
+    } else {
+      try {
+        return db.execTx(em -> {
+          UserSettingDto userSettingDto = new UserSettingDto();
+          userSettingDto.setKey(key);
+          userSettingDto.setValue(value);
+          userSettingDto.setUsername(username);
+          userSettingDto.setOrganization(orgId);
+          em.persist(userSettingDto);
+          return userSettingDto.toUserSetting();
+        });
+      } catch (Exception e) {
+
+        throw new UserSettingsServiceException(e);
+      }
     }
   }
 
@@ -242,7 +258,7 @@ public class UserSettingsService {
   private Function<EntityManager, List<UserSettingDto>> getUserSettingsByKeyQuery(String key) {
     String orgId = securityService.getOrganization().getId();
     String username = securityService.getUser().getUsername();
-    logger.debug("Getting user settings for '%s' in org '%s'", username, orgId);
+    logger.debug("Getting user settings for '{}' in org '{}'", username, orgId);
     return namedQuery.findAll(
         "UserSettings.findByKey",
         UserSettingDto.class,
@@ -285,7 +301,7 @@ public class UserSettingsService {
   public UserSetting updateUserSetting(long id, String key, String value) throws UserSettingsServiceException {
     String orgId = securityService.getOrganization().getId();
     String username = securityService.getUser().getUsername();
-    logger.debug("Updating user setting id: %d key: %s value: %s", id, key, value);
+    logger.debug("Updating user setting id: {} key: {} value: {}", id, key, value);
 
     try {
       return db.execTx(em -> {
@@ -296,7 +312,7 @@ public class UserSettingsService {
         return userSettingDto.toUserSetting();
       });
     } catch (Exception e) {
-      logger.error("Could not update user setting username '%s' org:'%s' id:'%d' key:'%s' value:'%s':",
+      logger.error("Could not update user setting username '{}' org: '{}' id: '{}' key: '{}' value: '{}'",
         username, orgId, id, key, value, e);
       throw new UserSettingsServiceException(e);
     }
@@ -316,7 +332,7 @@ public class UserSettingsService {
         em.remove(userSettingsDto);
       });
     } catch (Exception e) {
-      logger.error("Could not delete user setting '%d':", id, e);
+      logger.error("Could not delete user setting '{}'", id, e);
       throw new UserSettingsServiceException(e);
     }
   }

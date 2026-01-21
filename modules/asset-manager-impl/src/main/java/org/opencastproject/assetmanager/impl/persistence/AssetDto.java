@@ -22,32 +22,68 @@ package org.opencastproject.assetmanager.impl.persistence;
 
 import org.opencastproject.util.MimeType;
 
-import com.entwinemedia.fn.ProductBuilder;
-import com.entwinemedia.fn.Products;
-import com.entwinemedia.fn.data.Opt;
+import java.util.Optional;
+import java.util.function.Function;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EntityManager;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Index;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 import javax.persistence.TableGenerator;
+import javax.persistence.TypedQuery;
 
 /** JPA DTO modeling the asset database table. */
 @Entity(name = "Asset")
 @Table(name = "oc_assets_asset", indexes = {
     @Index(name = "IX_oc_assets_asset_checksum", columnList = ("checksum")),
     @Index(name = "IX_oc_assets_asset_mediapackage_element_id", columnList = ("mediapackage_element_id")) })
+@NamedQueries({
+    @NamedQuery(
+        name = "Asset.findMediumByMpIdMpeIdAndVersion",
+        query = "SELECT a, s.availability, s.organizationId FROM Asset a "
+            + "JOIN a.snapshot s "
+            + "WHERE s.mediaPackageId = :mpId "
+            + "AND a.mediaPackageElementId = :mpeId "
+            + "AND s.version = :version "
+            + "ORDER BY s.version DESC"
+    ),
+    @NamedQuery(
+        name = "Asset.findByChecksumStorageIdAndOrganizationId",
+        query = "SELECT a FROM Asset a "
+            + "INNER JOIN a.snapshot s "
+            + "WHERE a.checksum = :checksum "
+            + "AND a.storageId = :storageId "
+            + "AND s.organizationId = :orgId "
+    ),
+    @NamedQuery(
+        name = "Asset.updateStorageIdBySnapshot",
+        query = "UPDATE Asset a SET a.storageId = :storageId "
+            + "WHERE a.snapshot = :snapshot "
+    ),
+    @NamedQuery(
+        name = "Asset.updateStorageIdBySnapshotAndMpElementId",
+        query = "UPDATE Asset a SET a.storageId = :storageId "
+            + "WHERE a.snapshot = :snapshot "
+            + "AND a.mediaPackageElementId = :mediaPackageElementId "
+    ),
+    @NamedQuery(
+        name = "Asset.countAssets",
+        query = "SELECT COUNT(a) FROM Asset a "
+    ),
+})
 // Maintain own generator to support database migrations from Archive to AssetManager
 // The generator's initial value has to be set after the data migration.
 // Otherwise duplicate key errors will most likely happen.
 @TableGenerator(name = "seq_oc_assets_asset", initialValue = 0, allocationSize = 50)
 public class AssetDto {
-  private static final ProductBuilder p = Products.E;
 
   @Id
   @GeneratedValue(strategy = GenerationType.TABLE, generator = "seq_oc_assets_asset")
@@ -81,7 +117,7 @@ public class AssetDto {
       String mediaPackageElementId,
       SnapshotDto snapshot,
       String checksum,
-      Opt<MimeType> mimeType,
+      Optional<MimeType> mimeType,
       String storeageId,
       long size
   ) {
@@ -89,7 +125,7 @@ public class AssetDto {
     dto.snapshot = snapshot;
     dto.mediaPackageElementId = mediaPackageElementId;
     dto.checksum = checksum;
-    dto.mimeType = mimeType.isSome() ? mimeType.get().toString() : null;
+    dto.mimeType = mimeType.isPresent() ? mimeType.get().toString() : null;
     dto.storageId = storeageId;
     dto.size = size;
     return dto;
@@ -107,7 +143,7 @@ public class AssetDto {
     return checksum;
   }
 
-  public Opt<MimeType> getMimeType() {
+  public Optional<MimeType> getMimeType() {
     return Conversions.toMimeType(mimeType);
   }
 
@@ -130,4 +166,18 @@ public class AssetDto {
   public void setSnapshot(SnapshotDto snapshot) {
     this.snapshot = snapshot;
   }
+
+  /**
+   * Count assets in the asset manager
+   *
+   * @return Number of assts
+   */
+  public static Function<EntityManager, Long> countAssetsQuery() {
+    return em -> {
+      TypedQuery<Long> query;
+      query = em.createNamedQuery("Asset.countAssets", Long.class);
+      return query.getSingleResult();
+    };
+  }
+
 }

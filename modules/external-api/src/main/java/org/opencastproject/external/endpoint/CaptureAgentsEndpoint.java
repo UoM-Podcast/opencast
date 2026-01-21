@@ -20,32 +20,31 @@
  */
 package org.opencastproject.external.endpoint;
 
-import static com.entwinemedia.fn.data.json.Jsons.arr;
 import static org.opencastproject.external.util.CaptureAgentUtils.generateJsonAgent;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
 import org.opencastproject.capture.admin.api.Agent;
 import org.opencastproject.capture.admin.api.CaptureAgentStateService;
 import org.opencastproject.external.common.ApiMediaType;
-import org.opencastproject.external.common.ApiResponses;
+import org.opencastproject.external.common.ApiResponseBuilder;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestParameter.Type;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
-import com.entwinemedia.fn.data.json.JValue;
+import com.google.gson.JsonArray;
 
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
@@ -56,11 +55,11 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/api/agents")
 @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_1_0, ApiMediaType.VERSION_1_2_0, ApiMediaType.VERSION_1_3_0,
             ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0, ApiMediaType.VERSION_1_6_0,
             ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0, ApiMediaType.VERSION_1_9_0,
-            ApiMediaType.VERSION_1_10_0 })
+            ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
 @RestService(
     name = "externalapicaptureagents",
     title = "External API Capture Agents Service",
@@ -76,6 +75,7 @@ import javax.ws.rs.core.Response;
         "opencast.service.path=/api/agents"
     }
 )
+@JaxrsResource
 public class CaptureAgentsEndpoint {
 
   /** The logging facility */
@@ -113,7 +113,8 @@ public class CaptureAgentsEndpoint {
       },
       responses = {
           @RestResponse(description = "The agent is returned.", responseCode = HttpServletResponse.SC_OK),
-          @RestResponse(description = "The specified agent does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND)
+          @RestResponse(description = "The specified agent does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
       }
   )
   public Response getAgent(
@@ -122,10 +123,10 @@ public class CaptureAgentsEndpoint {
     final Agent agent = agentStateService.getAgent(id);
 
     if (agent == null) {
-      return ApiResponses.notFound("Cannot find an agent with id '%s'.", id);
+      return ApiResponseBuilder.notFound("Cannot find an agent with id '%s'.", id);
     }
 
-    return ApiResponses.Json.ok(acceptHeader, generateJsonAgent(agent));
+    return ApiResponseBuilder.Json.ok(acceptHeader, generateJsonAgent(agent));
   }
 
   @GET
@@ -135,11 +136,14 @@ public class CaptureAgentsEndpoint {
       description = "Returns a list of agents.",
       returnDescription = "",
       restParameters = {
-          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.", isRequired = false, type = Type.INTEGER),
-          @RestParameter(name = "offset", description = "The index of the first result to return.", isRequired = false, type = Type.INTEGER)
+          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.",
+              isRequired = false, type = Type.INTEGER),
+          @RestParameter(name = "offset", description = "The index of the first result to return.",
+              isRequired = false, type = Type.INTEGER)
       },
       responses = {
-          @RestResponse(description = "A (potentially empty) list of agents is returned.", responseCode = HttpServletResponse.SC_OK)
+          @RestResponse(description = "A (potentially empty) list of agents is returned.",
+              responseCode = HttpServletResponse.SC_OK)
       }
   )
   public Response getAgents(
@@ -159,11 +163,12 @@ public class CaptureAgentsEndpoint {
       agents = agents.subList(0, Math.min(limit, agents.size()));
     }
 
-    final List<JValue> agentsJSON = agents.stream()
-        .map(a -> generateJsonAgent(a))
-        .collect(Collectors.toList());
+    JsonArray agentsJSON = new JsonArray();
+    for (Agent a : agents) {
+      agentsJSON.add(generateJsonAgent(a));
+    }
 
-    return ApiResponses.Json.ok(acceptHeader, arr(agentsJSON));
+    return ApiResponseBuilder.Json.ok(acceptHeader, agentsJSON);
   }
 
 

@@ -23,7 +23,6 @@ package org.opencastproject.assetmanager.storage.impl.fs;
 import static org.opencastproject.util.IoSupport.file;
 
 import org.opencastproject.assetmanager.api.storage.AssetStore;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.workspace.api.Workspace;
 
 import com.google.common.cache.CacheBuilder;
@@ -49,6 +48,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import javax.naming.ConfigurationException;
@@ -66,11 +66,9 @@ public class OsgiFileSystemAssetStore extends AbstractFileSystemAssetStore {
   private static final Logger logger = LoggerFactory.getLogger(OsgiFileSystemAssetStore.class);
 
   /** A cache of mediapckage ids and their associated storages */
-  private LoadingCache<String, Object> cache = null;
+  private LoadingCache<String, Optional<String>> cache = null;
   private int cacheSize = 1000;
-  private int cacheExpiration = 60;
-  /** A token to store in the miss cache */
-  protected Object nullToken = new Object();
+  private int cacheExpiration = 1;
 
   /** Configuration key for the default Opencast storage directory. A value is optional. */
   public static final String CFG_OPT_STORAGE_DIR = "org.opencastproject.storage.dir";
@@ -104,8 +102,8 @@ public class OsgiFileSystemAssetStore extends AbstractFileSystemAssetStore {
     long usableSpace = 0;
     String mostUsableDirectory = null;
     for (String path : rootDirectories) {
-      Option<Long> maybeUsableSpace = Option.some(new File(path).getUsableSpace());
-      if (maybeUsableSpace.isNone()) {
+      Optional<Long> maybeUsableSpace = Optional.of(new File(path).getUsableSpace());
+      if (maybeUsableSpace.isEmpty()) {
         continue;
       }
       if (maybeUsableSpace.get() > usableSpace) {
@@ -125,13 +123,15 @@ public class OsgiFileSystemAssetStore extends AbstractFileSystemAssetStore {
    */
   protected String getRootDirectory(String orgId, String mpId) {
     try {
-      Object path = cache.getUnchecked(Paths.get(orgId, mpId).toString());
-      if (path == nullToken) {
-        logger.debug("Path could not be found, returning null.");
-        return null;
+      String cacheKey = Paths.get(orgId, mpId).toString();
+      Optional<String> pathOpt = cache.getUnchecked(cacheKey);
+      if (pathOpt.isPresent()) {
+        logger.debug("Root directory for mediapackage {} is {}", mpId, pathOpt.get());
+        return pathOpt.get();
       } else {
-        logger.debug("Returning path to mediapackage " + mpId);
-        return (String) path;
+        logger.debug("Root directory for mediapackage {} could not be found, returning null.", mpId);
+        cache.invalidate(cacheKey);
+        return null;
       }
     } catch (ExecutionError e) {
       logger.warn("Exception while getting path for mediapackage {}", mpId, e);
@@ -166,13 +166,18 @@ public class OsgiFileSystemAssetStore extends AbstractFileSystemAssetStore {
 
   protected void setupCache() {
     cache = CacheBuilder.newBuilder().maximumSize(cacheSize).expireAfterWrite(cacheExpiration, TimeUnit.MINUTES)
-            .build(new CacheLoader<String, Object>() {
+            .build(new CacheLoader<String, Optional<String>>() {
               @Override
-              public Object load(String orgAndMpId) throws Exception {
+              public Optional<String> load(String orgAndMpId) throws Exception {
                 String rootDirectory = getRootDirectoryForMediaPackage(orgAndMpId);
-                return rootDirectory == null ? null : rootDirectory;
+                return rootDirectory == null ? Optional.empty() : Optional.of(rootDirectory);
               }
             });
+  }
+
+  protected void onDeleteMediaPackage(String orgId, String mpId) {
+    String cacheKey = Paths.get(orgId, mpId).toString();
+    cache.invalidate(cacheKey);
   }
 
   /**
@@ -265,30 +270,30 @@ public class OsgiFileSystemAssetStore extends AbstractFileSystemAssetStore {
   // However, that would require a major rewrite of the StorageUsage interface, which is a lot of work for some
   // functions that seem to see no use anyhow.
   @Override
-  public Option<Long> getUsedSpace() {
+  public Optional<Long> getUsedSpace() {
     long usedSpace = 0;
     for (String path : rootDirectories) {
       usedSpace += FileUtils.sizeOfDirectory(new File(path));
     }
-    return Option.some(usedSpace);
+    return Optional.of(usedSpace);
   }
 
   @Override
-  public Option<Long> getUsableSpace() {
+  public Optional<Long> getUsableSpace() {
     long usableSpace = 0;
     for (String path : rootDirectories) {
       usableSpace += new File(path).getUsableSpace();
     }
-    return Option.some(usableSpace);
+    return Optional.of(usableSpace);
   }
 
   @Override
-  public Option<Long> getTotalSpace() {
+  public Optional<Long> getTotalSpace() {
     long totalSpace = 0;
     for (String path : rootDirectories) {
       totalSpace += new File(path).getTotalSpace();
     }
-    return Option.some(totalSpace);
+    return Optional.of(totalSpace);
   }
 
 }

@@ -20,7 +20,6 @@
  */
 package org.opencastproject.assetmanager.impl.endpoint;
 
-import static org.opencastproject.util.MimeTypeUtil.Fns.suffix;
 import static org.opencastproject.util.OsgiUtil.getComponentContextProperty;
 import static org.opencastproject.util.OsgiUtil.getContextProperty;
 import static org.opencastproject.util.UrlSupport.uri;
@@ -35,9 +34,6 @@ import org.opencastproject.systems.OpencastConstants;
 import org.opencastproject.util.MimeType;
 import org.opencastproject.util.NotFoundException;
 
-import com.entwinemedia.fn.Fn;
-import com.entwinemedia.fn.data.Opt;
-
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
@@ -47,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.util.Optional;
 
 /**
  * Implementation of an {@link HttpAssetProvider} for the {@link OsgiAssetManagerRestEndpoint}.
@@ -98,20 +95,16 @@ public class OsgiEndpointHttpAssetProvider implements HttpAssetProvider {
   }
 
   @Override public Snapshot prepareForDelivery(final Snapshot snapshot) {
-    return AssetManagerImpl.rewriteUris(snapshot, new Fn<MediaPackageElement, URI>() {
-      @Override public URI apply(MediaPackageElement mpe) {
-        return createUriFor(mpe, snapshot);
-      }
-    });
+    return AssetManagerImpl.rewriteUris(snapshot, mpe -> createUriFor(mpe, snapshot));
   }
 
   private URI createUriFor(MediaPackageElement mpe, Snapshot snapshot) {
-    Opt<String> fileNameOpt = AssetManagerImpl.getFileNameFromUrn(mpe);
+    Optional<String> fileNameOpt = AssetManagerImpl.getFileNameFromUrn(mpe);
     String fileName;
-    if (fileNameOpt.isSome()) {
+    if (fileNameOpt.isPresent()) {
       fileName = fileNameOpt.get();
     } else {
-      fileName = mpe.getElementType().toString() + "." + mimeTypeToSuffix(Opt.nul(mpe.getMimeType()));
+      fileName = mpe.getElementType().toString() + "." + mimeTypeToSuffix(Optional.ofNullable(mpe.getMimeType()));
     }
 
     // the returned uri must match the path of the {@link #getAsset} method
@@ -125,8 +118,14 @@ public class OsgiEndpointHttpAssetProvider implements HttpAssetProvider {
   }
 
   /** Get a file name suffix for the given MIME type. */
-  private static String mimeTypeToSuffix(Opt<MimeType> t) {
-    return t.bind(suffix).getOr("unknown");
+  private static String mimeTypeToSuffix(Optional<MimeType> t) {
+    var test = t.map(MimeType::getSuffix).get();
+
+    if (test.isEmpty()) {
+      return "unknown";
+    }
+
+    return test.get();
   }
 
   /** OSGi callback. */

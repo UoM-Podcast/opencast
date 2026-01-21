@@ -2,16 +2,15 @@
   "name": "opencast-runtime-info-ui",
   "private": true,
   "scripts": {
-    "eslint": "eslint --config ../../docs/checkstyle/eslintrc.js src/main/resources/ --resolve-plugins-relative-to .",
+    "eslint": "eslint src/main/resources/",
     "html-linter": "html-linter --config ../../docs/checkstyle/html-linter.json 'src/main/resources/**/*.html'"
   },
   "dependencies": {
-    "angular": "^1.8.3",
-    "angular-route": "^1.8.3",
     "jquery": "^3.7.1"
   },
   "devDependencies": {
-    "eslint": "^8.55.0",
+    "eslint": "^9.39.2",
+    "eslint-config-opencast": "file:../../docs/checkstyle/eslint-config",
     "eslint-plugin-header": "^3.1.1",
     "html-linter": "^1.1.1"
   }

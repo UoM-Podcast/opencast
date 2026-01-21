@@ -85,7 +85,7 @@ public class PluginManagerImpl implements PluginManager {
 
     // Load plugin configuration
     activePlugins = properties.entrySet().stream()
-            .filter(e -> BooleanUtils.toBoolean(Objects.toString(e.getValue(), "")))
+            .filter(e -> BooleanUtils.toBoolean(Objects.toString(e.getValue(), "").trim()))
             .map(Map.Entry::getKey)
             .collect(Collectors.toSet());
     logger.debug("Active plugin configuration: {}", activePlugins);
@@ -155,8 +155,15 @@ public class PluginManagerImpl implements PluginManager {
             continue;
           }
 
+          // Get the base name of the plugin.
+          // We can have multiple variants of a plugin defining different modules for different distributions like:
+          // - opencast-plugin-xy_admin
+          // - opencast-plugin-xy_worker
+          // But we want both to be enabled if `opencast-plugin-xy = on` is set.
+          var baseName = feature.getName().split("_")[0];
+
           // Check if plugin is active
-          if (!activePlugins.contains(feature.getName())) {
+          if (!activePlugins.contains(baseName)) {
             logger.info("Skipping disabled plugin {}", feature);
             continue;
           }

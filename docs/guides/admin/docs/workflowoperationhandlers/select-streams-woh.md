@@ -61,14 +61,16 @@ edited according to the selections in video editor’s “Tracks” panel. The r
 corresponding `target-flavor` and `target-tags` are applied.
 
 Note: If your editing results in a single video and single audio (track/stream) they will be muxed together even if
-this option is set to `none`.
+this option is set to `none`. If you have three or more video tracks and at least one video track is hidden, the resulting
+audio and video tracks will not be muxed.
 
 ### `force`
 
-The parameter value `force` only applies to media packages that have exactly one non-hidden audio stream. For media
-packages without an audio stream or with more than one audio stream, the behavior is the same as if the parameter were
-omitted. The same applies to media packages for which there is only one audio stream, and it already belongs to the
-track with flavor type given by `force-target` (or `presenter` if that parameter is omitted).
+The parameter value `force` only applies to media packages that have exactly one non-hidden audio stream and no
+hidden video streams. For media packages without an audio stream or with more than one audio stream, the behavior is the 
+same as if the parameter were omitted. The same applies to media packages for which there is only one audio 
+stream, and it already belongs to the track with flavor type given by `force-target` (or `presenter` if that 
+parameter is omitted).
 
 If, however, there is only one non-hidden audio stream and it does *not* belong to the track given by `force-target`,
 then the operation will “move” the audio stream to this target track. Specifically, it will mux the video stream of
@@ -101,14 +103,11 @@ Note that those encoding profiles are included in the default configuration of O
 Operation Example
 -----------------
 
-```xml
-<operation
-    id="select-tracks"
-    description="Select tracks for further processing">
-  <configurations>
-    <configuration key="source-flavor">*/source</configuration>
-    <configuration key="target-flavor">*/work</configuration>
-    <configuration key="audio-muxing">force</configuration>
-  </configurations>
-</operation>
+```yaml
+  - id: select-tracks
+    description: Select tracks for further processing
+    configurations:
+      - source-flavor: '*/source'
+      - target-flavor: '*/work'
+      - audio-muxing: force
 ```

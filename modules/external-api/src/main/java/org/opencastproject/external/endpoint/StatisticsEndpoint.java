@@ -22,14 +22,14 @@
 package org.opencastproject.external.endpoint;
 
 import static org.opencastproject.security.api.SecurityConstants.GLOBAL_ADMIN_ROLE;
-import static org.opencastproject.util.data.functions.Functions.chuck;
+import static org.opencastproject.util.data.functions.Misc.chuck;
 
 import org.opencastproject.elasticsearch.api.SearchIndexException;
 import org.opencastproject.elasticsearch.index.ElasticsearchIndex;
 import org.opencastproject.elasticsearch.index.objects.event.Event;
 import org.opencastproject.elasticsearch.index.objects.series.Series;
 import org.opencastproject.external.common.ApiMediaType;
-import org.opencastproject.external.common.ApiResponses;
+import org.opencastproject.external.common.ApiResponseBuilder;
 import org.opencastproject.external.util.statistics.QueryUtils;
 import org.opencastproject.external.util.statistics.ResourceTypeUtils;
 import org.opencastproject.external.util.statistics.StatisticsProviderUtils;
@@ -49,8 +49,6 @@ import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 
-import com.entwinemedia.fn.data.Opt;
-
 import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -58,6 +56,7 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,13 +80,16 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/api/statistics")
 @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_3_0, ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0,
             ApiMediaType.VERSION_1_6_0, ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0,
-            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0 })
+            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
 @RestService(
-  name = "externalapistatistics", title = "External API Statistics Endpoint",
-  notes = {}, abstractText = "Provides statistics")
+    name = "externalapistatistics",
+    title = "External API Statistics Endpoint",
+    notes = {},
+    abstractText = "Provides statistics"
+)
 @Component(
     immediate = true,
     service = StatisticsEndpoint.class,
@@ -97,6 +99,7 @@ import javax.ws.rs.core.Response;
         "opencast.service.path=/api/statistics"
     }
 )
+@JaxrsResource
 public class StatisticsEndpoint {
 
   /** The logging facility */
@@ -142,26 +145,26 @@ public class StatisticsEndpoint {
   @GET
   @Path("providers")
   @RestQuery(
-    name = "getproviders",
-    description = "Returns a list of available statistics providers",
-    returnDescription = "The list of available statistics providers as JSON",
-    restParameters = {
-      @RestParameter(
-        name = "filter", isRequired = false,
-        description = "Usage [Filter Name]:[Value to Filter With]. Available filter: \"resourceType\"",
-        type = RestParameter.Type.STRING),
-      @RestParameter(
-        name = "withparameters", isRequired = false,
-        description = "Whether the parameters should be included in the response.",
-        type = RestParameter.Type.BOOLEAN)
-    },
-    responses = {
-      @RestResponse(
-        description = "Returns the requested statistics providers as JSON",
-        responseCode = HttpServletResponse.SC_OK),
-      @RestResponse(
-        description = "If the current user is not authorized to perform this action",
-        responseCode = HttpServletResponse.SC_UNAUTHORIZED)
+      name = "getproviders",
+      description = "Returns a list of available statistics providers",
+      returnDescription = "The list of available statistics providers as JSON",
+      restParameters = {
+          @RestParameter(
+              name = "filter", isRequired = false,
+              description = "Usage [Filter Name]:[Value to Filter With]. Available filter: \"resourceType\"",
+              type = RestParameter.Type.STRING),
+          @RestParameter(
+              name = "withparameters", isRequired = false,
+              description = "Whether the parameters should be included in the response.",
+              type = RestParameter.Type.BOOLEAN)
+      },
+      responses = {
+          @RestResponse(
+              description = "Returns the requested statistics providers as JSON",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(
+              description = "If the current user is not authorized to perform this action",
+              responseCode = HttpServletResponse.SC_UNAUTHORIZED)
     })
   public Response getProviders(@HeaderParam("Accept") String acceptHeader, @QueryParam("filter") String filter,
         @QueryParam("withparameters") Boolean withParameters) {
@@ -201,30 +204,30 @@ public class StatisticsEndpoint {
     JSONArray result = new JSONArray();
     providers.stream().map(p -> StatisticsProviderUtils.toJson(p, withParameters)).forEach(result::add);
 
-    return ApiResponses.Json.ok(acceptHeader, result.toJSONString());
+    return ApiResponseBuilder.Json.ok(acceptHeader, result.toJSONString());
   }
 
   @GET
   @Path("providers/{providerId}")
   @RestQuery(
-    name = "getprovider",
-    description = "Returns the statistics provider with the specified id",
-    returnDescription = "The requested statistics provider",
-    pathParameters = {
-      @RestParameter(
-        name = "providerId", description = "The identifier of the statistics provider",
-        isRequired = true, type = RestParameter.Type.STRING)
-    },
-    restParameters = {
-      @RestParameter(
-        name = "withparameters", isRequired = false,
-        description = "Whether the parameters should be included in the response.",
-        type = RestParameter.Type.BOOLEAN)
-    },
-    responses = {
-      @RestResponse(
-        description = "Returns the requested statistics provider as JSON",
-        responseCode = HttpServletResponse.SC_OK)
+      name = "getprovider",
+      description = "Returns the statistics provider with the specified id",
+      returnDescription = "The requested statistics provider",
+      pathParameters = {
+          @RestParameter(
+              name = "providerId", description = "The identifier of the statistics provider",
+              isRequired = true, type = RestParameter.Type.STRING)
+      },
+      restParameters = {
+          @RestParameter(
+              name = "withparameters", isRequired = false,
+              description = "Whether the parameters should be included in the response.",
+              type = RestParameter.Type.BOOLEAN)
+      },
+      responses = {
+          @RestResponse(
+              description = "Returns the requested statistics provider as JSON",
+              responseCode = HttpServletResponse.SC_OK)
     })
   public Response getProvider(@HeaderParam("Accept") String acceptHeader, @PathParam("providerId") String id,
         @QueryParam("withparameters") Boolean withParameters) {
@@ -232,10 +235,10 @@ public class StatisticsEndpoint {
     if (StringUtils.isNotBlank(id)) {
       Optional<StatisticsProvider> provider = statisticsService.getProvider(id);
       if (provider.isPresent()) {
-        return ApiResponses.Json.ok(acceptHeader, StatisticsProviderUtils.toJson(provider.get(),
+        return ApiResponseBuilder.Json.ok(acceptHeader, StatisticsProviderUtils.toJson(provider.get(),
             withParameters).toJSONString());
       } else {
-        return ApiResponses.notFound("Cannot find a statistics provider with id '%s'.", id);
+        return ApiResponseBuilder.notFound("Cannot find a statistics provider with id '%s'.", id);
       }
     } else {
       return RestUtil.R.badRequest("Invalid value for providerId");
@@ -245,21 +248,21 @@ public class StatisticsEndpoint {
   @POST
   @Path("data/query")
   @RestQuery(
-    name = "getstatistics",
-    description = "Returns the statistical data based on the query posted",
-    returnDescription = "The statistical data as JSON array",
-    restParameters = {
-      @RestParameter(
-        name = "data", description = "An JSON array describing the queries to be executed",
-        isRequired = true, type = RestParameter.Type.TEXT)
-    },
-    responses = {
-      @RestResponse(
-        description = "Returns the statistical data as requested by the query as JSON array",
-        responseCode = HttpServletResponse.SC_OK),
-      @RestResponse(
-        description = "If the current user is not authorized to perform this action",
-        responseCode = HttpServletResponse.SC_UNAUTHORIZED)
+      name = "getstatistics",
+      description = "Returns the statistical data based on the query posted",
+      returnDescription = "The statistical data as JSON array",
+      restParameters = {
+          @RestParameter(
+              name = "data", description = "An JSON array describing the queries to be executed",
+              isRequired = true, type = RestParameter.Type.TEXT)
+      },
+      responses = {
+          @RestResponse(
+              description = "Returns the statistical data as requested by the query as JSON array",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(
+              description = "If the current user is not authorized to perform this action",
+              responseCode = HttpServletResponse.SC_UNAUTHORIZED)
     })
   public Response getStatistics(@HeaderParam("Accept") String acceptHeader, @FormParam("data") String data) {
 
@@ -267,7 +270,7 @@ public class StatisticsEndpoint {
     try {
       queries = QueryUtils.parse(data, statisticsService);
     } catch (Exception e) {
-      logger.debug("Unable to parse form parameter 'data' {}, exception: {}", data, e);
+      logger.debug("Unable to parse form parameter 'data' {}, exception", data, e);
       return RestUtil.R.badRequest("Unable to parse form parameter 'data': " + e.getMessage());
     }
 
@@ -275,9 +278,9 @@ public class StatisticsEndpoint {
     queries.stream()
       .peek(query -> checkAccess(query.getParameters().getResourceId(), query.getProvider().getResourceType()))
       .map(query -> QueryUtils.execute(query))
-      .forEach(result::add);
+        .forEach(result::add);
 
-    return ApiResponses.Json.ok(acceptHeader, result.toJSONString());
+    return ApiResponseBuilder.Json.ok(acceptHeader, result.toJSONString());
   }
 
   @POST
@@ -285,31 +288,31 @@ public class StatisticsEndpoint {
               ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0, ApiMediaType.VERSION_1_9_0 })
   @Path("data/export.csv")
   @RestQuery(
-          name = "getexportcsv",
-          description = "Returns a statistics csv export",
-          returnDescription = "The requested statistics csv export",
-          restParameters = {
-                  @RestParameter(
-                          name = "data", description = "A JSON object describing the query to be executed",
-                          isRequired = true, type = RestParameter.Type.TEXT),
-                  @RestParameter(
-                          name = "limit", description = "Limit for pagination.",
-                          isRequired = false, type = RestParameter.Type.INTEGER),
-                  @RestParameter(
-                          name = "offset", description = "Offset for pagination.",
-                          isRequired = false, type = RestParameter.Type.INTEGER),
-                  @RestParameter(
-                          name = "filter", description = "Usage [Filter Name]:[Value to Filter With]. Multiple filters can be used by combining them with commas \",\".",
-                          isRequired = false, type = RestParameter.Type.STRING)
-          },
-          responses = {
-                  @RestResponse(
-                          description = "Returns the csv data as requested by the query as plain text",
-                          responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(
-                          description = "If the current user is not authorized to perform this action",
-                          responseCode = HttpServletResponse.SC_UNAUTHORIZED)
-          })
+      name = "getexportcsv",
+      description = "Returns a statistics csv export",
+      returnDescription = "The requested statistics csv export",
+      restParameters = {
+          @RestParameter(
+              name = "data", description = "A JSON object describing the query to be executed",
+              isRequired = true, type = RestParameter.Type.TEXT),
+          @RestParameter(
+              name = "limit", description = "Limit for pagination.",
+              isRequired = false, type = RestParameter.Type.INTEGER),
+          @RestParameter(
+              name = "offset", description = "Offset for pagination.",
+              isRequired = false, type = RestParameter.Type.INTEGER),
+          @RestParameter(
+              name = "filter", description = "Usage [Filter Name]:[Value to Filter With]. Multiple filters can be used "
+              + "by combining them with commas \",\".", isRequired = false, type = RestParameter.Type.STRING)
+      },
+      responses = {
+          @RestResponse(
+              description = "Returns the csv data as requested by the query as plain text",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(
+              description = "If the current user is not authorized to perform this action",
+              responseCode = HttpServletResponse.SC_UNAUTHORIZED)
+  })
   public Response getExportCSV(
           @HeaderParam("Accept") String acceptHeader,
           @FormParam("data") String data,
@@ -332,7 +335,7 @@ public class StatisticsEndpoint {
     try {
       query = QueryUtils.parseQuery(data, statisticsService);
     } catch (Exception e) {
-      logger.debug("Unable to parse form parameter 'data' {}, exception: {}", data, e);
+      logger.debug("Unable to parse form parameter 'data' {}, exception", data, e);
       return RestUtil.R.badRequest("Unable to parse form parameter 'data': " + e.getMessage());
     }
     checkAccess(query.getParameters().getResourceId(), query.getProvider().getResourceType());
@@ -353,7 +356,8 @@ public class StatisticsEndpoint {
             filters
     );
 
-    return ApiResponses.Json.ok(acceptHeader, new JSONObject(Collections.singletonMap("csv", result)).toJSONString());
+    return ApiResponseBuilder.Json.ok(acceptHeader, new JSONObject(Collections.singletonMap("csv", result))
+        .toJSONString());
   }
 
   private void checkAccess(final String resourceId, final ResourceType resourceType) {
@@ -377,15 +381,16 @@ public class StatisticsEndpoint {
   }
 
   private void checkMediapackageAccess(final String mpId) throws UnauthorizedException, SearchIndexException {
-    final Opt<Event> event = indexService.getEvent(mpId, elasticsearchIndex);
-    if (event.isNone()) {
+    final Optional<Event> event = indexService.getEvent(mpId, elasticsearchIndex);
+    if (event.isEmpty()) {
       // IndexService checks permissions and returns None if user is unauthorized
       throw new UnauthorizedException(securityService.getUser(), "read");
     }
   }
 
   private void checkSeriesAccess(final String seriesId) throws UnauthorizedException, SearchIndexException {
-    final Optional<Series> series = elasticsearchIndex.getSeries(seriesId, securityService.getOrganization().getId(), securityService.getUser());
+    final Optional<Series> series = elasticsearchIndex.getSeries(seriesId, securityService.getOrganization().getId(),
+        securityService.getUser());
     if (series.isEmpty()) {
       // IndexService checks permissions and returns None if user is unauthorized
       throw new UnauthorizedException(securityService.getUser(), "read");

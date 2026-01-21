@@ -27,9 +27,9 @@ import static org.opencastproject.metadata.dublincore.DublinCore.PROPERTY_TITLE;
 import static org.opencastproject.security.api.SecurityConstants.GLOBAL_ADMIN_ROLE;
 import static org.opencastproject.security.api.SecurityConstants.GLOBAL_CAPTURE_AGENT_ROLE;
 import static org.opencastproject.util.JobUtil.waitForJob;
-import static org.opencastproject.util.data.Monadics.mlist;
-import static org.opencastproject.util.data.Option.none;
 
+import org.opencastproject.authorization.xacml.XACMLParsingException;
+import org.opencastproject.authorization.xacml.XACMLUtils;
 import org.opencastproject.capture.CaptureParameters;
 import org.opencastproject.ingest.api.IngestException;
 import org.opencastproject.ingest.api.IngestService;
@@ -38,6 +38,7 @@ import org.opencastproject.inspection.api.MediaInspectionService;
 import org.opencastproject.job.api.AbstractJobProducer;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.job.api.Job.Status;
+import org.opencastproject.mediapackage.Attachment;
 import org.opencastproject.mediapackage.Catalog;
 import org.opencastproject.mediapackage.EName;
 import org.opencastproject.mediapackage.MediaPackage;
@@ -85,8 +86,6 @@ import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.ProgressInputStream;
 import org.opencastproject.util.XmlSafeParser;
 import org.opencastproject.util.XmlUtil;
-import org.opencastproject.util.data.Function;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.functions.Misc;
 import org.opencastproject.util.jmx.JmxUtil;
 import org.opencastproject.workflow.api.WorkflowDatabaseException;
@@ -96,8 +95,6 @@ import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowService;
 import org.opencastproject.workingfilerepository.api.WorkingFileRepository;
 
-import com.entwinemedia.fn.Stream;
-import com.entwinemedia.fn.data.Opt;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
@@ -150,9 +147,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.management.ObjectInstance;
 
@@ -160,15 +159,15 @@ import javax.management.ObjectInstance;
  * Creates and augments Opencast MediaPackages. Stores media into the Working File Repository.
  */
 @Component(
-  immediate = true,
-  service = {
-    IngestService.class,
-    ManagedService.class
-  },
-  property = {
-    "service.description=Ingest Service",
-    "service.pid=org.opencastproject.ingest.impl.IngestServiceImpl"
-  }
+    immediate = true,
+    service = {
+        IngestService.class,
+        ManagedService.class
+    },
+    property = {
+        "service.description=Ingest Service",
+        "service.pid=org.opencastproject.ingest.impl.IngestServiceImpl"
+    }
 )
 public class IngestServiceImpl extends AbstractJobProducer implements IngestService, ManagedService {
 
@@ -548,8 +547,9 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
       // While there are entries write them to a collection
       while ((entry = zis.getNextZipEntry()) != null) {
         try {
-          if (entry.isDirectory() || entry.getName().contains("__MACOSX"))
+          if (entry.isDirectory() || entry.getName().contains("__MACOSX")) {
             continue;
+          }
 
           if (entry.getName().endsWith("manifest.xml") || entry.getName().endsWith("index.xml")) {
             // Build the media package
@@ -584,17 +584,19 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
             }
           }
         } catch (IOException e) {
-          logger.warn("Unable to process zip entry {}: {}", entry.getName(), e);
+          logger.warn("Unable to process zip entry {}", entry.getName(), e);
           throw e;
         }
       }
 
-      if (mp == null)
+      if (mp == null) {
         throw new MediaPackageException("No manifest found in this zip");
+      }
 
       // Determine the mediapackage identifier
-      if (mp.getIdentifier() == null || isBlank(mp.getIdentifier().toString()))
+      if (mp.getIdentifier() == null || isBlank(mp.getIdentifier().toString())) {
         mp.setIdentifier(IdImpl.fromUUID());
+      }
 
       String mediaPackageId = mp.getIdentifier().toString();
 
@@ -610,18 +612,13 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
         // Key has root folder name if there is one
         URI uri = uris.get((hasRootFolder ? folderName + "/" : "") + element.getURI().toString());
 
-        if (uri == null)
+        if (uri == null) {
           throw new MediaPackageException("Unable to map element name '" + element.getURI() + "' to workspace uri");
+        }
         logger.info("Ingested mediapackage element {}/{} located at {}", mediaPackageId, element.getIdentifier(), uri);
         URI dest = workingFileRepository.moveTo(wfrCollectionId, FilenameUtils.getName(uri.toString()), mediaPackageId,
                 element.getIdentifier(), FilenameUtils.getName(element.getURI().toString()));
         element.setURI(dest);
-
-        // TODO: This should be triggered somehow instead of being handled here
-        if (MediaPackageElements.SERIES.equals(element.getFlavor())) {
-          logger.info("Ingested mediapackage {} contains updated series information", mediaPackageId);
-          updateSeries(element.getURI());
-        }
       }
 
       // Now that all elements are in place, start with ingest
@@ -636,8 +633,9 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
       job.setStatus(Job.Status.FAILED, Job.FailureReason.DATA);
       throw e;
     } catch (Exception e) {
-      if (e instanceof IngestException)
+      if (e instanceof IngestException) {
         throw (IngestException) e;
+      }
       throw new IngestException(e);
     } finally {
       IOUtils.closeQuietly(zis);
@@ -857,7 +855,8 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
    * {@inheritDoc}
    *
    * @see org.opencastproject.ingest.api.IngestService#addCatalog(java.net.URI,
-   *      org.opencastproject.mediapackage.MediaPackageElementFlavor, org.opencastproject.mediapackage.MediaPackage)
+   *      org.opencastproject.mediapackage.MediaPackageElementFlavor, String[],
+   *      org.opencastproject.mediapackage.MediaPackage)
    */
   @Override
   public MediaPackage addCatalog(URI uri, MediaPackageElementFlavor flavor, String[] tags, MediaPackage mediaPackage)
@@ -872,9 +871,6 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
       String elementId = UUID.randomUUID().toString();
       logger.info("Start adding catalog {} from URL {} on mediapackage {}", elementId, uri, mediaPackage);
       URI newUrl = addContentToRepo(mediaPackage, elementId, uri);
-      if (MediaPackageElements.SERIES.equals(flavor)) {
-        updateSeries(newUrl);
-      }
       MediaPackage mp = addContentToMediaPackage(mediaPackage, elementId, newUrl, MediaPackageElement.Type.Catalog,
               flavor);
       if (tags != null && tags.length > 0) {
@@ -899,41 +895,53 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
   /**
    * Updates the persistent representation of a series based on a potentially modified dublin core document.
    *
-   * @param uri
-   *          the URI to the dublin core document containing series metadata.
+   * @param mediaPackage
+   *         the media package containing series metadata and ACLs.
    * @return
    *         true, if the series is created or overwritten, false if the existing series remains intact.
    * @throws IOException if the series catalog was not found
    * @throws IngestException if any other exception was encountered
    */
-  protected boolean updateSeries(URI uri) throws IOException, IngestException {
+  protected boolean updateSeries(MediaPackage mediaPackage) throws IOException, IngestException {
+    Catalog[] seriesCatalogs = mediaPackage.getCatalogs(MediaPackageElements.SERIES);
+    if (seriesCatalogs.length == 0) {
+      return false;
+    } else if (seriesCatalogs.length > 1) {
+      logger.warn("Mediapackage {} has more than one series dublincore catalogs. Using catalog {} with ID {}.",
+          mediaPackage.getIdentifier(), seriesCatalogs[0].getURI(), seriesCatalogs[0].getIdentifier());
+    }
+    // Parse series dublincore
     HttpResponse response = null;
     InputStream in = null;
     boolean isUpdated = false;
+    boolean isNew = false;
+    String seriesId = null;
     try {
-      HttpGet getDc = new HttpGet(uri);
+      HttpGet getDc = new HttpGet(seriesCatalogs[0].getURI());
       response = httpClient.execute(getDc);
       in = response.getEntity().getContent();
       DublinCoreCatalog dc = dublinCoreService.load(in);
-      String id = dc.getFirst(DublinCore.PROPERTY_IDENTIFIER);
-      if (id == null) {
-        logger.warn("Series dublin core document contains no identifier, rejecting ingested series cagtalog.");
+      seriesId = dc.getFirst(DublinCore.PROPERTY_IDENTIFIER);
+      if (seriesId == null) {
+        logger.warn("Series dublin core document contains no identifier, "
+            + "rejecting ingested series catalog for mediapackage {}.", mediaPackage.getIdentifier());
       } else {
         try {
           try {
-            seriesService.getSeries(id);
+            seriesService.getSeries(seriesId);
             if (isAllowModifySeries) {
               // Update existing series
               seriesService.updateSeries(dc);
               isUpdated = true;
-              logger.debug("Ingest is overwriting the existing series {} with the ingested series", id);
+              logger.debug("Ingest is overwriting the existing series {} with the ingested series", seriesId);
             } else {
-              logger.debug("Series {} already exists. Ignoring series catalog from ingest.", id);
+              logger.debug("Series {} already exists. Ignoring series catalog from ingest.", seriesId);
             }
           } catch (NotFoundException e) {
-            logger.info("Creating new series {} with default ACL", id);
+            logger.info("Creating new series {} with default ACL.", seriesId);
             seriesService.updateSeries(dc);
             isUpdated = true;
+            isNew = true;
           }
 
         } catch (Exception e) {
@@ -942,10 +950,75 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
       }
       in.close();
     } catch (IOException e) {
-      logger.error("Error updating series from DublinCoreCatalog: {}", e.getMessage());
+      logger.error("Error updating series from DublinCoreCatalog.}", e);
     } finally {
       IOUtils.closeQuietly(in);
       httpClient.close(response);
+    }
+    if (!isUpdated) {
+      return isUpdated;
+    }
+    // Apply series extended metadata
+    for (MediaPackageElement seriesElement : mediaPackage.getElementsByFlavor(
+        MediaPackageElementFlavor.parseFlavor("*/series"))) {
+      if (MediaPackageElement.Type.Catalog == seriesElement.getElementType()
+          && !MediaPackageElements.SERIES.equals(seriesElement.getFlavor())) {
+        String catalogType = seriesElement.getFlavor().getType();
+        logger.info("Apply series {} metadata catalog from mediapackage {} to newly created series {}.",
+            catalogType, mediaPackage.getIdentifier(), seriesId);
+        byte[] data;
+        try {
+          HttpGet getExtendedMetadata = new HttpGet(seriesElement.getURI());
+          response = httpClient.execute(getExtendedMetadata);
+          in = response.getEntity().getContent();
+          data = IOUtils.readFully(in, (int) response.getEntity().getContentLength());
+        } catch (Exception e) {
+          throw new IngestException("Unable to read series " + catalogType + " metadata catalog for series "
+              + seriesId + ".", e);
+        } finally {
+          IOUtils.closeQuietly(in);
+          httpClient.close(response);
+        }
+        try {
+          seriesService.updateSeriesElement(seriesId, catalogType, data);
+        } catch (SeriesException e) {
+          throw new IngestException(
+              "Unable to update series " + catalogType + " catalog on newly created series " + seriesId + ".", e);
+        }
+      }
+    }
+    if (isNew) {
+      logger.info("Apply series ACL from mediapackage {} to newly created series {}.",
+          mediaPackage.getIdentifier(), seriesId);
+      Attachment[] seriesXacmls = mediaPackage.getAttachments(MediaPackageElements.XACML_POLICY_SERIES);
+      if (seriesXacmls.length > 0) {
+        if (seriesXacmls.length > 1) {
+          logger.warn("Mediapackage {} has more than one series xacml attachments. Using {}.",
+              mediaPackage.getIdentifier(), seriesXacmls[0].getURI());
+        }
+        AccessControlList seriesAcl = null;
+        try {
+          HttpGet getXacml = new HttpGet(seriesXacmls[0].getURI());
+          response = httpClient.execute(getXacml);
+          in = response.getEntity().getContent();
+          seriesAcl = XACMLUtils.parseXacml(in);
+        } catch (XACMLParsingException ex) {
+          throw new IngestException("Unable to parse series xacml from mediapackage "
+              + mediaPackage.getIdentifier() + ".", ex);
+        } catch (IOException e) {
+          logger.error("Error updating series {} ACL from mediapackage {}.",
+              seriesId, mediaPackage.getIdentifier(), e);
+          throw e;
+        } finally {
+          IOUtils.closeQuietly(in);
+          httpClient.close(response);
+        }
+        try {
+          seriesService.updateAccessControl(seriesId, seriesAcl);
+        } catch (Exception e) {
+          throw new IngestException("Unable to update series ACL on newly created series " + seriesId + ".", e);
+        }
+      }
     }
     return isUpdated;
   }
@@ -1002,10 +1075,6 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
           throw new IllegalArgumentException("Catalog XML is invalid", e);
         }
       }
-
-      if (MediaPackageElements.SERIES.equals(flavor)) {
-        updateSeries(newUrl);
-      }
       MediaPackage mp = addContentToMediaPackage(mediaPackage, elementId, newUrl, MediaPackageElement.Type.Catalog,
               flavor);
       if (tags != null && tags.length > 0) {
@@ -1032,7 +1101,8 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
    * {@inheritDoc}
    *
    * @see org.opencastproject.ingest.api.IngestService#addAttachment(java.net.URI,
-   *      org.opencastproject.mediapackage.MediaPackageElementFlavor, org.opencastproject.mediapackage.MediaPackage)
+   *      org.opencastproject.mediapackage.MediaPackageElementFlavor, String[],
+   *      org.opencastproject.mediapackage.MediaPackage)
    */
   @Override
   public MediaPackage addAttachment(URI uri, MediaPackageElementFlavor flavor, String[] tags, MediaPackage mediaPackage)
@@ -1171,6 +1241,12 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
       throw new IngestException("Unable to add SMIL Catalog", e);
     }
 
+    try {
+      updateSeries(mp);
+    } catch (IOException e) {
+      throw new IngestException("Unable to create or update series from mediapackage " + mp.getIdentifier() + ".", e);
+    }
+
     // Done, update the job status and return the created workflow instance
     if (workflowInstanceId != null) {
       logger.warn(
@@ -1279,7 +1355,7 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
 
     try {
       schedulerService.addEvent(period.getStart(), period.getEnd(), captureAgent, new HashSet<>(), mediaPackage,
-              workflowProperties, agentProperties, Opt.none());
+              workflowProperties, agentProperties, Optional.empty());
     } finally {
       for (MediaPackageElement mediaPackageElement : mediaPackage.getElements()) {
         try {
@@ -1291,7 +1367,7 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
     }
   }
 
-    private String getCaptureAgent(DublinCoreCatalog dublinCoreCatalog) throws IngestException {
+  private String getCaptureAgent(DublinCoreCatalog dublinCoreCatalog) throws IngestException {
     // spatial
     EName spatial = new EName(DublinCore.TERMS_NS_URI, "spatial");
     List<DublinCoreValue> captureAgents = dublinCoreCatalog.get(spatial);
@@ -1313,8 +1389,9 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
    */
   private MediaPackage checkForLegacyMediaPackageId(MediaPackage mp, Map<String, String> properties)
           throws IngestException {
-    if (properties == null || properties.isEmpty())
+    if (properties == null || properties.isEmpty()) {
       return mp;
+    }
 
     try {
       String mediaPackageId = properties.get(LEGACY_MEDIAPACKAGE_ID_KEY);
@@ -1351,8 +1428,9 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
   }
 
   private Map<String, String> mergeWorkflowConfiguration(Map<String, String> properties, String mediaPackageId) {
-    if (isBlank(mediaPackageId) || schedulerService == null)
+    if (isBlank(mediaPackageId) || schedulerService == null) {
       return properties;
+    }
 
     HashMap<String, String> mergedProperties = new HashMap<>();
 
@@ -1436,15 +1514,18 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
 
     for (MediaPackageElement element : scheduledMp.getElements()) {
       if (MediaPackageElement.Type.Publication.equals(element.getElementType())) {
-        // The Asset managed media package may have a publication element for a live event, if retract live has not run yet.
+        // The Asset managed media package may have a publication element for a live event, if retract live has not
+        // run yet.
         // Publications do not have flavors and are never part of the mediapackage from the capture agent.
-        // Therefore, ignore publication element because it is removed when the recorded media is published and causes complications (on short media) if added.
+        // Therefore, ignore publication element because it is removed when the recorded media is published and causes
+        // complications (on short media) if added.
         logger.debug("Ignoring {}, not adding to ingested mediapackage {}", MediaPackageElement.Type.Publication, mp);
         continue;
       } else if (mp.getElementsByFlavor(element.getFlavor()).length > 0) {
         // The default is to overwrite matching flavored elements in the Asset managed mediapackage (e.g. catalogs)
         // If isOverwrite is true, changes made from the CA overwrite (update/revert) changes made from the Admin UI.
-        // If isOverwrite is false, changes made from the CA do not overwrite (update/revert) changes made from the Admin UI.
+        // If isOverwrite is false, changes made from the CA do not overwrite (update/revert) changes made from the
+        // Admin UI.
         // regardless of overwrite, always keep new ingested tracks.
         if (!isAddOnlyNew || MediaPackageElement.Type.Track.equals(element.getElementType())) {
           // Allow updates made from the Capture Agent to overwrite existing metadata in Opencast
@@ -1454,15 +1535,18 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
                   element.getFlavor());
           continue;
         }
-        // Remove flavored element from ingested mp and replaced it with maching element from Asset Managed mediapackage.
-        // This protects updates made from the admin UI during an event capture from being reverted by artifacts from the ingested CA.
+        // Remove flavored element from ingested mp and replaced it with maching element from Asset Managed
+        // mediapackage.
+        // This protects updates made from the admin UI during an event capture from being reverted by artifacts from
+        // the ingested CA.
         for (MediaPackageElement el : mp.getElementsByFlavor(element.getFlavor())) {
-          logger.info("Omitting ingested element '{}' {}, keeping existing (Asset Managed) element of same flavor '{}'", el, el.getURI(),
-                  element.getFlavor());
+          logger.info("Omitting ingested element '{}' {}, keeping existing (Asset Managed) element of same flavor '{}'",
+              el, el.getURI(), element.getFlavor());
           mp.remove(el);
         }
       }
-      logger.info("Adding element {} from scheduled (Asset Managed) event '{}' into ingested mediapackage", element, mp);
+      logger.info("Adding element {} from scheduled (Asset Managed) event '{}' into ingested mediapackage",
+          element, mp);
       mp.add(element);
     }
   }
@@ -1485,16 +1569,21 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
   private void mergeMediaPackageMetadata(MediaPackage mp, MediaPackage scheduledMp) {
     // Merge media package fields depending on overwrite setting
     boolean noOverwrite = (isAddOnlyNew && !skipCatalogs) || skipCatalogs;
-    if ((mp.getDate() == null) || noOverwrite)
+    if ((mp.getDate() == null) || noOverwrite) {
       mp.setDate(scheduledMp.getDate());
-    if (isBlank(mp.getLicense()) || noOverwrite)
+    }
+    if (isBlank(mp.getLicense()) || noOverwrite) {
       mp.setLicense(scheduledMp.getLicense());
-    if (isBlank(mp.getSeries()) || noOverwrite)
+    }
+    if (isBlank(mp.getSeries()) || noOverwrite) {
       mp.setSeries(scheduledMp.getSeries());
-    if (isBlank(mp.getSeriesTitle()) || noOverwrite)
+    }
+    if (isBlank(mp.getSeriesTitle()) || noOverwrite) {
       mp.setSeriesTitle(scheduledMp.getSeriesTitle());
-    if (isBlank(mp.getTitle()) || noOverwrite)
+    }
+    if (isBlank(mp.getTitle()) || noOverwrite) {
       mp.setTitle(scheduledMp.getTitle());
+    }
 
     if (mp.getSubjects().length <= 0 || noOverwrite) {
       Arrays.stream(mp.getSubjects()).forEach(mp::removeSubject);
@@ -1568,8 +1657,8 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
         }
       } else {
         logger.warn(
-                "Scheduler service not bound, unable to determine the workflow template to use for ingested mediapckage {}",
-                mediapackage);
+                "Scheduler service not bound, unable to determine the workflow template to use for ingested "
+                    + "mediapackage {}", mediapackage);
       }
 
     } else {
@@ -1600,8 +1689,8 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
     // Have we been able to find a workflow definition id?
     if (isBlank(workflowDefinitionID)) {
       ingestStatistics.failed();
-      throw new IllegalStateException(
-              "Can not ingest a workflow without a workflow definition or an existing instance. No default definition is specified");
+      throw new IllegalStateException("Can not ingest a workflow without a workflow definition or an existing "
+          + "instance. No default definition is specified");
     }
 
     // Let's make sure the workflow definition exists
@@ -1612,14 +1701,16 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
    *
    * {@inheritDoc}
    *
-   * @see org.opencastproject.ingest.api.IngestService#discardMediaPackage(org.opencastproject.mediapackage.MediaPackage)
+   * @see org.opencastproject.ingest.api.IngestService#discardMediaPackage(
+   *      org.opencastproject.mediapackage.MediaPackage)
    */
   @Override
   public void discardMediaPackage(MediaPackage mp) throws IOException {
     String mediaPackageId = mp.getIdentifier().toString();
     for (MediaPackageElement element : mp.getElements()) {
-      if (!workingFileRepository.delete(mediaPackageId, element.getIdentifier()))
+      if (!workingFileRepository.delete(mediaPackageId, element.getIdentifier())) {
         logger.warn("Unable to find (and hence, delete), this mediapackage element");
+      }
     }
     logger.info("Successfully discarded media package {}", mp);
   }
@@ -1631,7 +1722,6 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
     try {
       if (uri.toString().startsWith("http")) {
         HttpGet get = new HttpGet(uri);
-        var clusterUrls = securityService.getOrganization().getServers().keySet();
 
         if (!isBlank(downloadSource) && uri.toString().matches(downloadSource)) {
           // NB: We're creating a new client here with *different* auth than the system auth creds
@@ -1644,13 +1734,9 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
             get.setHeader(HttpHeaders.AUTHORIZATION, authHeader);
           }
           response = externalHttpClient.execute(get);
-        } else if (clusterUrls.contains(uri.getScheme() + "://" + uri.getHost())) {
-          // Only using the system-level httpclient and digest credentials against our own servers
-          response = httpClient.execute(get);
         } else {
-          //NB: No auth here at all
-          externalHttpClient = getNoAuthHttpClient();
-          response = externalHttpClient.execute(get);
+          // httpClient checks internally to see if it should be sending the default auth, or not.
+          response = httpClient.execute(get);
         }
 
         if (null == response) {
@@ -1671,11 +1757,13 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
         throw new IOException("Refusing to fetch files from the local filesystem");
       }
       String fileName = FilenameUtils.getName(uri.getPath());
-      if (isBlank(FilenameUtils.getExtension(fileName)))
+      if (isBlank(FilenameUtils.getExtension(fileName))) {
         fileName = getContentDispositionFileName(response);
+      }
 
-      if (isBlank(FilenameUtils.getExtension(fileName)))
+      if (isBlank(FilenameUtils.getExtension(fileName))) {
         throw new IOException("No filename extension found: " + fileName);
+      }
       return addContentToRepo(mp, elementId, fileName, in);
     } finally {
       if (in != null) {
@@ -1689,8 +1777,9 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
   }
 
   private String getContentDispositionFileName(HttpResponse response) {
-    if (response == null)
+    if (response == null) {
       return null;
+    }
 
     Header header = response.getFirstHeader("Content-Disposition");
     ContentDisposition contentDisposition = new ContentDisposition(header.getValue());
@@ -1791,16 +1880,18 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
    *          the scheduler service to set
    */
   @Reference(
-    policy = ReferencePolicy.DYNAMIC,
-    cardinality = ReferenceCardinality.OPTIONAL,
-    unbind = "unsetSchedulerService"
+      policy = ReferencePolicy.DYNAMIC,
+      cardinality = ReferenceCardinality.OPTIONAL,
+      unbind = "unsetSchedulerService"
   )
   public void setSchedulerService(SchedulerService schedulerService) {
     this.schedulerService = schedulerService;
   }
 
   public void unsetSchedulerService(SchedulerService schedulerService) {
-    this.schedulerService = null;
+    if (this.schedulerService == schedulerService) {
+      this.schedulerService = null;
+    }
   }
 
   /**
@@ -1844,11 +1935,6 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
     return organizationDirectoryService;
   }
 
-  //Used in testing
-  protected CloseableHttpClient getNoAuthHttpClient() {
-    return HttpClientBuilder.create().build();
-  }
-
   protected CloseableHttpClient getAuthedHttpClient() {
     HttpClientBuilder cb = HttpClientBuilder.create();
     CredentialsProvider provider = new BasicCredentialsProvider();
@@ -1857,28 +1943,47 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
       schema = AuthSchemes.BASIC;
     }
     provider.setCredentials(
-      new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM, schema),
-      new UsernamePasswordCredentials(downloadUser, downloadPassword));
+        new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT, AuthScope.ANY_REALM, schema),
+        new UsernamePasswordCredentials(downloadUser, downloadPassword));
     return cb.setDefaultCredentialsProvider(provider).build();
   }
 
   private MediaPackage createSmil(MediaPackage mediaPackage) throws IOException, IngestException {
-    Stream<Track> partialTracks = Stream.empty();
+    List<Track> partialTracks = new ArrayList<>();
     for (Track track : mediaPackage.getTracks()) {
       Long startTime = partialTrackStartTimes.getIfPresent(track.getIdentifier());
-      if (startTime == null)
-        continue;
-      partialTracks = partialTracks.append(Opt.nul(track));
+      if (startTime != null) {
+        partialTracks.add(track);
+      }
     }
 
     // No partial track available return without adding SMIL catalog
-    if (partialTracks.isEmpty())
+    if (partialTracks.isEmpty()) {
       return mediaPackage;
+    }
 
     // Inspect the partial tracks
-    List<Track> tracks = partialTracks.map(newEnrichJob(mediaInspectionService).toFn())
-            .map(payloadAsTrack(getServiceRegistry()).toFn())
-            .each(MediaPackageSupport.updateElement(mediaPackage).toFn().toFx()).toList();
+    List<Track> tracks = partialTracks.stream()
+        .map(track -> {
+          try {
+            // Create a media inspection job for a mediapackage element.
+            return mediaInspectionService.enrich(track, true);
+          } catch (Exception e) {
+            throw new RuntimeException("Error enriching track", e);
+          }
+        })
+        .map(job -> {
+          try {
+            // Interpret the payload of a completed Job as a MediaPackageElement.
+            // Wait for the job to complete if necessary
+            waitForJob(getServiceRegistry(), Optional.empty(), job);
+            return (Track) MediaPackageElementParser.getFromXml(job.getPayload());
+          } catch (Exception e) {
+            throw new RuntimeException("Error parsing job payload as track", e);
+          }
+        })
+        .peek(MediaPackageSupport.updateElement(mediaPackage))
+        .collect(Collectors.toList());
 
     // Create the SMIL document
     org.w3c.dom.Document smilDocument = SmilUtil.createSmil();
@@ -1911,9 +2016,10 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
    */
   private MediaPackage addSmilCatalog(org.w3c.dom.Document smilDocument, MediaPackage mediaPackage)
           throws IOException, IngestException {
-    Option<org.w3c.dom.Document> optSmilDocument = loadSmilDocument(workingFileRepository, mediaPackage);
-    if (optSmilDocument.isSome())
+    Optional<org.w3c.dom.Document> optSmilDocument = loadSmilDocument(workingFileRepository, mediaPackage);
+    if (optSmilDocument.isPresent()) {
       throw new IngestException("SMIL already exists!");
+    }
 
     InputStream in = null;
     try {
@@ -1936,24 +2042,21 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
    *
    * @return the document or none if no media package element found.
    */
-  private Option<org.w3c.dom.Document> loadSmilDocument(final WorkingFileRepository workingFileRepository,
+  private Optional<org.w3c.dom.Document> loadSmilDocument(final WorkingFileRepository workingFileRepository,
           MediaPackage mp) {
-    return mlist(mp.getElements()).filter(MediaPackageSupport.Filters.isSmilCatalog).headOpt()
-            .map(new Function<MediaPackageElement, org.w3c.dom.Document>() {
-              @Override
-              public org.w3c.dom.Document apply(MediaPackageElement mpe) {
-                InputStream in = null;
-                try {
-                  in = workingFileRepository.get(mpe.getMediaPackage().getIdentifier().toString(), mpe.getIdentifier());
-                  return SmilUtil.loadSmilDocument(in, mpe);
-                } catch (Exception e) {
-                  logger.warn("Unable to load smil document from catalog '{}'", mpe, e);
-                  return Misc.chuck(e);
-                } finally {
-                  IOUtils.closeQuietly(in);
-                }
-              }
-            });
+    return Arrays.stream(mp.getElements())
+        .filter(MediaPackageSupport.Filters::isSmilCatalog)
+        .findFirst()
+        .map(mpe -> {
+          try (InputStream in = workingFileRepository.get(
+              mpe.getMediaPackage().getIdentifier().toString(),
+              mpe.getIdentifier())) {
+            return SmilUtil.loadSmilDocument(in, mpe);
+          } catch (Exception e) {
+            logger.warn("Unable to load smil document from catalog '{}'", mpe, e);
+            return Misc.chuck(e);
+          }
+        });
   }
 
   /**
@@ -1984,37 +2087,6 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
     }
   }
 
-  /**
-   * Create a media inspection job for a mediapackage element.
-   *
-   * @param svc the media inspection service
-   * @return a function
-   */
-  public static Function<MediaPackageElement, Job> newEnrichJob(final MediaInspectionService svc) {
-    return new Function.X<MediaPackageElement, Job>() {
-      @Override
-      public Job xapply(MediaPackageElement e) throws Exception {
-        return svc.enrich(e, true);
-      }
-    };
-  }
-
-  /**
-   * Interpret the payload of a completed Job as a MediaPackageElement. Wait for the job to complete if necessary.
-   *
-   * @param reg the service registry
-   * @return a function
-   */
-  public static Function<Job, Track> payloadAsTrack(final ServiceRegistry reg) {
-    return new Function.X<Job, Track>() {
-      @Override
-      public Track xapply(Job job) throws MediaPackageException {
-        waitForJob(reg, none(0L), job);
-        return (Track) MediaPackageElementParser.getFromXml(job.getPayload());
-      }
-    };
-  }
-
   private MediaPackage checkForCASeries(MediaPackage mp, String seriesAppendName) {
     //Check for media package id and CA series appendix set
     if (mp == null || seriesAppendName == null) {
@@ -2032,7 +2104,8 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
     String captureAgentId = null;
     Catalog[] catalog = mp.getCatalogs(MediaPackageElementFlavor.flavor("dublincore", "episode"));
     if (catalog.length == 1) {
-      try (InputStream catalogInputStream = workingFileRepository.get(mp.getIdentifier().toString(), catalog[0].getIdentifier())) {
+      try (InputStream catalogInputStream = workingFileRepository.get(mp.getIdentifier().toString(),
+          catalog[0].getIdentifier())) {
         DublinCoreCatalog dc = dublinCoreService.load(catalogInputStream);
         captureAgentId = getCaptureAgent(dc);
       } catch (Exception e) {
@@ -2080,7 +2153,7 @@ public class IngestServiceImpl extends AbstractJobProducer implements IngestServ
   }
 
   private DublinCoreCatalog createSeries(String seriesId, String seriesName, List<String> roleNames)
-      throws SeriesException, UnauthorizedException, NotFoundException {
+          throws SeriesException, UnauthorizedException, NotFoundException {
     DublinCoreCatalog dc = DublinCores.mkOpencastSeries().getCatalog();
     dc.set(PROPERTY_IDENTIFIER, seriesId);
     dc.set(PROPERTY_TITLE, seriesName);

@@ -21,12 +21,9 @@
 
 package org.opencastproject.adminui.endpoint;
 
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
 import static org.apache.commons.lang3.StringUtils.trimToNull;
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.index.service.util.RestUtils.okJson;
 import static org.opencastproject.index.service.util.RestUtils.okJsonList;
 import static org.opencastproject.util.DateTimeSupport.toUTC;
@@ -44,7 +41,6 @@ import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.SmartIterator;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.doc.rest.RestParameter;
 import org.opencastproject.util.doc.rest.RestQuery;
 import org.opencastproject.util.doc.rest.RestResponse;
@@ -52,13 +48,13 @@ import org.opencastproject.util.doc.rest.RestService;
 import org.opencastproject.util.requests.SortCriterion;
 import org.opencastproject.util.requests.SortCriterion.Order;
 
-import com.entwinemedia.fn.data.json.Field;
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,8 +64,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.DELETE;
@@ -82,7 +78,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-@Path("/")
+@Path("/admin-ng/capture-agents")
 @RestService(name = "captureAgents", title = "Capture agents façade service",
   abstractText = "Provides operations for the capture agents",
   notes = { "This service offers the default capture agents CRUD Operations for the admin UI.",
@@ -99,6 +95,7 @@ import javax.ws.rs.core.Response.Status;
     "opencast.service.path=/admin-ng/capture-agents"
   }
 )
+@JaxrsResource
 public class CaptureAgentsEndpoint {
 
   private static final String TRANSLATION_KEY_PREFIX = "CAPTURE_AGENT.DEVICE.";
@@ -138,28 +135,28 @@ public class CaptureAgentsEndpoint {
           @RestParameter(name = "sort", isRequired = false, description = "The sort order. May include any of the following: STATUS, NAME OR LAST_UPDATED.  Add '_DESC' to reverse the sort order (e.g. STATUS_DESC).", type = STRING) }, responses = { @RestResponse(description = "An XML representation of the agent capabilities", responseCode = HttpServletResponse.SC_OK) }, returnDescription = "")
   public Response getAgents(@QueryParam("limit") int limit, @QueryParam("offset") int offset,
           @QueryParam("inputs") boolean inputs, @QueryParam("filter") String filter, @QueryParam("sort") String sort) {
-    Option<String> filterName = Option.none();
-    Option<String> filterStatus = Option.none();
-    Option<Long> filterLastUpdated = Option.none();
-    Option<String> filterText = Option.none();
-    Option<String> optSort = Option.option(trimToNull(sort));
+    Optional<String> filterName = Optional.empty();
+    Optional<String> filterStatus = Optional.empty();
+    Optional<Long> filterLastUpdated = Optional.empty();
+    Optional<String> filterText = Optional.empty();
+    Optional<String> optSort = Optional.ofNullable(trimToNull(sort));
 
     Map<String, String> filters = RestUtils.parseFilter(filter);
     for (String name : filters.keySet()) {
       if (AgentsListQuery.FILTER_NAME_NAME.equals(name))
-        filterName = Option.some(filters.get(name));
+        filterName = Optional.of(filters.get(name));
       if (AgentsListQuery.FILTER_STATUS_NAME.equals(name))
-        filterStatus = Option.some(filters.get(name));
+        filterStatus = Optional.of(filters.get(name));
       if (AgentsListQuery.FILTER_LAST_UPDATED.equals(name)) {
         try {
-          filterLastUpdated = Option.some(Long.parseLong(filters.get(name)));
+          filterLastUpdated = Optional.of(Long.parseLong(filters.get(name)));
         } catch (NumberFormatException e) {
           logger.info("Unable to parse long {}", filters.get(name));
           return Response.status(Status.BAD_REQUEST).build();
         }
       }
       if (AgentsListQuery.FILTER_TEXT_NAME.equals(name) && StringUtils.isNotBlank(filters.get(name)))
-        filterText = Option.some(filters.get(name));
+        filterText = Optional.of(filters.get(name));
     }
 
     // Filter agents by filter criteria
@@ -168,18 +165,18 @@ public class CaptureAgentsEndpoint {
       Agent agent = entry.getValue();
 
       // Filter list
-      if ((filterName.isSome() && !filterName.get().equals(agent.getName()))
-              || (filterStatus.isSome() && !filterStatus.get().equals(agent.getState()))
-              || (filterLastUpdated.isSome() && filterLastUpdated.get() != agent.getLastHeardFrom())
-              || (filterText.isSome() && !TextFilter.match(filterText.get(), agent.getName(), agent.getState())))
+      if ((filterName.isPresent() && !filterName.get().equals(agent.getName()))
+              || (filterStatus.isPresent() && !filterStatus.get().equals(agent.getState()))
+              || (filterLastUpdated.isPresent() && filterLastUpdated.get() != agent.getLastHeardFrom())
+              || (filterText.isPresent() && !TextFilter.match(filterText.get(), agent.getName(), agent.getState())))
         continue;
       filteredAgents.add(agent);
     }
     int total = filteredAgents.size();
 
     // Sort by status, name or last updated date
-    if (optSort.isSome()) {
-      final Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
+    if (optSort.isPresent()) {
+      final ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(optSort.get());
       Collections.sort(filteredAgents, new Comparator<Agent>() {
         @Override
         public int compare(Agent agent1, Agent agent2) {
@@ -212,7 +209,7 @@ public class CaptureAgentsEndpoint {
     filteredAgents = new SmartIterator<Agent>(limit, offset).applyLimitAndOffset(filteredAgents);
 
     // Run through and build a map of updates (rather than states)
-    List<JValue> agentsJSON = new ArrayList<>();
+    List<JsonObject> agentsJSON = new ArrayList<>();
     for (Agent agent : filteredAgents) {
       agentsJSON.add(generateJsonAgent(agent, inputs, false));
     }
@@ -273,26 +270,31 @@ public class CaptureAgentsEndpoint {
    *          Whether the agent has inputs
    * @param details
    *          Whether the configuration and capabilities should be serialized
-   * @return A {@link JValue} representing the capture agent
+   * @return A {@link JsonObject} representing the capture agent
    */
-  private JValue generateJsonAgent(Agent agent, boolean withInputs, boolean details) {
-    List<Field> fields = new ArrayList<>();
-    fields.add(f("Status", v(AgentState.TRANSLATION_PREFIX + agent.getState().toUpperCase(), Jsons.BLANK)));
-    fields.add(f("Name", v(agent.getName())));
-    fields.add(f("Update", v(toUTC(agent.getLastHeardFrom()), Jsons.BLANK)));
-    fields.add(f("URL", v(agent.getUrl(), Jsons.BLANK)));
+  private JsonObject generateJsonAgent(Agent agent, boolean withInputs, boolean details) {
+    JsonObject json = new JsonObject();
+    String status = AgentState.TRANSLATION_PREFIX + agent.getState().toUpperCase();
+    json.addProperty("Status", safeString(status));
+    json.addProperty("Name", agent.getName());
+    json.addProperty("Update", safeString(toUTC(agent.getLastHeardFrom())));
+    json.addProperty("URL", safeString(agent.getUrl()));
 
     if (withInputs) {
       String devices = (String) agent.getCapabilities().get(CaptureParameters.CAPTURE_DEVICE_NAMES);
-      fields.add(f("inputs", (StringUtils.isEmpty(devices)) ? arr() : generateJsonDevice(devices.split(","))));
+      if (devices == null || devices.isEmpty()) {
+        json.add("inputs", new JsonArray());
+      } else {
+        json.add("inputs", generateJsonDevice(devices.split(",")));
+      }
     }
 
     if (details) {
-      fields.add(f("configuration", generateJsonProperties(agent.getConfiguration())));
-      fields.add(f("capabilities", generateJsonProperties(agent.getCapabilities())));
+      json.add("configuration", generateJsonProperties(agent.getConfiguration()));
+      json.add("capabilities", generateJsonProperties(agent.getCapabilities()));
     }
 
-    return obj(fields);
+    return json;
   }
 
   /**
@@ -302,14 +304,19 @@ public class CaptureAgentsEndpoint {
    *          Java properties to be serialized
    * @return A JSON array containing the Java properties as key/value paris
    */
-  private JValue generateJsonProperties(Properties properties) {
-    List<JValue> fields = new ArrayList<>();
+  private JsonArray generateJsonProperties(Properties properties) {
+    JsonArray jsonFields = new JsonArray();
+
     if (properties != null) {
       for (String key : properties.stringPropertyNames()) {
-        fields.add(obj(f("key", v(key)), f("value", v(properties.getProperty(key)))));
+        JsonObject jsonField = new JsonObject();
+        jsonField.addProperty("key", key);
+        jsonField.addProperty("value", properties.getProperty(key));
+        jsonFields.add(jsonField);
       }
     }
-    return arr(fields);
+
+    return jsonFields;
   }
 
   /**
@@ -317,13 +324,18 @@ public class CaptureAgentsEndpoint {
    *
    * @param devices
    *          an array of devices String
-   * @return A {@link JValue} representing the devices
+   * @return A {@link JsonArray} representing the devices
    */
-  private JValue generateJsonDevice(String[] devices) {
-    List<JValue> jsonDevices = new ArrayList<>();
+  private JsonArray generateJsonDevice(String[] devices) {
+    JsonArray jsonDevices = new JsonArray();
+
     for (String device : devices) {
-      jsonDevices.add(obj(f("id", v(device)), f("value", v(TRANSLATION_KEY_PREFIX + device.toUpperCase()))));
+      JsonObject jsonDevice = new JsonObject();
+      jsonDevice.addProperty("id", device);
+      jsonDevice.addProperty("value", TRANSLATION_KEY_PREFIX + device.toUpperCase());
+      jsonDevices.add(jsonDevice);
     }
-    return arr(jsonDevices);
+
+    return jsonDevices;
   }
 }

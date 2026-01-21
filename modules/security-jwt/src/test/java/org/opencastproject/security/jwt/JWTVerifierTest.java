@@ -21,23 +21,20 @@
 
 package org.opencastproject.security.jwt;
 
-import static org.easymock.EasyMock.anyBoolean;
-import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
-import com.auth0.jwk.JwkException;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jwt.SignedJWT;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import java.security.NoSuchAlgorithmException;
+import java.text.ParseException;
 import java.util.List;
 
 /**
@@ -46,48 +43,39 @@ import java.util.List;
 public class JWTVerifierTest {
 
   private JWTGenerator generator;
-  private GuavaCachedUrlJwkProvider validProvider;
-  private GuavaCachedUrlJwkProvider invalidProvider;
-  private GuavaCachedUrlJwkProvider rotatingProvider;
+  private JWKSetProvider validProvider;
+  private JWKSetProvider invalidProvider;
 
   @Before
-  public void setUp() throws NoSuchAlgorithmException, JwkException {
+  public void setUp() throws NoSuchAlgorithmException, JOSEException {
     generator = JWTGenerator.getInstance();
 
-    validProvider = createMock(GuavaCachedUrlJwkProvider.class);
-    expect(validProvider.getAlgorithms(anyObject(), anyBoolean()))
-        .andReturn(List.of(Algorithm.RSA512(generator.getPublicKey(), null)))
+    validProvider = createMock(JWKSetProvider.class);
+    expect(validProvider.getAll())
+        .andReturn(List.of(generator.getRsaJWK()))
         .atLeastOnce();
     replay(validProvider);
 
-    invalidProvider = createMock(GuavaCachedUrlJwkProvider.class);
-    expect(invalidProvider.getAlgorithms(anyObject(), anyBoolean()))
-        .andReturn(List.of(Algorithm.RSA512(generator.getInvalidPublicKey(), null)))
+    invalidProvider = createMock(JWKSetProvider.class);
+    expect(invalidProvider.getAll())
+        .andReturn(List.of(generator.getInvalidRsaJWK()))
         .atLeastOnce();
     replay(invalidProvider);
-
-    rotatingProvider = createMock(GuavaCachedUrlJwkProvider.class);
-    expect(rotatingProvider.getAlgorithms(anyObject(), anyBoolean()))
-        .andReturn(List.of(Algorithm.RSA512(generator.getInvalidPublicKey(), null)))
-        .once()
-        .andReturn(List.of(Algorithm.RSA512(generator.getPublicKey(), null)))
-        .once();
-    replay(rotatingProvider);
   }
 
   @Test
-  public void testVerifySymmetric() {
+  public void testVerifySymmetric() throws JOSEException, ParseException {
     // Valid JWT + valid claim constraints
-    DecodedJWT decodedJWT = JWTVerifier.verify(
+    SignedJWT signedJWT = JWTVerifier.verify(
         generator.generateValidSymmetricJWT(),
         generator.getSecret(),
         generator.generateValidClaimConstraints()
     );
-    assertEquals(generator.getUsername(), decodedJWT.getClaim("username").asString());
+    assertEquals(generator.getUsername(), signedJWT.getJWTClaimsSet().getClaimAsString("username"));
 
     // Valid JWT + invalid claim constraints
     assertThrows(
-        JWTVerificationException.class,
+        JOSEException.class,
         () -> JWTVerifier.verify(
             generator.generateValidSymmetricJWT(),
             generator.getSecret(),
@@ -97,7 +85,7 @@ public class JWTVerifierTest {
 
     // Valid JWT + invalid secret
     assertThrows(
-        JWTVerificationException.class,
+        JOSEException.class,
         () -> JWTVerifier.verify(
             generator.generateValidSymmetricJWT(),
           "abc",
@@ -107,7 +95,7 @@ public class JWTVerifierTest {
 
     // Invalid JWT
     assertThrows(
-        JWTVerificationException.class,
+        JOSEException.class,
         () -> JWTVerifier.verify(
             generator.generateExpiredSymmetricJWT(),
             generator.getSecret(),
@@ -118,19 +106,19 @@ public class JWTVerifierTest {
 
   @Test
   public void testVerifyAsymmetric() throws Exception {
-    DecodedJWT decodedJWT;
+    SignedJWT signedJWT;
 
     // Valid JWT + valid claim constraints
-    decodedJWT = JWTVerifier.verify(
+    signedJWT = JWTVerifier.verify(
         generator.generateValidAsymmetricJWT(),
         validProvider,
         generator.generateValidClaimConstraints()
     );
-    assertEquals(generator.getUsername(), decodedJWT.getClaim("username").asString());
+    assertEquals(generator.getUsername(), signedJWT.getJWTClaimsSet().getClaimAsString("username"));
 
     // Valid JWT + invalid claim constraints
     assertThrows(
-        JWTVerificationException.class,
+        JOSEException.class,
         () -> JWTVerifier.verify(
             generator.generateValidAsymmetricJWT(),
             validProvider,
@@ -140,7 +128,7 @@ public class JWTVerifierTest {
 
     // Valid JWT + invalid provider
     assertThrows(
-        JWTVerificationException.class,
+        JOSEException.class,
         () -> JWTVerifier.verify(
             generator.generateValidAsymmetricJWT(),
             invalidProvider,
@@ -150,21 +138,13 @@ public class JWTVerifierTest {
 
     // Invalid JWT
     assertThrows(
-        JWTVerificationException.class,
+        JOSEException.class,
         () -> JWTVerifier.verify(
             generator.generateExpiredAsymmetricJWT(),
             validProvider,
             generator.generateValidClaimConstraints()
         )
     );
-
-    // Simulate key rotation
-    decodedJWT = JWTVerifier.verify(
-        generator.generateValidAsymmetricJWT(),
-        rotatingProvider,
-        generator.generateValidClaimConstraints()
-    );
-    assertEquals(generator.getUsername(), decodedJWT.getClaim("username").asString());
   }
 
 }

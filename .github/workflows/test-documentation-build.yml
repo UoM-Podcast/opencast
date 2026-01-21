@@ -1,13 +1,15 @@
-name: Test documentation
+name: Tests » Documentation build
 
 on:
   pull_request:
     paths:
+      - '.github/workflows/test-documentation-build.yml'
       - 'docs/guides/**'
       - 'docs/checkstyle/check-docs.sh'
       - '**.md'
   push:
     paths:
+      - '.github/workflows/test-documentation-build.yml'
       - 'docs/guides/**'
       - 'docs/checkstyle/check-docs.sh'
       - '**.md'
@@ -15,16 +17,16 @@ on:
 jobs:
 
   # Check documentation with markdownlint and build it using mkdocs
-  documentation:
-    runs-on: ubuntu-20.04
+  test-documentation:
+    runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: set up python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
-        python-version: 3.9
+        python-version: 3.13
 
     - name: install mkdocs
       working-directory: docs/guides

@@ -27,8 +27,10 @@ import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
+import org.opencastproject.mediapackage.MediaPackageElements;
 import org.opencastproject.mediapackage.Track;
 import org.opencastproject.mediapackage.attachment.AttachmentImpl;
+import org.opencastproject.mediapackage.selector.TrackSelector;
 import org.opencastproject.mediapackage.track.TrackImpl;
 import org.opencastproject.metadata.api.MediaPackageMetadata;
 import org.opencastproject.metadata.dublincore.DublinCoreCatalogService;
@@ -45,6 +47,7 @@ import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workspace.api.Workspace;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
@@ -56,8 +59,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Workflow operation for the speech-to-text service.
@@ -89,6 +95,36 @@ public class
 
   /** Translation mode */
   private static final String TRANSLATE_MODE = "translate";
+
+  /** Configuration: Track Selection Strategy (Control which tracks shall be transcribed) */
+  private static final String TRACK_SELECTION_STRATEGY = "track-selection-strategy";
+
+  /** Configuration: Limit to One (If true, max 1 subtitle file will be generated) */
+  private static final String LIMIT_TO_ONE = "limit-to-one";
+
+  /** Configuration: Synchronous or asynchronous mode */
+  private static final String ASYNCHRONOUS = "async";
+
+  /** Workflow configuration name to store jobs in */
+  private static final String JOBS_WORKFLOW_CONFIGURATION = "speech-to-text-jobs";
+
+  private enum TrackSelectionStrategy {
+    PRESENTER_OR_NOTHING,
+    PRESENTATION_OR_NOTHING,
+    TRY_PRESENTER_FIRST,
+    TRY_PRESENTATION_FIRST,
+    EVERYTHING;
+
+    private static TrackSelectionStrategy fromString(String value) {
+      for (TrackSelectionStrategy strategy : values()) {
+        if (strategy.name().equalsIgnoreCase(value)) {
+          return strategy;
+        }
+      }
+      throw new IllegalArgumentException(
+          "No TrackSelectionStrategy enum constant " + TrackSelectionStrategy.class.getCanonicalName() + "." + value);
+    }
+  }
 
   private enum AppendSubtitleAs {
     attachment, track
@@ -127,34 +163,124 @@ public class
     MediaPackage mediaPackage = workflowInstance.getMediaPackage();
     logger.info("Start speech-to-text workflow operation for media package {}", mediaPackage);
 
+    // Defaults to `false` if `null`
+    var async = BooleanUtils.toBoolean(workflowInstance.getCurrentOperation().getConfiguration(ASYNCHRONOUS));
+
     ConfiguredTagsAndFlavors tagsAndFlavors = getTagsAndFlavors(workflowInstance,
-            Configuration.none, Configuration.one,
+            Configuration.many, Configuration.one,
             Configuration.many, Configuration.one);
     MediaPackageElementFlavor sourceFlavor = tagsAndFlavors.getSingleSrcFlavor();
+    List<String> srcTags = tagsAndFlavors.getSrcTags();
 
-    Track[] tracks = mediaPackage.getTracks(sourceFlavor);
-    if (tracks.length == 0) {
+    TrackSelector trackSelector = new TrackSelector();
+    trackSelector.addFlavor(sourceFlavor);
+    for (String tag : srcTags) {
+      trackSelector.addTag(tag);
+    }
+    Collection<Track> tracks = trackSelector.select(mediaPackage, true);
+
+    if (tracks.isEmpty()) {
       throw new WorkflowOperationException(
               String.format("No tracks with source flavor '%s' found for transcription", sourceFlavor));
     }
 
-    logger.info("Found {} track(s) with source flavor '{}'.", tracks.length, sourceFlavor);
+    logger.info("Found {} track(s) with source flavor '{}'.", tracks.size(), sourceFlavor);
 
     // Get the information in which language the audio track should be
     String languageCode = getMediaPackageLanguage(mediaPackage, workflowInstance);
 
     // How to save the subtitle file? (as attachment, as track...)
-    AppendSubtitleAs appendSubtitleAs = howToAppendTheSubtitles(mediaPackage, workflowInstance);
+    AppendSubtitleAs appendSubtitleAs = howToAppendTheSubtitles(workflowInstance);
 
     // Translate to english
-    Boolean translate = getTranslationMode(mediaPackage, workflowInstance);
+    Boolean translate = getTranslationMode(workflowInstance);
 
-    for (Track track : tracks) {
-      createSubtitle(track, languageCode, mediaPackage, tagsAndFlavors, appendSubtitleAs, translate);
+    // Create sublist that includes only the tracks that has audio
+    List<Track> tracksWithAudio = tracks.stream().filter(Track::hasAudio).collect(Collectors.toList());
+
+    // Get the track selection strategy from the workflow configuration
+    // If nothing is set, all tracks (with audio) will be transcribed
+    TrackSelectionStrategy trackSelectionStrategy = getTrackSelectionStrategy(mediaPackage, workflowInstance);
+
+    // Use the selection strategy from the workflow config to get the tracks we want to transcribe
+    List<Track> tracksToTranscribe = filterTracksByStrategy(tracksWithAudio, trackSelectionStrategy);
+    if (tracksToTranscribe.isEmpty()) {
+      logger.info("No subtitles were created for media package {}. "
+          + "Workflow Configuration 'track-selection-strategy' is set to {}", mediaPackage, trackSelectionStrategy);
+      return createResult(mediaPackage, WorkflowOperationResult.Action.SKIP);
     }
 
-    logger.info("Text-to-Speech workflow operation for media package {} completed", mediaPackage);
+    // Load the 'limit-to-one' configuration from the workflow operation.
+    // This configuration sets the limit of generated subtitle files to one
+    boolean limitToOne = BooleanUtils.toBoolean(workflowInstance.getCurrentOperation().getConfiguration(LIMIT_TO_ONE));
+    if (limitToOne) {
+      tracksToTranscribe = List.of(tracksToTranscribe.get(0));
+    }
+
+    if (async) {
+      createSubtitleAsync(workflowInstance, tracksToTranscribe, languageCode, translate);
+    } else {
+      for (Track track : tracksToTranscribe) {
+        createSubtitle(track, languageCode, mediaPackage, tagsAndFlavors, appendSubtitleAs, translate);
+      }
+    }
+
+    logger.info("Speech-To-Text workflow operation for media package {} completed", mediaPackage);
     return createResult(mediaPackage, WorkflowOperationResult.Action.CONTINUE);
+  }
+
+  /**
+   * Filters the tracks by the strategy configured in the workflow operation
+   * @param tracksWithAudio        List of the tracks that includes audio
+   * @param trackSelectionStrategy The strategy configured in the workflow operation
+   * @return The filtered tracks
+   */
+  private List<Track> filterTracksByStrategy(List<Track> tracksWithAudio,
+      TrackSelectionStrategy trackSelectionStrategy) {
+
+    List<Track> tracksToTranscribe = new ArrayList<>();
+    if (!tracksWithAudio.isEmpty()) {
+
+      String presenterTypeConstant = MediaPackageElements.PRESENTER_SOURCE.getType();
+      String presentationTypeConstant = MediaPackageElements.PRESENTATION_SOURCE.getType();
+
+      // Creates a sublist only including the presenter tracks
+      List<Track> presenterTracksWithAudio = tracksWithAudio.stream()
+          .filter(track -> Objects.equals(track.getFlavor().getType(), presenterTypeConstant))
+          .collect(Collectors.toList());
+
+      // Creates a sublist only including the presentation tracks
+      List<Track> presentationTracksWithAudio = tracksWithAudio.stream()
+          .filter(track -> Objects.equals(track.getFlavor().getType(), presentationTypeConstant))
+          .collect(Collectors.toList());
+
+      if (TrackSelectionStrategy.PRESENTER_OR_NOTHING.equals(trackSelectionStrategy)) {
+        tracksToTranscribe.addAll(presenterTracksWithAudio);
+      }
+
+      if (TrackSelectionStrategy.PRESENTATION_OR_NOTHING.equals(trackSelectionStrategy)) {
+        tracksToTranscribe.addAll(presentationTracksWithAudio);
+      }
+
+      if (TrackSelectionStrategy.TRY_PRESENTER_FIRST.equals(trackSelectionStrategy)) {
+        tracksToTranscribe.addAll(presenterTracksWithAudio);
+        if (tracksToTranscribe.isEmpty()) {
+          tracksToTranscribe.addAll(tracksWithAudio);
+        }
+      }
+
+      if (TrackSelectionStrategy.TRY_PRESENTATION_FIRST.equals(trackSelectionStrategy)) {
+        tracksToTranscribe.addAll((presentationTracksWithAudio));
+        if (tracksToTranscribe.isEmpty()) {
+          tracksToTranscribe.addAll(tracksWithAudio);
+        }
+      }
+
+      if (TrackSelectionStrategy.EVERYTHING.equals(trackSelectionStrategy)) {
+        tracksToTranscribe.addAll(tracksWithAudio);
+      }
+    }
+    return tracksToTranscribe;
   }
 
   /**
@@ -174,6 +300,7 @@ public class
 
     // Start the transcription job, create subtitles file
     URI trackURI = track.getURI();
+
     Job job;
     logger.info("Generating subtitle for '{}'...", trackURI);
     try {
@@ -196,8 +323,6 @@ public class
       String outputLanguage = jobOutput[1];
       String engineType = jobOutput[2];
 
-      String mediaPackageIdentifier = UUID.randomUUID().toString();
-
       MediaPackageElement subtitleMediaPackageElement;
       switch (appendSubtitleAs) {
         case attachment:
@@ -208,19 +333,20 @@ public class
           subtitleMediaPackageElement = new TrackImpl();
       }
 
-      subtitleMediaPackageElement.setIdentifier(mediaPackageIdentifier);
+      subtitleMediaPackageElement.generateIdentifier();
       try (InputStream in = workspace.read(output)) {
-        URI uri = workspace.put(parentMediaPackage.getIdentifier().toString(), mediaPackageIdentifier,
+        URI uri = workspace.put(parentMediaPackage.getIdentifier().toString(),
+                subtitleMediaPackageElement.getIdentifier(),
                 FilenameUtils.getName(output.getPath()), in);
         subtitleMediaPackageElement.setURI(uri);
       }
       MediaPackageElementFlavor targetFlavor = tagsAndFlavors.getSingleTargetFlavor().applyTo(track.getFlavor());
       subtitleMediaPackageElement.setFlavor(targetFlavor);
 
-      List<String> targetTags = tagsAndFlavors.getTargetTags();
-      targetTags.add("lang:" + outputLanguage);
-      targetTags.add("generator-type:auto");
-      targetTags.add("generator:" + engineType.toLowerCase());
+      ConfiguredTagsAndFlavors.TargetTags targetTags = tagsAndFlavors.getTargetTags();
+      targetTags.getOverrideTags().add("lang:" + outputLanguage);
+      targetTags.getOverrideTags().add("generator-type:auto");
+      targetTags.getOverrideTags().add("generator:" + engineType.toLowerCase());
 
       // this is used to set some values automatically, like the correct mimetype
       Job inspection = mediaInspectionService.enrich(subtitleMediaPackageElement, true);
@@ -231,9 +357,7 @@ public class
 
       subtitleMediaPackageElement = MediaPackageElementParser.getFromXml(inspection.getPayload());
 
-      for (String tag : targetTags) {
-        subtitleMediaPackageElement.addTag(tag);
-      }
+      applyTargetTagsToElement(targetTags, subtitleMediaPackageElement);
 
       parentMediaPackage.add(subtitleMediaPackageElement);
 
@@ -250,64 +374,94 @@ public class
   }
 
   /**
+   * Start the transcription, but don't actually wait for the process to finish. Instead, let the jobs run
+   * asynchronously and just store the launched jobs in the workflow configuration.
+   * @param workflow Workflow instance to store the jobs in
+   * @param tracks Tracks to run the transcription on
+   * @param languageCode Language to use
+   * @param translate If the transcription should be translated
+   * @throws WorkflowOperationException
+   */
+  private void createSubtitleAsync(WorkflowInstance workflow, List<Track> tracks, String languageCode,
+      Boolean translate) throws WorkflowOperationException {
+
+    logger.info("Asynchronously generating subtitles");
+    StringBuilder jobs = new StringBuilder();
+    try {
+      for (var track: tracks) {
+        var job = speechToTextService.transcribe(track.getURI(), languageCode, translate);
+        jobs.append(",").append(job.getId());
+      }
+    } catch (SpeechToTextServiceException e) {
+      throw new WorkflowOperationException(
+          String.format("Starting subtitle job in media package '%s' failed",
+              workflow.getMediaPackage().getIdentifier()), e);
+    }
+
+    var config = Objects.toString(workflow.getConfiguration(JOBS_WORKFLOW_CONFIGURATION), "") + jobs;
+    workflow.setConfiguration(JOBS_WORKFLOW_CONFIGURATION, config.replaceFirst("^,", ""));
+  }
+
+  /**
+   * Get the config for the "track selection strategy". It's used to determine which tracks shall be transcribed.
+   * If there are 2 Videos and both has audio for example, what audio shall be transcribed?
+   *
+   * @param workflowInstance Contains the workflow configuration.
+   * @return Which strategy to use
+   * @throws WorkflowOperationException Get thrown if an error occurs.
+   */
+  private TrackSelectionStrategy getTrackSelectionStrategy(MediaPackage mediaPackage, WorkflowInstance workflowInstance)
+          throws WorkflowOperationException {
+
+    WorkflowOperationInstance operation = workflowInstance.getCurrentOperation();
+    String strategyCfg = StringUtils.trimToEmpty(operation.getConfiguration(TRACK_SELECTION_STRATEGY)).toLowerCase();
+
+    if (strategyCfg.isEmpty()) {
+      return TrackSelectionStrategy.EVERYTHING; // "transcribe everything" is the default/fallback
+    }
+    try {
+      return TrackSelectionStrategy.fromString(strategyCfg);
+    } catch (IllegalArgumentException e) {
+      throw new WorkflowOperationException(String.format(
+          "Speech-to-Text job for media package '%s' failed, because of wrong workflow configuration. "
+              + "track-selection-strategy of type '%s' does not exist.", mediaPackage, strategyCfg));
+    }
+  }
+
+
+  /**
    * Get the information how to append the subtitles file to the media package.
    *
-   * @param mediaPackage Media package of for logging reasons.
    * @param workflowInstance Contains the workflow configuration.
    * @return How to append the subtitles file to the media package.
    * @throws WorkflowOperationException Get thrown if an error occurs.
    */
-  private AppendSubtitleAs howToAppendTheSubtitles(MediaPackage mediaPackage, WorkflowInstance workflowInstance)
+  private AppendSubtitleAs howToAppendTheSubtitles(WorkflowInstance workflowInstance)
           throws WorkflowOperationException {
     WorkflowOperationInstance operation = workflowInstance.getCurrentOperation();
     String targetElement = StringUtils.trimToEmpty(operation.getConfiguration(TARGET_ELEMENT)).toLowerCase();
-    AppendSubtitleAs appendSubtitleAs;
     if (targetElement.isEmpty()) {
-      appendSubtitleAs = AppendSubtitleAs.attachment; // attachment is default/fallback
-    } else {
-      try {
-        appendSubtitleAs = AppendSubtitleAs.valueOf(targetElement);
-      } catch (IllegalArgumentException e) {
-        throw new WorkflowOperationException(String.format(
-                "Speech-to-Text job for media package '%s' failed, because of wrong workflow xml configuration. "
-                        + "target-element of type '%s' does not exist.", mediaPackage, targetElement));
-      }
+      return AppendSubtitleAs.track;
     }
-    return appendSubtitleAs;
+    try {
+      return AppendSubtitleAs.valueOf(targetElement);
+    } catch (IllegalArgumentException e) {
+      throw new WorkflowOperationException(String.format(
+          "Speech-to-Text job for media package '%s' failed, because of wrong workflow configuration. "
+              + "target-element of type '%s' does not exist.", workflowInstance.getMediaPackage(), targetElement));
+    }
   }
 
   /**
    * Get if the subtitle needs to be translated into english
    *
-   * @param mediaPackage Contains mediapackage information
    * @param workflowInstance Contains the workflow configuration
    * @return Boolean to enable english translation
    */
-  private Boolean getTranslationMode(MediaPackage mediaPackage, WorkflowInstance workflowInstance)
-          throws WorkflowOperationException {
+  private Boolean getTranslationMode(WorkflowInstance workflowInstance) {
     WorkflowOperationInstance operation = workflowInstance.getCurrentOperation();
-    String stringTranslateMode = StringUtils.trimToEmpty(operation.getConfiguration(TRANSLATE_MODE)).toLowerCase();
-    Boolean translateMode;
-
-    if (stringTranslateMode.isEmpty()) {
-      translateMode = false;
-    } else {
-      if ("true".equals(stringTranslateMode) || "1".equals(stringTranslateMode)
-          || "yes".equals(stringTranslateMode)) {
-        translateMode = true;
-      } else if ("false".equals(stringTranslateMode) || "0".equals(stringTranslateMode)
-              || "no".equals(stringTranslateMode)) {
-        translateMode = false;
-      } else {
-        throw new IllegalArgumentException(String.format(
-            "Speech-to-Text job for media package '%s' failed, Because invalid \"translate\" value ('%s')."
-                + "Valid values types: \"true\", \"1\", \"yes\", \"false\", \"0\", or \"no\".", mediaPackage,
-            stringTranslateMode));
-      }
-    }
-    return translateMode;
+    return BooleanUtils.toBoolean(StringUtils.trimToEmpty(operation.getConfiguration(TRANSLATE_MODE)));
   }
-
 
   /**
    * Searches some places to get the right language of the media package / track.
@@ -318,7 +472,7 @@ public class
    */
   private String getMediaPackageLanguage(MediaPackage mediaPackage, WorkflowInstance workflowInstance) {
 
-    // First look if there is a fixed language configured in the workflow xml
+    // First look if there is a fixed language configured in the operation
     WorkflowOperationInstance operation = workflowInstance.getCurrentOperation();
     String language = StringUtils.trimToEmpty(operation.getConfiguration(LANGUAGE_CODE));
 
@@ -331,6 +485,11 @@ public class
     if (language.isEmpty()) {
       // If there is still no language, we look in the media package itself
       language = StringUtils.trimToEmpty(mediaPackage.getLanguage());
+    }
+
+    if (language.isEmpty()) {
+      // Use the fallback language if the operation configuration defines one
+      language = Objects.toString(operation.getConfiguration(LANGUAGE_FALLBACK), "");
     }
 
     return language;

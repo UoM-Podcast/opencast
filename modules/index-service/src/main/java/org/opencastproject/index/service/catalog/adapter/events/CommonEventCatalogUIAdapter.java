@@ -81,8 +81,9 @@ public class CommonEventCatalogUIAdapter extends ConfigurableEventDCCatalogUIAda
       if (isNotBlank(series.getValue().toString())) {
         mediaPackage.setSeries(series.getValue().toString());
         final String seriesTitle = getSeriesTitle(series);
-        if (seriesTitle != null)
+        if (seriesTitle != null) {
           mediaPackage.setSeriesTitle(seriesTitle);
+        }
       } else {
         mediaPackage.setSeries(null);
         mediaPackage.setSeriesTitle(null);
@@ -97,7 +98,7 @@ public class CommonEventCatalogUIAdapter extends ConfigurableEventDCCatalogUIAda
         SimpleDateFormat sdf = MetadataField.getSimpleDateFormatter(startDate.getPattern());
         mediaPackage.setDate(sdf.parse((String) startDate.getValue()));
       } catch (ParseException e) {
-        logger.warn("Not able to parse start date {} to update media package {} because {}", startDate.getValue(),
+        logger.warn("Not able to parse start date {} to update media package {}", startDate.getValue(),
                 mediaPackage.getIdentifier(), e);
       }
     }
@@ -111,10 +112,13 @@ public class CommonEventCatalogUIAdapter extends ConfigurableEventDCCatalogUIAda
   }
 
   private String getSeriesTitle(MetadataField series) {
-    if (series.getCollection() == null)
+    if (series.getCollection() == null) {
       return null;
+    }
     for (Map.Entry<String, String> e : series.getCollection().entrySet()) {
-      if (e.getValue().equals(series.getValue().toString())) return e.getKey();
+      if (e.getValue().equals(series.getValue().toString())) {
+        return e.getKey();
+      }
     }
     return null;
   }

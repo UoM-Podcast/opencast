@@ -19,7 +19,7 @@ Tags and flavors can be used in combination. But combined they should match one 
 |-------------------|--------------------------|-----------|-------------|
 |**source-tags**\*  |intro                     |A comma separated list of tags of the input image|EMPTY|
 |**source-flavor**\*|intro/source              |The "flavor" of the image to use as a source input|EMPTY|
-|target-tags        |composite,rss,atom,archive|The tags to apply to the output video track|EMPTY|
+|target-tags        |composite,archive|The tags to apply to the output video track|EMPTY|
 |target-flavor      |intro/work                |The flavor to apply to the output video track|EMPTY|
 |**duration**\*     |5                         |The length of the output video in seconds.|EMPTY|
 |**profile**\*      |image-movie               |Define the encoding-profile to use to create the output video. See example of profile below.|EMPTY|
@@ -30,19 +30,16 @@ Tags and flavors can be used in combination. But combined they should match one 
 Operation Example
 -----------------
 
-```xml
-<operation
-    id="image-to-video"
-    description="Composite">
-  <configurations>
-    <configuration key="source-tags">intro</configuration>
-    <configuration key="source-flavor">intro/source</configuration>
-    <configuration key="target-tags">intro-video</configuration>
-    <configuration key="target-flavor">intro/video</configuration>
-    <configuration key="duration">10</configuration>
-    <configuration key="profile">image-movie</configuration>
-  </configurations>
-</operation>
+```yaml
+  - id: image-to-video
+    description: Composite
+    configurations:
+      - source-tags: intro
+      - source-flavor: intro/source
+      - target-tags: intro-video
+      - target-flavor: intro/video
+      - duration: 10
+      - profile: image-movie
 ```
 
 Encoding Profile Example

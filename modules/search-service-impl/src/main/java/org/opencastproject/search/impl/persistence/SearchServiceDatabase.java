@@ -23,9 +23,12 @@ package org.opencastproject.search.impl.persistence;
 
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.security.api.AccessControlList;
+import org.opencastproject.security.api.Organization;
 import org.opencastproject.security.api.UnauthorizedException;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.data.Tuple;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Collection;
 import java.util.Date;
@@ -40,11 +43,16 @@ public interface SearchServiceDatabase {
   /**
    * Returns all search entries in persistent storage.
    *
-   * @return {@link Tuple} array representing stored media packages
+   * @param pagesize
+   *          the number of results to get from the database at once
+   * @param offset
+   *          the offset into the full result list to fetch
+   * @return {@link Tuple} array of mediapackage-orgid pairs representing stored media packages
    * @throws SearchServiceDatabaseException
    *           if exception occurs
    */
-  Stream<Tuple<MediaPackage, String>> getAllMediaPackages() throws SearchServiceDatabaseException;
+  Stream<Tuple<MediaPackage, String>> getAllMediaPackages(int pagesize, int offset)
+          throws SearchServiceDatabaseException;
 
   /**
    * Returns the organization id of the selected media package
@@ -79,18 +87,17 @@ public interface SearchServiceDatabase {
    * @throws SearchServiceDatabaseException
    *           if there is a problem communicating with the underlying data store
    */
-  MediaPackage getMediaPackage(String mediaPackageId) throws NotFoundException, SearchServiceDatabaseException;
+  MediaPackage getMediaPackage(String mediaPackageId)
+          throws NotFoundException, SearchServiceDatabaseException, UnauthorizedException;
 
   /**
    * Gets media packages from a specific series
    *
-   * @param seriesId
-   *          the series identifier
+   * @param seriesId the series identifier
    * @return collection of media packages
-   * @throws SearchServiceDatabaseException
-   *           if there is a problem communicating with the underlying data store
+   * @throws SearchServiceDatabaseException if there is a problem communicating with the underlying data store
    */
-  Collection<MediaPackage> getMediaPackages(String seriesId) throws SearchServiceDatabaseException;
+  Collection<Pair<Organization, MediaPackage>> getSeries(String seriesId) throws SearchServiceDatabaseException;
 
   /**
    * Retrieves ACL for episode with given ID.
@@ -113,11 +120,11 @@ public interface SearchServiceDatabase {
    *          series identifier for which ACL will be retrieved
    * @param excludeIds
    *          list of media package identifier to exclude from the list
-   * @return Collection of {@link AccessControlList} of media packages from the series
+   * @return Collection of pairs of media package id and its {@link AccessControlList} of media packages from the series
    * @throws SearchServiceDatabaseException
    *           if exception occurred
    */
-  Collection<AccessControlList> getAccessControlLists(String seriesId, String ... excludeIds)
+  Collection<Pair<String, AccessControlList>> getAccessControlLists(String seriesId, String ... excludeIds)
           throws SearchServiceDatabaseException;
 
   /**
@@ -157,9 +164,11 @@ public interface SearchServiceDatabase {
    *           if exception occurs
    * @throws NotFoundException
    *           if media package with specified id is not found
+   * @throws UnauthorizedException
+   *           if the current user is not authorized to perform this action
    */
   void deleteMediaPackage(String mediaPackageId, Date deletionDate) throws SearchServiceDatabaseException,
-          NotFoundException;
+          NotFoundException, UnauthorizedException;
 
   /**
    * Store (or update) media package.
@@ -178,4 +187,12 @@ public interface SearchServiceDatabase {
   void storeMediaPackage(MediaPackage mediaPackage, AccessControlList acl, Date now)
           throws SearchServiceDatabaseException, UnauthorizedException;
 
+  /**
+   * Checks if a mediapackage is available.
+   *
+   * @param mediaPackageId The ID of the {@link MediaPackage} for which the availability is to be checked
+   * @return True if two conditions are met: The mediapackage exists in the database and the deletion date is not set
+   * @throws SearchServiceDatabaseException if an exception occurs
+   */
+  boolean isAvailable(String mediaPackageId) throws SearchServiceDatabaseException;
 }

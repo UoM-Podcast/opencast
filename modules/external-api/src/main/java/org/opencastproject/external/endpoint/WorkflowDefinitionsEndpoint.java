@@ -20,20 +20,17 @@
  */
 package org.opencastproject.external.endpoint;
 
-import static com.entwinemedia.fn.data.json.Jsons.BLANK;
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
 import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getMessage;
+import static org.opencastproject.index.service.util.JSONUtils.arrayToJsonArray;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.BOOLEAN;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.INTEGER;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 import static org.opencastproject.util.requests.SortCriterion.Order.Descending;
 
 import org.opencastproject.external.common.ApiMediaType;
-import org.opencastproject.external.common.ApiResponses;
+import org.opencastproject.external.common.ApiResponseBuilder;
 import org.opencastproject.index.service.util.RestUtils;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.RestUtil;
@@ -48,9 +45,8 @@ import org.opencastproject.workflow.api.WorkflowDefinition;
 import org.opencastproject.workflow.api.WorkflowOperationDefinition;
 import org.opencastproject.workflow.api.WorkflowService;
 
-import com.entwinemedia.fn.data.json.Field;
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.collections4.comparators.ComparatorChain;
 import org.apache.commons.lang3.ArrayUtils;
@@ -59,13 +55,12 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -78,13 +73,17 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/api/workflow-definitions")
 @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_1_0, ApiMediaType.VERSION_1_2_0, ApiMediaType.VERSION_1_3_0,
             ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0, ApiMediaType.VERSION_1_6_0,
             ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0,
-            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0 })
-@RestService(name = "externalapiworkflowdefinitions", title = "External API Workflow Definitions Service", notes = {},
-             abstractText = "Provides resources and operations related to the workflow definitions")
+            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
+@RestService(
+    name = "externalapiworkflowdefinitions",
+    title = "External API Workflow Definitions Service",
+    notes = {},
+    abstractText = "Provides resources and operations related to the workflow definitions"
+)
 @Component(
     immediate = true,
     service = WorkflowDefinitionsEndpoint.class,
@@ -94,6 +93,7 @@ import javax.ws.rs.core.Response;
         "opencast.service.path=/api/workflow-definitions"
     }
 )
+@JaxrsResource
 public class WorkflowDefinitionsEndpoint {
 
   /**
@@ -131,26 +131,45 @@ public class WorkflowDefinitionsEndpoint {
 
   @GET
   @Path("/")
-  @RestQuery(name = "getworkflowdefinitions", description = "Returns a list of workflow definition.", returnDescription = "", restParameters = {
-          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in the response", isRequired = false, type = BOOLEAN),
-          @RestParameter(name = "withconfigurationpanel", description = "Whether the workflow configuration panel should be included in the response", isRequired = false, type = BOOLEAN),
-          @RestParameter(name = "filter", description = "Usage [Filter Name]:[Value to Filter With]. Available filter: \"tag\"", isRequired = false, type = STRING),
-          @RestParameter(name = "sort", description = "Sort the results based upon a list of comma seperated sorting criteria. In the comma seperated list each type of sorting is specified as a pair such as: <Sort Name>:ASC or <Sort Name>:DESC. Adding the suffix ASC or DESC sets the order as ascending or descending order and is mandatory.", isRequired = false, type = STRING),
-          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.", isRequired = false, type = INTEGER),
-          @RestParameter(name = "offset", description = "The index of the first result to return.", isRequired = false, type = INTEGER) }, responses = {
-          @RestResponse(description = "A (potentially empty) list of workflow definitions is returned.", responseCode = HttpServletResponse.SC_OK),
-          @RestResponse(description = "The request is invalid or inconsistent.", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
+  @RestQuery(
+      name = "getworkflowdefinitions",
+      description = "Returns a list of workflow definition.",
+      returnDescription = "",
+      restParameters = {
+          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in "
+              + "the response", isRequired = false, type = BOOLEAN),
+          @RestParameter(name = "withconfigurationpanel", description = "Whether the workflow configuration panel "
+              + "should be included in the response", isRequired = false, type = BOOLEAN),
+          @RestParameter(name = "filter", description = "Usage [Filter Name]:[Value to Filter With]. Available filter: "
+              + "\"tag\"", isRequired = false, type = STRING),
+          @RestParameter(name = "sort", description = "Sort the results based upon a list of comma seperated sorting "
+              + "criteria. In the comma seperated list each type of sorting is specified as a pair such as: "
+              + "<Sort Name>:ASC or <Sort Name>:DESC. Adding the suffix ASC or DESC sets the order as ascending or "
+              + "descending order and is mandatory.", isRequired = false, type = STRING),
+          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.",
+              isRequired = false, type = INTEGER),
+          @RestParameter(name = "offset", description = "The index of the first result to return.",
+              isRequired = false, type = INTEGER) },
+      responses = {
+          @RestResponse(description = "A (potentially empty) list of workflow definitions is returned.",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The request is invalid or inconsistent.",
+              responseCode = HttpServletResponse.SC_BAD_REQUEST)
+      })
   public Response getWorkflowDefinitions(@HeaderParam("Accept") String acceptHeader,
           @QueryParam("withoperations") boolean withOperations,
           @QueryParam("withconfigurationpanel") boolean withConfigurationPanel,
-          @QueryParam("withconfigurationpaneljson") boolean withConfigurationPanelJson, @QueryParam("filter") String filter,
-          @QueryParam("sort") String sort, @QueryParam("offset") Integer offset, @QueryParam("limit") Integer limit) {
+          @QueryParam("withconfigurationpaneljson") boolean withConfigurationPanelJson,
+          @QueryParam("filter") String filter,
+          @QueryParam("sort") String sort,
+          @QueryParam("offset") Integer offset,
+          @QueryParam("limit") Integer limit) {
     Stream<WorkflowDefinition> workflowDefinitions;
     try {
       workflowDefinitions = workflowService.listAvailableWorkflowDefinitions().stream();
     } catch (WorkflowDatabaseException e) {
       logger.error("The workflow service was not able to get the workflow definitions:", e);
-      return ApiResponses.serverError("Could not retrieve workflow definitions, reason: '%s'", getMessage(e));
+      return ApiResponseBuilder.serverError("Could not retrieve workflow definitions, reason: '%s'", getMessage(e));
     }
 
     // Apply filter
@@ -158,14 +177,15 @@ public class WorkflowDefinitionsEndpoint {
       for (String f : filter.split(",")) {
         int sepIdx = f.indexOf(':');
         if (sepIdx < 0 || sepIdx == f.length() - 1) {
-          logger.info("No value for filter {} in filters list: {}", f, filter);
+          logger.debug("No value for filter {} in filters list: {}", f, filter);
           continue;
         }
         String name = f.substring(0, sepIdx);
         String value = f.substring(sepIdx + 1);
 
-        if ("tag".equals(name))
+        if ("tag".equals(name)) {
           workflowDefinitions = workflowDefinitions.filter(wd -> ArrayUtils.contains(wd.getTags(), value));
+        }
       }
     }
 
@@ -173,15 +193,16 @@ public class WorkflowDefinitionsEndpoint {
     // TODO: this seems to not function as intended
     ComparatorChain<WorkflowDefinition> comparator = new ComparatorChain<>();
     if (StringUtils.isNoneBlank(sort)) {
-      Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
+      ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
       for (SortCriterion criterion : sortCriteria) {
         switch (criterion.getFieldName()) {
           case "identifier":
             comparator.addComparator((wd1, wd2) -> {
               String s1 = defaultString(wd1.getId());
               String s2 = defaultString(wd2.getId());
-              if (criterion.getOrder() == Descending)
+              if (criterion.getOrder() == Descending) {
                 return s2.compareTo(s1);
+              }
               return s1.compareTo(s2);
             });
             break;
@@ -189,15 +210,17 @@ public class WorkflowDefinitionsEndpoint {
             comparator.addComparator((wd1, wd2) -> {
               String s1 = defaultString(wd1.getTitle());
               String s2 = defaultString(wd2.getTitle());
-              if (criterion.getOrder() == Descending)
+              if (criterion.getOrder() == Descending) {
                 return s2.compareTo(s1);
+              }
               return s1.compareTo(s2);
             });
             break;
           case "displayorder":
             comparator.addComparator((wd1, wd2) -> {
-              if (criterion.getOrder() == Descending)
+              if (criterion.getOrder() == Descending) {
                 return Integer.compare(wd2.getDisplayOrder(), wd1.getDisplayOrder());
+              }
               return Integer.compare(wd1.getDisplayOrder(), wd2.getDisplayOrder());
             });
             break;
@@ -221,21 +244,42 @@ public class WorkflowDefinitionsEndpoint {
       workflowDefinitions = workflowDefinitions.limit(limit);
     }
 
-    List<JValue> json = workflowDefinitions.map(
-            wd -> workflowDefinitionToJSON(wd, withOperations, withConfigurationPanel, withConfigurationPanelJson)).collect(Collectors.toList());
+    List<JsonObject> jsonObjects = workflowDefinitions
+        .map(wd -> workflowDefinitionToJSON(wd, withOperations, withConfigurationPanel, withConfigurationPanelJson))
+        .collect(Collectors.toList());
 
-    return ApiResponses.Json.ok(acceptHeader, arr(json));
+    JsonArray jsonArray = new JsonArray();
+    for (JsonObject obj : jsonObjects) {
+      jsonArray.add(obj);
+    }
+
+    return ApiResponseBuilder.Json.ok(acceptHeader, jsonArray);
   }
 
   @GET
   @Path("{workflowDefinitionId}")
-  @RestQuery(name = "getworkflowdefinition", description = "Returns a single workflow definition.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "workflowDefinitionId", description = "The workflow definition id", isRequired = true, type = STRING) }, restParameters = {
-          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in the response", isRequired = false, type = BOOLEAN),
-          @RestParameter(name = "withconfigurationpaneljson", description = "Whether the workflow configuration panel in JSON should be included in the response", isRequired = false, type = BOOLEAN),
-          @RestParameter(name = "withconfigurationpanel", description = "Whether the workflow configuration panel should be included in the response", isRequired = false, type = BOOLEAN) }, responses = {
-          @RestResponse(description = "The workflow definition is returned.", responseCode = HttpServletResponse.SC_OK),
-          @RestResponse(description = "The specified workflow definition does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "getworkflowdefinition",
+      description = "Returns a single workflow definition.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "workflowDefinitionId", description = "The workflow definition id", isRequired = true,
+              type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "withoperations", description = "Whether the workflow operations should be included in "
+              + "the response", isRequired = false, type = BOOLEAN),
+          @RestParameter(name = "withconfigurationpaneljson", description = "Whether the workflow configuration panel "
+              + "in JSON should be included in the response", isRequired = false, type = BOOLEAN),
+          @RestParameter(name = "withconfigurationpanel", description = "Whether the workflow configuration panel "
+              + "should be included in the response", isRequired = false, type = BOOLEAN)
+      },
+      responses = {
+          @RestResponse(description = "The workflow definition is returned.",
+              responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified workflow definition does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response getWorkflowDefinition(@HeaderParam("Accept") String acceptHeader,
           @PathParam("workflowDefinitionId") String id, @QueryParam("withoperations") boolean withOperations,
           @QueryParam("withconfigurationpanel") boolean withConfigurationPanel,
@@ -244,52 +288,57 @@ public class WorkflowDefinitionsEndpoint {
     try {
       wd = workflowService.getWorkflowDefinitionById(id);
     } catch (NotFoundException e) {
-      return ApiResponses.notFound("Cannot find workflow definition with id '%s'.", id);
+      return ApiResponseBuilder.notFound("Cannot find workflow definition with id '%s'.", id);
     }
 
-    return ApiResponses.Json.ok(acceptHeader, workflowDefinitionToJSON(wd, withOperations, withConfigurationPanel, withConfigurationPanelJson));
+    return ApiResponseBuilder.Json.ok(acceptHeader, workflowDefinitionToJSON(wd, withOperations,
+        withConfigurationPanel, withConfigurationPanelJson));
   }
 
-  private JValue workflowDefinitionToJSON(WorkflowDefinition wd, boolean withOperations,
-          boolean withConfigurationPanel, boolean withConfigurationPanelJson) {
-    List<Field> fields = new ArrayList<>();
+  private JsonObject workflowDefinitionToJSON(WorkflowDefinition wd, boolean withOperations,
+      boolean withConfigurationPanel, boolean withConfigurationPanelJson) {
+    JsonObject json = new JsonObject();
 
-    fields.add(f("identifier", v(wd.getId())));
-    fields.add(f("title", v(wd.getTitle(), BLANK)));
-    fields.add(f("description", v(wd.getDescription(), BLANK)));
-    fields.add(f("tags", arr(Arrays.stream(wd.getTags()).map(Jsons::v).collect(Collectors.toList()))));
+    json.addProperty("identifier", wd.getId());
+    json.addProperty("title", safeString(wd.getTitle()));
+    json.addProperty("description", safeString(wd.getDescription()));
+    json.add("tags", arrayToJsonArray(wd.getTags()));
     if (withConfigurationPanel) {
-      fields.add(f("configuration_panel", v(wd.getConfigurationPanel(), BLANK)));
+      json.addProperty("configuration_panel", safeString(wd.getConfigurationPanel()));
     }
     if (withConfigurationPanelJson) {
-      fields.add(f("configuration_panel_json", v(wd.getConfigurationPanelJson(), BLANK)));
+      json.addProperty("configuration_panel_json", safeString(wd.getConfigurationPanelJson()));
     }
     if (withOperations) {
-      fields.add(f("operations", arr(wd.getOperations()
-                                       .stream()
-                                       .map(this::workflowOperationDefinitionToJSON)
-                                       .collect(Collectors.toList()))));
+      JsonArray operationsArray = new JsonArray();
+      for (WorkflowOperationDefinition op : wd.getOperations()) {
+        operationsArray.add(workflowOperationDefinitionToJSON(op));
+      }
+      json.add("operations", operationsArray);
     }
 
-    return obj(fields);
+    return json;
   }
 
-  private JValue workflowOperationDefinitionToJSON(WorkflowOperationDefinition wod) {
-    List<Field> fields = new ArrayList<>();
+  private JsonObject workflowOperationDefinitionToJSON(WorkflowOperationDefinition wod) {
+    JsonObject json = new JsonObject();
 
-    fields.add(f("operation", v(wod.getId())));
-    fields.add(f("description", v(wod.getDescription(), BLANK)));
-    fields.add(f("configuration", obj(wod.getConfigurationKeys()
-                                         .stream()
-                                         .map(key -> f(key, wod.getConfiguration(key)))
-                                         .collect(Collectors.toList()))));
-    fields.add(f("if", v(wod.getExecutionCondition(), BLANK)));
-    fields.add(f("unless", v(wod.getSkipCondition(), BLANK)));
-    fields.add(f("fail_workflow_on_error", v(wod.isFailWorkflowOnException())));
-    fields.add(f("error_handler_workflow", v(wod.getExceptionHandlingWorkflow(), BLANK)));
-    fields.add(f("retry_strategy", v(new RetryStrategy.Adapter().marshal(wod.getRetryStrategy()), BLANK)));
-    fields.add(f("max_attempts", v(wod.getMaxAttempts())));
+    json.addProperty("operation", wod.getId());
+    json.addProperty("description", safeString(wod.getDescription()));
+    JsonObject configJson = new JsonObject();
+    for (String key : wod.getConfigurationKeys()) {
+      String value = wod.getConfiguration(key);
+      configJson.addProperty(key, value);
+    }
+    json.add("configuration", configJson);
+    json.addProperty("if", safeString(wod.getExecutionCondition()));
+    json.addProperty("unless", safeString(wod.getSkipCondition()));
+    json.addProperty("fail_workflow_on_error", wod.isFailWorkflowOnException());
+    json.addProperty("error_handler_workflow", safeString(wod.getExceptionHandlingWorkflow()));
+    String retryStrategy = new RetryStrategy.Adapter().marshal(wod.getRetryStrategy());
+    json.addProperty("retry_strategy", safeString(retryStrategy));
+    json.addProperty("max_attempts", wod.getMaxAttempts());
 
-    return obj(fields);
+    return json;
   }
 }

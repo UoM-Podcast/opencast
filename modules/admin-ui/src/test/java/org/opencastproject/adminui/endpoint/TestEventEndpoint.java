@@ -73,7 +73,6 @@ import org.opencastproject.metadata.dublincore.DublinCoreMetadataCollection;
 import org.opencastproject.metadata.dublincore.EventCatalogUIAdapter;
 import org.opencastproject.metadata.dublincore.MetadataList;
 import org.opencastproject.metadata.dublincore.StaticMetadataServiceDublinCoreImpl;
-import org.opencastproject.scheduler.api.Recording;
 import org.opencastproject.scheduler.api.SchedulerService;
 import org.opencastproject.scheduler.api.TechnicalMetadata;
 import org.opencastproject.scheduler.api.TechnicalMetadataImpl;
@@ -98,7 +97,6 @@ import org.opencastproject.util.DateTimeSupport;
 import org.opencastproject.util.MimeType;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.PropertiesUtil;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.util.data.Tuple;
 import org.opencastproject.workflow.api.WorkflowDefinition;
 import org.opencastproject.workflow.api.WorkflowDefinitionImpl;
@@ -107,8 +105,6 @@ import org.opencastproject.workflow.api.WorkflowOperationDefinitionImpl;
 import org.opencastproject.workflow.api.WorkflowService;
 import org.opencastproject.workflow.api.WorkflowSetImpl;
 import org.opencastproject.workspace.api.Workspace;
-
-import com.entwinemedia.fn.data.Opt;
 
 import net.fortuna.ical4j.model.property.RRule;
 
@@ -134,6 +130,7 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
@@ -370,11 +367,11 @@ public class TestEventEndpoint extends AbstractEventEndpoint {
     metadataSvcs.setWorkspace(workspace);
 
     final Date now = DateTime.parse("2014-06-05T09:15:56Z").toDate();
-    EventComment comment = EventComment.create(Option.some(65L), "abc123", "mh_default_org", "Comment 1",
+    EventComment comment = EventComment.create(Optional.of(65L), "abc123", "mh_default_org", "Comment 1",
             userWithPermissions, "Sick", true, now, now);
-    EventComment comment2 = EventComment.create(Option.some(65L), "abc123", "mh_default_org", "Comment 2",
+    EventComment comment2 = EventComment.create(Optional.of(65L), "abc123", "mh_default_org", "Comment 2",
             userWithPermissions, "Defect", false, now, now);
-    EventCommentReply reply = EventCommentReply.create(Option.some(78L), "Cant reproduce", userWithoutPermissions, now,
+    EventCommentReply reply = EventCommentReply.create(Optional.of(78L), "Cant reproduce", userWithoutPermissions, now,
             now);
     comment2.addReply(reply);
 
@@ -389,7 +386,7 @@ public class TestEventEndpoint extends AbstractEventEndpoint {
       @Override
       public EventComment answer() throws Throwable {
         EventComment current = c.getValue();
-        EventComment result = EventComment.create(Option.some(65L), current.getEventId(), current.getOrganization(),
+        EventComment result = EventComment.create(Optional.of(65L), current.getEventId(), current.getOrganization(),
                 current.getText(), current.getAuthor(), current.getReason(), current.isResolvedStatus(), now, now,
                 current.getReplies());
         return result;
@@ -443,17 +440,17 @@ public class TestEventEndpoint extends AbstractEventEndpoint {
     mp.setIdentifier(new IdImpl("asdasd"));
     events.add(mp);
     SchedulerService schedulerService = EasyMock.createNiceMock(SchedulerService.class);
-    EasyMock.expect(schedulerService.search(EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class),
-            EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class)))
+    EasyMock.expect(schedulerService.search(EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class),
+            EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class)))
             .andReturn(events).anyTimes();
     EasyMock.expect(schedulerService.findConflictingEvents(EasyMock.anyString(), EasyMock.anyObject(RRule.class),
             EasyMock.anyObject(Date.class), EasyMock.anyObject(Date.class), EasyMock.anyLong(),
             EasyMock.anyObject(TimeZone.class))).andReturn(events).anyTimes();
     EasyMock.expect(schedulerService.findConflictingEvents(EasyMock.anyString(), EasyMock.anyObject(Date.class),
             EasyMock.anyObject(Date.class))).andReturn(events).anyTimes();
-    schedulerService.updateEvent(EasyMock.anyString(), EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class),
-            EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class),
-            EasyMock.anyObject(Opt.class), EasyMock.anyObject(Opt.class));
+    schedulerService.updateEvent(EasyMock.anyString(), EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class),
+            EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class),
+            EasyMock.anyObject(Optional.class), EasyMock.anyObject(Optional.class));
     EasyMock.expectLastCall().anyTimes();
     EasyMock.expect(schedulerService.getWorkflowConfig("asdasd")).andThrow(new NotFoundException()).anyTimes();
     Map<String, String> workFlowConfig = new HashMap<>();
@@ -474,7 +471,7 @@ public class TestEventEndpoint extends AbstractEventEndpoint {
     wfProperties.put("skip", "true");
     TechnicalMetadata technicalMetadata = new TechnicalMetadataImpl("asdasd", "demo",
             new Date(fromUTC("2017-01-27T10:00:37Z")), new Date(fromUTC("2017-01-27T10:10:37Z")), userIds,
-            wfProperties, caProperties, Opt.<Recording> none());
+            wfProperties, caProperties, Optional.empty());
     expect(schedulerService.getTechnicalMetadata("notExists")).andThrow(new NotFoundException()).anyTimes();
     expect(schedulerService.getTechnicalMetadata(anyString())).andReturn(technicalMetadata).anyTimes();
 
@@ -523,14 +520,14 @@ public class TestEventEndpoint extends AbstractEventEndpoint {
     eventCatalogAdapterList.add(createEventCatalogUIAdapter("name 2"));
 
     IndexService indexService = EasyMock.createNiceMock(IndexService.class);
-    EasyMock.expect(indexService.getEvent("asdasd", searchIndex)).andReturn(Opt.some(event)).anyTimes();
-    EasyMock.expect(indexService.getEvent("exists", searchIndex)).andReturn(Opt.some(event)).anyTimes();
-    EasyMock.expect(indexService.getEvent("exists2", searchIndex)).andReturn(Opt.some(event2)).anyTimes();
-    EasyMock.expect(indexService.getEvent("archivedid", searchIndex)).andReturn(Opt.some(event2)).anyTimes();
-    EasyMock.expect(indexService.getEvent("workflowid", searchIndex)).andReturn(Opt.some(event3)).anyTimes();
-    EasyMock.expect(indexService.getEvent("notExists", searchIndex)).andReturn(Opt.<Event> none()).anyTimes();
-    EasyMock.expect(indexService.getEvent("notExists2", searchIndex)).andReturn(Opt.<Event> none()).anyTimes();
-    EasyMock.expect(indexService.getEvent("updateFailure", searchIndex)).andReturn(Opt.some(event3)).anyTimes();
+    EasyMock.expect(indexService.getEvent("asdasd", searchIndex)).andReturn(Optional.of(event)).anyTimes();
+    EasyMock.expect(indexService.getEvent("exists", searchIndex)).andReturn(Optional.of(event)).anyTimes();
+    EasyMock.expect(indexService.getEvent("exists2", searchIndex)).andReturn(Optional.of(event2)).anyTimes();
+    EasyMock.expect(indexService.getEvent("archivedid", searchIndex)).andReturn(Optional.of(event2)).anyTimes();
+    EasyMock.expect(indexService.getEvent("workflowid", searchIndex)).andReturn(Optional.of(event3)).anyTimes();
+    EasyMock.expect(indexService.getEvent("notExists", searchIndex)).andReturn(Optional.<Event> empty()).anyTimes();
+    EasyMock.expect(indexService.getEvent("notExists2", searchIndex)).andReturn(Optional.<Event> empty()).anyTimes();
+    EasyMock.expect(indexService.getEvent("updateFailure", searchIndex)).andReturn(Optional.of(event3)).anyTimes();
     EasyMock.expect(indexService.getEventMediapackage(event)).andReturn(mp1).anyTimes();
     EasyMock.expect(indexService.getEventCatalogUIAdapters()).andReturn(eventCatalogAdapterList).anyTimes();
     EasyMock.expect(indexService.getExtendedEventCatalogUIAdapters()).andReturn(Collections.emptyList()).anyTimes();
@@ -547,8 +544,8 @@ public class TestEventEndpoint extends AbstractEventEndpoint {
     env.setIndexService(indexService);
 
     AssetManager assetManager = EasyMock.createNiceMock(AssetManager.class);
-    EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Opt.some(new MediaPackageBuilderImpl()
-            .createNew())).anyTimes();
+    EasyMock.expect(assetManager.getMediaPackage(EasyMock.anyString())).andReturn(Optional.of(
+        new MediaPackageBuilderImpl().createNew())).anyTimes();
     EasyMock.replay(assetManager);
     env.setAssetManager(assetManager);
   }

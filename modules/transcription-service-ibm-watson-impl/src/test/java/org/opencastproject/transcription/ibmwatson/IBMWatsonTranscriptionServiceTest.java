@@ -25,13 +25,6 @@ import static org.opencastproject.db.DBTestEnv.newEntityManagerFactory;
 
 import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.assetmanager.api.Snapshot;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.ARecord;
-import org.opencastproject.assetmanager.api.query.AResult;
-import org.opencastproject.assetmanager.api.query.ASelectQuery;
-import org.opencastproject.assetmanager.api.query.Predicate;
-import org.opencastproject.assetmanager.api.query.Target;
-import org.opencastproject.assetmanager.api.query.VersionField;
 import org.opencastproject.assetmanager.util.Workflows;
 import org.opencastproject.kernel.mail.SmtpService;
 import org.opencastproject.mediapackage.MediaPackage;
@@ -66,9 +59,6 @@ import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowService;
 import org.opencastproject.workspace.api.Workspace;
 
-import com.entwinemedia.fn.Stream;
-import com.entwinemedia.fn.data.Opt;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
@@ -101,6 +91,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class IBMWatsonTranscriptionServiceTest {
@@ -612,28 +603,9 @@ public class IBMWatsonTranscriptionServiceTest {
     // Mocks for query, result, etc
     Snapshot snapshot = EasyMock.createNiceMock(Snapshot.class);
     EasyMock.expect(snapshot.getOrganizationId()).andReturn(org.getId());
-    ARecord aRec = EasyMock.createNiceMock(ARecord.class);
-    EasyMock.expect(aRec.getSnapshot()).andReturn(Opt.some(snapshot));
-    Stream<ARecord> recStream = Stream.mk(aRec);
-    Predicate p = EasyMock.createNiceMock(Predicate.class);
-    EasyMock.expect(p.and(p)).andReturn(p);
-    AResult r = EasyMock.createNiceMock(AResult.class);
-    EasyMock.expect(r.getSize()).andReturn(1L);
-    EasyMock.expect(r.getRecords()).andReturn(recStream);
-    Target t = EasyMock.createNiceMock(Target.class);
-    ASelectQuery selectQuery = EasyMock.createNiceMock(ASelectQuery.class);
-    EasyMock.expect(selectQuery.where(EasyMock.anyObject(Predicate.class))).andReturn(selectQuery);
-    EasyMock.expect(selectQuery.run()).andReturn(r);
-    AQueryBuilder query = EasyMock.createNiceMock(AQueryBuilder.class);
-    EasyMock.expect(query.snapshot()).andReturn(t);
-    EasyMock.expect(query.mediaPackageId(EasyMock.anyObject(String.class))).andReturn(p);
-    EasyMock.expect(query.select(EasyMock.anyObject(Target.class))).andReturn(selectQuery);
-    VersionField v = EasyMock.createNiceMock(VersionField.class);
-    EasyMock.expect(v.isLatest()).andReturn(p);
-    EasyMock.expect(query.version()).andReturn(v);
-    EasyMock.expect(assetManager.createQuery()).andReturn(query);
+    EasyMock.expect(assetManager.getLatestSnapshot(EasyMock.anyString())).andReturn(Optional.of(snapshot)).anyTimes();
 
-    EasyMock.replay(snapshot, aRec, p, r, t, selectQuery, query, v, assetManager);
+    EasyMock.replay(snapshot, assetManager);
 
     Capture<Set<String>> capturedMpIds = Capture.newInstance();
     WorkflowDefinition wfDef = new WorkflowDefinitionImpl();
@@ -642,10 +614,9 @@ public class IBMWatsonTranscriptionServiceTest {
     if (wfStarted) {
       wfList.add(new WorkflowInstance());
     }
-    Stream<WorkflowInstance> wfListStream = Stream.mk(wfList);
     Workflows wfs = EasyMock.createNiceMock(Workflows.class);
     EasyMock.expect(wfs.applyWorkflowToLatestVersion(EasyMock.capture(capturedMpIds),
-            EasyMock.anyObject(ConfiguredWorkflow.class))).andReturn(wfListStream);
+            EasyMock.anyObject(ConfiguredWorkflow.class))).andReturn(wfList);
     service.setWfUtil(wfs);
 
     EasyMock.replay(wfService, wfs);

@@ -62,12 +62,15 @@ public class EditingData {
 
   private final List<String> waveformURIs;
   private final List<Subtitle> subtitles;
+  private final List<Subtitle> chapters;
   private final Boolean local;
+
+  private final String metadataJSON;
 
   public EditingData(List<SegmentData> segments, List<TrackData> tracks, List<WorkflowData> workflows, Long duration,
           String title, String recordingStartDate, String seriesId, String seriesName, Boolean workflowActive,
-          List<String> waveformURIs, List<Subtitle> subtitles, Boolean local, Boolean lockingActive,
-          Integer lockRefresh, User user) {
+          List<String> waveformURIs, List<Subtitle> subtitles, List<Subtitle> chapters, Boolean local,
+          Boolean lockingActive, Integer lockRefresh, User user, String metadataJSON) {
     this.segments = segments;
     this.tracks = tracks;
     this.workflows = workflows;
@@ -78,11 +81,13 @@ public class EditingData {
     this.workflowActive = workflowActive;
     this.waveformURIs = waveformURIs;
     this.subtitles = subtitles;
+    this.chapters = chapters;
     this.local = local;
     this.lockingActive = lockingActive;
     this.lockRefresh = lockRefresh * 1000;
     this.lockUUID = UUID.randomUUID().toString();
     this.lockUser = user.getUsername();
+    this.metadataJSON = metadataJSON;
   }
 
   public static EditingData parse(String json) {
@@ -118,6 +123,14 @@ public class EditingData {
     return subtitles;
   }
 
+  public List<Subtitle> getChapters() {
+    return chapters;
+  }
+
+  public String getMetadataJSON() {
+    return metadataJSON;
+  }
+
   public String toString() {
     Gson gson = new GsonBuilder().serializeNulls().create();
     return gson.toJson(this);
@@ -128,11 +141,17 @@ public class EditingData {
     /** content of the subtitle */
     private final String subtitle;
     private final String[] tags;
+    private final boolean deleted;
 
     public Subtitle(String id, String subtitle, String[] tags) {
+      this(id, subtitle, tags,false);
+    }
+
+    public Subtitle(String id, String subtitle, String[] tags, boolean deleted) {
       this.id = id;
       this.subtitle = subtitle;
       this.tags = tags;
+      this.deleted = deleted;
     }
 
     public String getId() {
@@ -146,6 +165,11 @@ public class EditingData {
     public String[] getTags() {
       return tags;
     }
+
+    public boolean isDeleted() {
+      return deleted;
+    }
+
   }
 }
 

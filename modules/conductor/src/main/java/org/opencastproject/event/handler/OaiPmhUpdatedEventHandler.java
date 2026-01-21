@@ -25,9 +25,6 @@ import static org.opencastproject.util.OsgiUtil.getOptCfgAsBoolean;
 
 import org.opencastproject.assetmanager.api.AssetManager;
 import org.opencastproject.assetmanager.api.Snapshot;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.ARecord;
-import org.opencastproject.assetmanager.api.query.AResult;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.selector.SimpleElementSelector;
@@ -42,9 +39,6 @@ import org.opencastproject.security.api.SecurityService;
 import org.opencastproject.security.api.User;
 import org.opencastproject.security.util.SecurityUtil;
 import org.opencastproject.util.data.Collections;
-import org.opencastproject.util.data.Option;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.service.cm.ConfigurationException;
@@ -58,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Dictionary;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @Component(
@@ -118,21 +113,21 @@ public class OaiPmhUpdatedEventHandler implements ManagedService {
 
   @Override
   public void updated(Dictionary<String, ?> dictionary) throws ConfigurationException {
-    final Option<Boolean> propagateEpisode = getOptCfgAsBoolean(dictionary, CFG_PROPAGATE_EPISODE);
-    if (propagateEpisode.isSome()) {
+    final Optional<Boolean> propagateEpisode = getOptCfgAsBoolean(dictionary, CFG_PROPAGATE_EPISODE);
+    if (propagateEpisode.isPresent()) {
       this.propagateEpisode = propagateEpisode.get();
     }
 
-    final Option<String> flavorsRaw = getOptCfg(dictionary, CFG_FLAVORS);
-    if (flavorsRaw.isSome()) {
+    final Optional<String> flavorsRaw = getOptCfg(dictionary, CFG_FLAVORS);
+    if (flavorsRaw.isPresent()) {
       final String[] flavorStrings = flavorsRaw.get().split("\\s*,\\s*");
       this.flavors = Collections.set(flavorStrings);
     } else {
       this.flavors = new HashSet<>();
     }
 
-    final Option<String> tagsRaw = getOptCfg(dictionary, CFG_TAGS);
-    if (tagsRaw.isSome()) {
+    final Optional<String> tagsRaw = getOptCfg(dictionary, CFG_TAGS);
+    if (tagsRaw.isPresent()) {
       final String[] tags = tagsRaw.get().split("\\s*,\\s*");
       this.tags = Collections.set(tags);
     } else {
@@ -160,14 +155,10 @@ public class OaiPmhUpdatedEventHandler implements ManagedService {
       // that has already been finished. The URLs may have become stale.
       // For that reason we get the mediapackage from the asset manager.
       String versionStr = Long.toString(snapshotItem.getVersion());
-      AQueryBuilder q = assetManager.createQuery();
-      AResult snapshotQueryResult = q.select(q.snapshot())
-              .where(q.organizationId().eq(prevOrg.getId())
-                    .and(q.mediaPackageId(snapshotItem.getId())
-                    .and(q.version().eq(assetManager.toVersion(versionStr).get())))).run();
-      Opt<ARecord> snapshotRecordOpt = snapshotQueryResult.getRecords().head();
-      if (snapshotRecordOpt.isSome()) {
-        Snapshot snapshot = snapshotRecordOpt.get().getSnapshot().get();
+      Optional<Snapshot> snapshotOpt = assetManager.getSnapshotByMpIdOrgIdAndVersion(snapshotItem.getId(),
+          prevOrg.getId(), assetManager.toVersion(versionStr).get());
+      if (snapshotOpt.isPresent()) {
+        Snapshot snapshot = snapshotOpt.get();
         MediaPackage snapshotMp = snapshot.getMediaPackage();
 
         // Check weather the media package contains elements to republish

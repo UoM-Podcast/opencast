@@ -23,12 +23,12 @@ package org.opencastproject.transcription.workflowoperation;
 import org.opencastproject.caption.api.CaptionService;
 import org.opencastproject.job.api.Job;
 import org.opencastproject.job.api.JobContext;
-import org.opencastproject.mediapackage.Attachment;
 import org.opencastproject.mediapackage.MediaPackage;
 import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.MediaPackageElementParser;
 import org.opencastproject.mediapackage.Track;
+import org.opencastproject.mediapackage.track.TrackImpl;
 import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.transcription.api.TranscriptionService;
 import org.opencastproject.transcription.api.TranscriptionServiceException;
@@ -49,8 +49,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 @Component(
     immediate = true,
@@ -96,24 +94,9 @@ public class AmberscriptAttachTranscriptionOperationHandler extends AbstractWork
     ConfiguredTagsAndFlavors tagsAndFlavors = getTagsAndFlavors(
         workflowInstance, Configuration.none, Configuration.none, Configuration.many, Configuration.one);
     MediaPackageElementFlavor targetFlavor = tagsAndFlavors.getSingleTargetFlavor();
-    List<String> targetTagOption = tagsAndFlavors.getTargetTags();
+    ConfiguredTagsAndFlavors.TargetTags targetTagOption = tagsAndFlavors.getTargetTags();
     String captionFormatOption = StringUtils.trimToNull(operation.getConfiguration(TARGET_CAPTION_FORMAT));
-    String typeUnparsed = StringUtils.trimToEmpty(operation.getConfiguration(TARGET_TYPE));
-    MediaPackageElement.Type type = null;
-    if (!typeUnparsed.isEmpty()) {
-      // Case insensitive matching between user input (workflow config key) and enum value
-      for (MediaPackageElement.Type t : MediaPackageElement.Type.values()) {
-        if (t.name().equalsIgnoreCase(typeUnparsed)) {
-          type = t;
-        }
-      }
-      if (type == null || (type != Track.TYPE && type != Attachment.TYPE)) {
-        throw new IllegalArgumentException(String.format("The given type '%s' for mediapackage %s was illegal. Please"
-                + "check the operations' configuration keys.", type, mediaPackage.getIdentifier()));
-      }
-    } else {
-      type = Track.TYPE;
-    }
+    MediaPackageElement.Type type = getTargetType(operation.getConfiguration(TARGET_TYPE));
 
     // If the target format is not specified, convert to vtt (default output format is srt)
     String format = (captionFormatOption != null) ? captionFormatOption : "vtt";
@@ -129,12 +112,26 @@ public class AmberscriptAttachTranscriptionOperationHandler extends AbstractWork
       MediaPackageElement convertedTranscription = MediaPackageElementParser.getFromXml(job.getPayload());
       workspace.delete(transcription.getURI());
 
-      convertedTranscription.setFlavor(targetFlavor);
-      for (String tag : targetTagOption) {
-        convertedTranscription.addTag(tag);
+      // The SubRip converter always returns Attachments. We may need to turn it into a Track
+      if (type == MediaPackageElement.Type.Track) {
+        var elem = new TrackImpl();
+        elem.setURI(convertedTranscription.getURI());
+        elem.setIdentifier(convertedTranscription.getIdentifier());
+        elem.setMimeType(convertedTranscription.getMimeType());
+        for (var tag: convertedTranscription.getTags()) {
+          elem.addTag(tag);
+        }
+        convertedTranscription = elem;
       }
+
+      convertedTranscription.addTag("generator-type:auto");
+      convertedTranscription.addTag("generator:amberscript");
+      convertedTranscription.setFlavor(targetFlavor);
+      applyTargetTagsToElement(targetTagOption, convertedTranscription);
       mediaPackage.add(convertedTranscription);
-      logger.info("Added transcription to the media package {}: {}", mediaPackage, convertedTranscription.getURI());
+      logger.info("Added transcription to the media package {} as {}: {}", mediaPackage,
+          convertedTranscription.getElementType(),
+          convertedTranscription.getURI());
 
     } catch (TranscriptionServiceException e) {
       if (e.isCancel()) {
@@ -147,6 +144,25 @@ public class AmberscriptAttachTranscriptionOperationHandler extends AbstractWork
     }
 
     return createResult(mediaPackage, Action.CONTINUE);
+  }
+
+  /**
+   * Parse the target-type configuration and return the requested MediaPackageElement.Type
+   * @param typeUnparsed Configuration value
+   * @return Requested type
+   */
+  private static MediaPackageElement.Type getTargetType(String typeUnparsed) {
+    if (StringUtils.isBlank(typeUnparsed)) {
+      return Track.TYPE;
+    }
+    if (MediaPackageElement.Type.Attachment.name().equalsIgnoreCase(typeUnparsed)) {
+      return MediaPackageElement.Type.Attachment;
+    }
+    if (MediaPackageElement.Type.Track.name().equalsIgnoreCase(typeUnparsed)) {
+      return MediaPackageElement.Type.Track;
+    }
+    throw new IllegalArgumentException(String.format("The requested type '%s' is illegal. Please"
+            + "check the operation's configuration keys.", typeUnparsed));
   }
 
   @Reference(target = "(provider=amberscript)")

@@ -42,7 +42,6 @@ import org.opencastproject.util.Checksum;
 import org.opencastproject.util.IoSupport;
 import org.opencastproject.util.MimeType;
 import org.opencastproject.util.XmlSafeParser;
-import org.opencastproject.util.data.Function2;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -72,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -82,7 +82,7 @@ import javax.xml.bind.Unmarshaller;
 import javax.xml.parsers.DocumentBuilder;
 
 /**
- * Test case to Test the implementation of {@link AdaptivePlaylistImpl}.
+ * Test case to Test the implementation of {@link AdaptivePlaylist}.
  */
 public class AdaptivePlaylistTest {
 
@@ -180,7 +180,7 @@ public class AdaptivePlaylistTest {
   }
 
   /**
-   * Test method for {@link org.opencastproject.mediapackage.track.AdaptivePlaylistImpl#setDuration(long)}.
+   * Test method for {@link org.opencastproject.mediapackage.track.TrackImpl#setDuration(Long)}.
    */
   @Test
   public void testSetDuration() {
@@ -189,7 +189,7 @@ public class AdaptivePlaylistTest {
   }
 
   /**
-   * Test method for {@link org.opencastproject.mediapackage.track.AdaptivePlaylistImpl#getDuration()}.
+   * Test method for {@link org.opencastproject.mediapackage.track.TrackImpl#getDuration()}.
    */
   @Test
   public void testGetDuration() {
@@ -316,7 +316,7 @@ public class AdaptivePlaylistTest {
 
   /**
    * Test method for
-   * {@link PresenterTrackBuilderPlugin#accept(URI, org.opencastproject.mediapackage.MediaPackageElement.Type, org.opencastproject.mediapackage.MediaPackageElementFlavor)}
+   * {@link TrackBuilderPlugin#accept(URI, org.opencastproject.mediapackage.MediaPackageElement.Type, org.opencastproject.mediapackage.MediaPackageElementFlavor)}
    *
    * @throws Exception
    */
@@ -499,19 +499,16 @@ public class AdaptivePlaylistTest {
       }
     };
 
-    Function2<File, Track, Track> replaceHLSPlaylistInWS = new Function2<File, Track, Track>() {
-      @Override
-      public Track apply(File file, Track track) {
-        try {
-          // put file into workspace
-          URI uri = new URI(track.getIdentifier() + "/" + file.getName());
-          track.setURI(uri); // point track to new URI
-          File newFile = new File(srcDir, uri.getPath());
-          FileUtils.copyFile(file, newFile);
-          return track;
-        } catch (Exception e) {
-          return null;
-        }
+    BiFunction<File, Track, Track> replaceHLSPlaylistInWS = (file, track) -> {
+      try {
+        // put file into workspace
+        URI uri = new URI(track.getIdentifier() + "/" + file.getName());
+        track.setURI(uri); // point track to new URI
+        File newFile = new File(srcDir, uri.getPath());
+        FileUtils.copyFile(file, newFile);
+        return track;
+      } catch (Exception e) {
+        return null;
       }
     };
     // Get brand new files from test directory
@@ -675,19 +672,16 @@ public class AdaptivePlaylistTest {
       }
     };
 
-    Function2<File, Track, Track> replaceHLSPlaylistInWS = new Function2<File, Track, Track>() {
-      @Override
-      public Track apply(File file, Track track) {
-        try {
-          // put file into workspace
-          URI uri = new URI(track.getIdentifier() + "/" + file.getName());
-          track.setURI(uri); // point track to new URI
-          File newFile = new File(srcDir, uri.getPath());
-          FileUtils.copyFile(file, newFile);
-          return track;
-        } catch (Exception e) {
-          return null;
-        }
+    BiFunction<File, Track, Track> replaceHLSPlaylistInWS = (file, track) -> {
+      try {
+        // put file into workspace
+        URI uri = new URI(track.getIdentifier() + "/" + file.getName());
+        track.setURI(uri); // point track to new URI
+        File newFile = new File(srcDir, uri.getPath());
+        FileUtils.copyFile(file, newFile);
+        return track;
+      } catch (Exception e) {
+        return null;
       }
     };
 

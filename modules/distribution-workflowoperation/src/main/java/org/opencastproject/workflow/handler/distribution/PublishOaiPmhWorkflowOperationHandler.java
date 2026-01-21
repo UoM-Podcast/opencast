@@ -20,12 +20,8 @@
  */
 package org.opencastproject.workflow.handler.distribution;
 
-import static com.entwinemedia.fn.Stream.$;
 import static org.opencastproject.mediapackage.MediaPackageSupport.Filters.ofChannel;
 import static org.opencastproject.util.data.Collections.list;
-import static org.opencastproject.util.data.Option.option;
-import static org.opencastproject.util.data.functions.Strings.toBool;
-import static org.opencastproject.util.data.functions.Strings.trimToNone;
 
 import org.opencastproject.distribution.api.StreamingDistributionService;
 import org.opencastproject.job.api.Job;
@@ -43,14 +39,13 @@ import org.opencastproject.publication.api.PublicationException;
 import org.opencastproject.serviceregistry.api.ServiceRegistry;
 import org.opencastproject.util.MimeType;
 import org.opencastproject.util.MimeTypes;
+import org.opencastproject.util.data.functions.Strings;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowInstance;
 import org.opencastproject.workflow.api.WorkflowOperationException;
 import org.opencastproject.workflow.api.WorkflowOperationHandler;
 import org.opencastproject.workflow.api.WorkflowOperationResult;
 import org.opencastproject.workflow.api.WorkflowOperationResult.Action;
-
-import com.entwinemedia.fn.data.Opt;
 
 import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.ComponentContext;
@@ -63,6 +58,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -149,14 +145,17 @@ public class PublishOaiPmhWorkflowOperationHandler extends AbstractWorkflowOpera
             .trimToEmpty(workflowInstance.getCurrentOperation().getConfiguration(STREAMING_TAGS));
     String streamingFlavors = StringUtils
             .trimToEmpty(workflowInstance.getCurrentOperation().getConfiguration(STREAMING_FLAVORS));
-    boolean checkAvailability = option(workflowInstance.getCurrentOperation().getConfiguration(CHECK_AVAILABILITY))
-            .bind(trimToNone).map(toBool).getOrElse(true);
+    boolean checkAvailability = Optional.ofNullable(
+            workflowInstance.getCurrentOperation().getConfiguration(CHECK_AVAILABILITY))
+            .flatMap(Strings::trimToNone)
+            .map(Boolean::valueOf)
+            .orElse(true);
     String repository = StringUtils.trimToNull(workflowInstance.getCurrentOperation().getConfiguration(REPOSITORY));
 
-    Opt<String> externalChannel = getOptConfig(workflowInstance.getCurrentOperation(), EXTERNAL_CHANNEL_NAME);
-    Opt<String> externalTempalte = getOptConfig(workflowInstance.getCurrentOperation(), EXTERNAL_TEMPLATE);
-    Opt<MimeType> externalMimetype = getOptConfig(workflowInstance.getCurrentOperation(), EXTERNAL_MIME_TYPE)
-            .bind(MimeTypes.toMimeType);
+    Optional<String> externalChannel = getOptConfig(workflowInstance.getCurrentOperation(), EXTERNAL_CHANNEL_NAME);
+    Optional<String> externalTemplate = getOptConfig(workflowInstance.getCurrentOperation(), EXTERNAL_TEMPLATE);
+    Optional<MimeType> externalMimetype = getOptConfig(workflowInstance.getCurrentOperation(), EXTERNAL_MIME_TYPE)
+        .flatMap(MimeTypes::toMimeType);
 
     if (repository == null) {
       throw new IllegalArgumentException("No repository has been specified");
@@ -248,23 +247,25 @@ public class PublishOaiPmhWorkflowOperationHandler extends AbstractWorkflowOpera
         return createResult(mediaPackage, Action.CONTINUE);
       }
 
-      for (Publication existingPublication : $(mediaPackage.getPublications())
-              .find(ofChannel(newElement.getChannel()).toFn())) {
-        mediaPackage.remove(existingPublication);
+      for (Publication existingPublication : mediaPackage.getPublications()) {
+        if (ofChannel(existingPublication, newElement.getChannel())) {
+          mediaPackage.remove(existingPublication);
+        }
       }
       mediaPackage.add(newElement);
 
-      if (externalChannel.isSome() && externalMimetype.isSome() && externalTempalte.isSome()) {
-        String template = externalTempalte.get().replace("{event}", mediaPackage.getIdentifier().toString());
+      if (externalChannel.isPresent() && externalMimetype.isPresent() && externalTemplate.isPresent()) {
+        String template = externalTemplate.get().replace("{event}", mediaPackage.getIdentifier().toString());
         if (StringUtils.isNotBlank(mediaPackage.getSeries())) {
           template = template.replace("{series}", mediaPackage.getSeries());
         }
 
         Publication externalElement = PublicationImpl.publication(UUID.randomUUID().toString(), externalChannel.get(),
                 URI.create(template), externalMimetype.get());
-        for (Publication existingPublication : $(mediaPackage.getPublications())
-                .find(ofChannel(externalChannel.get()).toFn())) {
-          mediaPackage.remove(existingPublication);
+        for (Publication existingPublication : mediaPackage.getPublications()) {
+          if (ofChannel(existingPublication, externalChannel.get())) {
+            mediaPackage.remove(existingPublication);
+          }
         }
         mediaPackage.add(externalElement);
       }

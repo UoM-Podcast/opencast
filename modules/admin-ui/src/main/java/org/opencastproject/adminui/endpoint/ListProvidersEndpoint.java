@@ -54,6 +54,7 @@ import org.json.simple.JSONObject;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/admin-ng/resources")
 @RestService(name = "ResourceListsProviders", title = "Admin UI - Resources List",
   abstractText = "This service provides key-value list from different resources to use in the admin UI.",
   notes = { "This service offers access to list providers for the admin UI.",
@@ -87,6 +88,7 @@ import javax.ws.rs.core.Response;
                 "opencast.service.path=/admin-ng/resources",
         }
 )
+@JaxrsResource
 public class ListProvidersEndpoint {
 
   private static final Logger logger = LoggerFactory.getLogger(ListProvidersEndpoint.class);
@@ -186,10 +188,10 @@ public class ListProvidersEndpoint {
           subList = generateJSONObject(listProvidersService.getList(source, query, true));
           list.put(source, subList);
         } catch (JsonCreationException e) {
-          logger.error("Not able to generate resources list JSON from source {}: {}", source, e);
+          logger.error("Not able to generate resources list JSON from source {}", source, e);
           return SERVER_ERROR;
         } catch (ListProviderException e) {
-          logger.error("Not able to get list from provider {}: {}", source, e);
+          logger.error("Not able to get list from provider {}", source, e);
           return SERVER_ERROR;
         }
       } else {
@@ -255,7 +257,7 @@ public class ListProvidersEndpoint {
         return RestUtils.okJson(JSONUtils.filtersToJSON(query, listProvidersService, securityService.getOrganization()));
       }
     } catch (ListProviderException e) {
-      logger.error("Not able to get list of options for the filters for the page {}: {}", page, e);
+      logger.error("Not able to get list of options for the filters for the page {}", page, e);
       return SERVER_ERROR;
     }
   }

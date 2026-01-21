@@ -22,6 +22,7 @@
 package org.opencastproject.index.service.impl.util;
 
 import org.opencastproject.elasticsearch.index.objects.event.Event;
+import org.opencastproject.list.api.ResourceListQuery;
 import org.opencastproject.mediapackage.Publication;
 import org.opencastproject.metadata.dublincore.DublinCore;
 import org.opencastproject.metadata.dublincore.DublinCoreMetadataCollection;
@@ -31,8 +32,6 @@ import org.opencastproject.util.DateTimeSupport;
 import org.opencastproject.workflow.handler.distribution.EngagePublicationChannel;
 import org.opencastproject.workflow.handler.distribution.InternalPublicationChannel;
 
-import com.entwinemedia.fn.Fn;
-
 import org.apache.commons.lang3.StringUtils;
 
 import java.text.ParseException;
@@ -41,6 +40,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.function.Predicate;
 
 public final class EventUtils {
 
@@ -54,7 +54,6 @@ public final class EventUtils {
   }
 
   private EventUtils() {
-
   }
 
   /**
@@ -62,6 +61,8 @@ public final class EventUtils {
    *
    * @param event
    *          the source {@link Event}
+   * @param eventCatalogUIAdapter
+   *          the catalog definition
    * @return a {@link DublinCoreMetadataCollection} instance with all the event metadata
    *
    * @throws ParseException
@@ -69,6 +70,28 @@ public final class EventUtils {
   public static DublinCoreMetadataCollection getEventMetadata(Event event, EventCatalogUIAdapter eventCatalogUIAdapter)
           throws ParseException {
     DublinCoreMetadataCollection eventMetadata = new DublinCoreMetadataCollection(eventCatalogUIAdapter.getRawFields());
+    setEventMetadataValues(event, eventMetadata);
+    return eventMetadata;
+  }
+
+  /**
+   * Loads the metadata for the given event
+   *
+   * @param event
+   *          the source {@link Event}
+   * @param eventCatalogUIAdapter
+   *          the catalog definition
+   * @param collectionQueryOverride
+   *          a custom list provider query mapped to every metadata field.
+   *
+   * @return a {@link DublinCoreMetadataCollection} instance with all the event metadata
+   *
+   * @throws ParseException
+   */
+  public static DublinCoreMetadataCollection getEventMetadata(Event event, EventCatalogUIAdapter eventCatalogUIAdapter,
+      ResourceListQuery collectionQueryOverride) throws ParseException {
+    DublinCoreMetadataCollection eventMetadata = new DublinCoreMetadataCollection(
+        eventCatalogUIAdapter.getRawFields(collectionQueryOverride));
     setEventMetadataValues(event, eventMetadata);
     return eventMetadata;
   }
@@ -153,12 +176,6 @@ public final class EventUtils {
   /**
    * A filter to remove all internal channel publications.
    */
-  public static final Fn<Publication, Boolean> internalChannelFilter = new Fn<Publication, Boolean>() {
-    @Override
-    public Boolean apply(Publication a) {
-      if (InternalPublicationChannel.CHANNEL_ID.equals(a.getChannel()))
-        return false;
-      return true;
-    }
-  };
+  public static final Predicate<Publication> internalChannelFilter =
+      publication -> !InternalPublicationChannel.CHANNEL_ID.equals(publication.getChannel());
 }

@@ -21,9 +21,7 @@
 package org.opencastproject.transcription.amberscript;
 
 import org.opencastproject.assetmanager.api.AssetManager;
-import org.opencastproject.assetmanager.api.fn.Enrichments;
-import org.opencastproject.assetmanager.api.query.AQueryBuilder;
-import org.opencastproject.assetmanager.api.query.AResult;
+import org.opencastproject.assetmanager.api.Snapshot;
 import org.opencastproject.assetmanager.util.Workflows;
 import org.opencastproject.job.api.AbstractJobProducer;
 import org.opencastproject.job.api.Job;
@@ -57,7 +55,6 @@ import org.opencastproject.transcription.persistence.TranscriptionJobControl;
 import org.opencastproject.transcription.persistence.TranscriptionProviderControl;
 import org.opencastproject.util.NotFoundException;
 import org.opencastproject.util.OsgiUtil;
-import org.opencastproject.util.data.Option;
 import org.opencastproject.workflow.api.ConfiguredWorkflow;
 import org.opencastproject.workflow.api.WorkflowDefinition;
 import org.opencastproject.workflow.api.WorkflowInstance;
@@ -99,6 +96,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -212,8 +210,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
   @Activate
   public void activate(ComponentContext cc) {
 
-    Option<Boolean> enabledOpt = OsgiUtil.getOptCfgAsBoolean(cc.getProperties(), ENABLED_CONFIG);
-    if (enabledOpt.isSome()) {
+    Optional<Boolean> enabledOpt = OsgiUtil.getOptCfgAsBoolean(cc.getProperties(), ENABLED_CONFIG);
+    if (enabledOpt.isPresent()) {
       enabled = enabledOpt.get();
     }
 
@@ -223,24 +221,24 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
       return;
     }
 
-    Option<String> clientKeyOpt = OsgiUtil.getOptCfg(cc.getProperties(), CLIENT_KEY);
-    if (clientKeyOpt.isSome()) {
+    Optional<String> clientKeyOpt = OsgiUtil.getOptCfg(cc.getProperties(), CLIENT_KEY);
+    if (clientKeyOpt.isPresent()) {
       clientKey = clientKeyOpt.get();
     } else {
       logger.warn("API key was not set.");
       return;
     }
 
-    Option<String> languageOpt = OsgiUtil.getOptCfg(cc.getProperties(), LANGUAGE);
-    if (languageOpt.isSome()) {
+    Optional<String> languageOpt = OsgiUtil.getOptCfg(cc.getProperties(), LANGUAGE);
+    if (languageOpt.isPresent()) {
       language = languageOpt.get();
       logger.info("Default language is set to '{}'.", language);
     } else {
       logger.info("Default language '{}' will be used.", language);
     }
 
-    Option<String> languageFromDublinCoreOpt = OsgiUtil.getOptCfg(cc.getProperties(), LANGUAGE_FROM_DUBLINCORE);
-    if (languageFromDublinCoreOpt.isSome()) {
+    Optional<String> languageFromDublinCoreOpt = OsgiUtil.getOptCfg(cc.getProperties(), LANGUAGE_FROM_DUBLINCORE);
+    if (languageFromDublinCoreOpt.isPresent()) {
       try {
         languageFromDublinCore = Boolean.parseBoolean(languageFromDublinCoreOpt.get());
       } catch (Exception e) {
@@ -251,8 +249,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
 
     amberscriptLangUtil = AmberscriptLangUtil.getInstance();
     int customMapEntriesCount = 0;
-    Option<String> langCodeMapOpt = OsgiUtil.getOptCfg(cc.getProperties(), LANGUAGE_CODE_MAP);
-    if (langCodeMapOpt.isSome()) {
+    Optional<String> langCodeMapOpt = OsgiUtil.getOptCfg(cc.getProperties(), LANGUAGE_CODE_MAP);
+    if (langCodeMapOpt.isPresent()) {
       try {
         String langCodeMapStr = langCodeMapOpt.get();
         if (langCodeMapStr != null) {
@@ -268,24 +266,24 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
     }
     logger.info("Language code map was set. Added '{}' additional entries.", customMapEntriesCount);
 
-    Option<String> amberscriptJobTypeOpt = OsgiUtil.getOptCfg(cc.getProperties(), AMBERSCRIPTJOBTYPE);
-    if (amberscriptJobTypeOpt.isSome()) {
+    Optional<String> amberscriptJobTypeOpt = OsgiUtil.getOptCfg(cc.getProperties(), AMBERSCRIPTJOBTYPE);
+    if (amberscriptJobTypeOpt.isPresent()) {
       amberscriptJobType = amberscriptJobTypeOpt.get();
       logger.info("Default Amberscript job type is set to '{}'.", amberscriptJobType);
     } else {
       logger.info("Default Amberscript job type '{}' will be used.", amberscriptJobType);
     }
 
-    Option<String> wfOpt = OsgiUtil.getOptCfg(cc.getProperties(), WORKFLOW_CONFIG);
-    if (wfOpt.isSome()) {
+    Optional<String> wfOpt = OsgiUtil.getOptCfg(cc.getProperties(), WORKFLOW_CONFIG);
+    if (wfOpt.isPresent()) {
       workflowDefinitionId = wfOpt.get();
       logger.info("Workflow is set to '{}'.", workflowDefinitionId);
     } else {
       logger.info("Default workflow '{}' will be used.", workflowDefinitionId);
     }
 
-    Option<String> intervalOpt = OsgiUtil.getOptCfg(cc.getProperties(), DISPATCH_WORKFLOW_INTERVAL_CONFIG);
-    if (intervalOpt.isSome()) {
+    Optional<String> intervalOpt = OsgiUtil.getOptCfg(cc.getProperties(), DISPATCH_WORKFLOW_INTERVAL_CONFIG);
+    if (intervalOpt.isPresent()) {
       try {
         workflowDispatchIntervalSeconds = Long.parseLong(intervalOpt.get());
       } catch (NumberFormatException e) {
@@ -294,8 +292,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
     }
     logger.info("Workflow dispatch interval is {} seconds.", workflowDispatchIntervalSeconds);
 
-    Option<String> maxProcessingOpt = OsgiUtil.getOptCfg(cc.getProperties(), MAX_PROCESSING_TIME_CONFIG);
-    if (maxProcessingOpt.isSome()) {
+    Optional<String> maxProcessingOpt = OsgiUtil.getOptCfg(cc.getProperties(), MAX_PROCESSING_TIME_CONFIG);
+    if (maxProcessingOpt.isPresent()) {
       try {
         maxProcessingSeconds = Long.parseLong(maxProcessingOpt.get());
       } catch (NumberFormatException e) {
@@ -304,8 +302,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
     }
     logger.info("Maximum processing time for transcription job is {} seconds.", maxProcessingSeconds);
 
-    Option<String> cleanupOpt = OsgiUtil.getOptCfg(cc.getProperties(), CLEANUP_RESULTS_DAYS_CONFIG);
-    if (cleanupOpt.isSome()) {
+    Optional<String> cleanupOpt = OsgiUtil.getOptCfg(cc.getProperties(), CLEANUP_RESULTS_DAYS_CONFIG);
+    if (cleanupOpt.isPresent()) {
       try {
         cleanupResultDays = Integer.parseInt(cleanupOpt.get());
       } catch (NumberFormatException e) {
@@ -314,8 +312,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
     }
     logger.info("Cleanup result files after {} days.", cleanupResultDays);
 
-    Option<String> speakerOpt = OsgiUtil.getOptCfg(cc.getProperties(), SPEAKER);
-    if (speakerOpt.isSome()) {
+    Optional<String> speakerOpt = OsgiUtil.getOptCfg(cc.getProperties(), SPEAKER);
+    if (speakerOpt.isPresent()) {
       try {
         numberOfSpeakers = Integer.parseInt(speakerOpt.get());
       } catch (NumberFormatException e) {
@@ -324,8 +322,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
     }
     logger.info("Default number of speakers is set to '{}'.", numberOfSpeakers);
 
-    Option<String> speakerFromDublinCoreOpt = OsgiUtil.getOptCfg(cc.getProperties(), SPEAKER_FROM_DUBLINCORE);
-    if (speakerFromDublinCoreOpt.isSome()) {
+    Optional<String> speakerFromDublinCoreOpt = OsgiUtil.getOptCfg(cc.getProperties(), SPEAKER_FROM_DUBLINCORE);
+    if (speakerFromDublinCoreOpt.isPresent()) {
       try {
         speakerFromDublinCore = Boolean.parseBoolean(speakerFromDublinCoreOpt.get());
       } catch (Exception e) {
@@ -334,8 +332,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
     }
     logger.info("Configuration value for '{}' is set to '{}'.", SPEAKER_FROM_DUBLINCORE, speakerFromDublinCore);
 
-    Option<String> speakerMetadataFieldOpt = OsgiUtil.getOptCfg(cc.getProperties(), SPEAKER_METADATA_FIELD);
-    if (speakerMetadataFieldOpt.isSome()) {
+    Optional<String> speakerMetadataFieldOpt = OsgiUtil.getOptCfg(cc.getProperties(), SPEAKER_METADATA_FIELD);
+    if (speakerMetadataFieldOpt.isPresent()) {
       try {
         speakerMetadataField = SpeakerMetadataField.valueOf(speakerMetadataFieldOpt.get());
       } catch (IllegalArgumentException e) {
@@ -345,8 +343,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
     }
     logger.info("Default metadata field for calculating the amount of speakers is set to '{}'.", speakerMetadataField);
 
-    Option<String> transcriptionTypeOpt = OsgiUtil.getOptCfg(cc.getProperties(), TRANSCRIPTIONTYPE);
-    if (transcriptionTypeOpt.isSome()) {
+    Optional<String> transcriptionTypeOpt = OsgiUtil.getOptCfg(cc.getProperties(), TRANSCRIPTIONTYPE);
+    if (transcriptionTypeOpt.isPresent()) {
       if (List.of("transcription", "captions", "translatedSubtitles").contains(transcriptionType)) {
         transcriptionType = transcriptionTypeOpt.get();
         logger.info("Default transcription type is set to '{}'.", transcriptionType);
@@ -358,16 +356,16 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
       logger.info("Default transcription type '{}' will be used.", transcriptionType);
     }
 
-    Option<String> glossaryOpt = OsgiUtil.getOptCfg(cc.getProperties(), GLOSSARY);
-    if (glossaryOpt.isSome()) {
+    Optional<String> glossaryOpt = OsgiUtil.getOptCfg(cc.getProperties(), GLOSSARY);
+    if (glossaryOpt.isPresent()) {
       glossary = glossaryOpt.get();
       logger.info("Default glossary is set to '{}'.", glossary);
     } else {
       logger.info("No glossary will be used by default");
     }
 
-    Option<String> transcriptionStyleOpt = OsgiUtil.getOptCfg(cc.getProperties(), TRANSCRIPTIONSTYLE);
-    if (transcriptionStyleOpt.isSome()) {
+    Optional<String> transcriptionStyleOpt = OsgiUtil.getOptCfg(cc.getProperties(), TRANSCRIPTIONSTYLE);
+    if (transcriptionStyleOpt.isPresent()) {
       if (List.of("cleanread", "verbatim").contains(transcriptionStyle)) {
         transcriptionStyle = transcriptionStyleOpt.get();
         logger.info("Default transcription style is set to '{}'.", transcriptionStyle);
@@ -379,8 +377,8 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
       logger.info("Default transcription style '{}' will be used.", transcriptionStyle);
     }
 
-    Option<String> targetLanguageOpt = OsgiUtil.getOptCfg(cc.getProperties(), TARGETLANGUAGE);
-    if (targetLanguageOpt.isSome()) {
+    Optional<String> targetLanguageOpt = OsgiUtil.getOptCfg(cc.getProperties(), TARGETLANGUAGE);
+    if (targetLanguageOpt.isPresent()) {
       targetLanguage = targetLanguageOpt.get();
       logger.info("Default target language is set to '{}'.", targetLanguage);
     } else {
@@ -1042,6 +1040,7 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
               } catch (TranscriptionServiceException e) {
                 try {
                   database.updateJobControl(jobId, TranscriptionJobControl.Status.Canceled.name());
+                  continue;
                 } catch (TranscriptionDatabaseException ex) {
                   logger.warn("Could not cancel job '{}'.", jobId);
                 }
@@ -1058,15 +1057,15 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
             securityService.setUser(SecurityUtil.createSystemUser(systemAccount, defaultOrg));
 
             // Find the episode
-            final AQueryBuilder q = assetManager.createQuery();
-            final AResult r = q.select(q.snapshot()).where(q.mediaPackageId(mpId).and(q.version().isLatest())).run();
-            if (r.getSize() == 0) {
-              // Media package not archived yet? Skip until next time.
-              logger.warn("Media package {} has not been archived yet. Skipped.", mpId);
+            Optional<Snapshot> snapshot = assetManager.getLatestSnapshot(mpId);
+            if (snapshot.isEmpty()) {
+              logger.warn("Media package {} no longer exists in the asset manager. It was likely deleted. "
+                  + "Dropping the generated transcription.", mpId);
+              database.updateJobControl(jobId, TranscriptionJobControl.Status.Error.name());
               continue;
             }
 
-            String org = Enrichments.enrich(r).getSnapshots().head2().getOrganizationId();
+            String org = snapshot.get().getOrganizationId();
             Organization organization = organizationDirectoryService.getOrganization(org);
             if (organization == null) {
               logger.warn("Media package {} has an unknown organization {}. Skipped.", mpId, org);
@@ -1085,7 +1084,7 @@ public class AmberscriptTranscriptionService extends AbstractJobProducer impleme
             Set<String> mpIds = new HashSet<String>();
             mpIds.add(mpId);
             List<WorkflowInstance> wfList = workflows
-                    .applyWorkflowToLatestVersion(mpIds, ConfiguredWorkflow.workflow(wfDef, params)).toList();
+                    .applyWorkflowToLatestVersion(mpIds, ConfiguredWorkflow.workflow(wfDef, params));
             String wfId = wfList.size() > 0 ? Long.toString(wfList.get(0).getId()) : "Unknown";
 
             // Update state in the database

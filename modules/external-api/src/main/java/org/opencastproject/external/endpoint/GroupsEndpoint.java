@@ -20,10 +20,6 @@
  */
 package org.opencastproject.external.endpoint;
 
-import static com.entwinemedia.fn.data.json.Jsons.arr;
-import static com.entwinemedia.fn.data.json.Jsons.f;
-import static com.entwinemedia.fn.data.json.Jsons.obj;
-import static com.entwinemedia.fn.data.json.Jsons.v;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_CONFLICT;
 import static javax.servlet.http.HttpServletResponse.SC_CREATED;
@@ -32,14 +28,14 @@ import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_NO_CONTENT;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
-import static org.apache.commons.lang3.StringUtils.join;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getMessage;
 import static org.opencastproject.external.common.ApiVersion.VERSION_1_6_0;
+import static org.opencastproject.index.service.util.JSONUtils.safeString;
 import static org.opencastproject.util.doc.rest.RestParameter.Type.STRING;
 
 import org.opencastproject.elasticsearch.index.ElasticsearchIndex;
 import org.opencastproject.external.common.ApiMediaType;
-import org.opencastproject.external.common.ApiResponses;
+import org.opencastproject.external.common.ApiResponseBuilder;
 import org.opencastproject.external.common.ApiVersion;
 import org.opencastproject.index.service.resources.list.query.GroupsListQuery;
 import org.opencastproject.index.service.util.RestUtils;
@@ -55,20 +51,22 @@ import org.opencastproject.util.doc.rest.RestResponse;
 import org.opencastproject.util.doc.rest.RestService;
 import org.opencastproject.util.requests.SortCriterion;
 
-import com.entwinemedia.fn.data.json.Field;
-import com.entwinemedia.fn.data.json.JValue;
-import com.entwinemedia.fn.data.json.Jsons;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import org.apache.commons.collections4.ComparatorUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.jaxrs.whiteboard.propertytypes.JaxrsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -90,12 +88,17 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
-@Path("/")
+@Path("/api/groups")
 @Produces({ ApiMediaType.JSON, ApiMediaType.VERSION_1_0_0, ApiMediaType.VERSION_1_1_0, ApiMediaType.VERSION_1_2_0,
             ApiMediaType.VERSION_1_3_0, ApiMediaType.VERSION_1_4_0, ApiMediaType.VERSION_1_5_0,
             ApiMediaType.VERSION_1_6_0, ApiMediaType.VERSION_1_7_0, ApiMediaType.VERSION_1_8_0,
-            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0 })
-@RestService(name = "externalapigroups", title = "External API Groups Service", notes = {}, abstractText = "Provides resources and operations related to the groups")
+            ApiMediaType.VERSION_1_9_0, ApiMediaType.VERSION_1_10_0, ApiMediaType.VERSION_1_11_0 })
+@RestService(
+    name = "externalapigroups",
+    title = "External API Groups Service",
+    notes = {},
+    abstractText = "Provides resources and operations related to the groups"
+)
 @Component(
     immediate = true,
     service = GroupsEndpoint.class,
@@ -105,6 +108,7 @@ import javax.ws.rs.core.Response;
         "opencast.service.path=/api/groups"
     }
 )
+@JaxrsResource
 public class GroupsEndpoint {
 
   /** The logging facility */
@@ -141,12 +145,26 @@ public class GroupsEndpoint {
 
   @GET
   @Path("")
-  @RestQuery(name = "getgroups", description = "Returns a list of groups.", returnDescription = "", restParameters = {
-          @RestParameter(name = "filter", isRequired = false, description = "A comma seperated list of filters to limit the results with. A filter is the filter's name followed by a colon \":\" and then the value to filter with so it is the form [Filter Name]:[Value to Filter With].", type = STRING),
-          @RestParameter(name = "sort", description = "Sort the results based upon a list of comma seperated sorting criteria. In the comma seperated list each type of sorting is specified as a pair such as: <Sort Name>:ASC or <Sort Name>:DESC. Adding the suffix ASC or DESC sets the order as ascending or descending order and is mandatory.", isRequired = false, type = STRING),
-          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.", isRequired = false, type = RestParameter.Type.INTEGER),
-          @RestParameter(name = "offset", description = "The index of the first result to return.", isRequired = false, type = RestParameter.Type.INTEGER) }, responses = {
-                  @RestResponse(description = "A (potentially empty) list of groups.", responseCode = HttpServletResponse.SC_OK) })
+  @RestQuery(
+      name = "getgroups",
+      description = "Returns a list of groups.",
+      returnDescription = "",
+      restParameters = {
+          @RestParameter(name = "filter", isRequired = false, description = "A comma seperated list of filters to "
+              + "limit the results with. A filter is the filter's name followed by a colon \":\" and then the value to "
+              + "filter with so it is the form [Filter Name]:[Value to Filter With].", type = STRING),
+          @RestParameter(name = "sort", description = "Sort the results based upon a list of comma seperated sorting "
+              + "criteria. In the comma seperated list each type of sorting is specified as a pair such as: "
+              + "<Sort Name>:ASC or <Sort Name>:DESC. Adding the suffix ASC or DESC sets the order as ascending or "
+              + "descending order and is mandatory.", isRequired = false, type = STRING),
+          @RestParameter(name = "limit", description = "The maximum number of results to return for a single request.",
+              isRequired = false, type = RestParameter.Type.INTEGER),
+          @RestParameter(name = "offset", description = "The index of the first result to return.", isRequired = false,
+              type = RestParameter.Type.INTEGER)
+      },
+      responses = {
+          @RestResponse(description = "A (potentially empty) list of groups.", responseCode = HttpServletResponse.SC_OK)
+      })
   public Response getGroups(@HeaderParam("Accept") String acceptHeader, @QueryParam("filter") String filter,
           @QueryParam("sort") String sort, @QueryParam("offset") Integer offset, @QueryParam("limit") Integer limit) {
     final ApiVersion requestedVersion = ApiMediaType.parse(acceptHeader).getVersion();
@@ -161,10 +179,21 @@ public class GroupsEndpoint {
     }
 
     // The API currently does not offer full text search for groups
-    Map<String, String> filters = RestUtils.parseFilter(filter);
+    Map<String, String> filters = new HashMap<>();
+    if (StringUtils.isNotBlank(filter)) {
+      for (String f : filter.split(",")) {
+        String[] filterTuple = f.split(":");
+        if (filterTuple.length < 2) {
+          logger.debug("No value for filter '{}' in filters list: {}", filterTuple[0], filter);
+          continue;
+        }
+        // use substring because dates also contain : so there might be more than two parts
+        filters.put(filterTuple[0].trim(), f.substring(filterTuple[0].length() + 1).trim());
+      }
+    }
     Optional<String> optNameFilter = Optional.ofNullable(filters.get(GroupsListQuery.FILTER_NAME_NAME));
 
-    Set<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
+    ArrayList<SortCriterion> sortCriteria = RestUtils.parseSortQueryParameter(sort);
 
     // sorting by members & roles is not supported by the database, so we do this afterwards
     Set<SortCriterion> deprecatedSortCriteria = new HashSet<>();
@@ -175,8 +204,8 @@ public class GroupsEndpoint {
       sortCriteria.removeAll(deprecatedSortCriteria);
     }
 
-    List<JpaGroup> results = jpaGroupRoleProvider.getGroups(optLimit, optOffset, optNameFilter, Optional.empty(),
-            sortCriteria);
+    List<JpaGroup> results = jpaGroupRoleProvider.getGroups(optLimit, optOffset, optNameFilter,
+        Optional.empty(), Optional.empty(), sortCriteria);
 
     // sorting by members & roles is only available for api versions < 1.6.0
     if (requestedVersion.isSmallerThan(VERSION_1_6_0)) {
@@ -212,19 +241,24 @@ public class GroupsEndpoint {
       Collections.sort(results, ComparatorUtils.chainedComparator(comparators));
     }
 
-    List<JValue> groupsJSON = new ArrayList<>();
+    List<JsonObject> groupsJson = new ArrayList<>();
     for (JpaGroup group : results) {
-      List<Field> fields = new ArrayList<>();
-      fields.add(f("identifier", v(group.getGroupId())));
-      fields.add(f("organization", v(group.getOrganization().getId())));
-      fields.add(f("role", v(group.getRole())));
-      fields.add(f("name", v(group.getName(), Jsons.BLANK)));
-      fields.add(f("description", v(group.getDescription(), Jsons.BLANK)));
-      fields.add(f("roles", v(join(group.getRoleNames(), ","), Jsons.BLANK)));
-      fields.add(f("members", v(join(group.getMembers(), ","), Jsons.BLANK)));
-      groupsJSON.add(obj(fields));
+      JsonObject groupJson = new JsonObject();
+
+      groupJson.addProperty("identifier", group.getGroupId());
+      groupJson.addProperty("organization", group.getOrganization().getId());
+      groupJson.addProperty("role", group.getRole());
+      groupJson.addProperty("name", safeString(group.getName()));
+      groupJson.addProperty("description", safeString(group.getDescription()));
+      groupJson.addProperty("roles", group.getRoleNames() != null ? String.join(",", group.getRoleNames()) : "");
+      groupJson.addProperty("members", group.getMembers() != null ? String.join(",", group.getMembers()) : "");
+
+      groupsJson.add(groupJson);
     }
-    return ApiResponses.Json.ok(acceptHeader, arr(groupsJSON));
+    JsonArray responseArray = new JsonArray();
+    groupsJson.forEach(responseArray::add);
+
+    return ApiResponseBuilder.Json.ok(acceptHeader, responseArray);
   }
 
   /**
@@ -253,35 +287,51 @@ public class GroupsEndpoint {
 
   @GET
   @Path("{groupId}")
-  @RestQuery(name = "getgroup", description = "Returns a single group.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING) }, responses = {
-                  @RestResponse(description = "The group is returned.", responseCode = HttpServletResponse.SC_OK),
-                  @RestResponse(description = "The specified group does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "getgroup",
+      description = "Returns a single group.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The group is returned.", responseCode = HttpServletResponse.SC_OK),
+          @RestResponse(description = "The specified group does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response getGroup(@HeaderParam("Accept") String acceptHeader, @PathParam("groupId") String id) {
     JpaGroup group = jpaGroupRoleProvider.getGroup(id);
 
     if (group == null) {
-      return ApiResponses.notFound("Cannot find a group with id '%s'.", id);
+      return ApiResponseBuilder.notFound("Cannot find a group with id '%s'.", id);
     }
 
-    return ApiResponses.Json.ok(acceptHeader,
-            obj(
-                    f("identifier", v(group.getGroupId())),
-                    f("organization", v(group.getOrganization().getId())),  f("role", v(group.getRole())),
-                    f("name", v(group.getName(), Jsons.BLANK)),
-                    f("description", v(group.getDescription(), Jsons.BLANK)),
-                    f("roles", v(join(group.getRoleNames(), ","), Jsons.BLANK)),
-                    f("members", v(join(group.getMembers(), ","), Jsons.BLANK))
-            )
-    );
+    JsonObject json = new JsonObject();
+    json.addProperty("identifier", group.getGroupId());
+    json.addProperty("organization", group.getOrganization().getId());
+    json.addProperty("role", group.getRole());
+    json.addProperty("name", safeString(group.getName()));
+    json.addProperty("description", safeString(group.getDescription()));
+    json.addProperty("roles", safeString(group.getRoleNames()));
+    json.addProperty("members", safeString(group.getMembers()));
+
+    return ApiResponseBuilder.Json.ok(acceptHeader, json);
   }
 
   @DELETE
   @Path("{groupId}")
-  @RestQuery(name = "deletegroup", description = "Deletes a group.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING) }, responses = {
-                  @RestResponse(description = "The group has been deleted.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-                  @RestResponse(description = "The specified group does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+  @RestQuery(
+      name = "deletegroup",
+      description = "Deletes a group.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The group has been deleted.", responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The specified group does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response deleteGroup(@HeaderParam("Accept") String acceptHeader, @PathParam("groupId") String id)
           throws NotFoundException {
     try {
@@ -299,14 +349,26 @@ public class GroupsEndpoint {
 
   @PUT
   @Path("{groupId}")
-  @RestQuery(name = "updategroup", description = "Updates a group.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "name", isRequired = false, description = "Group Name", type = STRING),
-                  @RestParameter(name = "description", description = "Group Description", isRequired = false, type = STRING),
-                  @RestParameter(name = "roles", description = "Comma-separated list of roles", isRequired = false, type = STRING),
-                  @RestParameter(name = "members", description = "Comma-separated list of members", isRequired = false, type = STRING) }, responses = {
-                          @RestResponse(description = "The group has been updated.", responseCode = HttpServletResponse.SC_CREATED),
-                          @RestResponse(description = "The specified group does not exist.", responseCode = HttpServletResponse.SC_BAD_REQUEST) })
+  @RestQuery(
+      name = "updategroup",
+      description = "Updates a group.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "name", isRequired = false, description = "Group Name", type = STRING),
+          @RestParameter(name = "description", description = "Group Description", isRequired = false, type = STRING),
+          @RestParameter(name = "roles", description = "Comma-separated list of roles", isRequired = false,
+              type = STRING),
+          @RestParameter(name = "members", description = "Comma-separated list of members", isRequired = false,
+              type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The group has been updated.", responseCode = HttpServletResponse.SC_CREATED),
+          @RestResponse(description = "The specified group does not exist.",
+              responseCode = HttpServletResponse.SC_BAD_REQUEST)
+      })
   public Response updateGroup(@HeaderParam("Accept") String acceptHeader, @PathParam("groupId") String id,
           @FormParam("name") String name, @FormParam("description") String description,
           @FormParam("roles") String roles, @FormParam("members") String members) throws Exception {
@@ -323,13 +385,22 @@ public class GroupsEndpoint {
 
   @POST
   @Path("")
-  @RestQuery(name = "creategroup", description = "Creates a group.", returnDescription = "", restParameters = {
+  @RestQuery(
+      name = "creategroup",
+      description = "Creates a group.",
+      returnDescription = "",
+      restParameters = {
           @RestParameter(name = "name", isRequired = true, description = "Group Name", type = STRING),
           @RestParameter(name = "description", description = "Group Description", isRequired = false, type = STRING),
-          @RestParameter(name = "roles", description = "Comma-separated list of roles", isRequired = false, type = STRING),
-          @RestParameter(name = "members", description = "Comma-separated list of members", isRequired = false, type = STRING) }, responses = {
-                  @RestResponse(description = "A new group is created.", responseCode = SC_CREATED),
-                  @RestResponse(description = "The request is invalid or inconsistent.", responseCode = SC_BAD_REQUEST) })
+          @RestParameter(name = "roles", description = "Comma-separated list of roles", isRequired = false,
+              type = STRING),
+          @RestParameter(name = "members", description = "Comma-separated list of members", isRequired = false,
+              type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "A new group is created.", responseCode = SC_CREATED),
+          @RestResponse(description = "The request is invalid or inconsistent.", responseCode = SC_BAD_REQUEST)
+      })
   public Response createGroup(@HeaderParam("Accept") String acceptHeader, @FormParam("name") String name,
           @FormParam("description") String description, @FormParam("roles") String roles,
           @FormParam("members") String members) {
@@ -348,19 +419,28 @@ public class GroupsEndpoint {
 
   @POST
   @Path("{groupId}/members")
-  @RestQuery(name = "addgroupmember", description = "Adds a member to a group.", returnDescription = "", pathParameters = {
-          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING) }, restParameters = {
-                  @RestParameter(name = "member", description = "Member Name", isRequired = true, type = STRING) }, responses = {
-                          @RestResponse(description = "The member was already member of the group.", responseCode = SC_OK),
-                          @RestResponse(description = "The member has been added.", responseCode = SC_NO_CONTENT),
-                          @RestResponse(description = "The specified group does not exist.", responseCode = SC_NOT_FOUND) })
+  @RestQuery(
+      name = "addgroupmember",
+      description = "Adds a member to a group.",
+      returnDescription = "",
+      pathParameters = {
+          @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING)
+      },
+      restParameters = {
+          @RestParameter(name = "member", description = "Member Name", isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The member was already member of the group.", responseCode = SC_OK),
+          @RestResponse(description = "The member has been added.", responseCode = SC_NO_CONTENT),
+          @RestResponse(description = "The specified group does not exist.", responseCode = SC_NOT_FOUND)
+      })
   public Response addGroupMember(@HeaderParam("Accept") String acceptHeader, @PathParam("groupId") String id,
           @FormParam("member") String member) {
     try {
       if (jpaGroupRoleProvider.addMemberToGroup(id, member)) {
         return Response.ok().build();
       } else {
-        return ApiResponses.Json.ok(acceptHeader, "Member is already member of group.");
+        return ApiResponseBuilder.Json.ok(acceptHeader, "Member is already member of group.");
       }
     } catch (IllegalArgumentException e) {
       logger.warn("Unable to add member to group id {}.", id, e);
@@ -368,27 +448,35 @@ public class GroupsEndpoint {
     } catch (UnauthorizedException ex) {
       return Response.status(SC_FORBIDDEN).build();
     } catch (NotFoundException e) {
-      return ApiResponses.notFound("Cannot find group with id '%s'.", id);
+      return ApiResponseBuilder.notFound("Cannot find group with id '%s'.", id);
     } catch (Exception e) {
       logger.warn("Could not update the group with id {}.",id, e);
-      return ApiResponses.serverError("Could not update group with id '%s', reason: '%s'",id,getMessage(e));
+      return ApiResponseBuilder.serverError("Could not update group with id '%s', reason: '%s'",id,getMessage(e));
     }
   }
 
   @DELETE
   @Path("{groupId}/members/{memberId}")
-  @RestQuery(name = "removegroupmember", description = "Removes a member from a group", returnDescription = "", pathParameters = {
+  @RestQuery(
+      name = "removegroupmember",
+      description = "Removes a member from a group",
+      returnDescription = "",
+      pathParameters = {
           @RestParameter(name = "groupId", description = "The group id", isRequired = true, type = STRING),
-          @RestParameter(name = "memberId", description = "The member id", isRequired = true, type = STRING) }, responses = {
-                  @RestResponse(description = "The member has been removed.", responseCode = HttpServletResponse.SC_NO_CONTENT),
-                  @RestResponse(description = "The specified group or member does not exist.", responseCode = HttpServletResponse.SC_NOT_FOUND) })
+          @RestParameter(name = "memberId", description = "The member id", isRequired = true, type = STRING)
+      },
+      responses = {
+          @RestResponse(description = "The member has been removed.", responseCode = HttpServletResponse.SC_NO_CONTENT),
+          @RestResponse(description = "The specified group or member does not exist.",
+              responseCode = HttpServletResponse.SC_NOT_FOUND)
+      })
   public Response removeGroupMember(@HeaderParam("Accept") String acceptHeader, @PathParam("groupId") String id,
           @PathParam("memberId") String memberId) {
     try {
       if (jpaGroupRoleProvider.removeMemberFromGroup(id, memberId)) {
         return Response.ok().build();
       } else {
-        return ApiResponses.Json.ok(acceptHeader, "Member is already not member of group.");
+        return ApiResponseBuilder.Json.ok(acceptHeader, "Member is already not member of group.");
       }
     } catch (IllegalArgumentException e) {
       logger.warn("Unable to remove member from group id {}.", id, e);
@@ -396,10 +484,10 @@ public class GroupsEndpoint {
     } catch (UnauthorizedException ex) {
       return Response.status(SC_FORBIDDEN).build();
     } catch (NotFoundException e) {
-      return ApiResponses.notFound("Cannot find group with id '%s'.", id);
+      return ApiResponseBuilder.notFound("Cannot find group with id '%s'.", id);
     } catch (Exception e) {
       logger.warn("Could not update the group with id {}.", id, e);
-      return ApiResponses.serverError("Could not update group with id '%s', reason: '%s'", id, getMessage(e));
+      return ApiResponseBuilder.serverError("Could not update group with id '%s', reason: '%s'", id, getMessage(e));
     }
   }
 }

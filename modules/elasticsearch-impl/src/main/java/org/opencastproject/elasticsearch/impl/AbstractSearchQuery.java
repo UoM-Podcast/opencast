@@ -43,7 +43,7 @@ import java.util.Map;
 /**
  * Base implementation for search queries.
  */
-public class AbstractSearchQuery implements SearchQuery {
+public abstract class AbstractSearchQuery implements SearchQuery {
 
   /** The document types */
   protected List<String> types = new ArrayList<>();
@@ -149,16 +149,16 @@ public class AbstractSearchQuery implements SearchQuery {
 
   @Override
   public SearchQuery withText(String text) {
-    return withText(false, Any, text);
+    return withText(true, Any, text);
   }
 
   @Override
-  public SearchQuery withText(boolean wildcardSearch, String text) {
-    return withText(wildcardSearch, Any, text);
+  public SearchQuery withText(boolean fuzzy, String text) {
+    return withText(fuzzy, Any, text);
   }
 
   @Override
-  public SearchQuery withText(boolean wildcardSearch, Quantifier quantifier, String... text) {
+  public SearchQuery withText(boolean fuzzy, Quantifier quantifier, String... text) {
     if (quantifier == null) {
       throw new IllegalArgumentException("Quantifier must not be null");
     }
@@ -172,7 +172,7 @@ public class AbstractSearchQuery implements SearchQuery {
     }
 
     // Add the text to the search terms
-    this.fuzzySearch = wildcardSearch;
+    this.fuzzySearch = fuzzy;
 
     // Handle any quantifier
     if (text.length == 1 || Any.equals(quantifier)) {
@@ -215,7 +215,7 @@ public class AbstractSearchQuery implements SearchQuery {
     StringBuilder query = new StringBuilder();
     for (SearchTerms<String> s : text) {
       for (String t : s.getTerms()) {
-        if (query.length() == 0) {
+        if (query.isEmpty()) {
           query.append(" ");
         }
         query.append(t);
@@ -242,7 +242,7 @@ public class AbstractSearchQuery implements SearchQuery {
 
   @Override
   public SearchQuery withSortOrder(String field, Order order) {
-    sortOrders.put(requireNonNull(field), requireNonNull(order));
+    sortOrders.put(requireNonNull(sortOrderFieldName(field)), requireNonNull(order));
     return this;
   }
 
@@ -253,11 +253,14 @@ public class AbstractSearchQuery implements SearchQuery {
 
   @Override
   public Order getSortOrder(String field) {
-    if (!sortOrders.containsKey(field)) {
+    String sortField = sortOrderFieldName(field);
+    if (!sortOrders.containsKey(sortField)) {
       return Order.None;
     }
 
-    return sortOrders.get(field);
+    return sortOrders.get(sortField);
   }
+
+  protected abstract String sortOrderFieldName(String field);
 
 }

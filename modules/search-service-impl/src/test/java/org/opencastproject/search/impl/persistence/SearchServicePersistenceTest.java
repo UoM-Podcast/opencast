@@ -44,6 +44,8 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.osgi.framework.BundleContext;
+import org.osgi.service.component.ComponentContext;
 
 import java.util.Date;
 import java.util.List;
@@ -84,11 +86,16 @@ public class SearchServicePersistenceTest {
     EasyMock.expect(securityService.getUser()).andReturn(user).anyTimes();
     EasyMock.replay(securityService);
 
+    BundleContext bc = EasyMock.createNiceMock(BundleContext.class);
+    ComponentContext cc = EasyMock.createNiceMock(ComponentContext.class);
+    EasyMock.expect(cc.getBundleContext()).andReturn(bc).anyTimes();
+    EasyMock.replay(bc, cc);
+
     searchDatabase = new SearchServiceDatabaseImpl();
     searchDatabase.setEntityManagerFactory(emf);
     searchDatabase.setDBSessionFactory(getDbSessionFactory());
     searchDatabase.setSecurityService(securityService);
-    searchDatabase.activate(null);
+    searchDatabase.activate(cc);
 
     mediaPackage = MediaPackageBuilderFactory.newInstance().newMediaPackageBuilder().createNew();
 
@@ -104,7 +111,7 @@ public class SearchServicePersistenceTest {
     searchDatabase.storeMediaPackage(mediaPackage, accessControlList, modificationDate);
     Assert.assertEquals(searchDatabase.countMediaPackages(), mpCount + 1);
 
-    Stream<Tuple<MediaPackage, String>> mediaPackages = searchDatabase.getAllMediaPackages();
+    Stream<Tuple<MediaPackage, String>> mediaPackages = searchDatabase.getAllMediaPackages(50, 0);
     mediaPackages.forEach(mediaPackage -> {
 
       String mediaPackageId = mediaPackage.getA().getIdentifier().toString();
@@ -162,10 +169,18 @@ public class SearchServicePersistenceTest {
 
     Date deletionDate = new Date();
     searchDatabase.deleteMediaPackage(mediaPackage.getIdentifier().toString(), deletionDate);
-    episode = searchDatabase.getMediaPackage(mediaPackage.getIdentifier().toString());
+
+    exception = false;
+    try {
+      episode = searchDatabase.getMediaPackage(mediaPackage.getIdentifier().toString());
+    } catch (NotFoundException notFoundException) {
+      exception = true;
+    }
+    Assert.assertTrue(exception);
+    Assert.assertFalse(searchDatabase.isAvailable(mediaPackage.getIdentifier().toString()));
     Assert.assertEquals(deletionDate, searchDatabase.getDeletionDate(mediaPackage.getIdentifier().toString()));
 
-    Stream<Tuple<MediaPackage, String>> allMediaPackages = searchDatabase.getAllMediaPackages();
+    Stream<Tuple<MediaPackage, String>> allMediaPackages = searchDatabase.getAllMediaPackages(50, 0);
     AtomicInteger i = new AtomicInteger(0);
     allMediaPackages.forEach(mediaPackage -> {
       i.incrementAndGet();
@@ -174,7 +189,7 @@ public class SearchServicePersistenceTest {
 
     searchDatabase.storeMediaPackage(mediaPackage, accessControlList, new Date());
 
-    allMediaPackages = searchDatabase.getAllMediaPackages();
+    allMediaPackages = searchDatabase.getAllMediaPackages(50, 0);
     AtomicInteger x = new AtomicInteger(0);
     allMediaPackages.forEach(mediaPackage -> {
       x.incrementAndGet();

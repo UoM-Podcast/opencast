@@ -32,8 +32,6 @@ import org.opencastproject.metadata.api.MediaPackageMetadataService;
 import org.opencastproject.metadata.api.MediapackageMetadataImpl;
 import org.opencastproject.workspace.api.Workspace;
 
-import com.entwinemedia.fn.Stream;
-
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -45,6 +43,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -53,12 +52,12 @@ import java.util.Map;
  * Parses {@link DublinCoreCatalog}s from serialized DC representations.
  */
 @Component(
-  property = {
-    "service.description=Dublin Core Catalog Service",
-    "priority=1"
-  },
-  immediate = true,
-  service = { CatalogService.class, MediaPackageMetadataService.class, DublinCoreCatalogService.class }
+    property = {
+        "service.description=Dublin Core Catalog Service",
+        "priority=1"
+    },
+    immediate = true,
+    service = { CatalogService.class, MediaPackageMetadataService.class, DublinCoreCatalogService.class }
 )
 public class DublinCoreCatalogService implements CatalogService<DublinCoreCatalog>, MediaPackageMetadataService {
 
@@ -103,7 +102,9 @@ public class DublinCoreCatalogService implements CatalogService<DublinCoreCatalo
   @Override
   public MediaPackageMetadata getMetadata(MediaPackage mp) {
     MediapackageMetadataImpl metadata = new MediapackageMetadataImpl();
-    for (Catalog catalog : Stream.$(mp.getCatalogs(DublinCoreCatalog.ANY_DUBLINCORE)).sort(COMPARE_BY_FLAVOR)) {
+    Catalog[] catalogs = mp.getCatalogs(DublinCoreCatalog.ANY_DUBLINCORE);
+    Arrays.sort(catalogs, COMPARE_BY_FLAVOR);
+    for (Catalog catalog : catalogs) {
       DublinCoreCatalog dc = DublinCoreUtil.loadDublinCore(workspace, catalog);
       if (MediaPackageElements.EPISODE.equals(catalog.getFlavor())) {
         // Title
@@ -112,16 +113,18 @@ public class DublinCoreCatalogService implements CatalogService<DublinCoreCatalo
         // use started date as created date (see MH-12250)
         if (dc.hasValue(DublinCore.PROPERTY_TEMPORAL) && dc.getFirst(PROPERTY_TEMPORAL) != null) {
           DCMIPeriod period = EncodingSchemeUtils
-            .decodeMandatoryPeriod(dc.getFirst(PROPERTY_TEMPORAL));
+              .decodeMandatoryPeriod(dc.getFirst(PROPERTY_TEMPORAL));
           metadata.setDate(period.getStart());
         } else {
           // ...and only if started date is not available the created date
-          if (dc.hasValue(DublinCore.PROPERTY_CREATED))
+          if (dc.hasValue(DublinCore.PROPERTY_CREATED)) {
             metadata.setDate(EncodingSchemeUtils.decodeDate(dc.get(DublinCore.PROPERTY_CREATED).get(0)));
+          }
         }
         // Series id
-        if (dc.hasValue(DublinCore.PROPERTY_IS_PART_OF))
+        if (dc.hasValue(DublinCore.PROPERTY_IS_PART_OF)) {
           metadata.setSeriesIdentifier(dc.get(DublinCore.PROPERTY_IS_PART_OF).get(0).getValue());
+        }
 
         // Creator
         if (dc.hasValue(DublinCore.PROPERTY_CREATOR)) {
@@ -170,15 +173,17 @@ public class DublinCoreCatalogService implements CatalogService<DublinCoreCatalo
   public static final Comparator<Catalog> COMPARE_BY_FLAVOR = new Comparator<Catalog>() {
     @Override
     public int compare(Catalog c1, Catalog c2) {
-      if (MediaPackageElements.EPISODE.equals(c1.getFlavor()))
+      if (MediaPackageElements.EPISODE.equals(c1.getFlavor())) {
         return 1;
+      }
       return -1;
     }
   };
 
   public DublinCoreCatalog load(InputStream in) throws IOException {
-    if (in == null)
+    if (in == null) {
       throw new IllegalArgumentException("Stream must not be null");
+    }
     return DublinCores.read(in);
   }
 

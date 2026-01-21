@@ -21,10 +21,15 @@
 package org.opencastproject.workflow.handler.workflow;
 
 import org.opencastproject.job.api.JobContext;
+import org.opencastproject.mediapackage.Attachment;
+import org.opencastproject.mediapackage.Catalog;
 import org.opencastproject.mediapackage.MediaPackage;
-import org.opencastproject.mediapackage.MediaPackageElement;
 import org.opencastproject.mediapackage.MediaPackageElementFlavor;
 import org.opencastproject.mediapackage.Publication;
+import org.opencastproject.mediapackage.Track;
+import org.opencastproject.mediapackage.selector.AttachmentSelector;
+import org.opencastproject.mediapackage.selector.CatalogSelector;
+import org.opencastproject.mediapackage.selector.TrackSelector;
 import org.opencastproject.workflow.api.AbstractWorkflowOperationHandler;
 import org.opencastproject.workflow.api.ConfiguredTagsAndFlavors;
 import org.opencastproject.workflow.api.WorkflowInstance;
@@ -39,7 +44,6 @@ import org.osgi.service.component.annotations.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -68,7 +72,7 @@ public class PublicationChannelToWorkspace extends AbstractWorkflowOperationHand
 
   @Override
   public WorkflowOperationResult start(WorkflowInstance workflowInstance, JobContext context)
-      throws WorkflowOperationException {
+          throws WorkflowOperationException {
 
     logger.info("Copying artifacts from published media package {} to workspace", workflowInstance.getId());
     final MediaPackage mediaPackage = workflowInstance.getMediaPackage();
@@ -79,7 +83,7 @@ public class PublicationChannelToWorkspace extends AbstractWorkflowOperationHand
         Configuration.many, Configuration.many, Configuration.many);
     List<MediaPackageElementFlavor> configuredSourceFlavors = tagsAndFlavors.getSrcFlavors();
     List<String> configuredSourceTags = tagsAndFlavors.getSrcTags();
-    List <String> configuredTargetTags = tagsAndFlavors.getTargetTags();
+    ConfiguredTagsAndFlavors.TargetTags configuredTargetTags = tagsAndFlavors.getTargetTags();
     String publicationChannel = StringUtils
         .trimToEmpty(currentOperation.getConfiguration(OPT_SOURCE_PUBLICATION_CHANNEL));
     if (publicationChannel.isEmpty()) {
@@ -97,53 +101,50 @@ public class PublicationChannelToWorkspace extends AbstractWorkflowOperationHand
       return createResult(mediaPackage, Action.SKIP);
     }
 
-    Collection<MediaPackageElement> tracks = new ArrayList<>();
-
     //get tracks from publicationchannel with tags and flavors
-    Arrays.stream(publication.get().getTracks())
-        .filter(element -> element.containsTag(configuredSourceTags))
-        .forEach(tracks::add);
-    Arrays.stream(publication.get().getTracks())
-        .filter(element -> configuredSourceFlavors.contains(element.getFlavor()))
-        .forEach(tracks::add);
-
-    if (!configuredTargetTags.isEmpty()) {
-      tracks.forEach(track -> {
-        configuredTargetTags.forEach(targetTag -> track.addTag(targetTag.toString()));
-      });
+    TrackSelector trackSelector = new TrackSelector();
+    for (MediaPackageElementFlavor flavor : configuredSourceFlavors) {
+      trackSelector.addFlavor(flavor);
     }
+    for (String tag : configuredSourceTags) {
+      trackSelector.addTag(tag);
+    }
+    Collection<Track> tracks = trackSelector.select(mediaPackage, publicationChannel, false);
+
+
+    tracks.forEach(track -> {
+      applyTargetTagsToElement(configuredTargetTags, track);
+    });
     tracks.forEach(mediaPackage::add);
 
     //get attachements from publicationchannel with tags and flavors
-    Collection<MediaPackageElement> attachments = new ArrayList<MediaPackageElement>();
-    Arrays.stream(publication.get().getAttachments())
-        .filter(element -> element.containsTag(configuredSourceTags))
-        .forEach(attachments::add);
-    Arrays.stream(publication.get().getAttachments())
-        .filter(element -> configuredSourceFlavors.contains(element.getFlavor()))
-        .forEach(attachments::add);
-
-    if (!configuredTargetTags.isEmpty()) {
-      attachments.forEach(attachment -> {
-        configuredTargetTags.forEach(targetTag -> attachment.addTag(targetTag.toString()));
-      });
+    AttachmentSelector attachmentSelector = new AttachmentSelector();
+    for (MediaPackageElementFlavor flavor : configuredSourceFlavors) {
+      attachmentSelector.addFlavor(flavor);
     }
+    for (String tag : configuredSourceTags) {
+      attachmentSelector.addTag(tag);
+    }
+    Collection<Attachment> attachments = attachmentSelector.select(mediaPackage, publicationChannel, false);
+
+    attachments.forEach(attachment -> {
+      applyTargetTagsToElement(configuredTargetTags, attachment);
+    });
     attachments.forEach(mediaPackage::add);
 
     //get catalogs from publicationchannel with tags and flavors
-    Collection<MediaPackageElement> catalogs = new ArrayList<MediaPackageElement>();
-    Arrays.stream(publication.get().getCatalogs())
-        .filter(element -> element.containsTag(configuredSourceTags))
-        .forEach(catalogs::add);
-    Arrays.stream(publication.get().getCatalogs())
-        .filter(element -> configuredSourceFlavors.contains(element.getFlavor()))
-        .forEach(catalogs::add);
-
-    if (!configuredTargetTags.isEmpty()) {
-      catalogs.forEach(catalog -> {
-        configuredTargetTags.forEach(targetTag -> catalog.addTag(targetTag.toString()));
-      });
+    CatalogSelector catalogSelector = new CatalogSelector();
+    for (MediaPackageElementFlavor flavor : configuredSourceFlavors) {
+      catalogSelector.addFlavor(flavor);
     }
+    for (String tag : configuredSourceTags) {
+      catalogSelector.addTag(tag);
+    }
+    Collection<Catalog> catalogs = catalogSelector.select(mediaPackage, publicationChannel, false);
+
+    catalogs.forEach(catalog -> {
+      applyTargetTagsToElement(configuredTargetTags, catalog);
+    });
     catalogs.forEach(mediaPackage::add);
 
     return createResult(mediaPackage, Action.CONTINUE, 0);

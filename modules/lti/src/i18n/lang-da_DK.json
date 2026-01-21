@@ -1,0 +1,58 @@
+{
+  "LTI": {
+    "ERROR_LOADING_METADATA": "Fejl ved indlæsning af metadata. Prøv venligst igen senere.",
+    "SERIES_TITLE": "Vis serie",
+    "UPLOAD_TITLE": "Upload begivenhed",
+    "LOADING": "Indlæser…",
+    "NEW_UPLOAD": "Upload ny begivenhed",
+    "EDIT_UPLOAD": "Rediger begivenhed",
+    "CURRENT_JOBS": "Dagens opgaver",
+    "PRESENTER": "Oplægsholder",
+    "PRESENTER_DESCRIPTION": "Videofil til oplægsholder-sporet",
+    "VIDEOFILE": "Videofil",
+    "VIDEOFILE_DESCRIPTION": "Videofil til upload",
+    "CAPTION": "Undertekster",
+    "CAPTION_DESCRIPTION": "Undertekstfil i VTT-format",
+    "UPLOAD": "Upload",
+    "UPLOADING": "Uploader",
+    "EDIT": "Gem",
+    "EDIT_TITLE": "Rediger begivenhed",
+    "NO_OPTION_SELECTED": "Intet valgt",
+    "EDITING": "Gemmer…",
+    "SELECT_OPTION": "Vælg en mulighed",
+    "JOB_TITLE": "Titel",
+    "JOB_STATUS": "Status",
+    "UPLOAD_SUCCESS": "Upload gennemført!",
+    "UPLOAD_FAILURE": "Upload fejlede!",
+    "UPLOAD_FAILURE_DESCRIPTION": "Prøv venligst igen senere.",
+    "EDIT_SUCCESS": "Ændringer gemt, genudgivelse starter.",
+    "EDIT_FAILURE": "Redigering fejlede!",
+    "COPY_SUCCESS": "Kopiering startet…",
+    "COPY_SUCCESS_DESCRIPTION": "Vent venligst et øjeblik…",
+    "GENERIC_ERROR": "Fejl: {{message}}",
+    "DELETION_SUCCESS": "Begivenheden er slettet",
+    "DELETION_SUCCESS_DESCRIPTION": "Begivenheden fjernes fra listen om et øjeblik…",
+    "EVENT_LOCKED": "Begivenheden behandles i øjeblikket. Vent venligst med at foretage yderligere ændringer…",
+    "DELETION_FAILURE": "Sletning af begivenhed fejlede",
+    "DELETION_FAILURE_DESCRIPTION": "Prøv venligst igen senere…",
+    "RESULT_HEADING": "Resultat {{range.begin}}-{{range.end}} ud af {{total}}",
+    "CONFIRM_DELETION": "Er du sikker på, at du vil slette denne begivenhed?",
+    "COPY_TO_SERIES": "Kopier begivenhed til serie",
+    "SELECT_COPY_TARGET": "Vælg destinationsserie",
+    "COPY": "Kopier",
+    "COPY_IN_PROGRESS": "Starter kopiering…",
+    "CREATOR": "af {{creator}}"
+  },
+  "EVENTS": {
+    "EVENTS": {
+      "DETAILS": {
+        "METADATA": {
+          "LANGUAGE": "Sprog",
+          "LICENSE": "Licens",
+          "PRESENTERS": "Oplægsholder(e)",
+          "TITLE": "Titel"
+        }
+      }
+    }
+  }
+}
