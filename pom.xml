@@ -50,7 +50,7 @@
     <joda-time.version>2.14.0</joda-time.version>
     <json-simple.version>1.1.1</json-simple.version>
     <junit5.version>6.0.1</junit5.version>
-    <karaf.version>4.4.7</karaf.version>
+    <karaf.version>4.4.11</karaf.version>
     <lucene.version>8.7.0</lucene.version>
     <node.version>v24.15.0</node.version>
     <osgi.core.version>8.0.0</osgi.core.version>
